@@ -31,16 +31,90 @@ function Ground() {
 
 function PlayerCharacter({ isAttacking }: { isAttacking: boolean }) {
   const meshRef = useRef<THREE.Group>(null);
+  const keys = useRef({ w: false, a: false, s: false, d: false, shift: false });
+  const trailRef = useRef<THREE.Mesh[]>([]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        const key = e.key.toLowerCase();
+        if (key === 'w' || key === 'arrowup') keys.current.w = true;
+        if (key === 's' || key === 'arrowdown') keys.current.s = true;
+        if (key === 'a' || key === 'arrowleft') keys.current.a = true;
+        if (key === 'd' || key === 'arrowright') keys.current.d = true;
+        if (key === 'shift') keys.current.shift = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+        const key = e.key.toLowerCase();
+        if (key === 'w' || key === 'arrowup') keys.current.w = false;
+        if (key === 's' || key === 'arrowdown') keys.current.s = false;
+        if (key === 'a' || key === 'arrowleft') keys.current.a = false;
+        if (key === 'd' || key === 'arrowright') keys.current.d = false;
+        if (key === 'shift') keys.current.shift = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
   
   useFrame((state) => {
     if (meshRef.current) {
+      const { w, a, s, d, shift } = keys.current;
+      const baseSpeed = 0.15;
+      const speed = shift ? baseSpeed * 2.5 : baseSpeed;
+      const diagonal = (w || s) && (a || d) ? 0.707 : 1;
+      
+      // Movement
+      if (w) meshRef.current.position.z -= speed * diagonal;
+      if (s) meshRef.current.position.z += speed * diagonal;
+      if (a) meshRef.current.position.x -= speed * diagonal;
+      if (d) meshRef.current.position.x += speed * diagonal;
+
+      // Rotation to face movement direction
+      if (w || a || s || d) {
+          let angle = 0;
+          if (w) angle = Math.PI;
+          if (s) angle = 0;
+          if (a) angle = -Math.PI / 2;
+          if (d) angle = Math.PI / 2;
+          
+          if (w && a) angle = -Math.PI * 0.75;
+          if (w && d) angle = Math.PI * 0.75;
+          if (s && a) angle = -Math.PI * 0.25;
+          if (s && d) angle = Math.PI * 0.25;
+          
+          meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, angle, 0.2);
+      }
+
+      // Camera Follow
+      const camOffset = new THREE.Vector3(0, 5, 8);
+      state.camera.position.lerp(
+          new THREE.Vector3(
+              meshRef.current.position.x + camOffset.x,
+              meshRef.current.position.y + camOffset.y,
+              meshRef.current.position.z + camOffset.z
+          ),
+          0.1
+      );
+      state.camera.lookAt(meshRef.current.position);
+
+      // Dash Trail Effect
+      if (shift && (w || a || s || d)) {
+          // Simplified trail logic or just scale distortion
+          meshRef.current.scale.z = THREE.MathUtils.lerp(meshRef.current.scale.z, 1.5, 0.2);
+      } else {
+          meshRef.current.scale.z = THREE.MathUtils.lerp(meshRef.current.scale.z, 1, 0.2);
+      }
+
       // Idle animation
       if (!isAttacking) {
         meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.1;
       } else {
          // Attack lunge animation
          const attackTime = (Date.now() % 500) / 500; // fast loop
-         meshRef.current.position.z = Math.sin(attackTime * Math.PI) * 2;
+         meshRef.current.position.z += Math.sin(attackTime * Math.PI) * 0.1; // minor forward lung
       }
     }
   });
@@ -188,6 +262,11 @@ export default function Game3DPage() {
       {/* HUD Overlay */}
       <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
         
+        {/* Controls Hint */}
+        <div className="absolute top-4 right-4 bg-black/60 p-2 rounded text-xs text-primary/70 font-mono text-right">
+            WASD to Move<br/>SHIFT to Dash
+        </div>
+
         {/* Top Bar */}
         <div className="flex justify-between items-start">
             <div className="bg-black/60 backdrop-blur-md p-4 rounded-sm border border-primary/30 w-64">
