@@ -97,6 +97,20 @@ export default function StatusPage() {
                         <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] w-20 animate-[move_2s_infinite]" />
                     </div>
                 </div>
+
+                <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+                        <span>Experience Points</span>
+                        <span className="font-mono">{player.exp} / {player.maxExp}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-primary/10 rounded-none border border-primary/20 overflow-hidden relative">
+                        <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(player.exp / player.maxExp) * 100}%` }}
+                            className="h-full bg-primary shadow-[0_0_10px_rgba(0,240,255,0.4)]"
+                        />
+                    </div>
+                </div>
             </div>
         </motion.div>
 
