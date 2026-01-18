@@ -8,6 +8,7 @@ import StatusPage from "@/pages/StatusPage";
 import DungeonPage from "@/pages/DungeonPage";
 import InventoryPage from "@/pages/InventoryPage";
 import SkillsPage from "@/pages/SkillsPage";
+import Game3DPage from "@/pages/Game3DPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/dungeon" component={DungeonPage} />
       <Route path="/inventory" component={InventoryPage} />
       <Route path="/skills" component={SkillsPage} />
+      <Route path="/game3d" component={Game3DPage} />
       <Route component={NotFound} />
     </Switch>
   );

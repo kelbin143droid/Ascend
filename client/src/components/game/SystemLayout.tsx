@@ -12,6 +12,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
     { icon: Sword, label: "DUNGEON", path: "/dungeon" },
     { icon: Backpack, label: "INVENTORY", path: "/inventory" },
     { icon: Zap, label: "SKILLS", path: "/skills" },
+    { icon: Menu, label: "3D MODE", path: "/game3d" },
   ];
 
   return (
