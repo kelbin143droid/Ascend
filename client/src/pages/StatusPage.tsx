@@ -34,63 +34,67 @@ export default function StatusPage() {
         {/* Header Section */}
         <motion.div variants={item} className="flex justify-between items-end border-b-2 border-primary pb-2">
             <div>
-                <h1 className="text-3xl font-display font-bold text-primary tracking-tighter drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">STATUS</h1>
-                <p className="text-xs text-muted-foreground tracking-[0.2em] uppercase">Player Information</p>
+                <h1 className="text-4xl font-display font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.8)] glitch" data-text="STATUS">STATUS</h1>
+                <p className="text-[10px] text-primary/60 tracking-[0.4em] uppercase font-bold">Awakened Hunter Interface</p>
             </div>
             <div className="text-right">
-                 <span className="text-xs text-muted-foreground block">RANK</span>
-                 <span className="text-2xl font-display font-bold text-destructive drop-shadow-[0_0_8px_rgba(255,0,0,0.5)]">{player.rank}-Rank</span>
+                 <span className="text-[10px] text-muted-foreground block font-bold tracking-widest">RANK</span>
+                 <span className="text-3xl font-display font-black text-destructive drop-shadow-[0_0_12px_rgba(255,0,0,0.7)] animate-pulse">S</span>
             </div>
         </motion.div>
 
         {/* Character Info Card */}
-        <motion.div variants={item} className="system-panel p-4 rounded-sm space-y-4">
-            <div className="grid grid-cols-2 gap-y-4 text-sm">
+        <motion.div variants={item} className="system-panel p-5 rounded-sm space-y-5 border-t-2 border-t-primary/50 relative">
+            <div className="absolute top-2 right-2 flex gap-1">
+                <div className="w-1 h-1 bg-primary animate-ping" />
+                <div className="w-1 h-1 bg-primary/40" />
+            </div>
+            <div className="grid grid-cols-2 gap-y-5 text-sm">
                 <div>
-                    <span className="text-muted-foreground block text-xs tracking-wider mb-1">NAME</span>
-                    <span className="font-bold text-lg">{player.name}</span>
+                    <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">NAME</span>
+                    <span className="font-black text-xl tracking-tight text-glow">SUNG JIN-WOO</span>
                 </div>
                 <div className="text-right">
-                    <span className="text-muted-foreground block text-xs tracking-wider mb-1">LEVEL</span>
-                    <span className="font-mono text-xl text-primary font-bold">{player.level}</span>
+                    <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">LEVEL</span>
+                    <span className="font-mono text-3xl text-primary font-black drop-shadow-[0_0_10px_rgba(0,240,255,0.4)]">{player.level}</span>
                 </div>
                 <div>
-                    <span className="text-muted-foreground block text-xs tracking-wider mb-1">JOB</span>
-                    <span className="font-bold">{player.job}</span>
+                    <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">JOB</span>
+                    <span className="font-black text-accent text-glow-purple">SHADOW MONARCH</span>
                 </div>
                 <div className="text-right">
-                    <span className="text-muted-foreground block text-xs tracking-wider mb-1">TITLE</span>
-                    <span className="font-bold text-destructive text-xs md:text-sm">{player.title}</span>
+                    <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">TITLE</span>
+                    <span className="font-black text-destructive text-xs md:text-sm drop-shadow-[0_0_5px_rgba(255,0,0,0.3)]">{player.title}</span>
                 </div>
             </div>
 
-            <Separator className="bg-primary/20" />
-
-            <div className="space-y-3">
-                <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                        <span>HP</span>
-                        <span className="font-mono text-primary">{player.hp} / {player.maxHp}</span>
+            <div className="space-y-4 pt-2">
+                <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-red-500">
+                        <span>Health Points</span>
+                        <span className="font-mono">{player.hp} / {player.maxHp}</span>
                     </div>
-                    <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden">
+                    <div className="h-2.5 w-full bg-red-950/30 rounded-none border border-red-500/20 overflow-hidden relative">
                         <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${(player.hp / player.maxHp) * 100}%` }}
-                            className="h-full bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_10px_rgba(255,0,0,0.5)]"
+                            className="h-full bg-gradient-to-r from-red-700 via-red-500 to-red-400 shadow-[0_0_15px_rgba(255,0,0,0.6)]"
                         />
+                        <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] w-20 animate-[move_2s_infinite]" />
                     </div>
                 </div>
-                <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                        <span>MP</span>
-                        <span className="font-mono text-primary">{player.mp} / {player.maxMp}</span>
+                <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-blue-500">
+                        <span>Mana Points</span>
+                        <span className="font-mono">{player.mp} / {player.maxMp}</span>
                     </div>
-                    <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden">
+                    <div className="h-2.5 w-full bg-blue-950/30 rounded-none border border-blue-500/20 overflow-hidden relative">
                         <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${(player.mp / player.maxMp) * 100}%` }}
-                            className="h-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_10px_rgba(0,0,255,0.5)]"
+                            className="h-full bg-gradient-to-r from-blue-700 via-blue-500 to-blue-400 shadow-[0_0_15px_rgba(0,0,255,0.6)]"
                         />
+                        <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] w-20 animate-[move_2s_infinite]" />
                     </div>
                 </div>
             </div>

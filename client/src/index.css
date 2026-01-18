@@ -42,7 +42,9 @@
   
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-glow: glow 2s ease-in-out infinite alternate;
-  
+  --animate-lightning: lightning 0.1s ease-in-out infinite alternate;
+  --animate-float: float 6s ease-in-out infinite;
+
   @keyframes glow {
     from {
       box-shadow: 0 0 10px -5px var(--color-primary);
@@ -51,40 +53,55 @@
       box-shadow: 0 0 20px 0px var(--color-primary);
     }
   }
+
+  @keyframes lightning {
+    0% { opacity: 0.1; }
+    10% { opacity: 0.8; }
+    20% { opacity: 0.2; }
+    30% { opacity: 0.9; }
+    40% { opacity: 0.3; }
+    100% { opacity: 0.2; }
+  }
+
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
 }
 
 /* SOLO LEVELING / SYSTEM INTERFACE THEME */
 :root {
   /* Default to Dark Mode essentially */
-  --background: 230 35% 7%; /* Deep Dark Blue/Black */
-  --foreground: 210 20% 98%; /* White/Ice */
+  --background: 230 35% 5%; /* Even darker */
+  --foreground: 210 20% 98%;
 
-  --card: 230 35% 10%; /* Slightly lighter dark */
+  --card: 230 35% 8%;
   --card-foreground: 210 20% 98%;
 
-  --popover: 230 35% 10%;
+  --popover: 230 35% 8%;
   --popover-foreground: 210 20% 98%;
 
-  --primary: 190 100% 50%; /* Electric Cyan/Blue - The System Glow */
+  --primary: 190 100% 50%; /* Electric Cyan */
   --primary-foreground: 230 35% 7%;
 
-  --secondary: 230 25% 20%; /* Dark Grey Blue */
+  --secondary: 230 25% 15%;
   --secondary-foreground: 210 20% 98%;
 
-  --muted: 230 25% 15%;
+  --muted: 230 25% 10%;
   --muted-foreground: 215 20% 65%;
 
-  --accent: 190 100% 50%; /* Same as primary for highlights */
-  --accent-foreground: 230 35% 7%;
+  --accent: 280 100% 60%; /* Purple Lightning */
+  --accent-foreground: 210 20% 98%;
 
-  --destructive: 0 85% 60%; /* Alert Red */
+  --destructive: 0 100% 50%;
   --destructive-foreground: 210 20% 98%;
 
-  --border: 230 30% 20%; /* Subtle borders */
-  --input: 230 30% 20%;
+  --border: 190 100% 50% / 0.2;
+  --input: 230 30% 15%;
   --ring: 190 100% 50%;
 
-  --radius: 0.25rem;
+  --radius: 0.125rem; /* Sharper corners */
 }
 
 body {
@@ -92,11 +109,12 @@ body {
   color: hsl(var(--foreground));
   font-family: var(--font-ui);
   overflow-x: hidden;
+  background-image: radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.05) 0%, transparent 70%);
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -104,28 +122,13 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-mono);
 }
 
-/* Custom Scrollbar for the System */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: hsl(var(--background)); 
-}
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--secondary)); 
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary)); 
-}
-
-/* System Message Box Style */
 .system-panel {
-  background: rgba(10, 15, 30, 0.85);
-  backdrop-filter: blur(8px);
+  background: linear-gradient(135deg, rgba(10, 15, 30, 0.9) 0%, rgba(5, 5, 10, 0.95) 100%);
+  backdrop-filter: blur(12px);
   border: 1px solid hsl(var(--primary) / 0.3);
-  box-shadow: 0 0 15px -5px hsl(var(--primary) / 0.2);
+  box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.2), inset 0 0 10px hsl(var(--primary) / 0.05);
   position: relative;
+  overflow: hidden;
 }
 
 .system-panel::before {
@@ -134,12 +137,71 @@ h1, h2, h3, h4, h5, h6 {
   top: 0;
   left: 0;
   width: 100%;
-  height: 2px;
+  height: 1px;
   background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
-  opacity: 0.5;
+  animation: scan 3s linear infinite;
 }
 
-/* Text Glow Utility */
-.text-glow {
-  text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
 }
+
+.lightning-flash {
+  position: fixed;
+  inset: 0;
+  background: white;
+  z-index: 50;
+  pointer-events: none;
+  animation: lightning 5s infinite;
+}
+
+.text-glow {
+  text-shadow: 0 0 15px hsl(var(--primary) / 0.8);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 15px hsl(var(--accent) / 0.8);
+}
+
+.glitch {
+  position: relative;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch::before {
+  left: 2px;
+  text-shadow: -2px 0 #ff00c1;
+  clip: rect(44px, 450px, 56px, 0);
+  animation: glitch-anim 5s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+  left: -2px;
+  text-shadow: -2px 0 #00fff9, 2px 2px #ff00c1;
+  animation: glitch-anim2 1s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-anim {
+  0% { clip: rect(31px, 9999px, 94px, 0); }
+  20% { clip: rect(62px, 9999px, 42px, 0); }
+  40% { clip: rect(16px, 9999px, 78px, 0); }
+  60% { clip: rect(87px, 9999px, 11px, 0); }
+  80% { clip: rect(3px, 9999px, 64px, 0); }
+  100% { clip: rect(54px, 9999px, 7px, 0); }
+}
+
+@keyframes glitch-anim2 {
+  0% { clip: rect(65px, 9999px, 100px, 0); }
+  100% { clip: rect(0px, 9999px, 0px, 0); }
+}
+
