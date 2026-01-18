@@ -29,7 +29,7 @@ function Ground() {
   );
 }
 
-function PlayerCharacter({ isAttacking }: { isAttacking: boolean }) {
+function PlayerCharacter({ isAttacking, joystick }: { isAttacking: boolean, joystick: { x: number, y: number } }) {
   const meshRef = useRef<THREE.Group>(null);
   const keys = useRef({ w: false, a: false, s: false, d: false, shift: false });
   const trailRef = useRef<THREE.Mesh[]>([]);
@@ -64,28 +64,32 @@ function PlayerCharacter({ isAttacking }: { isAttacking: boolean }) {
       const { w, a, s, d, shift } = keys.current;
       const baseSpeed = 0.15;
       const speed = shift ? baseSpeed * 2.5 : baseSpeed;
-      const diagonal = (w || s) && (a || d) ? 0.707 : 1;
       
-      // Movement
-      if (w) meshRef.current.position.z -= speed * diagonal;
-      if (s) meshRef.current.position.z += speed * diagonal;
-      if (a) meshRef.current.position.x -= speed * diagonal;
-      if (d) meshRef.current.position.x += speed * diagonal;
+      let moveX = 0;
+      let moveZ = 0;
 
-      // Rotation to face movement direction
-      if (w || a || s || d) {
-          let angle = 0;
-          if (w) angle = Math.PI;
-          if (s) angle = 0;
-          if (a) angle = -Math.PI / 2;
-          if (d) angle = Math.PI / 2;
-          
-          if (w && a) angle = -Math.PI * 0.75;
-          if (w && d) angle = Math.PI * 0.75;
-          if (s && a) angle = -Math.PI * 0.25;
-          if (s && d) angle = Math.PI * 0.25;
-          
-          meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, angle, 0.2);
+      // Keyboard movement
+      if (w) moveZ -= 1;
+      if (s) moveZ += 1;
+      if (a) moveX -= 1;
+      if (d) moveX += 1;
+
+      // Joystick movement (additive)
+      moveX += joystick.x;
+      moveZ -= joystick.y;
+
+      const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
+      if (length > 0) {
+        const normX = moveX / length;
+        const normZ = moveZ / length;
+        const finalSpeed = speed * Math.min(1, length);
+        
+        meshRef.current.position.x += normX * finalSpeed;
+        meshRef.current.position.z += normZ * finalSpeed;
+
+        // Rotation
+        const angle = Math.atan2(normX, normZ);
+        meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, angle, 0.2);
       }
 
       // Camera Follow
@@ -101,8 +105,7 @@ function PlayerCharacter({ isAttacking }: { isAttacking: boolean }) {
       state.camera.lookAt(meshRef.current.position);
 
       // Dash Trail Effect
-      if (shift && (w || a || s || d)) {
-          // Simplified trail logic or just scale distortion
+      if ((shift || length > 1) && (moveX !== 0 || moveZ !== 0)) {
           meshRef.current.scale.z = THREE.MathUtils.lerp(meshRef.current.scale.z, 1.5, 0.2);
       } else {
           meshRef.current.scale.z = THREE.MathUtils.lerp(meshRef.current.scale.z, 1, 0.2);
@@ -112,9 +115,8 @@ function PlayerCharacter({ isAttacking }: { isAttacking: boolean }) {
       if (!isAttacking) {
         meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.1;
       } else {
-         // Attack lunge animation
-         const attackTime = (Date.now() % 500) / 500; // fast loop
-         meshRef.current.position.z += Math.sin(attackTime * Math.PI) * 0.1; // minor forward lung
+         const attackTime = (Date.now() % 500) / 500;
+         meshRef.current.position.z += Math.sin(attackTime * Math.PI) * 0.1;
       }
     }
   });
@@ -214,6 +216,28 @@ export default function Game3DPage() {
   const [isAttacking, setIsAttacking] = useState(false);
   const [isHit, setIsHit] = useState(false);
   const [combatLog, setCombatLog] = useState<string[]>(["Encounter started!"]);
+  const [showHUD, setShowHUD] = useState(true);
+  const [joystick, setJoystick] = useState({ x: 0, y: 0 });
+
+  const handleJoystickMove = (e: React.PointerEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = (e.clientX - centerX) / (rect.width / 2);
+    const dy = (e.clientY - centerY) / (rect.height / 2);
+    
+    // Clamp to 1
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 1) {
+        setJoystick({ x: dx / dist, y: -dy / dist });
+    } else {
+        setJoystick({ x: dx, y: -dy });
+    }
+  };
+
+  const handleJoystickEnd = () => {
+    setJoystick({ x: 0, y: 0 });
+  };
 
   const handleAttack = () => {
      if (isAttacking) return;
@@ -250,7 +274,7 @@ export default function Game3DPage() {
           <pointLight position={[5, 5, 5]} intensity={1} castShadow color="#00ffff" />
           <pointLight position={[-5, 5, -5]} intensity={0.5} color="#ff00ff" />
           
-          <PlayerCharacter isAttacking={isAttacking} />
+          <PlayerCharacter isAttacking={isAttacking} joystick={joystick} />
           {enemyHp > 0 && <Enemy hp={enemyHp} maxHp={maxEnemyHp} isHit={isHit} />}
           
           <Ground />
@@ -262,82 +286,120 @@ export default function Game3DPage() {
       {/* HUD Overlay */}
       <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
         
-        {/* Controls Hint */}
-        <div className="absolute top-4 right-4 bg-black/60 p-2 rounded text-xs text-primary/70 font-mono text-right">
-            WASD to Move<br/>SHIFT to Dash
+        {/* Toggle HUD Button */}
+        <div className="absolute top-4 left-4 pointer-events-auto">
+            <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowHUD(!showHUD)}
+                className="bg-black/40 border-primary/30 text-[10px] tracking-widest text-primary hover:bg-primary/20"
+            >
+                {showHUD ? "HIDE INTERFACE" : "SHOW INTERFACE"}
+            </Button>
         </div>
+
+        {/* Controls Hint */}
+        {showHUD && (
+            <div className="absolute top-4 right-4 bg-black/60 p-2 rounded text-[10px] text-primary/70 font-mono text-right">
+                WASD / JOYSTICK TO MOVE<br/>SHIFT TO DASH
+            </div>
+        )}
 
         {/* Top Bar */}
-        <div className="flex justify-between items-start">
-            <div className="bg-black/60 backdrop-blur-md p-4 rounded-sm border border-primary/30 w-64">
-                <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-primary font-bold text-lg">{player.name}</h2>
-                    <span className="text-xs text-muted-foreground">Lv. {player.level}</span>
+        {showHUD && (
+            <div className="flex justify-between items-start mt-10">
+                <div className="bg-black/60 backdrop-blur-md p-4 rounded-sm border border-primary/30 w-64">
+                    <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-primary font-bold text-lg">{player.name}</h2>
+                        <span className="text-xs text-muted-foreground">Lv. {player.level}</span>
+                    </div>
+                    {/* HP Bar */}
+                    <div className="space-y-1 mb-2">
+                        <div className="flex justify-between text-[10px] text-red-400 font-bold">
+                            <span>HP</span>
+                            <span>{player.hp}/{player.maxHp}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-red-900/30 rounded-full overflow-hidden">
+                            <div style={{ width: `${(player.hp/player.maxHp)*100}%` }} className="h-full bg-red-500" />
+                        </div>
+                    </div>
+                    {/* MP Bar */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] text-blue-400 font-bold">
+                            <span>MP</span>
+                            <span>{player.mp}/{player.maxMp}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-blue-900/30 rounded-full overflow-hidden">
+                            <div style={{ width: `${(player.mp/player.maxMp)*100}%` }} className="h-full bg-blue-500" />
+                        </div>
+                    </div>
                 </div>
-                {/* HP Bar */}
-                <div className="space-y-1 mb-2">
-                    <div className="flex justify-between text-[10px] text-red-400 font-bold">
-                        <span>HP</span>
-                        <span>{player.hp}/{player.maxHp}</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-red-900/30 rounded-full overflow-hidden">
-                        <div style={{ width: `${(player.hp/player.maxHp)*100}%` }} className="h-full bg-red-500" />
-                    </div>
-                </div>
-                {/* MP Bar */}
-                <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] text-blue-400 font-bold">
-                        <span>MP</span>
-                        <span>{player.mp}/{player.maxMp}</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-blue-900/30 rounded-full overflow-hidden">
-                        <div style={{ width: `${(player.mp/player.maxMp)*100}%` }} className="h-full bg-blue-500" />
-                    </div>
+                
+                {/* Minimap Placeholder */}
+                <div className="w-32 h-32 rounded-full border-2 border-primary/30 bg-black/80 flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle,rgba(0,255,255,0.4)_0%,transparent_70%)]" />
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_10px_white]" />
+                    <span className="absolute bottom-2 text-[8px] text-primary/60">RADAR ACTIVE</span>
                 </div>
             </div>
-            
-            {/* Minimap Placeholder */}
-            <div className="w-32 h-32 rounded-full border-2 border-primary/30 bg-black/80 flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle,rgba(0,255,255,0.4)_0%,transparent_70%)]" />
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_10px_white]" />
-                <span className="absolute bottom-2 text-[8px] text-primary/60">RADAR ACTIVE</span>
-            </div>
-        </div>
+        )}
 
         {/* Combat Log */}
-        <div className="absolute top-1/2 left-4 -translate-y-1/2 w-64 space-y-2">
-            {combatLog.map((log, i) => (
-                <div key={i} className="text-sm font-mono text-primary/80 bg-black/40 p-1 px-2 rounded animate-in slide-in-from-left fade-in">
-                    {`> ${log}`}
-                </div>
-            ))}
-        </div>
+        {showHUD && (
+            <div className="absolute top-1/2 left-4 -translate-y-1/2 w-64 space-y-2">
+                {combatLog.map((log, i) => (
+                    <div key={i} className="text-sm font-mono text-primary/80 bg-black/40 p-1 px-2 rounded animate-in slide-in-from-left fade-in">
+                        {`> ${log}`}
+                    </div>
+                ))}
+            </div>
+        )}
 
-        {/* Action Bar */}
-        <div className="pointer-events-auto flex justify-center gap-4 pb-8">
-            <Button 
-                onClick={handleAttack}
-                className="w-24 h-24 rounded-full border-2 border-primary/50 bg-black/60 hover:bg-primary/20 flex flex-col items-center justify-center gap-2 group transition-all hover:scale-105 active:scale-95"
+        {/* Bottom HUD */}
+        <div className="flex items-end justify-between w-full">
+            {/* Virtual Joystick */}
+            <div 
+                className="pointer-events-auto w-32 h-32 rounded-full bg-primary/5 border-2 border-primary/20 relative touch-none"
+                onPointerMove={handleJoystickMove}
+                onPointerUp={handleJoystickEnd}
+                onPointerLeave={handleJoystickEnd}
             >
-                <Sword size={32} className="text-primary group-hover:animate-pulse" />
-                <span className="text-[10px] font-bold tracking-widest text-primary">ATTACK</span>
-            </Button>
-            
-            <Button 
-                className="w-20 h-20 rounded-full border-2 border-purple-500/50 bg-black/60 hover:bg-purple-500/20 flex flex-col items-center justify-center gap-2 group transition-all hover:scale-105 active:scale-95 mt-4"
-            >
-                <Zap size={24} className="text-purple-400 group-hover:animate-pulse" />
-                <span className="text-[10px] font-bold tracking-widest text-purple-400">SKILL</span>
-            </Button>
-            
-             <Button 
-                className="w-20 h-20 rounded-full border-2 border-green-500/50 bg-black/60 hover:bg-green-500/20 flex flex-col items-center justify-center gap-2 group transition-all hover:scale-105 active:scale-95 mt-4"
-            >
-                <Shield size={24} className="text-green-400 group-hover:animate-pulse" />
-                <span className="text-[10px] font-bold tracking-widest text-green-400">GUARD</span>
-            </Button>
+                <div 
+                    className="absolute w-12 h-12 bg-primary/40 rounded-full border border-primary/60 shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-transform duration-75"
+                    style={{ 
+                        left: `calc(50% + ${joystick.x * 40}px)`, 
+                        top: `calc(50% - ${joystick.y * 40}px)`,
+                        transform: 'translate(-50%, -50%)'
+                    }}
+                />
+            </div>
+
+            {/* Action Bar */}
+            <div className="pointer-events-auto flex gap-4 pb-2">
+                <Button 
+                    onClick={handleAttack}
+                    className="w-24 h-24 rounded-full border-2 border-primary/50 bg-black/60 hover:bg-primary/20 flex flex-col items-center justify-center gap-2 group transition-all hover:scale-105 active:scale-95"
+                >
+                    <Sword size={32} className="text-primary group-hover:animate-pulse" />
+                    <span className="text-[10px] font-bold tracking-widest text-primary">ATTACK</span>
+                </Button>
+                
+                <Button 
+                    className="w-20 h-20 rounded-full border-2 border-purple-500/50 bg-black/60 hover:bg-purple-500/20 flex flex-col items-center justify-center gap-2 group transition-all hover:scale-105 active:scale-95"
+                >
+                    <Zap size={24} className="text-purple-400 group-hover:animate-pulse" />
+                    <span className="text-[10px] font-bold tracking-widest text-purple-400">SKILL</span>
+                </Button>
+            </div>
         </div>
       </div>
+      
+      {/* Scanlines Overlay */}
+      <div className="absolute inset-0 z-20 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[size:100%_4px] opacity-20" />
+      <div className="absolute inset-0 z-20 pointer-events-none bg-[radial-gradient(circle,transparent_60%,rgba(0,0,0,0.8)_100%)]" />
+    </div>
+  );
+}
       
       {/* Scanlines Overlay */}
       <div className="absolute inset-0 z-20 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[size:100%_4px] opacity-20" />
