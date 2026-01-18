@@ -400,10 +400,3 @@ export default function Game3DPage() {
     </div>
   );
 }
-      
-      {/* Scanlines Overlay */}
-      <div className="absolute inset-0 z-20 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[size:100%_4px] opacity-20" />
-      <div className="absolute inset-0 z-20 pointer-events-none bg-[radial-gradient(circle,transparent_60%,rgba(0,0,0,0.8)_100%)]" />
-    </div>
-  );
-}
