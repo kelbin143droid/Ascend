@@ -356,7 +356,7 @@ export default function Game3DPage() {
         )}
 
         {/* Bottom HUD */}
-        <div className="flex items-end justify-between w-full">
+        <div className={cn("flex items-end justify-between w-full", !showHUD && "absolute bottom-6 left-6 right-6")}>
             {/* Virtual Joystick */}
             <div 
                 className="pointer-events-auto w-32 h-32 rounded-full bg-primary/5 border-2 border-primary/20 relative touch-none"
