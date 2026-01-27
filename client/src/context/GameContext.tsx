@@ -55,10 +55,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         maxExp: 100,
         inventory: [],
         skills: [
-          { id: "shadow_extraction", name: "Shadow Extraction", description: "Extract shadows from defeated enemies", mpCost: 30, cooldown: 60, level: 1, unlocked: true },
-          { id: "rulers_authority", name: "Ruler's Authority", description: "Telekinetic control over objects", mpCost: 20, cooldown: 15, level: 1, unlocked: true },
-          { id: "shadow_exchange", name: "Shadow Exchange", description: "Swap positions with a shadow soldier", mpCost: 50, cooldown: 120, level: 1, unlocked: false },
-          { id: "monarch_domain", name: "Monarch's Domain", description: "Unleash overwhelming shadow aura", mpCost: 100, cooldown: 300, level: 1, unlocked: false },
+          { id: "basic_attack", name: "Basic Attack", description: "A simple attack that deals minor damage", mpCost: 0, cooldown: 0, level: 1, unlocked: true },
+          { id: "dodge", name: "Dodge", description: "Evade incoming attacks", mpCost: 5, cooldown: 5, level: 1, unlocked: false },
+          { id: "focus", name: "Focus", description: "Increase accuracy for the next attack", mpCost: 10, cooldown: 10, level: 1, unlocked: false },
+          { id: "survival_instinct", name: "Survival Instinct", description: "Temporarily boost all stats when HP is low", mpCost: 20, cooldown: 60, level: 1, unlocked: false },
         ],
       });
       return res.json();

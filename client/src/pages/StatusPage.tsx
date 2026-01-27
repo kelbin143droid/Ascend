@@ -7,24 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Check, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const jobsByRank: Record<string, string[]> = {
-  E: ["NONE"],
-  D: ["NONE", "FIGHTER", "HEALER"],
-  C: ["NONE", "FIGHTER", "HEALER", "ASSASSIN", "MAGE"],
-  B: ["NONE", "FIGHTER", "HEALER", "ASSASSIN", "MAGE", "TANK", "RANGER"],
-  A: ["NONE", "FIGHTER", "HEALER", "ASSASSIN", "MAGE", "TANK", "RANGER", "NECROMANCER"],
-  S: ["NONE", "FIGHTER", "HEALER", "ASSASSIN", "MAGE", "TANK", "RANGER", "NECROMANCER", "SHADOW MONARCH"],
-};
-
-const titlesByRank: Record<string, string[]> = {
-  E: ["NOVICE HUNTER"],
-  D: ["NOVICE HUNTER", "WOLF SLAYER", "GOBLIN HUNTER"],
-  C: ["NOVICE HUNTER", "WOLF SLAYER", "GOBLIN HUNTER", "DUNGEON BREAKER", "BEAST TAMER"],
-  B: ["WOLF SLAYER", "DUNGEON BREAKER", "BEAST TAMER", "BOSS KILLER", "SHADOW WALKER"],
-  A: ["DUNGEON BREAKER", "BOSS KILLER", "SHADOW WALKER", "GATE CRUSHER", "DEMON SLAYER"],
-  S: ["SHADOW WALKER", "GATE CRUSHER", "DEMON SLAYER", "MONARCH'S VESSEL", "SHADOW SOVEREIGN"],
-};
+import { jobsByRank, titlesByRank, getSkillsForClass } from "@/lib/classData";
 
 export default function StatusPage() {
   const { player, isLoading, addStat, updatePlayer } = useGame();
@@ -72,7 +55,8 @@ export default function StatusPage() {
   };
 
   const handleJobChange = (job: string) => {
-    updatePlayer({ job });
+    const newSkills = getSkillsForClass(job);
+    updatePlayer({ job, skills: newSkills });
   };
 
   const handleTitleChange = (title: string) => {

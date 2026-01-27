@@ -1,23 +1,47 @@
 import React from "react";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion } from "framer-motion";
-import { Zap, Wind, Eye, Skull, Lock } from "lucide-react";
+import { Zap, Wind, Eye, Skull, Lock, Sword, Flame, Heart, Shield, Target, Crosshair, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useGame } from "@/context/GameContext";
 import type { Skill } from "@shared/schema";
 
 const getIconForSkill = (skillId: string) => {
-  switch (skillId) {
-    case 'shadow_extraction': return Skull;
-    case 'rulers_authority': return Zap;
-    case 'shadow_exchange': return Wind;
-    case 'monarch_domain': return Eye;
-    default: return Zap;
-  }
+  const iconMap: Record<string, any> = {
+    'power_strike': Sword,
+    'battle_cry': Zap,
+    'whirlwind': Wind,
+    'berserker_rage': Flame,
+    'fireball': Flame,
+    'ice_shard': Sparkles,
+    'lightning_bolt': Zap,
+    'meteor_storm': Flame,
+    'heal': Heart,
+    'barrier': Shield,
+    'blessing': Sparkles,
+    'resurrection': Heart,
+    'backstab': Sword,
+    'stealth': Eye,
+    'poison_blade': Skull,
+    'death_mark': Target,
+    'precise_shot': Crosshair,
+    'multishot': Target,
+    'trap': Target,
+    'eagle_eye': Eye,
+    'shield_bash': Shield,
+    'taunt': Zap,
+    'iron_wall': Shield,
+    'last_stand': Shield,
+    'basic_attack': Sword,
+    'dodge': Wind,
+    'focus': Eye,
+    'survival_instinct': Heart,
+  };
+  return iconMap[skillId] || Zap;
 };
 
 const isUltimateSkill = (skillId: string) => {
-  return ['shadow_extraction', 'monarch_domain'].includes(skillId);
+  return ['berserker_rage', 'meteor_storm', 'resurrection', 'death_mark', 'eagle_eye', 'last_stand', 'survival_instinct'].includes(skillId);
 };
 
 export default function SkillsPage() {
