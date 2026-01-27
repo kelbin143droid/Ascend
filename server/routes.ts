@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPlayerSchema, statsSchema } from "@shared/schema";
+import { insertPlayerSchema, updatePlayerSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -36,7 +36,11 @@ export async function registerRoutes(
 
   app.patch("/api/player/:id", async (req, res) => {
     try {
-      const player = await storage.updatePlayer(req.params.id, req.body);
+      const parsed = updatePlayerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const player = await storage.updatePlayer(req.params.id, parsed.data);
       if (!player) {
         return res.status(404).json({ error: "Player not found" });
       }

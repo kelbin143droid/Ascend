@@ -49,7 +49,7 @@ export default function StatusPage() {
             </div>
             <div className="text-right">
                  <span className="text-[10px] text-muted-foreground block font-bold tracking-widest">RANK</span>
-                 <span className="text-3xl font-display font-black text-destructive drop-shadow-[0_0_12px_rgba(255,0,0,0.7)] animate-pulse">S</span>
+                 <span className="text-3xl font-display font-black text-destructive drop-shadow-[0_0_12px_rgba(255,0,0,0.7)] animate-pulse">{player.rank}</span>
             </div>
         </motion.div>
 
@@ -62,7 +62,7 @@ export default function StatusPage() {
             <div className="grid grid-cols-2 gap-y-5 text-sm">
                 <div>
                     <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">NAME</span>
-                    <span className="font-black text-xl tracking-tight text-glow">SUNG JIN-WOO</span>
+                    <span className="font-black text-xl tracking-tight text-glow">{player.name}</span>
                 </div>
                 <div className="text-right">
                     <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">LEVEL</span>
@@ -70,7 +70,7 @@ export default function StatusPage() {
                 </div>
                 <div>
                     <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">JOB</span>
-                    <span className="font-black text-accent text-glow-purple">SHADOW MONARCH</span>
+                    <span className="font-black text-accent text-glow-purple">{player.job}</span>
                 </div>
                 <div className="text-right">
                     <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">TITLE</span>
