@@ -511,6 +511,7 @@ export default function Game3DPage() {
   const [joystick, setJoystick] = useState({ x: 0, y: 0 });
   const [canvasKey, setCanvasKey] = useState(0);
   const [webglError, setWebglError] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
   const playerPosRef = useRef(new THREE.Vector3(0, 0, 2));
   const monsterPosRef = useRef(new THREE.Vector3(0, 0, -5));
   const lastMonsterAttackRef = useRef(0);
@@ -520,6 +521,13 @@ export default function Game3DPage() {
       setWebglError(true);
     }
   }, [canvasKey]);
+
+  // Check for player death
+  useEffect(() => {
+    if (player && player.hp <= 0) {
+      setGameOver(true);
+    }
+  }, [player?.hp]);
 
   const unlockedSkill = player?.skills?.find(s => s.unlocked);
 
@@ -673,17 +681,53 @@ export default function Game3DPage() {
     );
   }
 
+  if (gameOver) {
+    return (
+      <div className="w-full h-screen bg-black flex flex-col items-center justify-center font-display relative overflow-hidden">
+        <div className="absolute inset-0 bg-red-900/20" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_30%,rgba(0,0,0,0.9)_100%)]" />
+        
+        <div className="relative z-10 text-center">
+          <p className="text-6xl font-bold text-red-500 mb-2 animate-pulse drop-shadow-[0_0_30px_rgba(255,0,0,0.8)]">
+            RUN FAILED!
+          </p>
+          <p className="text-xl text-red-400/80 mb-8">You have been defeated...</p>
+          
+          <Button 
+            onClick={() => {
+              setGameOver(false);
+              setEnemyHp(MONSTER_MAX_HP);
+              modifyHp(player?.maxHp || 100);
+              playerPosRef.current.set(0, 0, 2);
+              monsterPosRef.current.set(0, 0, -5);
+              setCombatLog(["A monster appears!"]);
+              setCanvasKey(k => k + 1);
+            }}
+            className="bg-red-500/20 border-2 border-red-500 text-red-400 hover:bg-red-500/30 px-8 py-3 text-lg"
+          >
+            <RefreshCw className="mr-2 h-5 w-5" /> TRY AGAIN
+          </Button>
+          
+          <a href="/" className="block mt-6 text-sm text-red-400/60 hover:text-red-400 underline">
+            Return to Status Page
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-screen bg-black relative font-display overflow-hidden">
       <div className="absolute inset-0 z-0">
         <WebGLErrorBoundary onRetry={() => { setWebglError(false); setCanvasKey(k => k + 1); }}>
           <Canvas key={canvasKey} gl={{ antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }}>
             <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
-            <ambientLight intensity={0.8} />
-            <directionalLight position={[10, 15, 10]} intensity={1.5} color="#ffffff" />
-            <pointLight position={[5, 8, 5]} intensity={2} color="#00ffff" />
-            <pointLight position={[-5, 8, -5]} intensity={1.5} color="#ff00ff" />
-            <hemisphereLight args={["#87ceeb", "#444444", 0.6]} />
+            <ambientLight intensity={1.2} />
+            <directionalLight position={[10, 20, 10]} intensity={2} color="#ffffff" />
+            <directionalLight position={[-10, 15, -10]} intensity={1} color="#ffffff" />
+            <pointLight position={[5, 10, 5]} intensity={3} color="#00ffff" />
+            <pointLight position={[-5, 10, -5]} intensity={2} color="#ff00ff" />
+            <hemisphereLight args={["#ffffff", "#666666", 1]} />
             
             <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
             {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
