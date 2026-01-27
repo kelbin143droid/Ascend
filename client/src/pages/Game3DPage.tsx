@@ -8,8 +8,10 @@ import { Sword, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import groundTexture from '@assets/generated_images/texture_for_digital_floor_grid_in_3d_space.png';
 
-const ENEMY_POSITION = new THREE.Vector3(0, 0, -3);
 const ATTACK_RANGE = 3;
+const MONSTER_ATTACK_RANGE = 2;
+const MONSTER_SPEED = 0.03;
+const MONSTER_MAX_HP = 300;
 
 function Ground() {
   const texture = useTexture(groundTexture);
@@ -280,19 +282,47 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
   );
 }
 
-function Monster({ hp, maxHp, isHit }: { hp: number, maxHp: number, isHit: boolean }) {
+function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPosRef }: { hp: number, maxHp: number, isHit: boolean, isMonsterAttacking: boolean, playerPosRef: React.MutableRefObject<THREE.Vector3>, monsterPosRef: React.MutableRefObject<THREE.Vector3> }) {
+  const rootRef = useRef<THREE.Group>(null);
   const groupRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
+  const attackProgress = useRef(0);
   
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
+  useFrame((state, delta) => {
+    if (!rootRef.current || !groupRef.current) return;
+    
+    // Chase player
+    const direction = new THREE.Vector3().subVectors(playerPosRef.current, rootRef.current.position);
+    const distance = direction.length();
+    
+    if (distance > MONSTER_ATTACK_RANGE) {
+      direction.normalize();
+      rootRef.current.position.x += direction.x * MONSTER_SPEED;
+      rootRef.current.position.z += direction.z * MONSTER_SPEED;
       
-      // Idle arm movement
-      if (leftArmRef.current && rightArmRef.current) {
-        leftArmRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 2) * 0.3;
-        rightArmRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 2 + Math.PI) * 0.3;
+      // Face player
+      const angle = Math.atan2(direction.x, direction.z);
+      rootRef.current.rotation.y = THREE.MathUtils.lerp(rootRef.current.rotation.y, angle, 0.1);
+    }
+    
+    // Update monster position ref
+    monsterPosRef.current.copy(rootRef.current.position);
+    
+    // Idle/walking animation
+    groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
+    
+    // Arm animations
+    if (leftArmRef.current && rightArmRef.current) {
+      if (isMonsterAttacking) {
+        attackProgress.current = Math.min(attackProgress.current + delta * 6, 1);
+        const swing = Math.sin(attackProgress.current * Math.PI) * 1.5;
+        leftArmRef.current.rotation.x = -swing;
+        rightArmRef.current.rotation.x = -swing;
+      } else {
+        attackProgress.current = 0;
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, Math.sin(state.clock.elapsedTime * 2) * 0.3, 0.2);
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, Math.sin(state.clock.elapsedTime * 2 + Math.PI) * 0.3, 0.2);
       }
     }
   });
@@ -301,7 +331,7 @@ function Monster({ hp, maxHp, isHit }: { hp: number, maxHp: number, isHit: boole
   const bodyColor = isHit ? "#ff3333" : "#2a0a3a";
 
   return (
-    <group position={[ENEMY_POSITION.x, ENEMY_POSITION.y, ENEMY_POSITION.z]}>
+    <group ref={rootRef} position={[0, 0, -5]}>
       {/* Health Bar */}
       <Float speed={0} rotationIntensity={0} floatIntensity={0}>
         <group position={[0, 3.2, 0]}>
@@ -427,22 +457,51 @@ function Monster({ hp, maxHp, isHit }: { hp: number, maxHp: number, isHit: boole
 export default function Game3DPage() {
   const { player, isLoading, modifyHp, modifyMp, gainExp } = useGame();
   
-  const [enemyHp, setEnemyHp] = useState(100);
-  const maxEnemyHp = 100;
+  const [enemyHp, setEnemyHp] = useState(MONSTER_MAX_HP);
   const [isAttacking, setIsAttacking] = useState(false);
   const [isUsingSkill, setIsUsingSkill] = useState(false);
   const [isHit, setIsHit] = useState(false);
-  const [combatLog, setCombatLog] = useState<string[]>(["Encounter started!"]);
+  const [isMonsterAttacking, setIsMonsterAttacking] = useState(false);
+  const [combatLog, setCombatLog] = useState<string[]>(["A monster appears!"]);
   const [showHUD, setShowHUD] = useState(true);
   const [joystick, setJoystick] = useState({ x: 0, y: 0 });
   const playerPosRef = useRef(new THREE.Vector3(0, 0, 2));
+  const monsterPosRef = useRef(new THREE.Vector3(0, 0, -5));
+  const lastMonsterAttackRef = useRef(0);
 
   const unlockedSkill = player?.skills?.find(s => s.unlocked);
 
   const isInRange = () => {
-    const distance = playerPosRef.current.distanceTo(ENEMY_POSITION);
+    const distance = playerPosRef.current.distanceTo(monsterPosRef.current);
     return distance <= ATTACK_RANGE;
   };
+
+  // Monster attack logic
+  useEffect(() => {
+    if (!player || enemyHp <= 0) return;
+    
+    const attackInterval = setInterval(() => {
+      const distance = playerPosRef.current.distanceTo(monsterPosRef.current);
+      const now = Date.now();
+      
+      if (distance <= MONSTER_ATTACK_RANGE && now - lastMonsterAttackRef.current > 2000) {
+        lastMonsterAttackRef.current = now;
+        setIsMonsterAttacking(true);
+        
+        setTimeout(() => {
+          const dmg = Math.floor(Math.random() * 10) + 8;
+          modifyHp(-dmg);
+          setCombatLog(prev => [`Monster claws you: ${dmg} DMG!`, ...prev].slice(0, 4));
+          
+          setTimeout(() => {
+            setIsMonsterAttacking(false);
+          }, 300);
+        }, 300);
+      }
+    }, 500);
+    
+    return () => clearInterval(attackInterval);
+  }, [player, enemyHp, modifyHp]);
 
   const handleJoystickMove = (e: React.PointerEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -549,7 +608,7 @@ export default function Game3DPage() {
           <pointLight position={[-5, 5, -5]} intensity={0.5} color="#ff00ff" />
           
           <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
-          {enemyHp > 0 && <Monster hp={enemyHp} maxHp={maxEnemyHp} isHit={isHit} />}
+          {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
           
           <Ground />
           <Environment preset="city" />
