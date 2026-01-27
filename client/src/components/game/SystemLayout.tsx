@@ -27,11 +27,15 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         }}
       />
       
-      {/* Lightning Elements */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[20%] w-[1px] h-[120%] bg-primary opacity-0 animate-lightning rotate-[15deg] blur-[2px]" />
-        <div className="absolute top-[-20%] right-[30%] w-[1px] h-[140%] bg-accent opacity-0 animate-lightning [animation-delay:1.5s] rotate-[-10deg] blur-[2px]" />
-        <div className="absolute top-[30%] left-[-10%] w-[120%] h-[1px] bg-primary opacity-0 animate-lightning [animation-delay:3s] blur-[2px]" />
+      {/* Cool Border Frame */}
+      <div className="fixed inset-0 z-10 pointer-events-none">
+        <div className="absolute inset-2 border-2 border-primary/30 rounded-lg" />
+        <div className="absolute top-2 left-2 w-8 h-8 border-t-2 border-l-2 border-primary rounded-tl-lg" />
+        <div className="absolute top-2 right-2 w-8 h-8 border-t-2 border-r-2 border-primary rounded-tr-lg" />
+        <div className="absolute bottom-2 left-2 w-8 h-8 border-b-2 border-l-2 border-primary rounded-bl-lg" />
+        <div className="absolute bottom-2 right-2 w-8 h-8 border-b-2 border-r-2 border-primary rounded-br-lg" />
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 h-[2px] w-24 bg-gradient-to-r from-transparent via-primary to-transparent" />
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 h-[2px] w-24 bg-gradient-to-r from-transparent via-primary to-transparent" />
       </div>
 
       {/* Grid Overlay */}
