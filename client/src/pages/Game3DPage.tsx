@@ -38,39 +38,47 @@ function FallbackPlaceholder({ color, scale = 1 }: { color: string, scale?: numb
   );
 }
 
-function PlayerModel({ onLoad }: { onLoad?: () => void }) {
-  const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(PLAYER_MODEL_PATH, { method: 'HEAD' })
-      .then(res => {
-        if (!res.ok) setHasError(true);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        setHasError(true);
-        setIsLoading(false);
-      });
-  }, []);
-
-  if (isLoading) {
-    return <FallbackPlaceholder color="#00ffff" />;
+class ModelErrorBoundary extends Component<{ children: ReactNode, fallback: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode, fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
   }
 
-  if (hasError) {
-    return (
-      <group>
-        <FallbackPlaceholder color="#00ffff" />
-        <MissingModelWarning modelName="player.glb" />
-      </group>
-    );
+  static getDerivedStateFromError() {
+    return { hasError: true };
   }
 
-  return <LoadedPlayerModel onLoad={onLoad} />;
+  componentDidCatch(error: Error) {
+    console.warn('Model loading error:', error.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
 }
 
-function LoadedPlayerModel({ onLoad }: { onLoad?: () => void }) {
+function PlayerModelFallback() {
+  return (
+    <group>
+      <FallbackPlaceholder color="#00ffff" />
+      <MissingModelWarning modelName="player.glb" />
+    </group>
+  );
+}
+
+function EnemyModelFallback() {
+  return (
+    <group>
+      <FallbackPlaceholder color="#8b0000" scale={1.5} />
+      <MissingModelWarning modelName="enemy.glb" />
+    </group>
+  );
+}
+
+function LoadedPlayerModel() {
   const { scene } = useGLTF(PLAYER_MODEL_PATH);
   
   useEffect(() => {
@@ -89,45 +97,12 @@ function LoadedPlayerModel({ onLoad }: { onLoad?: () => void }) {
         }
       }
     });
-    onLoad?.();
-  }, [scene, onLoad]);
+  }, [scene]);
 
   return <primitive object={scene} scale={1} />;
 }
 
-function EnemyModel({ onLoad }: { onLoad?: () => void }) {
-  const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(ENEMY_MODEL_PATH, { method: 'HEAD' })
-      .then(res => {
-        if (!res.ok) setHasError(true);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        setHasError(true);
-        setIsLoading(false);
-      });
-  }, []);
-
-  if (isLoading) {
-    return <FallbackPlaceholder color="#8b0000" scale={1.5} />;
-  }
-
-  if (hasError) {
-    return (
-      <group>
-        <FallbackPlaceholder color="#8b0000" scale={1.5} />
-        <MissingModelWarning modelName="enemy.glb" />
-      </group>
-    );
-  }
-
-  return <LoadedEnemyModel onLoad={onLoad} />;
-}
-
-function LoadedEnemyModel({ onLoad }: { onLoad?: () => void }) {
+function LoadedEnemyModel() {
   const { scene } = useGLTF(ENEMY_MODEL_PATH);
   
   useEffect(() => {
@@ -146,10 +121,29 @@ function LoadedEnemyModel({ onLoad }: { onLoad?: () => void }) {
         }
       }
     });
-    onLoad?.();
-  }, [scene, onLoad]);
+  }, [scene]);
 
   return <primitive object={scene} scale={1.5} />;
+}
+
+function PlayerModel() {
+  return (
+    <ModelErrorBoundary fallback={<PlayerModelFallback />}>
+      <Suspense fallback={<FallbackPlaceholder color="#00ffff" />}>
+        <LoadedPlayerModel />
+      </Suspense>
+    </ModelErrorBoundary>
+  );
+}
+
+function EnemyModel() {
+  return (
+    <ModelErrorBoundary fallback={<EnemyModelFallback />}>
+      <Suspense fallback={<FallbackPlaceholder color="#8b0000" scale={1.5} />}>
+        <LoadedEnemyModel />
+      </Suspense>
+    </ModelErrorBoundary>
+  );
 }
 
 class WebGLErrorBoundary extends Component<{ children: ReactNode, onRetry: () => void }, { hasError: boolean }> {
