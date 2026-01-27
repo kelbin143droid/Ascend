@@ -11,6 +11,7 @@ interface GameContextType {
   modifyHp: (amount: number) => void;
   modifyMp: (amount: number) => void;
   levelUp: () => void;
+  updatePlayer: (updates: Partial<Player>) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -38,7 +39,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const createPlayerMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/player", {
-        name: "SUNG JIN-WOO",
+        name: "",
         level: 1,
         job: "NONE",
         title: "WOLF SLAYER",
@@ -119,6 +120,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
+  const updatePlayerMutation = useMutation({
+    mutationFn: async (updates: Partial<Player>) => {
+      if (!playerId) throw new Error("No player");
+      const res = await apiRequest("PATCH", `/api/player/${playerId}`, updates);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+    },
+  });
+
   const addStat = useCallback((stat: keyof Stats) => {
     addStatMutation.mutate(stat);
   }, [addStatMutation]);
@@ -139,6 +151,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     gainExpMutation.mutate(player?.maxExp || 100);
   }, [gainExpMutation, player?.maxExp]);
 
+  const updatePlayer = useCallback((updates: Partial<Player>) => {
+    updatePlayerMutation.mutate(updates);
+  }, [updatePlayerMutation]);
+
   return (
     <GameContext.Provider value={{ 
       player: player || null, 
@@ -147,7 +163,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       gainExp, 
       modifyHp, 
       modifyMp, 
-      levelUp 
+      levelUp,
+      updatePlayer
     }}>
       {children}
     </GameContext.Provider>

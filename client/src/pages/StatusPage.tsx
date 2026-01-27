@@ -1,12 +1,35 @@
-import React from "react";
+import React, { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { StatRow } from "@/components/game/StatRow";
 import { motion } from "framer-motion";
-import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Check, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const jobsByRank: Record<string, string[]> = {
+  E: ["NONE"],
+  D: ["NONE", "FIGHTER", "HEALER"],
+  C: ["NONE", "FIGHTER", "HEALER", "ASSASSIN", "MAGE"],
+  B: ["NONE", "FIGHTER", "HEALER", "ASSASSIN", "MAGE", "TANK", "RANGER"],
+  A: ["NONE", "FIGHTER", "HEALER", "ASSASSIN", "MAGE", "TANK", "RANGER", "NECROMANCER"],
+  S: ["NONE", "FIGHTER", "HEALER", "ASSASSIN", "MAGE", "TANK", "RANGER", "NECROMANCER", "SHADOW MONARCH"],
+};
+
+const titlesByRank: Record<string, string[]> = {
+  E: ["NOVICE HUNTER"],
+  D: ["NOVICE HUNTER", "WOLF SLAYER", "GOBLIN HUNTER"],
+  C: ["NOVICE HUNTER", "WOLF SLAYER", "GOBLIN HUNTER", "DUNGEON BREAKER", "BEAST TAMER"],
+  B: ["WOLF SLAYER", "DUNGEON BREAKER", "BEAST TAMER", "BOSS KILLER", "SHADOW WALKER"],
+  A: ["DUNGEON BREAKER", "BOSS KILLER", "SHADOW WALKER", "GATE CRUSHER", "DEMON SLAYER"],
+  S: ["SHADOW WALKER", "GATE CRUSHER", "DEMON SLAYER", "MONARCH'S VESSEL", "SHADOW SOVEREIGN"],
+};
 
 export default function StatusPage() {
-  const { player, isLoading, addStat } = useGame();
+  const { player, isLoading, addStat, updatePlayer } = useGame();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState("");
 
   const container = {
     hidden: { opacity: 0 },
@@ -33,6 +56,29 @@ export default function StatusPage() {
     );
   }
 
+  const availableJobs = jobsByRank[player.rank] || jobsByRank["E"];
+  const availableTitles = titlesByRank[player.rank] || titlesByRank["E"];
+
+  const handleStartEditName = () => {
+    setTempName(player.name);
+    setIsEditingName(true);
+  };
+
+  const handleSaveName = () => {
+    if (tempName.trim()) {
+      updatePlayer({ name: tempName.trim().toUpperCase() });
+    }
+    setIsEditingName(false);
+  };
+
+  const handleJobChange = (job: string) => {
+    updatePlayer({ job });
+  };
+
+  const handleTitleChange = (title: string) => {
+    updatePlayer({ title });
+  };
+
   return (
     <SystemLayout>
       <motion.div 
@@ -44,7 +90,7 @@ export default function StatusPage() {
         {/* Header Section */}
         <motion.div variants={item} className="flex justify-between items-end border-b-2 border-primary pb-2">
             <div>
-                <h1 className="text-4xl font-display font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.8)] glitch" data-text="STATUS">STATUS</h1>
+                <h1 className="text-4xl font-display font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]">STATUS</h1>
                 <p className="text-[10px] text-primary/60 tracking-[0.4em] uppercase font-bold">Awakened Hunter Interface</p>
             </div>
             <div className="text-right">
@@ -62,7 +108,28 @@ export default function StatusPage() {
             <div className="grid grid-cols-2 gap-y-5 text-sm">
                 <div>
                     <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">NAME</span>
-                    <span className="font-black text-xl tracking-tight text-glow">{player.name}</span>
+                    {isEditingName ? (
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          value={tempName}
+                          onChange={(e) => setTempName(e.target.value)}
+                          className="h-8 w-32 bg-black/50 border-primary/30 text-sm font-bold uppercase"
+                          placeholder="ENTER NAME"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
+                        />
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSaveName}>
+                          <Check size={14} className="text-primary" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 group cursor-pointer" onClick={handleStartEditName}>
+                        <span className="font-black text-xl tracking-tight text-glow">
+                          {player.name || "ENTER NAME"}
+                        </span>
+                        <Pencil size={12} className="text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    )}
                 </div>
                 <div className="text-right">
                     <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">LEVEL</span>
@@ -70,11 +137,29 @@ export default function StatusPage() {
                 </div>
                 <div>
                     <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">JOB</span>
-                    <span className="font-black text-accent text-glow-purple">{player.job}</span>
+                    <Select value={player.job} onValueChange={handleJobChange}>
+                      <SelectTrigger className="w-40 h-8 bg-black/50 border-primary/30 text-accent font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black/95 border-primary/30">
+                        {availableJobs.map((job) => (
+                          <SelectItem key={job} value={job} className="text-accent font-bold">{job}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                 </div>
                 <div className="text-right">
                     <span className="text-primary/40 block text-[10px] font-bold tracking-[0.2em] mb-1">TITLE</span>
-                    <span className="font-black text-destructive text-xs md:text-sm drop-shadow-[0_0_5px_rgba(255,0,0,0.3)]">{player.title}</span>
+                    <Select value={player.title} onValueChange={handleTitleChange}>
+                      <SelectTrigger className="w-40 h-8 bg-black/50 border-primary/30 text-destructive font-bold ml-auto">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black/95 border-primary/30">
+                        {availableTitles.map((title) => (
+                          <SelectItem key={title} value={title} className="text-destructive font-bold">{title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                 </div>
             </div>
 
