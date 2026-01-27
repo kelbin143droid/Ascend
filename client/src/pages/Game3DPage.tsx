@@ -8,6 +8,9 @@ import { Sword, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import groundTexture from '@assets/generated_images/texture_for_digital_floor_grid_in_3d_space.png';
 
+const ENEMY_POSITION = new THREE.Vector3(0, 0, -3);
+const ATTACK_RANGE = 3;
+
 function Ground() {
   const texture = useTexture(groundTexture);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -27,7 +30,7 @@ function Ground() {
   );
 }
 
-function WarriorCharacter({ isAttacking, isUsingSkill, joystick }: { isAttacking: boolean, isUsingSkill: boolean, joystick: { x: number, y: number } }) {
+function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }: { isAttacking: boolean, isUsingSkill: boolean, joystick: { x: number, y: number }, playerPosRef: React.MutableRefObject<THREE.Vector3> }) {
   const groupRef = useRef<THREE.Group>(null);
   const swordArmRef = useRef<THREE.Group>(null);
   const leftLegRef = useRef<THREE.Group>(null);
@@ -94,6 +97,9 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick }: { isAttacking
       const angle = Math.atan2(normX, normZ);
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, angle, 0.2);
     }
+
+    // Update player position ref for distance checks
+    playerPosRef.current.copy(groupRef.current.position);
 
     // Camera Follow
     const camOffset = new THREE.Vector3(0, 5, 8);
@@ -274,26 +280,31 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick }: { isAttacking
   );
 }
 
-function Enemy({ hp, maxHp, isHit }: { hp: number, maxHp: number, isHit: boolean }) {
-  const meshRef = useRef<THREE.Mesh>(null);
+function Monster({ hp, maxHp, isHit }: { hp: number, maxHp: number, isHit: boolean }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const leftArmRef = useRef<THREE.Group>(null);
+  const rightArmRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.position.y = Math.sin(state.clock.elapsedTime + 2) * 0.2;
-      meshRef.current.rotation.y += 0.01;
+    if (groupRef.current) {
+      groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
       
-      if (isHit) {
-        (meshRef.current.material as THREE.MeshStandardMaterial).color.setHex(0xff0000);
-      } else {
-        (meshRef.current.material as THREE.MeshStandardMaterial).color.lerp(new THREE.Color("#220033"), 0.1);
+      // Idle arm movement
+      if (leftArmRef.current && rightArmRef.current) {
+        leftArmRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 2) * 0.3;
+        rightArmRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 2 + Math.PI) * 0.3;
       }
     }
   });
 
+  const hitColor = isHit ? "#ff0000" : "#3d1a4a";
+  const bodyColor = isHit ? "#ff3333" : "#2a0a3a";
+
   return (
-    <group position={[0, 0, -3]}>
+    <group position={[ENEMY_POSITION.x, ENEMY_POSITION.y, ENEMY_POSITION.z]}>
+      {/* Health Bar */}
       <Float speed={0} rotationIntensity={0} floatIntensity={0}>
-        <group position={[0, 2.5, 0]}>
+        <group position={[0, 3.2, 0]}>
           <mesh>
             <planeGeometry args={[2, 0.2]} />
             <meshBasicMaterial color="#330000" />
@@ -305,12 +316,110 @@ function Enemy({ hp, maxHp, isHit }: { hp: number, maxHp: number, isHit: boolean
         </group>
       </Float>
 
-      <mesh ref={meshRef} castShadow>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial color="#220033" roughness={0.8} />
-      </mesh>
-      
-      <Stars radius={2} depth={1} count={200} factor={2} saturation={0} fade speed={3} />
+      <group ref={groupRef}>
+        {/* Monster Body - hulking torso */}
+        <mesh position={[0, 1, 0]} castShadow>
+          <boxGeometry args={[1.2, 1.4, 0.8]} />
+          <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        </mesh>
+        
+        {/* Chest spikes */}
+        <mesh position={[0.3, 1.3, 0.4]} rotation={[0.3, 0, 0]} castShadow>
+          <coneGeometry args={[0.1, 0.4, 4]} />
+          <meshStandardMaterial color="#1a0a2a" roughness={0.5} />
+        </mesh>
+        <mesh position={[-0.3, 1.3, 0.4]} rotation={[0.3, 0, 0]} castShadow>
+          <coneGeometry args={[0.1, 0.4, 4]} />
+          <meshStandardMaterial color="#1a0a2a" roughness={0.5} />
+        </mesh>
+
+        {/* Head */}
+        <mesh position={[0, 2, 0]} castShadow>
+          <boxGeometry args={[0.7, 0.6, 0.6]} />
+          <meshStandardMaterial color={hitColor} roughness={0.6} />
+        </mesh>
+        
+        {/* Horns */}
+        <mesh position={[0.25, 2.4, 0]} rotation={[0, 0, 0.4]} castShadow>
+          <coneGeometry args={[0.08, 0.5, 6]} />
+          <meshStandardMaterial color="#1a0a2a" roughness={0.4} metalness={0.3} />
+        </mesh>
+        <mesh position={[-0.25, 2.4, 0]} rotation={[0, 0, -0.4]} castShadow>
+          <coneGeometry args={[0.08, 0.5, 6]} />
+          <meshStandardMaterial color="#1a0a2a" roughness={0.4} metalness={0.3} />
+        </mesh>
+        
+        {/* Glowing Eyes */}
+        <mesh position={[0.15, 2.05, 0.3]}>
+          <sphereGeometry args={[0.1]} />
+          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={3} />
+        </mesh>
+        <mesh position={[-0.15, 2.05, 0.3]}>
+          <sphereGeometry args={[0.1]} />
+          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={3} />
+        </mesh>
+        
+        {/* Mouth/Jaw */}
+        <mesh position={[0, 1.85, 0.32]}>
+          <boxGeometry args={[0.4, 0.15, 0.1]} />
+          <meshStandardMaterial color="#0a0010" roughness={0.9} />
+        </mesh>
+
+        {/* Left Arm */}
+        <group ref={leftArmRef} position={[-0.85, 1.2, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.4, 0.9, 0.4]} />
+            <meshStandardMaterial color={bodyColor} roughness={0.7} />
+          </mesh>
+          {/* Claws */}
+          <mesh position={[0, -0.6, 0.1]} rotation={[0.3, 0, 0]} castShadow>
+            <coneGeometry args={[0.08, 0.3, 4]} />
+            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          </mesh>
+          <mesh position={[0.12, -0.55, 0.1]} rotation={[0.3, 0, 0.2]} castShadow>
+            <coneGeometry args={[0.06, 0.25, 4]} />
+            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          </mesh>
+          <mesh position={[-0.12, -0.55, 0.1]} rotation={[0.3, 0, -0.2]} castShadow>
+            <coneGeometry args={[0.06, 0.25, 4]} />
+            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          </mesh>
+        </group>
+
+        {/* Right Arm */}
+        <group ref={rightArmRef} position={[0.85, 1.2, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.4, 0.9, 0.4]} />
+            <meshStandardMaterial color={bodyColor} roughness={0.7} />
+          </mesh>
+          {/* Claws */}
+          <mesh position={[0, -0.6, 0.1]} rotation={[0.3, 0, 0]} castShadow>
+            <coneGeometry args={[0.08, 0.3, 4]} />
+            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          </mesh>
+          <mesh position={[0.12, -0.55, 0.1]} rotation={[0.3, 0, 0.2]} castShadow>
+            <coneGeometry args={[0.06, 0.25, 4]} />
+            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          </mesh>
+          <mesh position={[-0.12, -0.55, 0.1]} rotation={[0.3, 0, -0.2]} castShadow>
+            <coneGeometry args={[0.06, 0.25, 4]} />
+            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          </mesh>
+        </group>
+
+        {/* Legs */}
+        <mesh position={[-0.3, 0, 0]} castShadow>
+          <boxGeometry args={[0.35, 0.7, 0.35]} />
+          <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        </mesh>
+        <mesh position={[0.3, 0, 0]} castShadow>
+          <boxGeometry args={[0.35, 0.7, 0.35]} />
+          <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        </mesh>
+
+        {/* Dark aura particles */}
+        <Stars radius={1.5} depth={1} count={100} factor={1} saturation={0} fade speed={2} />
+      </group>
     </group>
   );
 }
@@ -326,8 +435,14 @@ export default function Game3DPage() {
   const [combatLog, setCombatLog] = useState<string[]>(["Encounter started!"]);
   const [showHUD, setShowHUD] = useState(true);
   const [joystick, setJoystick] = useState({ x: 0, y: 0 });
+  const playerPosRef = useRef(new THREE.Vector3(0, 0, 2));
 
   const unlockedSkill = player?.skills?.find(s => s.unlocked);
+
+  const isInRange = () => {
+    const distance = playerPosRef.current.distanceTo(ENEMY_POSITION);
+    return distance <= ATTACK_RANGE;
+  };
 
   const handleJoystickMove = (e: React.PointerEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -353,6 +468,12 @@ export default function Game3DPage() {
     setIsAttacking(true);
     
     setTimeout(() => {
+      if (!isInRange()) {
+        setCombatLog(prev => ["Too far! Get closer to attack.", ...prev].slice(0, 4));
+        setIsAttacking(false);
+        return;
+      }
+      
       setIsHit(true);
       const baseDmg = player?.stats?.strength ? player.stats.strength * 2 : 20;
       const dmg = Math.floor(Math.random() * 10) + baseDmg;
@@ -361,7 +482,7 @@ export default function Game3DPage() {
       setCombatLog(prev => [`Sword Strike: ${dmg} DMG!`, ...prev].slice(0, 4));
       
       if (newHp === 0) {
-        setCombatLog(prev => ["Enemy Defeated! +50 EXP", ...prev]);
+        setCombatLog(prev => ["Monster Defeated! +50 EXP", ...prev]);
         gainExp(50);
         setTimeout(() => setEnemyHp(100), 2000);
       }
@@ -384,6 +505,12 @@ export default function Game3DPage() {
     modifyMp(-unlockedSkill.mpCost);
     
     setTimeout(() => {
+      if (!isInRange()) {
+        setCombatLog(prev => ["Too far! Get closer to use skill.", ...prev].slice(0, 4));
+        setIsUsingSkill(false);
+        return;
+      }
+      
       setIsHit(true);
       const baseDmg = player?.stats?.strength ? player.stats.strength * 3 : 30;
       const dmg = Math.floor(Math.random() * 20) + baseDmg + 15;
@@ -392,7 +519,7 @@ export default function Game3DPage() {
       setCombatLog(prev => [`${unlockedSkill.name}: ${dmg} DMG!`, ...prev].slice(0, 4));
       
       if (newHp === 0) {
-        setCombatLog(prev => ["Enemy Defeated! +50 EXP", ...prev]);
+        setCombatLog(prev => ["Monster Defeated! +50 EXP", ...prev]);
         gainExp(50);
         setTimeout(() => setEnemyHp(100), 2000);
       }
@@ -421,8 +548,8 @@ export default function Game3DPage() {
           <pointLight position={[5, 5, 5]} intensity={1} castShadow color="#00ffff" />
           <pointLight position={[-5, 5, -5]} intensity={0.5} color="#ff00ff" />
           
-          <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} />
-          {enemyHp > 0 && <Enemy hp={enemyHp} maxHp={maxEnemyHp} isHit={isHit} />}
+          <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
+          {enemyHp > 0 && <Monster hp={enemyHp} maxHp={maxEnemyHp} isHit={isHit} />}
           
           <Ground />
           <Environment preset="city" />
