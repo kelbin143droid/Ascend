@@ -50,87 +50,158 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode, onRetry: () =>
   }
 }
 
+// Seeded random helper for stable procedural generation
+const seededRandom = (seed: number) => {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+function GrassClump({ position, scale = 1 }: { position: [number, number, number], scale?: number }) {
+  const grassMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#4a8a3a"),
+    roughness: 0.85,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+  }), []);
+
+  return (
+    <group position={position} scale={scale}>
+      {[0, 0.4, 0.8, 1.2, 1.6].map((rot, i) => (
+        <mesh key={i} rotation={[0.15, rot * Math.PI, 0]} material={grassMat}>
+          <planeGeometry args={[0.15, 0.4]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function ScatteredLeaf({ position, rotation }: { position: [number, number, number], rotation: number }) {
+  const leafMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#5a7a40"),
+    roughness: 0.9,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+  }), []);
+
+  return (
+    <mesh position={position} rotation={[-Math.PI / 2 + 0.1, rotation, 0]} material={leafMat}>
+      <circleGeometry args={[0.08, 6]} />
+    </mesh>
+  );
+}
+
 function JungleTerrain() {
   const groundMaterial = useMemo(() => {
     return new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#3a6b2a"),
-      roughness: 0.92,
-      metalness: 0.02,
-      flatShading: false,
+      color: new THREE.Color("#4a7a3a"),
+      roughness: 0.88,
+      metalness: 0.0,
     });
   }, []);
 
-  const detailMaterial = useMemo(() => {
+  const dirtMaterial = useMemo(() => {
     return new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#2d5520"),
-      roughness: 0.95,
+      color: new THREE.Color("#6b5a45"),
+      roughness: 0.92,
       metalness: 0.0,
     });
   }, []);
 
   const rockMaterial = useMemo(() => {
     return new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#5a5a5a"),
-      roughness: 0.9,
-      metalness: 0.1,
+      color: new THREE.Color("#6a6a6a"),
+      roughness: 0.8,
+      metalness: 0.05,
     });
   }, []);
 
-  // Precompute stable random positions for moss patches
-  const mossPatches = useMemo(() => {
-    const seededRandom = (seed: number) => {
-      const x = Math.sin(seed * 12.9898) * 43758.5453;
-      return x - Math.floor(x);
-    };
-    return [...Array(20)].map((_, i) => ({
+  // Precompute stable positions for dirt patches
+  const dirtPatches = useMemo(() => {
+    return [...Array(12)].map((_, i) => ({
       rotation: seededRandom(i * 7) * Math.PI,
-      x: (seededRandom(i * 13) - 0.5) * 40,
-      z: (seededRandom(i * 17) - 0.5) * 40,
-      radius: 1 + seededRandom(i * 23) * 2,
+      x: (seededRandom(i * 13) - 0.5) * 35,
+      z: (seededRandom(i * 17) - 0.5) * 35,
+      radius: 0.8 + seededRandom(i * 23) * 1.5,
     }));
   }, []);
 
-  // Precompute stable random positions for rocks
+  // Precompute stable positions for rocks
   const rocks = useMemo(() => {
-    const seededRandom = (seed: number) => {
-      const x = Math.sin(seed * 12.9898) * 43758.5453;
-      return x - Math.floor(x);
-    };
-    return [...Array(15)].map((_, i) => ({
-      x: (seededRandom(i * 31 + 100) - 0.5) * 50,
-      z: (seededRandom(i * 37 + 100) - 0.5) * 50,
-      size: 0.2 + seededRandom(i * 41 + 100) * 0.3,
+    return [...Array(18)].map((_, i) => ({
+      x: (seededRandom(i * 31 + 100) - 0.5) * 45,
+      z: (seededRandom(i * 37 + 100) - 0.5) * 45,
+      size: 0.15 + seededRandom(i * 41 + 100) * 0.25,
+      rotY: seededRandom(i * 43 + 100) * Math.PI * 2,
+    }));
+  }, []);
+
+  // Grass clumps
+  const grassClumps = useMemo(() => {
+    return [...Array(40)].map((_, i) => ({
+      x: (seededRandom(i * 53 + 200) - 0.5) * 50,
+      z: (seededRandom(i * 59 + 200) - 0.5) * 50,
+      scale: 0.7 + seededRandom(i * 61 + 200) * 0.6,
+    }));
+  }, []);
+
+  // Scattered leaves
+  const leaves = useMemo(() => {
+    return [...Array(30)].map((_, i) => ({
+      x: (seededRandom(i * 67 + 300) - 0.5) * 40,
+      z: (seededRandom(i * 71 + 300) - 0.5) * 40,
+      rotation: seededRandom(i * 73 + 300) * Math.PI * 2,
     }));
   }, []);
 
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow material={groundMaterial}>
-        <planeGeometry args={[120, 120, 32, 32]} />
+        <planeGeometry args={[120, 120, 24, 24]} />
       </mesh>
-      {/* Moss patches for texture variation */}
-      {mossPatches.map((patch, i) => (
+      
+      {/* Dirt/mud patches */}
+      {dirtPatches.map((patch, i) => (
         <mesh 
-          key={i}
+          key={`dirt-${i}`}
           rotation={[-Math.PI / 2, patch.rotation, 0]} 
-          position={[patch.x, -1.98, patch.z]} 
+          position={[patch.x, -1.99, patch.z]} 
           receiveShadow
-          material={detailMaterial}
+          material={dirtMaterial}
         >
-          <circleGeometry args={[patch.radius, 12]} />
+          <circleGeometry args={[patch.radius, 10]} />
         </mesh>
       ))}
-      {/* Small rocks for detail */}
+      
+      {/* Rocks */}
       {rocks.map((rock, i) => (
         <mesh 
           key={`rock-${i}`}
-          position={[rock.x, -1.7, rock.z]}
+          position={[rock.x, -1.85, rock.z]}
+          rotation={[0, rock.rotY, 0]}
           castShadow
           receiveShadow
           material={rockMaterial}
         >
-          <dodecahedronGeometry args={[rock.size, 0]} />
+          <dodecahedronGeometry args={[rock.size, 1]} />
         </mesh>
+      ))}
+      
+      {/* Grass clumps */}
+      {grassClumps.map((grass, i) => (
+        <GrassClump 
+          key={`grass-${i}`}
+          position={[grass.x, -1.8, grass.z]}
+          scale={grass.scale}
+        />
+      ))}
+      
+      {/* Scattered leaves */}
+      {leaves.map((leaf, i) => (
+        <ScatteredLeaf
+          key={`leaf-${i}`}
+          position={[leaf.x, -1.97, leaf.z]}
+          rotation={leaf.rotation}
+        />
       ))}
     </group>
   );
@@ -197,20 +268,20 @@ function PostProcessing() {
   return (
     <EffectComposer multisampling={4}>
       <SSAO 
-        samples={16}
-        radius={0.1}
-        intensity={15}
-        luminanceInfluence={0.5}
-        color={new THREE.Color("#000000")}
+        samples={12}
+        radius={0.08}
+        intensity={12}
+        luminanceInfluence={0.6}
+        color={new THREE.Color("#1a1a1a")}
       />
       <Bloom 
-        intensity={0.3}
-        luminanceThreshold={0.8}
-        luminanceSmoothing={0.5}
+        intensity={0.2}
+        luminanceThreshold={0.85}
+        luminanceSmoothing={0.6}
         mipmapBlur
       />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-      <Vignette offset={0.3} darkness={0.4} blendFunction={BlendFunction.NORMAL} />
+      <Vignette offset={0.35} darkness={0.3} blendFunction={BlendFunction.NORMAL} />
     </EffectComposer>
   );
 }
@@ -225,17 +296,21 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
   const attackProgress = useRef(0);
   const skillProgress = useRef(0);
 
+  // Stylized PBR materials - anime style with controlled highlights
   const armorMat = useMemo(() => new THREE.MeshStandardMaterial({ 
-    color: new THREE.Color("#2a2a3a"), roughness: 0.35, metalness: 0.7 
+    color: new THREE.Color("#353545"), roughness: 0.55, metalness: 0.4 
   }), []);
   const plateMat = useMemo(() => new THREE.MeshStandardMaterial({ 
-    color: new THREE.Color("#4a4a5a"), roughness: 0.2, metalness: 0.85 
+    color: new THREE.Color("#5a5a6a"), roughness: 0.45, metalness: 0.5 
   }), []);
   const skinMat = useMemo(() => new THREE.MeshStandardMaterial({ 
-    color: new THREE.Color("#e8d5c4"), roughness: 0.55, metalness: 0.0 
+    color: new THREE.Color("#f0e0d0"), roughness: 0.7, metalness: 0.0 
   }), []);
   const glowMat = useMemo(() => new THREE.MeshStandardMaterial({ 
-    color: new THREE.Color("#00ffff"), emissive: new THREE.Color("#00ffff"), emissiveIntensity: 2.5 
+    color: new THREE.Color("#00ddff"), emissive: new THREE.Color("#00ddff"), emissiveIntensity: 1.8 
+  }), []);
+  const cloakMat = useMemo(() => new THREE.MeshStandardMaterial({ 
+    color: new THREE.Color("#2a3a5a"), roughness: 0.75, metalness: 0.0 
   }), []);
 
   useEffect(() => {
@@ -469,17 +544,21 @@ function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPo
   const rightArmRef = useRef<THREE.Group>(null);
   const attackProgress = useRef(0);
 
+  // Stylized PBR materials for monster - controlled highlights, readable silhouette
   const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#2a0a3a"), roughness: 0.65, metalness: 0.15
+    color: new THREE.Color("#3a1a4a"), roughness: 0.7, metalness: 0.1
   }), []);
   const hitMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#3d1a4a"), roughness: 0.6, metalness: 0.1
+    color: new THREE.Color("#4a2a5a"), roughness: 0.65, metalness: 0.08
   }), []);
   const hornMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#1a0a2a"), roughness: 0.35, metalness: 0.4
+    color: new THREE.Color("#2a1a35"), roughness: 0.5, metalness: 0.25
   }), []);
   const eyeMat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#ff0000"), emissive: new THREE.Color("#ff0000"), emissiveIntensity: 3
+    color: new THREE.Color("#ff3030"), emissive: new THREE.Color("#ff2020"), emissiveIntensity: 2
+  }), []);
+  const accentMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#5a3a6a"), roughness: 0.6, metalness: 0.15
   }), []);
   
   useFrame((state, delta) => {
@@ -881,32 +960,38 @@ export default function Game3DPage() {
         <WebGLErrorBoundary onRetry={() => { setWebglError(false); setCanvasKey(k => k + 1); }}>
           <Canvas key={canvasKey} shadows gl={{ antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }}>
             <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
-            <fog attach="fog" args={["#8fb88f", 20, 70]} />
+            <fog attach="fog" args={["#9ab89a", 25, 80]} />
             
-            {/* Ambient fill light */}
-            <ambientLight intensity={0.4} color="#9db99d" />
+            {/* Ambient fill - slightly desaturated for anime look */}
+            <ambientLight intensity={0.5} color="#b8c8b8" />
             
             {/* Main directional sunlight with soft shadows */}
             <directionalLight 
-              position={[15, 30, 15]} 
-              intensity={2.2} 
-              color="#fff8e0"
+              position={[12, 25, 12]} 
+              intensity={1.8} 
+              color="#fffaf0"
               castShadow
               shadow-mapSize-width={2048}
               shadow-mapSize-height={2048}
               shadow-camera-far={80}
-              shadow-camera-left={-30}
-              shadow-camera-right={30}
-              shadow-camera-top={30}
-              shadow-camera-bottom={-30}
-              shadow-bias={-0.0005}
+              shadow-camera-left={-25}
+              shadow-camera-right={25}
+              shadow-camera-top={25}
+              shadow-camera-bottom={-25}
+              shadow-bias={-0.0003}
             />
             
-            {/* Fill light from opposite side */}
-            <directionalLight position={[-10, 15, -10]} intensity={0.6} color="#b8d4ff" />
+            {/* Fill light - cool blue from opposite side */}
+            <directionalLight position={[-8, 12, -8]} intensity={0.5} color="#c8d8f0" />
+            
+            {/* Rim/back light for character readability - subtle cyan */}
+            <directionalLight position={[0, 8, -15]} intensity={0.8} color="#a0e0e8" />
+            
+            {/* Secondary rim light from side */}
+            <pointLight position={[-6, 4, 4]} intensity={0.4} color="#e0e8f0" distance={20} />
             
             {/* Hemisphere light for natural sky/ground bounce */}
-            <hemisphereLight args={["#87ceeb", "#3a6b2a", 0.8]} />
+            <hemisphereLight args={["#c0d8e8", "#4a6a3a", 0.6]} />
             
             <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
             {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
