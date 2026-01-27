@@ -209,7 +209,7 @@ function Enemy({ hp, maxHp, isHit }: { hp: number, maxHp: number, isHit: boolean
 // --- Main Page Component ---
 
 export default function Game3DPage() {
-  const { player, modifyHp, gainExp } = useGame();
+  const { player, isLoading, modifyHp, gainExp } = useGame();
   
   const [enemyHp, setEnemyHp] = useState(100);
   const maxEnemyHp = 100;
@@ -263,6 +263,14 @@ export default function Game3DPage() {
         }, 300);
      }, 200);
   };
+
+  if (isLoading || !player) {
+    return (
+      <div className="w-full h-screen bg-black flex items-center justify-center">
+        <div className="text-primary animate-pulse font-display text-xl tracking-widest">LOADING SYSTEM...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-screen bg-black relative font-display overflow-hidden">

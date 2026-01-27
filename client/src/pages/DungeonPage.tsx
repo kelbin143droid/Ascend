@@ -22,7 +22,7 @@ const dungeonList = [
 ];
 
 export default function DungeonPage() {
-  const { player, gainExp, modifyHp, modifyMp } = useGame();
+  const { player, isLoading, gainExp, modifyHp, modifyMp } = useGame();
   const { toast } = useToast();
   const [activeDungeon, setActiveDungeon] = useState<any>(null);
   const [enemy, setEnemy] = useState<Enemy | null>(null);
@@ -30,6 +30,7 @@ export default function DungeonPage() {
   const [isFighting, setIsFighting] = useState(false);
 
   const startDungeon = (dungeon: any) => {
+    if (!player) return;
     if (player.level < dungeon.minLevel) {
         toast({ title: "LEVEL TOO LOW", description: `Required Level: ${dungeon.minLevel}`, variant: "destructive" });
         return;
@@ -40,6 +41,7 @@ export default function DungeonPage() {
   };
 
   const spawnEnemy = (dungeon: any) => {
+    if (!player) return;
     const name = dungeon.enemies[Math.floor(Math.random() * dungeon.enemies.length)];
     setEnemy({
         name,
@@ -52,7 +54,7 @@ export default function DungeonPage() {
   };
 
   const attack = () => {
-    if (!enemy || isFighting || player.hp <= 0) return;
+    if (!player || !enemy || isFighting || player.hp <= 0) return;
     setIsFighting(true);
 
     // Player attacks
@@ -82,6 +84,7 @@ export default function DungeonPage() {
   };
 
   const useSkill = () => {
+    if (!player) return;
     if (player.mp < 20) {
         toast({ title: "NOT ENOUGH MP" });
         return;
@@ -96,6 +99,16 @@ export default function DungeonPage() {
         setTimeout(() => spawnEnemy(activeDungeon), 1000);
     }
   };
+
+  if (isLoading || !player) {
+    return (
+      <SystemLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-primary animate-pulse font-display text-xl tracking-widest">LOADING SYSTEM...</div>
+        </div>
+      </SystemLayout>
+    );
+  }
 
   return (
     <SystemLayout>

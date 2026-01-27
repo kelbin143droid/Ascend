@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
 
 export default function StatusPage() {
-  const { player, addStat } = useGame();
+  const { player, isLoading, addStat } = useGame();
 
   const container = {
     hidden: { opacity: 0 },
@@ -22,6 +22,16 @@ export default function StatusPage() {
     hidden: { opacity: 0, x: -20 },
     show: { opacity: 1, x: 0 }
   };
+
+  if (isLoading || !player) {
+    return (
+      <SystemLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-primary animate-pulse font-display text-xl tracking-widest">LOADING SYSTEM...</div>
+        </div>
+      </SystemLayout>
+    );
+  }
 
   return (
     <SystemLayout>

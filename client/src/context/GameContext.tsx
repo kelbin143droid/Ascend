@@ -1,32 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-
-type Stats = {
-  strength: number;
-  agility: number;
-  sense: number;
-  vitality: number;
-  intelligence: number;
-};
-
-type Player = {
-  name: string;
-  level: number;
-  job: string;
-  title: string;
-  hp: number;
-  maxHp: number;
-  mp: number;
-  maxMp: number;
-  stats: Stats;
-  availablePoints: number;
-  gold: number;
-  rank: string;
-  exp: number;
-  maxExp: number;
-};
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { Player, Stats } from "@shared/schema";
 
 interface GameContextType {
-  player: Player;
+  player: Player | null;
+  isLoading: boolean;
   addStat: (stat: keyof Stats) => void;
   gainExp: (amount: number) => void;
   modifyHp: (amount: number) => void;
@@ -34,106 +13,142 @@ interface GameContextType {
   levelUp: () => void;
 }
 
-const defaultPlayer: Player = {
-  name: "SUNG JIN-WOO",
-  level: 1,
-  job: "NONE",
-  title: "WOLF SLAYER",
-  hp: 100,
-  maxHp: 100,
-  mp: 10,
-  maxMp: 10,
-  stats: {
-    strength: 10,
-    agility: 10,
-    sense: 10,
-    vitality: 10,
-    intelligence: 10,
-  },
-  availablePoints: 3,
-  gold: 0,
-  rank: "E",
-  exp: 0,
-  maxExp: 100,
-};
-
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
+const PLAYER_STORAGE_KEY = "solo_leveling_player_id";
+
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  const [player, setPlayer] = useState<Player>(defaultPlayer);
+  const queryClient = useQueryClient();
+  const [playerId, setPlayerId] = useState<string | null>(() => {
+    return localStorage.getItem(PLAYER_STORAGE_KEY);
+  });
 
-  const addStat = (stat: keyof Stats) => {
-    if (player.availablePoints > 0) {
-      setPlayer((prev) => {
-        const newStats = { ...prev.stats, [stat]: prev.stats[stat] + 1 };
-        let newMaxHp = prev.maxHp;
-        let newMaxMp = prev.maxMp;
-        
-        if (stat === 'vitality') newMaxHp += 20;
-        if (stat === 'intelligence') newMaxMp += 10;
+  const { data: player, isLoading } = useQuery<Player>({
+    queryKey: ["/api/player", playerId],
+    queryFn: async () => {
+      if (!playerId) throw new Error("No player ID");
+      const res = await fetch(`/api/player/${playerId}`);
+      if (!res.ok) throw new Error("Failed to fetch player");
+      return res.json();
+    },
+    enabled: !!playerId,
+    staleTime: 1000,
+  });
 
-        return {
-          ...prev,
-          stats: newStats,
-          maxHp: newMaxHp,
-          maxMp: newMaxMp,
-          availablePoints: prev.availablePoints - 1,
-        };
+  const createPlayerMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/player", {
+        name: "SUNG JIN-WOO",
+        level: 1,
+        job: "NONE",
+        title: "WOLF SLAYER",
+        hp: 100,
+        maxHp: 100,
+        mp: 10,
+        maxMp: 10,
+        stats: { strength: 10, agility: 10, sense: 10, vitality: 10, intelligence: 10 },
+        availablePoints: 3,
+        gold: 0,
+        rank: "E",
+        exp: 0,
+        maxExp: 100,
+        inventory: [],
+        skills: [
+          { id: "shadow_extraction", name: "Shadow Extraction", description: "Extract shadows from defeated enemies", mpCost: 30, cooldown: 60, level: 1, unlocked: true },
+          { id: "rulers_authority", name: "Ruler's Authority", description: "Telekinetic control over objects", mpCost: 20, cooldown: 15, level: 1, unlocked: true },
+          { id: "shadow_exchange", name: "Shadow Exchange", description: "Swap positions with a shadow soldier", mpCost: 50, cooldown: 120, level: 1, unlocked: false },
+          { id: "monarch_domain", name: "Monarch's Domain", description: "Unleash overwhelming shadow aura", mpCost: 100, cooldown: 300, level: 1, unlocked: false },
+        ],
       });
+      return res.json();
+    },
+    onSuccess: (newPlayer) => {
+      localStorage.setItem(PLAYER_STORAGE_KEY, newPlayer.id);
+      setPlayerId(newPlayer.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+    },
+  });
+
+  useEffect(() => {
+    if (!playerId && !createPlayerMutation.isPending) {
+      createPlayerMutation.mutate();
     }
-  };
+  }, [playerId]);
 
-  const levelUp = () => {
-    setPlayer(prev => ({
-      ...prev,
-      level: prev.level + 1,
-      availablePoints: prev.availablePoints + 5,
-      exp: 0,
-      maxExp: Math.floor(prev.maxExp * 1.5),
-      maxHp: prev.maxHp + 50,
-      maxMp: prev.maxMp + 20,
-      hp: prev.maxHp + 50,
-      mp: prev.maxMp + 20,
-    }));
-  };
+  const addStatMutation = useMutation({
+    mutationFn: async (stat: keyof Stats) => {
+      if (!playerId) throw new Error("No player");
+      const res = await apiRequest("POST", `/api/player/${playerId}/add-stat`, { stat });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+    },
+  });
 
-  const gainExp = (amount: number) => {
-    setPlayer(prev => {
-      const newExp = prev.exp + amount;
-      if (newExp >= prev.maxExp) {
-        // Handle level up in state update
-        return {
-          ...prev,
-          level: prev.level + 1,
-          availablePoints: prev.availablePoints + 5,
-          exp: newExp - prev.maxExp,
-          maxExp: Math.floor(prev.maxExp * 1.5),
-          maxHp: prev.maxHp + 50,
-          maxMp: prev.maxMp + 20,
-          hp: prev.maxHp + 50,
-          mp: prev.maxMp + 20,
-        };
-      }
-      return { ...prev, exp: newExp };
-    });
-  };
+  const gainExpMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      if (!playerId) throw new Error("No player");
+      const res = await apiRequest("POST", `/api/player/${playerId}/gain-exp`, { amount });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+    },
+  });
 
-  const modifyHp = (amount: number) => {
-    setPlayer(prev => ({
-      ...prev,
-      hp: Math.min(prev.maxHp, Math.max(0, prev.hp + amount))
-    }));
-  };
+  const modifyHpMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      if (!playerId) throw new Error("No player");
+      const res = await apiRequest("POST", `/api/player/${playerId}/modify-hp`, { amount });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+    },
+  });
 
-  const modifyMp = (amount: number) => {
-    setPlayer(prev => ({
-      ...prev,
-      mp: Math.min(prev.maxMp, Math.max(0, prev.mp + amount))
-    }));
-  };
+  const modifyMpMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      if (!playerId) throw new Error("No player");
+      const res = await apiRequest("POST", `/api/player/${playerId}/modify-mp`, { amount });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+    },
+  });
+
+  const addStat = useCallback((stat: keyof Stats) => {
+    addStatMutation.mutate(stat);
+  }, [addStatMutation]);
+
+  const gainExp = useCallback((amount: number) => {
+    gainExpMutation.mutate(amount);
+  }, [gainExpMutation]);
+
+  const modifyHp = useCallback((amount: number) => {
+    modifyHpMutation.mutate(amount);
+  }, [modifyHpMutation]);
+
+  const modifyMp = useCallback((amount: number) => {
+    modifyMpMutation.mutate(amount);
+  }, [modifyMpMutation]);
+
+  const levelUp = useCallback(() => {
+    gainExpMutation.mutate(player?.maxExp || 100);
+  }, [gainExpMutation, player?.maxExp]);
 
   return (
-    <GameContext.Provider value={{ player, addStat, gainExp, modifyHp, modifyMp, levelUp }}>
+    <GameContext.Provider value={{ 
+      player: player || null, 
+      isLoading: isLoading || createPlayerMutation.isPending,
+      addStat, 
+      gainExp, 
+      modifyHp, 
+      modifyMp, 
+      levelUp 
+    }}>
       {children}
     </GameContext.Provider>
   );
