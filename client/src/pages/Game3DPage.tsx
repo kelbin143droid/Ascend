@@ -1,10 +1,10 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Environment, Stars, Float, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGame } from '@/context/GameContext';
 import { Button } from '@/components/ui/button';
-import { Sword, Zap } from 'lucide-react';
+import { Sword, Zap, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import groundTexture from '@assets/generated_images/texture_for_digital_floor_grid_in_3d_space.png';
 
@@ -12,6 +12,42 @@ const ATTACK_RANGE = 3;
 const MONSTER_ATTACK_RANGE = 2;
 const MONSTER_SPEED = 0.03;
 const MONSTER_MAX_HP = 300;
+
+class WebGLErrorBoundary extends Component<{ children: ReactNode, onRetry: () => void }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode, onRetry: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('WebGL Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-black text-primary">
+          <p className="text-xl mb-4 font-display">3D Graphics Error</p>
+          <p className="text-sm text-muted-foreground mb-4">WebGL context could not be created</p>
+          <Button 
+            onClick={() => {
+              this.setState({ hasError: false });
+              this.props.onRetry();
+            }}
+            className="bg-primary/20 border border-primary"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> Retry
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function Ground() {
   const texture = useTexture(groundTexture);
@@ -447,8 +483,6 @@ function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPo
           <meshStandardMaterial color={bodyColor} roughness={0.7} />
         </mesh>
 
-        {/* Dark aura particles */}
-        <Stars radius={1.5} depth={1} count={100} factor={1} saturation={0} fade speed={2} />
       </group>
     </group>
   );
@@ -465,6 +499,7 @@ export default function Game3DPage() {
   const [combatLog, setCombatLog] = useState<string[]>(["A monster appears!"]);
   const [showHUD, setShowHUD] = useState(true);
   const [joystick, setJoystick] = useState({ x: 0, y: 0 });
+  const [canvasKey, setCanvasKey] = useState(0);
   const playerPosRef = useRef(new THREE.Vector3(0, 0, 2));
   const monsterPosRef = useRef(new THREE.Vector3(0, 0, -5));
   const lastMonsterAttackRef = useRef(0);
@@ -601,19 +636,20 @@ export default function Game3DPage() {
   return (
     <div className="w-full h-screen bg-black relative font-display overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <Canvas shadows>
-          <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
-          <ambientLight intensity={0.3} />
-          <pointLight position={[5, 5, 5]} intensity={1} castShadow color="#00ffff" />
-          <pointLight position={[-5, 5, -5]} intensity={0.5} color="#ff00ff" />
-          
-          <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
-          {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
-          
-          <Ground />
-          <Environment preset="city" />
-          <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-        </Canvas>
+        <WebGLErrorBoundary onRetry={() => setCanvasKey(k => k + 1)}>
+          <Canvas key={canvasKey} shadows gl={{ antialias: false, powerPreference: 'high-performance' }}>
+            <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
+            <ambientLight intensity={0.3} />
+            <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
+            <pointLight position={[-5, 5, -5]} intensity={0.5} color="#ff00ff" />
+            
+            <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
+            {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
+            
+            <Ground />
+            <Stars radius={50} depth={30} count={1000} factor={3} saturation={0} fade speed={1} />
+          </Canvas>
+        </WebGLErrorBoundary>
       </div>
 
       <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
