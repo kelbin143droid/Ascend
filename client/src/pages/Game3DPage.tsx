@@ -1,12 +1,13 @@
-import React, { useRef, useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useRef, useState, useEffect, useMemo, Component, ErrorInfo, ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera, Environment, Stars, Float, useTexture } from '@react-three/drei';
+import { PerspectiveCamera, Float } from '@react-three/drei';
+import { EffectComposer, Bloom, SSAO, ToneMapping, Vignette } from '@react-three/postprocessing';
+import { BlendFunction, ToneMappingMode } from 'postprocessing';
 import * as THREE from 'three';
 import { useGame } from '@/context/GameContext';
 import { Button } from '@/components/ui/button';
 import { Sword, Zap, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import groundTexture from '@assets/generated_images/texture_for_digital_floor_grid_in_3d_space.png';
 
 const ATTACK_RANGE = 3;
 const MONSTER_ATTACK_RANGE = 2;
@@ -49,57 +50,168 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode, onRetry: () =>
   }
 }
 
-function JungleGround() {
+function JungleTerrain() {
+  const groundMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color("#3a6b2a"),
+      roughness: 0.92,
+      metalness: 0.02,
+      flatShading: false,
+    });
+  }, []);
+
+  const detailMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color("#2d5520"),
+      roughness: 0.95,
+      metalness: 0.0,
+    });
+  }, []);
+
+  const rockMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color("#5a5a5a"),
+      roughness: 0.9,
+      metalness: 0.1,
+    });
+  }, []);
+
+  // Precompute stable random positions for moss patches
+  const mossPatches = useMemo(() => {
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed * 12.9898) * 43758.5453;
+      return x - Math.floor(x);
+    };
+    return [...Array(20)].map((_, i) => ({
+      rotation: seededRandom(i * 7) * Math.PI,
+      x: (seededRandom(i * 13) - 0.5) * 40,
+      z: (seededRandom(i * 17) - 0.5) * 40,
+      radius: 1 + seededRandom(i * 23) * 2,
+    }));
+  }, []);
+
+  // Precompute stable random positions for rocks
+  const rocks = useMemo(() => {
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed * 12.9898) * 43758.5453;
+      return x - Math.floor(x);
+    };
+    return [...Array(15)].map((_, i) => ({
+      x: (seededRandom(i * 31 + 100) - 0.5) * 50,
+      z: (seededRandom(i * 37 + 100) - 0.5) * 50,
+      size: 0.2 + seededRandom(i * 41 + 100) * 0.3,
+    }));
+  }, []);
+
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
-      <planeGeometry args={[100, 100]} />
-      <meshStandardMaterial 
-        color="#2d5a27"
-        roughness={0.9} 
-        metalness={0.1}
-      />
-    </mesh>
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow material={groundMaterial}>
+        <planeGeometry args={[120, 120, 32, 32]} />
+      </mesh>
+      {/* Moss patches for texture variation */}
+      {mossPatches.map((patch, i) => (
+        <mesh 
+          key={i}
+          rotation={[-Math.PI / 2, patch.rotation, 0]} 
+          position={[patch.x, -1.98, patch.z]} 
+          receiveShadow
+          material={detailMaterial}
+        >
+          <circleGeometry args={[patch.radius, 12]} />
+        </mesh>
+      ))}
+      {/* Small rocks for detail */}
+      {rocks.map((rock, i) => (
+        <mesh 
+          key={`rock-${i}`}
+          position={[rock.x, -1.7, rock.z]}
+          castShadow
+          receiveShadow
+          material={rockMaterial}
+        >
+          <dodecahedronGeometry args={[rock.size, 0]} />
+        </mesh>
+      ))}
+    </group>
   );
 }
 
-function Tree({ position }: { position: [number, number, number] }) {
+function SmoothTree({ position, scale = 1 }: { position: [number, number, number], scale?: number }) {
+  const trunkColor = useMemo(() => new THREE.Color("#4a3020"), []);
+  const foliageColors = useMemo(() => [
+    new THREE.Color("#1a5518"),
+    new THREE.Color("#226622"),
+    new THREE.Color("#2a7a2a"),
+  ], []);
+
   return (
-    <group position={position}>
-      {/* Trunk */}
-      <mesh position={[0, 1, 0]} castShadow>
-        <cylinderGeometry args={[0.3, 0.4, 4, 8]} />
-        <meshStandardMaterial color="#4a3728" roughness={0.9} />
+    <group position={position} scale={scale}>
+      {/* Trunk - smooth cylinder with higher segments */}
+      <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.25, 0.4, 5, 16]} />
+        <meshStandardMaterial color={trunkColor} roughness={0.85} metalness={0.05} />
       </mesh>
-      {/* Foliage layers */}
-      <mesh position={[0, 4, 0]} castShadow>
-        <coneGeometry args={[2, 3, 8]} />
-        <meshStandardMaterial color="#1a5c1a" roughness={0.8} />
+      {/* Smooth foliage spheres instead of cones */}
+      <mesh position={[0, 4.5, 0]} castShadow>
+        <sphereGeometry args={[2.2, 16, 12]} />
+        <meshStandardMaterial color={foliageColors[0]} roughness={0.75} metalness={0.0} />
       </mesh>
-      <mesh position={[0, 5.5, 0]} castShadow>
-        <coneGeometry args={[1.5, 2.5, 8]} />
-        <meshStandardMaterial color="#228b22" roughness={0.8} />
+      <mesh position={[0.5, 5.2, 0.3]} castShadow>
+        <sphereGeometry args={[1.5, 14, 10]} />
+        <meshStandardMaterial color={foliageColors[1]} roughness={0.75} metalness={0.0} />
       </mesh>
-      <mesh position={[0, 6.5, 0]} castShadow>
-        <coneGeometry args={[1, 2, 8]} />
-        <meshStandardMaterial color="#2e8b2e" roughness={0.8} />
+      <mesh position={[-0.3, 5.8, -0.2]} castShadow>
+        <sphereGeometry args={[1.2, 12, 8]} />
+        <meshStandardMaterial color={foliageColors[2]} roughness={0.75} metalness={0.0} />
       </mesh>
     </group>
   );
 }
 
 function JungleEnvironment() {
-  const treePositions: [number, number, number][] = [
-    [-8, 0, -10], [8, 0, -12], [-12, 0, -5], [12, 0, -8],
-    [-10, 0, 5], [10, 0, 8], [-15, 0, -15], [15, 0, -15],
-    [-6, 0, 12], [6, 0, 15], [-18, 0, 0], [18, 0, 2],
-  ];
-  
+  const treeData = useMemo(() => [
+    { pos: [-8, 0, -10] as [number, number, number], scale: 1.1 },
+    { pos: [8, 0, -12] as [number, number, number], scale: 0.9 },
+    { pos: [-12, 0, -5] as [number, number, number], scale: 1.2 },
+    { pos: [12, 0, -8] as [number, number, number], scale: 1.0 },
+    { pos: [-10, 0, 5] as [number, number, number], scale: 0.85 },
+    { pos: [10, 0, 8] as [number, number, number], scale: 1.15 },
+    { pos: [-15, 0, -15] as [number, number, number], scale: 1.3 },
+    { pos: [15, 0, -15] as [number, number, number], scale: 0.95 },
+    { pos: [-6, 0, 12] as [number, number, number], scale: 1.05 },
+    { pos: [6, 0, 15] as [number, number, number], scale: 1.1 },
+    { pos: [-18, 0, 0] as [number, number, number], scale: 1.25 },
+    { pos: [18, 0, 2] as [number, number, number], scale: 0.9 },
+  ], []);
+
   return (
     <>
-      {treePositions.map((pos, i) => (
-        <Tree key={i} position={pos} />
+      {treeData.map((tree, i) => (
+        <SmoothTree key={i} position={tree.pos} scale={tree.scale} />
       ))}
     </>
+  );
+}
+
+function PostProcessing() {
+  return (
+    <EffectComposer multisampling={4}>
+      <SSAO 
+        samples={16}
+        radius={0.1}
+        intensity={15}
+        luminanceInfluence={0.5}
+        color={new THREE.Color("#000000")}
+      />
+      <Bloom 
+        intensity={0.3}
+        luminanceThreshold={0.8}
+        luminanceSmoothing={0.5}
+        mipmapBlur
+      />
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+      <Vignette offset={0.3} darkness={0.4} blendFunction={BlendFunction.NORMAL} />
+    </EffectComposer>
   );
 }
 
@@ -112,6 +224,19 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
   const keys = useRef({ w: false, a: false, s: false, d: false, shift: false });
   const attackProgress = useRef(0);
   const skillProgress = useRef(0);
+
+  const armorMat = useMemo(() => new THREE.MeshStandardMaterial({ 
+    color: new THREE.Color("#2a2a3a"), roughness: 0.35, metalness: 0.7 
+  }), []);
+  const plateMat = useMemo(() => new THREE.MeshStandardMaterial({ 
+    color: new THREE.Color("#4a4a5a"), roughness: 0.2, metalness: 0.85 
+  }), []);
+  const skinMat = useMemo(() => new THREE.MeshStandardMaterial({ 
+    color: new THREE.Color("#e8d5c4"), roughness: 0.55, metalness: 0.0 
+  }), []);
+  const glowMat = useMemo(() => new THREE.MeshStandardMaterial({ 
+    color: new THREE.Color("#00ffff"), emissive: new THREE.Color("#00ffff"), emissiveIntensity: 2.5 
+  }), []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -171,10 +296,8 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
       groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, angle, 0.2);
     }
 
-    // Update player position ref for distance checks
     playerPosRef.current.copy(groupRef.current.position);
 
-    // Camera Follow
     const camOffset = new THREE.Vector3(0, 5, 8);
     state.camera.position.lerp(
       new THREE.Vector3(
@@ -186,7 +309,6 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
     );
     state.camera.lookAt(groupRef.current.position);
 
-    // Walking animation for legs
     if (leftLegRef.current && rightLegRef.current) {
       if (isMoving && !isAttacking) {
         const walkCycle = Math.sin(state.clock.elapsedTime * 10) * 0.5;
@@ -198,7 +320,6 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
       }
     }
 
-    // Sword swing animation
     if (swordArmRef.current) {
       if (isAttacking) {
         attackProgress.current = Math.min(attackProgress.current + delta * 8, 1);
@@ -212,7 +333,6 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
       }
     }
 
-    // Skill aura effect
     if (skillAuraRef.current) {
       if (isUsingSkill) {
         skillProgress.current = Math.min(skillProgress.current + delta * 3, 1);
@@ -225,7 +345,6 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
       }
     }
 
-    // Idle bounce
     if (!isMoving && !isAttacking) {
       groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.05;
     }
@@ -233,120 +352,110 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
 
   return (
     <group ref={groupRef} position={[0, 0, 2]}>
-      {/* Skill Aura */}
       <mesh ref={skillAuraRef} position={[0, 0.5, 0]} scale={[0, 0, 0]}>
         <sphereGeometry args={[1, 32, 32]} />
         <meshStandardMaterial color="#8b5cf6" emissive="#8b5cf6" emissiveIntensity={2} transparent opacity={0.5} />
       </mesh>
 
-      {/* Torso */}
-      <mesh position={[0, 0.7, 0]} castShadow>
-        <boxGeometry args={[0.6, 0.8, 0.35]} />
-        <meshStandardMaterial color="#2a2a3a" roughness={0.4} metalness={0.6} />
+      {/* Torso - capsule shape */}
+      <mesh position={[0, 0.7, 0]} castShadow material={armorMat}>
+        <capsuleGeometry args={[0.25, 0.5, 8, 16]} />
       </mesh>
       
-      {/* Chest Plate */}
-      <mesh position={[0, 0.75, 0.1]} castShadow>
-        <boxGeometry args={[0.55, 0.6, 0.15]} />
-        <meshStandardMaterial color="#4a4a5a" roughness={0.2} metalness={0.8} />
+      {/* Chest Plate - rounded */}
+      <mesh position={[0, 0.75, 0.12]} castShadow material={plateMat}>
+        <sphereGeometry args={[0.28, 16, 12]} />
       </mesh>
       
       {/* Belt */}
-      <mesh position={[0, 0.35, 0]} castShadow>
-        <boxGeometry args={[0.65, 0.15, 0.38]} />
-        <meshStandardMaterial color="#8b4513" roughness={0.7} metalness={0.2} />
+      <mesh position={[0, 0.38, 0]} castShadow>
+        <torusGeometry args={[0.28, 0.06, 8, 24]} />
+        <meshStandardMaterial color="#8b4513" roughness={0.65} metalness={0.25} />
       </mesh>
 
-      {/* Head */}
-      <mesh position={[0, 1.35, 0]} castShadow>
-        <boxGeometry args={[0.35, 0.4, 0.35]} />
-        <meshStandardMaterial color="#e8d5c4" roughness={0.6} />
+      {/* Head - sphere */}
+      <mesh position={[0, 1.32, 0]} castShadow material={skinMat}>
+        <sphereGeometry args={[0.2, 16, 12]} />
       </mesh>
       
-      {/* Helmet */}
-      <mesh position={[0, 1.5, 0]} castShadow>
-        <boxGeometry args={[0.4, 0.2, 0.4]} />
-        <meshStandardMaterial color="#555566" roughness={0.3} metalness={0.9} />
+      {/* Helmet - smooth dome */}
+      <mesh position={[0, 1.38, 0]} castShadow material={plateMat}>
+        <sphereGeometry args={[0.24, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
       </mesh>
       
       {/* Helmet Visor */}
-      <mesh position={[0, 1.35, 0.18]}>
-        <boxGeometry args={[0.25, 0.1, 0.05]} />
-        <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={2} />
+      <mesh position={[0, 1.3, 0.18]} material={glowMat}>
+        <capsuleGeometry args={[0.03, 0.12, 4, 8]} />
       </mesh>
 
-      {/* Left Arm (Shield Arm) */}
-      <group position={[-0.45, 0.7, 0]}>
-        <mesh castShadow>
-          <boxGeometry args={[0.2, 0.5, 0.2]} />
-          <meshStandardMaterial color="#2a2a3a" roughness={0.4} metalness={0.6} />
+      {/* Left Arm - capsules */}
+      <group position={[-0.4, 0.75, 0]}>
+        {/* Upper arm */}
+        <mesh castShadow material={armorMat}>
+          <capsuleGeometry args={[0.08, 0.2, 6, 12]} />
         </mesh>
-        {/* Shield */}
-        <mesh position={[-0.15, -0.1, 0.15]} castShadow>
-          <boxGeometry args={[0.1, 0.5, 0.4]} />
+        {/* Lower arm */}
+        <mesh position={[0, -0.25, 0]} castShadow material={armorMat}>
+          <capsuleGeometry args={[0.07, 0.2, 6, 12]} />
+        </mesh>
+        {/* Shield - rounded */}
+        <mesh position={[-0.12, -0.15, 0.1]} castShadow rotation={[0, 0.3, 0]}>
+          <cylinderGeometry args={[0.25, 0.22, 0.05, 16]} />
           <meshStandardMaterial color="#555577" roughness={0.2} metalness={0.9} />
         </mesh>
-        <mesh position={[-0.2, -0.1, 0.15]}>
-          <boxGeometry args={[0.02, 0.3, 0.25]} />
-          <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={1} />
+        <mesh position={[-0.14, -0.15, 0.1]} material={glowMat}>
+          <torusGeometry args={[0.15, 0.02, 8, 16]} />
         </mesh>
       </group>
 
-      {/* Right Arm (Sword Arm) */}
-      <group ref={swordArmRef} position={[0.45, 0.7, 0]}>
-        <mesh castShadow>
-          <boxGeometry args={[0.2, 0.5, 0.2]} />
-          <meshStandardMaterial color="#2a2a3a" roughness={0.4} metalness={0.6} />
+      {/* Right Arm - Sword Arm */}
+      <group ref={swordArmRef} position={[0.4, 0.75, 0]}>
+        <mesh castShadow material={armorMat}>
+          <capsuleGeometry args={[0.08, 0.2, 6, 12]} />
+        </mesh>
+        <mesh position={[0, -0.25, 0]} castShadow material={armorMat}>
+          <capsuleGeometry args={[0.07, 0.2, 6, 12]} />
         </mesh>
         
         {/* Sword */}
-        <group position={[0.1, -0.4, 0.3]} rotation={[0.3, 0, 0]}>
-          {/* Handle */}
+        <group position={[0.08, -0.45, 0.2]} rotation={[0.3, 0, 0]}>
           <mesh castShadow>
-            <cylinderGeometry args={[0.04, 0.04, 0.3, 8]} />
-            <meshStandardMaterial color="#4a3020" roughness={0.8} />
+            <cylinderGeometry args={[0.035, 0.04, 0.28, 12]} />
+            <meshStandardMaterial color="#4a3020" roughness={0.75} metalness={0.1} />
           </mesh>
-          {/* Guard */}
-          <mesh position={[0, 0.2, 0]} castShadow>
-            <boxGeometry args={[0.25, 0.05, 0.08]} />
-            <meshStandardMaterial color="#666688" metalness={0.9} roughness={0.2} />
+          <mesh position={[0, 0.18, 0]} castShadow>
+            <capsuleGeometry args={[0.02, 0.16, 4, 12]} />
+            <meshStandardMaterial color="#666688" metalness={0.9} roughness={0.15} />
           </mesh>
-          {/* Blade */}
-          <mesh position={[0, 0.7, 0]} castShadow>
-            <boxGeometry args={[0.08, 0.9, 0.03]} />
-            <meshStandardMaterial color="#aaaacc" metalness={1} roughness={0.1} />
+          <mesh position={[0, 0.65, 0]} castShadow>
+            <capsuleGeometry args={[0.025, 0.75, 4, 12]} />
+            <meshStandardMaterial color="#c0c0d0" metalness={0.95} roughness={0.08} />
           </mesh>
-          {/* Blade Edge Glow */}
-          <mesh position={[0.05, 0.7, 0]}>
-            <boxGeometry args={[0.02, 0.9, 0.04]} />
-            <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={3} />
+          <mesh position={[0.04, 0.65, 0]} material={glowMat}>
+            <capsuleGeometry args={[0.008, 0.7, 4, 8]} />
           </mesh>
         </group>
       </group>
 
       {/* Left Leg */}
-      <group ref={leftLegRef} position={[-0.15, 0, 0]}>
-        <mesh position={[0, -0.1, 0]} castShadow>
-          <boxGeometry args={[0.22, 0.5, 0.22]} />
-          <meshStandardMaterial color="#2a2a3a" roughness={0.4} metalness={0.6} />
+      <group ref={leftLegRef} position={[-0.12, 0.1, 0]}>
+        <mesh position={[0, -0.15, 0]} castShadow material={armorMat}>
+          <capsuleGeometry args={[0.09, 0.25, 6, 12]} />
         </mesh>
-        {/* Boot */}
-        <mesh position={[0, -0.4, 0.05]} castShadow>
-          <boxGeometry args={[0.24, 0.2, 0.35]} />
-          <meshStandardMaterial color="#3a3a4a" roughness={0.5} metalness={0.7} />
+        <mesh position={[0, -0.42, 0.03]} castShadow>
+          <sphereGeometry args={[0.11, 12, 8]} />
+          <meshStandardMaterial color="#3a3a4a" roughness={0.4} metalness={0.75} />
         </mesh>
       </group>
 
       {/* Right Leg */}
-      <group ref={rightLegRef} position={[0.15, 0, 0]}>
-        <mesh position={[0, -0.1, 0]} castShadow>
-          <boxGeometry args={[0.22, 0.5, 0.22]} />
-          <meshStandardMaterial color="#2a2a3a" roughness={0.4} metalness={0.6} />
+      <group ref={rightLegRef} position={[0.12, 0.1, 0]}>
+        <mesh position={[0, -0.15, 0]} castShadow material={armorMat}>
+          <capsuleGeometry args={[0.09, 0.25, 6, 12]} />
         </mesh>
-        {/* Boot */}
-        <mesh position={[0, -0.4, 0.05]} castShadow>
-          <boxGeometry args={[0.24, 0.2, 0.35]} />
-          <meshStandardMaterial color="#3a3a4a" roughness={0.5} metalness={0.7} />
+        <mesh position={[0, -0.42, 0.03]} castShadow>
+          <sphereGeometry args={[0.11, 12, 8]} />
+          <meshStandardMaterial color="#3a3a4a" roughness={0.4} metalness={0.75} />
         </mesh>
       </group>
     </group>
@@ -359,11 +468,23 @@ function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPo
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
   const attackProgress = useRef(0);
+
+  const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#2a0a3a"), roughness: 0.65, metalness: 0.15
+  }), []);
+  const hitMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#3d1a4a"), roughness: 0.6, metalness: 0.1
+  }), []);
+  const hornMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#1a0a2a"), roughness: 0.35, metalness: 0.4
+  }), []);
+  const eyeMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#ff0000"), emissive: new THREE.Color("#ff0000"), emissiveIntensity: 3
+  }), []);
   
   useFrame((state, delta) => {
     if (!rootRef.current || !groupRef.current) return;
     
-    // Chase player
     const direction = new THREE.Vector3().subVectors(playerPosRef.current, rootRef.current.position);
     const distance = direction.length();
     
@@ -372,18 +493,13 @@ function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPo
       rootRef.current.position.x += direction.x * MONSTER_SPEED;
       rootRef.current.position.z += direction.z * MONSTER_SPEED;
       
-      // Face player
       const angle = Math.atan2(direction.x, direction.z);
       rootRef.current.rotation.y = THREE.MathUtils.lerp(rootRef.current.rotation.y, angle, 0.1);
     }
     
-    // Update monster position ref
     monsterPosRef.current.copy(rootRef.current.position);
-    
-    // Idle/walking animation
     groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
     
-    // Arm animations
     if (leftArmRef.current && rightArmRef.current) {
       if (isMonsterAttacking) {
         attackProgress.current = Math.min(attackProgress.current + delta * 6, 1);
@@ -396,14 +512,19 @@ function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPo
         rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, Math.sin(state.clock.elapsedTime * 2 + Math.PI) * 0.3, 0.2);
       }
     }
-  });
 
-  const hitColor = isHit ? "#ff0000" : "#3d1a4a";
-  const bodyColor = isHit ? "#ff3333" : "#2a0a3a";
+    // Update colors on hit
+    if (isHit) {
+      bodyMat.color.setHex(0xff3333);
+      hitMat.color.setHex(0xff0000);
+    } else {
+      bodyMat.color.setHex(0x2a0a3a);
+      hitMat.color.setHex(0x3d1a4a);
+    }
+  });
 
   return (
     <group ref={rootRef} position={[0, 0, -5]}>
-      {/* Health Bar */}
       <Float speed={0} rotationIntensity={0} floatIntensity={0}>
         <group position={[0, 3.2, 0]}>
           <mesh>
@@ -418,106 +539,109 @@ function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPo
       </Float>
 
       <group ref={groupRef}>
-        {/* Monster Body - hulking torso */}
-        <mesh position={[0, 1, 0]} castShadow>
-          <boxGeometry args={[1.2, 1.4, 0.8]} />
-          <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        {/* Torso - smooth capsule */}
+        <mesh position={[0, 1.1, 0]} castShadow receiveShadow material={bodyMat}>
+          <capsuleGeometry args={[0.5, 0.8, 12, 24]} />
         </mesh>
         
-        {/* Chest spikes */}
-        <mesh position={[0.3, 1.3, 0.4]} rotation={[0.3, 0, 0]} castShadow>
-          <coneGeometry args={[0.1, 0.4, 4]} />
-          <meshStandardMaterial color="#1a0a2a" roughness={0.5} />
+        {/* Shoulder masses */}
+        <mesh position={[-0.55, 1.5, 0]} castShadow material={bodyMat}>
+          <sphereGeometry args={[0.3, 12, 10]} />
         </mesh>
-        <mesh position={[-0.3, 1.3, 0.4]} rotation={[0.3, 0, 0]} castShadow>
-          <coneGeometry args={[0.1, 0.4, 4]} />
-          <meshStandardMaterial color="#1a0a2a" roughness={0.5} />
+        <mesh position={[0.55, 1.5, 0]} castShadow material={bodyMat}>
+          <sphereGeometry args={[0.3, 12, 10]} />
+        </mesh>
+        
+        {/* Chest spikes - smoother cones */}
+        <mesh position={[0.25, 1.4, 0.4]} rotation={[0.4, 0, 0.1]} castShadow material={hornMat}>
+          <coneGeometry args={[0.08, 0.35, 12]} />
+        </mesh>
+        <mesh position={[-0.25, 1.4, 0.4]} rotation={[0.4, 0, -0.1]} castShadow material={hornMat}>
+          <coneGeometry args={[0.08, 0.35, 12]} />
         </mesh>
 
-        {/* Head */}
-        <mesh position={[0, 2, 0]} castShadow>
-          <boxGeometry args={[0.7, 0.6, 0.6]} />
-          <meshStandardMaterial color={hitColor} roughness={0.6} />
+        {/* Head - smooth sphere */}
+        <mesh position={[0, 2, 0]} castShadow receiveShadow material={hitMat}>
+          <sphereGeometry args={[0.38, 16, 12]} />
         </mesh>
         
-        {/* Horns */}
-        <mesh position={[0.25, 2.4, 0]} rotation={[0, 0, 0.4]} castShadow>
-          <coneGeometry args={[0.08, 0.5, 6]} />
-          <meshStandardMaterial color="#1a0a2a" roughness={0.4} metalness={0.3} />
+        {/* Horns - smooth cones */}
+        <mesh position={[0.28, 2.35, -0.05]} rotation={[-0.2, 0.3, 0.5]} castShadow material={hornMat}>
+          <coneGeometry args={[0.06, 0.5, 12]} />
         </mesh>
-        <mesh position={[-0.25, 2.4, 0]} rotation={[0, 0, -0.4]} castShadow>
-          <coneGeometry args={[0.08, 0.5, 6]} />
-          <meshStandardMaterial color="#1a0a2a" roughness={0.4} metalness={0.3} />
+        <mesh position={[-0.28, 2.35, -0.05]} rotation={[-0.2, -0.3, -0.5]} castShadow material={hornMat}>
+          <coneGeometry args={[0.06, 0.5, 12]} />
         </mesh>
         
         {/* Glowing Eyes */}
-        <mesh position={[0.15, 2.05, 0.3]}>
-          <sphereGeometry args={[0.1]} />
-          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={3} />
+        <mesh position={[0.14, 2.05, 0.3]} material={eyeMat}>
+          <sphereGeometry args={[0.08, 12, 8]} />
         </mesh>
-        <mesh position={[-0.15, 2.05, 0.3]}>
-          <sphereGeometry args={[0.1]} />
-          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={3} />
+        <mesh position={[-0.14, 2.05, 0.3]} material={eyeMat}>
+          <sphereGeometry args={[0.08, 12, 8]} />
         </mesh>
         
-        {/* Mouth/Jaw */}
+        {/* Mouth - rounded */}
         <mesh position={[0, 1.85, 0.32]}>
-          <boxGeometry args={[0.4, 0.15, 0.1]} />
-          <meshStandardMaterial color="#0a0010" roughness={0.9} />
+          <capsuleGeometry args={[0.04, 0.25, 6, 12]} />
+          <meshStandardMaterial color="#0a0010" roughness={0.85} />
         </mesh>
 
-        {/* Left Arm */}
-        <group ref={leftArmRef} position={[-0.85, 1.2, 0]}>
-          <mesh castShadow>
-            <boxGeometry args={[0.4, 0.9, 0.4]} />
-            <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        {/* Left Arm - capsule */}
+        <group ref={leftArmRef} position={[-0.75, 1.35, 0]}>
+          <mesh castShadow material={bodyMat}>
+            <capsuleGeometry args={[0.15, 0.5, 8, 14]} />
           </mesh>
-          {/* Claws */}
-          <mesh position={[0, -0.6, 0.1]} rotation={[0.3, 0, 0]} castShadow>
-            <coneGeometry args={[0.08, 0.3, 4]} />
-            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          {/* Forearm */}
+          <mesh position={[0, -0.45, 0.05]} castShadow material={bodyMat}>
+            <capsuleGeometry args={[0.12, 0.4, 8, 14]} />
           </mesh>
-          <mesh position={[0.12, -0.55, 0.1]} rotation={[0.3, 0, 0.2]} castShadow>
-            <coneGeometry args={[0.06, 0.25, 4]} />
-            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          {/* Claws - smooth cones */}
+          <mesh position={[0, -0.75, 0.1]} rotation={[0.4, 0, 0]} castShadow material={hornMat}>
+            <coneGeometry args={[0.05, 0.25, 10]} />
           </mesh>
-          <mesh position={[-0.12, -0.55, 0.1]} rotation={[0.3, 0, -0.2]} castShadow>
-            <coneGeometry args={[0.06, 0.25, 4]} />
-            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          <mesh position={[0.1, -0.72, 0.08]} rotation={[0.4, 0, 0.2]} castShadow material={hornMat}>
+            <coneGeometry args={[0.04, 0.2, 10]} />
+          </mesh>
+          <mesh position={[-0.1, -0.72, 0.08]} rotation={[0.4, 0, -0.2]} castShadow material={hornMat}>
+            <coneGeometry args={[0.04, 0.2, 10]} />
           </mesh>
         </group>
 
-        {/* Right Arm */}
-        <group ref={rightArmRef} position={[0.85, 1.2, 0]}>
-          <mesh castShadow>
-            <boxGeometry args={[0.4, 0.9, 0.4]} />
-            <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        {/* Right Arm - capsule */}
+        <group ref={rightArmRef} position={[0.75, 1.35, 0]}>
+          <mesh castShadow material={bodyMat}>
+            <capsuleGeometry args={[0.15, 0.5, 8, 14]} />
           </mesh>
-          {/* Claws */}
-          <mesh position={[0, -0.6, 0.1]} rotation={[0.3, 0, 0]} castShadow>
-            <coneGeometry args={[0.08, 0.3, 4]} />
-            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          <mesh position={[0, -0.45, 0.05]} castShadow material={bodyMat}>
+            <capsuleGeometry args={[0.12, 0.4, 8, 14]} />
           </mesh>
-          <mesh position={[0.12, -0.55, 0.1]} rotation={[0.3, 0, 0.2]} castShadow>
-            <coneGeometry args={[0.06, 0.25, 4]} />
-            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          <mesh position={[0, -0.75, 0.1]} rotation={[0.4, 0, 0]} castShadow material={hornMat}>
+            <coneGeometry args={[0.05, 0.25, 10]} />
           </mesh>
-          <mesh position={[-0.12, -0.55, 0.1]} rotation={[0.3, 0, -0.2]} castShadow>
-            <coneGeometry args={[0.06, 0.25, 4]} />
-            <meshStandardMaterial color="#1a0a2a" roughness={0.3} />
+          <mesh position={[0.1, -0.72, 0.08]} rotation={[0.4, 0, 0.2]} castShadow material={hornMat}>
+            <coneGeometry args={[0.04, 0.2, 10]} />
+          </mesh>
+          <mesh position={[-0.1, -0.72, 0.08]} rotation={[0.4, 0, -0.2]} castShadow material={hornMat}>
+            <coneGeometry args={[0.04, 0.2, 10]} />
           </mesh>
         </group>
 
-        {/* Legs */}
-        <mesh position={[-0.3, 0, 0]} castShadow>
-          <boxGeometry args={[0.35, 0.7, 0.35]} />
-          <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        {/* Legs - capsules */}
+        <mesh position={[-0.25, 0.15, 0]} castShadow material={bodyMat}>
+          <capsuleGeometry args={[0.14, 0.4, 8, 12]} />
         </mesh>
-        <mesh position={[0.3, 0, 0]} castShadow>
-          <boxGeometry args={[0.35, 0.7, 0.35]} />
-          <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        <mesh position={[0.25, 0.15, 0]} castShadow material={bodyMat}>
+          <capsuleGeometry args={[0.14, 0.4, 8, 12]} />
         </mesh>
-
+        
+        {/* Feet - spheres */}
+        <mesh position={[-0.25, -0.15, 0.05]} castShadow material={bodyMat}>
+          <sphereGeometry args={[0.14, 10, 8]} />
+        </mesh>
+        <mesh position={[0.25, -0.15, 0.05]} castShadow material={bodyMat}>
+          <sphereGeometry args={[0.14, 10, 8]} />
+        </mesh>
       </group>
     </group>
   );
@@ -755,21 +879,42 @@ export default function Game3DPage() {
     <div className="w-full h-screen bg-black relative font-display overflow-hidden">
       <div className="absolute inset-0 z-0">
         <WebGLErrorBoundary onRetry={() => { setWebglError(false); setCanvasKey(k => k + 1); }}>
-          <Canvas key={canvasKey} gl={{ antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }}>
+          <Canvas key={canvasKey} shadows gl={{ antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }}>
             <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
-            <fog attach="fog" args={["#a8c8a8", 15, 60]} />
-            <ambientLight intensity={1.8} />
-            <directionalLight position={[10, 25, 10]} intensity={2.5} color="#fffacd" />
-            <directionalLight position={[-10, 20, -10]} intensity={1.5} color="#ffffff" />
-            <pointLight position={[5, 12, 5]} intensity={2} color="#90ee90" />
-            <pointLight position={[-5, 12, -5]} intensity={2} color="#98fb98" />
-            <hemisphereLight args={["#87ceeb", "#228b22", 1.2]} />
+            <fog attach="fog" args={["#8fb88f", 20, 70]} />
+            
+            {/* Ambient fill light */}
+            <ambientLight intensity={0.4} color="#9db99d" />
+            
+            {/* Main directional sunlight with soft shadows */}
+            <directionalLight 
+              position={[15, 30, 15]} 
+              intensity={2.2} 
+              color="#fff8e0"
+              castShadow
+              shadow-mapSize-width={2048}
+              shadow-mapSize-height={2048}
+              shadow-camera-far={80}
+              shadow-camera-left={-30}
+              shadow-camera-right={30}
+              shadow-camera-top={30}
+              shadow-camera-bottom={-30}
+              shadow-bias={-0.0005}
+            />
+            
+            {/* Fill light from opposite side */}
+            <directionalLight position={[-10, 15, -10]} intensity={0.6} color="#b8d4ff" />
+            
+            {/* Hemisphere light for natural sky/ground bounce */}
+            <hemisphereLight args={["#87ceeb", "#3a6b2a", 0.8]} />
             
             <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
             {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
             
-            <JungleGround />
+            <JungleTerrain />
             <JungleEnvironment />
+            
+            <PostProcessing />
           </Canvas>
         </WebGLErrorBoundary>
       </div>
