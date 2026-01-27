@@ -543,7 +543,7 @@ export default function Game3DPage() {
       if (newHp === 0) {
         setCombatLog(prev => ["Monster Defeated! +50 EXP", ...prev]);
         gainExp(50);
-        setTimeout(() => setEnemyHp(100), 2000);
+        setTimeout(() => setEnemyHp(MONSTER_MAX_HP), 2000);
       }
 
       setTimeout(() => {
@@ -580,7 +580,7 @@ export default function Game3DPage() {
       if (newHp === 0) {
         setCombatLog(prev => ["Monster Defeated! +50 EXP", ...prev]);
         gainExp(50);
-        setTimeout(() => setEnemyHp(100), 2000);
+        setTimeout(() => setEnemyHp(MONSTER_MAX_HP), 2000);
       }
 
       setTimeout(() => {
