@@ -488,6 +488,16 @@ function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPo
   );
 }
 
+function checkWebGLSupport(): boolean {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    return !!gl;
+  } catch (e) {
+    return false;
+  }
+}
+
 export default function Game3DPage() {
   const { player, isLoading, modifyHp, modifyMp, gainExp } = useGame();
   
@@ -500,9 +510,16 @@ export default function Game3DPage() {
   const [showHUD, setShowHUD] = useState(true);
   const [joystick, setJoystick] = useState({ x: 0, y: 0 });
   const [canvasKey, setCanvasKey] = useState(0);
+  const [webglError, setWebglError] = useState(false);
   const playerPosRef = useRef(new THREE.Vector3(0, 0, 2));
   const monsterPosRef = useRef(new THREE.Vector3(0, 0, -5));
   const lastMonsterAttackRef = useRef(0);
+
+  useEffect(() => {
+    if (!checkWebGLSupport()) {
+      setWebglError(true);
+    }
+  }, [canvasKey]);
 
   const unlockedSkill = player?.skills?.find(s => s.unlocked);
 
@@ -633,11 +650,34 @@ export default function Game3DPage() {
     );
   }
 
+  if (webglError) {
+    return (
+      <div className="w-full h-screen bg-black flex flex-col items-center justify-center font-display">
+        <p className="text-2xl text-primary mb-4">3D GRAPHICS UNAVAILABLE</p>
+        <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
+          WebGL context could not be created. This may be due to browser limitations or GPU resources.
+        </p>
+        <Button 
+          onClick={() => {
+            setWebglError(false);
+            setCanvasKey(k => k + 1);
+          }}
+          className="bg-primary/20 border border-primary text-primary hover:bg-primary/30"
+        >
+          <RefreshCw className="mr-2 h-4 w-4" /> Try Again
+        </Button>
+        <a href="/" className="mt-4 text-sm text-primary/60 hover:text-primary underline">
+          Return to Status Page
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-screen bg-black relative font-display overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <WebGLErrorBoundary onRetry={() => setCanvasKey(k => k + 1)}>
-          <Canvas key={canvasKey} shadows gl={{ antialias: false, powerPreference: 'high-performance' }}>
+        <WebGLErrorBoundary onRetry={() => { setWebglError(false); setCanvasKey(k => k + 1); }}>
+          <Canvas key={canvasKey} gl={{ antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }}>
             <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
             <ambientLight intensity={0.3} />
             <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
