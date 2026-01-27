@@ -49,22 +49,57 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode, onRetry: () =>
   }
 }
 
-function Ground() {
-  const texture = useTexture(groundTexture);
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(20, 20);
-  
+function JungleGround() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
       <planeGeometry args={[100, 100]} />
       <meshStandardMaterial 
-        map={texture} 
-        roughness={0.1} 
-        metalness={0.8}
-        emissive={new THREE.Color("#001133")}
-        emissiveIntensity={0.2}
+        color="#2d5a27"
+        roughness={0.9} 
+        metalness={0.1}
       />
     </mesh>
+  );
+}
+
+function Tree({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* Trunk */}
+      <mesh position={[0, 1, 0]} castShadow>
+        <cylinderGeometry args={[0.3, 0.4, 4, 8]} />
+        <meshStandardMaterial color="#4a3728" roughness={0.9} />
+      </mesh>
+      {/* Foliage layers */}
+      <mesh position={[0, 4, 0]} castShadow>
+        <coneGeometry args={[2, 3, 8]} />
+        <meshStandardMaterial color="#1a5c1a" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 5.5, 0]} castShadow>
+        <coneGeometry args={[1.5, 2.5, 8]} />
+        <meshStandardMaterial color="#228b22" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 6.5, 0]} castShadow>
+        <coneGeometry args={[1, 2, 8]} />
+        <meshStandardMaterial color="#2e8b2e" roughness={0.8} />
+      </mesh>
+    </group>
+  );
+}
+
+function JungleEnvironment() {
+  const treePositions: [number, number, number][] = [
+    [-8, 0, -10], [8, 0, -12], [-12, 0, -5], [12, 0, -8],
+    [-10, 0, 5], [10, 0, 8], [-15, 0, -15], [15, 0, -15],
+    [-6, 0, 12], [6, 0, 15], [-18, 0, 0], [18, 0, 2],
+  ];
+  
+  return (
+    <>
+      {treePositions.map((pos, i) => (
+        <Tree key={i} position={pos} />
+      ))}
+    </>
   );
 }
 
@@ -722,18 +757,19 @@ export default function Game3DPage() {
         <WebGLErrorBoundary onRetry={() => { setWebglError(false); setCanvasKey(k => k + 1); }}>
           <Canvas key={canvasKey} gl={{ antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }}>
             <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
-            <ambientLight intensity={1.2} />
-            <directionalLight position={[10, 20, 10]} intensity={2} color="#ffffff" />
-            <directionalLight position={[-10, 15, -10]} intensity={1} color="#ffffff" />
-            <pointLight position={[5, 10, 5]} intensity={3} color="#00ffff" />
-            <pointLight position={[-5, 10, -5]} intensity={2} color="#ff00ff" />
-            <hemisphereLight args={["#ffffff", "#666666", 1]} />
+            <fog attach="fog" args={["#a8c8a8", 15, 60]} />
+            <ambientLight intensity={1.8} />
+            <directionalLight position={[10, 25, 10]} intensity={2.5} color="#fffacd" />
+            <directionalLight position={[-10, 20, -10]} intensity={1.5} color="#ffffff" />
+            <pointLight position={[5, 12, 5]} intensity={2} color="#90ee90" />
+            <pointLight position={[-5, 12, -5]} intensity={2} color="#98fb98" />
+            <hemisphereLight args={["#87ceeb", "#228b22", 1.2]} />
             
             <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
             {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
             
-            <Ground />
-            <Stars radius={50} depth={30} count={1000} factor={3} saturation={0} fade speed={1} />
+            <JungleGround />
+            <JungleEnvironment />
           </Canvas>
         </WebGLErrorBoundary>
       </div>
