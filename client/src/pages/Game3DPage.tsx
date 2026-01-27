@@ -679,9 +679,11 @@ export default function Game3DPage() {
         <WebGLErrorBoundary onRetry={() => { setWebglError(false); setCanvasKey(k => k + 1); }}>
           <Canvas key={canvasKey} gl={{ antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }}>
             <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
-            <ambientLight intensity={0.3} />
-            <pointLight position={[5, 5, 5]} intensity={1} color="#00ffff" />
-            <pointLight position={[-5, 5, -5]} intensity={0.5} color="#ff00ff" />
+            <ambientLight intensity={0.8} />
+            <directionalLight position={[10, 15, 10]} intensity={1.5} color="#ffffff" />
+            <pointLight position={[5, 8, 5]} intensity={2} color="#00ffff" />
+            <pointLight position={[-5, 8, -5]} intensity={1.5} color="#ff00ff" />
+            <hemisphereLight args={["#87ceeb", "#444444", 0.6]} />
             
             <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
             {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
