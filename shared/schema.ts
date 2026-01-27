@@ -1,18 +1,75 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
+export const statsSchema = z.object({
+  strength: z.number(),
+  agility: z.number(),
+  sense: z.number(),
+  vitality: z.number(),
+  intelligence: z.number(),
+});
+
+export type Stats = z.infer<typeof statsSchema>;
+
+export const inventoryItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  rarity: z.string(),
+  equipped: z.boolean().optional(),
+  stats: z.record(z.number()).optional(),
+});
+
+export type InventoryItem = z.infer<typeof inventoryItemSchema>;
+
+export const skillSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  mpCost: z.number(),
+  cooldown: z.number(),
+  level: z.number(),
+  unlocked: z.boolean(),
+});
+
+export type Skill = z.infer<typeof skillSchema>;
+
+export const players = pgTable("players", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  name: text("name").notNull(),
+  level: integer("level").notNull().default(1),
+  job: text("job").notNull().default("NONE"),
+  title: text("title").notNull().default("WOLF SLAYER"),
+  hp: integer("hp").notNull().default(100),
+  maxHp: integer("max_hp").notNull().default(100),
+  mp: integer("mp").notNull().default(10),
+  maxMp: integer("max_mp").notNull().default(10),
+  stats: jsonb("stats").$type<Stats>().notNull().default({
+    strength: 10,
+    agility: 10,
+    sense: 10,
+    vitality: 10,
+    intelligence: 10,
+  }),
+  availablePoints: integer("available_points").notNull().default(3),
+  gold: integer("gold").notNull().default(0),
+  rank: text("rank").notNull().default("E"),
+  exp: integer("exp").notNull().default(0),
+  maxExp: integer("max_exp").notNull().default(100),
+  inventory: jsonb("inventory").$type<InventoryItem[]>().notNull().default([]),
+  skills: jsonb("skills").$type<Skill[]>().notNull().default([]),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertPlayerSchema = createInsertSchema(players).omit({
+  id: true,
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export const updatePlayerSchema = createInsertSchema(players).partial().omit({
+  id: true,
+});
+
+export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
+export type UpdatePlayer = z.infer<typeof updatePlayerSchema>;
+export type Player = typeof players.$inferSelect;
