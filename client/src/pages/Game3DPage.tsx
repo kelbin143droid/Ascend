@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect, useMemo, Component, ErrorInfo, ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Float } from '@react-three/drei';
-import { EffectComposer, Bloom, SSAO, ToneMapping, Vignette } from '@react-three/postprocessing';
-import { BlendFunction, ToneMappingMode } from 'postprocessing';
+import { EffectComposer, Bloom, SSAO, ToneMapping, Vignette, BrightnessContrast, HueSaturation, SMAA } from '@react-three/postprocessing';
+import { BlendFunction, ToneMappingMode, EdgeDetectionMode } from 'postprocessing';
 import * as THREE from 'three';
 import { useGame } from '@/context/GameContext';
 import { Button } from '@/components/ui/button';
@@ -266,22 +266,47 @@ function JungleEnvironment() {
 
 function PostProcessing() {
   return (
-    <EffectComposer multisampling={4}>
+    <EffectComposer multisampling={8} enableNormalPass>
+      {/* SMAA for sharp anti-aliasing without blurring UI elements */}
+      <SMAA edgeDetectionMode={EdgeDetectionMode.COLOR} />
+      
+      {/* Subtle SSAO for depth and grounding */}
       <SSAO 
-        samples={12}
-        radius={0.08}
-        intensity={12}
-        luminanceInfluence={0.6}
-        color={new THREE.Color("#1a1a1a")}
+        samples={16}
+        radius={0.06}
+        intensity={8}
+        luminanceInfluence={0.7}
+        color={new THREE.Color("#1a1a18")}
+        worldDistanceThreshold={30}
+        worldDistanceFalloff={5}
       />
+      
+      {/* Low bloom for glow effects only */}
       <Bloom 
-        intensity={0.2}
-        luminanceThreshold={0.85}
-        luminanceSmoothing={0.6}
+        intensity={0.15}
+        luminanceThreshold={0.9}
+        luminanceSmoothing={0.7}
         mipmapBlur
       />
-      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-      <Vignette offset={0.35} darkness={0.3} blendFunction={BlendFunction.NORMAL} />
+      
+      {/* Color grading - warm jungle tones */}
+      <BrightnessContrast brightness={0.02} contrast={0.08} />
+      <HueSaturation hue={0.02} saturation={0.05} />
+      
+      {/* ACES filmic tone mapping for proper exposure */}
+      <ToneMapping 
+        mode={ToneMappingMode.ACES_FILMIC}
+        resolution={512}
+        whitePoint={5.0}
+        middleGrey={0.6}
+        minLuminance={0.01}
+        maxLuminance={16.0}
+        averageLuminance={1.0}
+        adaptationRate={1.0}
+      />
+      
+      {/* Subtle vignette for cinematic framing */}
+      <Vignette offset={0.4} darkness={0.25} blendFunction={BlendFunction.NORMAL} />
     </EffectComposer>
   );
 }
@@ -958,40 +983,54 @@ export default function Game3DPage() {
     <div className="w-full h-screen bg-black relative font-display overflow-hidden">
       <div className="absolute inset-0 z-0">
         <WebGLErrorBoundary onRetry={() => { setWebglError(false); setCanvasKey(k => k + 1); }}>
-          <Canvas key={canvasKey} shadows gl={{ antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }}>
+          <Canvas 
+              key={canvasKey} 
+              shadows="soft"
+              gl={{ 
+                antialias: true, 
+                powerPreference: 'high-performance', 
+                failIfMajorPerformanceCaveat: false,
+                stencil: false,
+                depth: true,
+                alpha: false,
+              }}
+              dpr={[1, 2]}
+            >
             <PerspectiveCamera makeDefault position={[0, 3, 8]} fov={50} />
-            <fog attach="fog" args={["#9ab89a", 25, 80]} />
+            <fog attach="fog" args={["#a8c8a8", 30, 90]} />
             
-            {/* Ambient fill - slightly desaturated for anime look */}
-            <ambientLight intensity={0.5} color="#b8c8b8" />
+            {/* Ambient sky light - soft fill from above */}
+            <ambientLight intensity={0.4} color="#d0e0d8" />
             
-            {/* Main directional sunlight with soft shadows */}
+            {/* Main directional sun with soft shadows */}
             <directionalLight 
-              position={[12, 25, 12]} 
-              intensity={1.8} 
-              color="#fffaf0"
+              position={[15, 30, 10]} 
+              intensity={2.0} 
+              color="#fff8e8"
               castShadow
               shadow-mapSize-width={2048}
               shadow-mapSize-height={2048}
-              shadow-camera-far={80}
-              shadow-camera-left={-25}
-              shadow-camera-right={25}
-              shadow-camera-top={25}
-              shadow-camera-bottom={-25}
-              shadow-bias={-0.0003}
+              shadow-camera-far={100}
+              shadow-camera-left={-30}
+              shadow-camera-right={30}
+              shadow-camera-top={30}
+              shadow-camera-bottom={-30}
+              shadow-bias={-0.0002}
+              shadow-normalBias={0.02}
+              shadow-radius={4}
             />
             
             {/* Fill light - cool blue from opposite side */}
-            <directionalLight position={[-8, 12, -8]} intensity={0.5} color="#c8d8f0" />
+            <directionalLight position={[-10, 15, -10]} intensity={0.6} color="#b8d0f0" />
             
-            {/* Rim/back light for character readability - subtle cyan */}
-            <directionalLight position={[0, 8, -15]} intensity={0.8} color="#a0e0e8" />
+            {/* Rim/back light for character readability - subtle warm cyan */}
+            <directionalLight position={[0, 10, -18]} intensity={0.7} color="#b0e8e0" />
             
-            {/* Secondary rim light from side */}
-            <pointLight position={[-6, 4, 4]} intensity={0.4} color="#e0e8f0" distance={20} />
+            {/* Secondary rim from side for depth */}
+            <pointLight position={[-8, 5, 5]} intensity={0.35} color="#e8f0e8" distance={25} decay={2} />
             
             {/* Hemisphere light for natural sky/ground bounce */}
-            <hemisphereLight args={["#c0d8e8", "#4a6a3a", 0.6]} />
+            <hemisphereLight args={["#c8e0f0", "#5a7a4a", 0.5]} />
             
             <WarriorCharacter isAttacking={isAttacking} isUsingSkill={isUsingSkill} joystick={joystick} playerPosRef={playerPosRef} />
             {enemyHp > 0 && <Monster hp={enemyHp} maxHp={MONSTER_MAX_HP} isHit={isHit} isMonsterAttacking={isMonsterAttacking} playerPosRef={playerPosRef} monsterPosRef={monsterPosRef} />}
