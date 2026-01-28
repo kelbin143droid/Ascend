@@ -78,10 +78,10 @@ function EnemyModelFallback() {
   );
 }
 
-function LoadedPlayerModel({ isMoving }: { isMoving: boolean }) {
+function LoadedPlayerModel({ isMoving, isSprinting }: { isMoving: boolean, isSprinting: boolean }) {
   const { scene, animations } = useGLTF(PLAYER_MODEL_PATH);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const actionsRef = useRef<{ idle: THREE.AnimationAction | null, walk: THREE.AnimationAction | null }>({ idle: null, walk: null });
+  const actionsRef = useRef<{ idle: THREE.AnimationAction | null, walk: THREE.AnimationAction | null, run: THREE.AnimationAction | null }>({ idle: null, walk: null, run: null });
   const currentActionRef = useRef<THREE.AnimationAction | null>(null);
   
   useEffect(() => {
@@ -109,14 +109,18 @@ function LoadedPlayerModel({ isMoving }: { isMoving: boolean }) {
 
       let idleClip: THREE.AnimationClip | null = null;
       let walkClip: THREE.AnimationClip | null = null;
+      let runClip: THREE.AnimationClip | null = null;
 
       for (const clip of animations) {
         const name = clip.name.toLowerCase();
         if (!idleClip && (name.includes('idle') || name.includes('stand') || name.includes('wait'))) {
           idleClip = clip;
         }
-        if (!walkClip && (name.includes('walk') || name.includes('run') || name.includes('move') || name.includes('locomotion'))) {
+        if (!walkClip && name.includes('walk')) {
           walkClip = clip;
+        }
+        if (!runClip && (name.includes('run') || name.includes('sprint'))) {
+          runClip = clip;
         }
       }
 
@@ -125,8 +129,11 @@ function LoadedPlayerModel({ isMoving }: { isMoving: boolean }) {
       }
       if (!walkClip && animations.length > 1) {
         walkClip = animations[1];
-      } else if (!walkClip) {
-        walkClip = idleClip;
+      }
+      if (!runClip && animations.length > 2) {
+        runClip = animations[2];
+      } else if (!runClip) {
+        runClip = walkClip;
       }
 
       if (idleClip) {
@@ -135,9 +142,13 @@ function LoadedPlayerModel({ isMoving }: { isMoving: boolean }) {
         currentActionRef.current = actionsRef.current.idle;
         console.log('Playing idle animation:', idleClip.name);
       }
-      if (walkClip && walkClip !== idleClip) {
+      if (walkClip) {
         actionsRef.current.walk = mixer.clipAction(walkClip);
         console.log('Walk animation ready:', walkClip.name);
+      }
+      if (runClip && runClip !== walkClip) {
+        actionsRef.current.run = mixer.clipAction(runClip);
+        console.log('Run animation ready:', runClip.name);
       }
     } else {
       console.log('No animations found in player model');
@@ -149,10 +160,17 @@ function LoadedPlayerModel({ isMoving }: { isMoving: boolean }) {
   }, [scene, animations]);
 
   useEffect(() => {
-    const { idle, walk } = actionsRef.current;
+    const { idle, walk, run } = actionsRef.current;
     if (!idle) return;
 
-    const targetAction = isMoving && walk ? walk : idle;
+    let targetAction = idle;
+    if (isMoving) {
+      if (isSprinting && run) {
+        targetAction = run;
+      } else if (walk) {
+        targetAction = walk;
+      }
+    }
     
     if (currentActionRef.current !== targetAction) {
       const prevAction = currentActionRef.current;
@@ -163,7 +181,7 @@ function LoadedPlayerModel({ isMoving }: { isMoving: boolean }) {
         prevAction.fadeOut(0.2);
       }
     }
-  }, [isMoving]);
+  }, [isMoving, isSprinting]);
 
   useFrame((_, delta) => {
     mixerRef.current?.update(delta);
@@ -196,11 +214,11 @@ function LoadedEnemyModel() {
   return <primitive object={scene} scale={1.5} />;
 }
 
-function PlayerModel({ isMoving = false }: { isMoving?: boolean }) {
+function PlayerModel({ isMoving = false, isSprinting = false }: { isMoving?: boolean, isSprinting?: boolean }) {
   return (
     <ModelErrorBoundary fallback={<PlayerModelFallback />}>
       <Suspense fallback={<FallbackPlaceholder color="#00ffff" />}>
-        <LoadedPlayerModel isMoving={isMoving} />
+        <LoadedPlayerModel isMoving={isMoving} isSprinting={isSprinting} />
       </Suspense>
     </ModelErrorBoundary>
   );
@@ -519,6 +537,7 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
   const keys = useRef({ w: false, a: false, s: false, d: false, shift: false });
   const skillProgress = useRef(0);
   const [isMoving, setIsMoving] = useState(false);
+  const [isSprinting, setIsSprinting] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -566,6 +585,7 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
     const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
     const moving = length > 0.1;
     setIsMoving(moving);
+    setIsSprinting(shift && moving);
     
     if (moving) {
       const normX = moveX / length;
@@ -619,7 +639,7 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
 
       {/* GLB Model - replaces primitive geometry */}
       <Suspense fallback={<FallbackPlaceholder color="#00ffff" />}>
-        <PlayerModel isMoving={isMoving} />
+        <PlayerModel isMoving={isMoving} isSprinting={isSprinting} />
       </Suspense>
     </group>
   );
@@ -632,17 +652,16 @@ function Monster({ hp, maxHp, isHit, isMonsterAttacking, playerPosRef, monsterPo
   useFrame((state) => {
     if (!rootRef.current || !groupRef.current) return;
     
-    const direction = new THREE.Vector3().subVectors(playerPosRef.current, rootRef.current.position);
-    const distance = direction.length();
-    
-    if (distance > MONSTER_ATTACK_RANGE) {
-      direction.normalize();
-      rootRef.current.position.x += direction.x * MONSTER_SPEED;
-      rootRef.current.position.z += direction.z * MONSTER_SPEED;
-      
-      const angle = Math.atan2(direction.x, direction.z);
-      rootRef.current.rotation.y = THREE.MathUtils.lerp(rootRef.current.rotation.y, angle, 0.1);
-    }
+    // Enemy chasing disabled for now
+    // const direction = new THREE.Vector3().subVectors(playerPosRef.current, rootRef.current.position);
+    // const distance = direction.length();
+    // if (distance > MONSTER_ATTACK_RANGE) {
+    //   direction.normalize();
+    //   rootRef.current.position.x += direction.x * MONSTER_SPEED;
+    //   rootRef.current.position.z += direction.z * MONSTER_SPEED;
+    //   const angle = Math.atan2(direction.x, direction.z);
+    //   rootRef.current.rotation.y = THREE.MathUtils.lerp(rootRef.current.rotation.y, angle, 0.1);
+    // }
     
     monsterPosRef.current.copy(rootRef.current.position);
     groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
