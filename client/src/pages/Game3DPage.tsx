@@ -123,12 +123,11 @@ function LoadedPlayerModel({ isMoving, isSprinting }: { isMoving: boolean, isSpr
   useEffect(() => {
     if (!actionRef.current) return;
     
-    if (!isMoving) {
-      actionRef.current.timeScale = 0.3;
-    } else if (isSprinting) {
+    if (isSprinting) {
+      actionRef.current.paused = false;
       actionRef.current.timeScale = 1.0;
     } else {
-      actionRef.current.timeScale = 0.5;
+      actionRef.current.paused = true;
     }
   }, [isMoving, isSprinting]);
 
