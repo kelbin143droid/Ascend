@@ -78,8 +78,11 @@ function EnemyModelFallback() {
   );
 }
 
-function LoadedPlayerModel() {
-  const { scene } = useGLTF(PLAYER_MODEL_PATH);
+function LoadedPlayerModel({ isMoving }: { isMoving: boolean }) {
+  const { scene, animations } = useGLTF(PLAYER_MODEL_PATH);
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const actionsRef = useRef<{ idle: THREE.AnimationAction | null, walk: THREE.AnimationAction | null }>({ idle: null, walk: null });
+  const currentActionRef = useRef<THREE.AnimationAction | null>(null);
   
   useEffect(() => {
     scene.traverse((child) => {
@@ -97,7 +100,74 @@ function LoadedPlayerModel() {
         }
       }
     });
-  }, [scene]);
+
+    if (animations.length > 0) {
+      console.log('Player model animations:', animations.map(a => a.name));
+      
+      const mixer = new THREE.AnimationMixer(scene);
+      mixerRef.current = mixer;
+
+      let idleClip: THREE.AnimationClip | null = null;
+      let walkClip: THREE.AnimationClip | null = null;
+
+      for (const clip of animations) {
+        const name = clip.name.toLowerCase();
+        if (!idleClip && (name.includes('idle') || name.includes('stand') || name.includes('wait'))) {
+          idleClip = clip;
+        }
+        if (!walkClip && (name.includes('walk') || name.includes('run') || name.includes('move') || name.includes('locomotion'))) {
+          walkClip = clip;
+        }
+      }
+
+      if (!idleClip && animations.length > 0) {
+        idleClip = animations[0];
+      }
+      if (!walkClip && animations.length > 1) {
+        walkClip = animations[1];
+      } else if (!walkClip) {
+        walkClip = idleClip;
+      }
+
+      if (idleClip) {
+        actionsRef.current.idle = mixer.clipAction(idleClip);
+        actionsRef.current.idle.play();
+        currentActionRef.current = actionsRef.current.idle;
+        console.log('Playing idle animation:', idleClip.name);
+      }
+      if (walkClip && walkClip !== idleClip) {
+        actionsRef.current.walk = mixer.clipAction(walkClip);
+        console.log('Walk animation ready:', walkClip.name);
+      }
+    } else {
+      console.log('No animations found in player model');
+    }
+
+    return () => {
+      mixerRef.current?.stopAllAction();
+    };
+  }, [scene, animations]);
+
+  useEffect(() => {
+    const { idle, walk } = actionsRef.current;
+    if (!idle) return;
+
+    const targetAction = isMoving && walk ? walk : idle;
+    
+    if (currentActionRef.current !== targetAction) {
+      const prevAction = currentActionRef.current;
+      currentActionRef.current = targetAction;
+      
+      targetAction.reset().fadeIn(0.2).play();
+      if (prevAction && prevAction !== targetAction) {
+        prevAction.fadeOut(0.2);
+      }
+    }
+  }, [isMoving]);
+
+  useFrame((_, delta) => {
+    mixerRef.current?.update(delta);
+  });
 
   return <primitive object={scene} scale={1} />;
 }
@@ -126,11 +196,11 @@ function LoadedEnemyModel() {
   return <primitive object={scene} scale={1.5} />;
 }
 
-function PlayerModel() {
+function PlayerModel({ isMoving = false }: { isMoving?: boolean }) {
   return (
     <ModelErrorBoundary fallback={<PlayerModelFallback />}>
       <Suspense fallback={<FallbackPlaceholder color="#00ffff" />}>
-        <LoadedPlayerModel />
+        <LoadedPlayerModel isMoving={isMoving} />
       </Suspense>
     </ModelErrorBoundary>
   );
@@ -448,6 +518,7 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
   const skillAuraRef = useRef<THREE.Mesh>(null);
   const keys = useRef({ w: false, a: false, s: false, d: false, shift: false });
   const skillProgress = useRef(0);
+  const [isMoving, setIsMoving] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -493,9 +564,10 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
     moveZ -= joystick.y;
 
     const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
-    const isMoving = length > 0.1;
+    const moving = length > 0.1;
+    setIsMoving(moving);
     
-    if (isMoving) {
+    if (moving) {
       const normX = moveX / length;
       const normZ = moveZ / length;
       const finalSpeed = speed * Math.min(1, length);
@@ -532,7 +604,7 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
       }
     }
 
-    if (!isMoving && !isAttacking) {
+    if (!moving && !isAttacking) {
       groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.05;
     }
   });
@@ -547,7 +619,7 @@ function WarriorCharacter({ isAttacking, isUsingSkill, joystick, playerPosRef }:
 
       {/* GLB Model - replaces primitive geometry */}
       <Suspense fallback={<FallbackPlaceholder color="#00ffff" />}>
-        <PlayerModel />
+        <PlayerModel isMoving={isMoving} />
       </Suspense>
     </group>
   );
