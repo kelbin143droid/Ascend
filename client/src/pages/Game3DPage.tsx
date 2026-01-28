@@ -81,8 +81,7 @@ function EnemyModelFallback() {
 function LoadedPlayerModel({ isMoving, isSprinting }: { isMoving: boolean, isSprinting: boolean }) {
   const { scene, animations } = useGLTF(PLAYER_MODEL_PATH);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const actionsRef = useRef<{ idle: THREE.AnimationAction | null, walk: THREE.AnimationAction | null, run: THREE.AnimationAction | null }>({ idle: null, walk: null, run: null });
-  const currentActionRef = useRef<THREE.AnimationAction | null>(null);
+  const actionRef = useRef<THREE.AnimationAction | null>(null);
   
   useEffect(() => {
     scene.traverse((child) => {
@@ -107,49 +106,11 @@ function LoadedPlayerModel({ isMoving, isSprinting }: { isMoving: boolean, isSpr
       const mixer = new THREE.AnimationMixer(scene);
       mixerRef.current = mixer;
 
-      let idleClip: THREE.AnimationClip | null = null;
-      let walkClip: THREE.AnimationClip | null = null;
-      let runClip: THREE.AnimationClip | null = null;
-
-      for (const clip of animations) {
-        const name = clip.name.toLowerCase();
-        if (!idleClip && (name.includes('idle') || name.includes('stand') || name.includes('wait'))) {
-          idleClip = clip;
-        }
-        if (!walkClip && name.includes('walk')) {
-          walkClip = clip;
-        }
-        if (!runClip && (name.includes('run') || name.includes('sprint'))) {
-          runClip = clip;
-        }
-      }
-
-      if (!idleClip && animations.length > 0) {
-        idleClip = animations[0];
-      }
-      if (!walkClip && animations.length > 1) {
-        walkClip = animations[1];
-      }
-      if (!runClip && animations.length > 2) {
-        runClip = animations[2];
-      } else if (!runClip) {
-        runClip = walkClip;
-      }
-
-      if (idleClip) {
-        actionsRef.current.idle = mixer.clipAction(idleClip);
-        actionsRef.current.idle.play();
-        currentActionRef.current = actionsRef.current.idle;
-        console.log('Playing idle animation:', idleClip.name);
-      }
-      if (walkClip) {
-        actionsRef.current.walk = mixer.clipAction(walkClip);
-        console.log('Walk animation ready:', walkClip.name);
-      }
-      if (runClip && runClip !== walkClip) {
-        actionsRef.current.run = mixer.clipAction(runClip);
-        console.log('Run animation ready:', runClip.name);
-      }
+      const clip = animations[0];
+      const action = mixer.clipAction(clip);
+      action.play();
+      actionRef.current = action;
+      console.log('Playing animation:', clip.name);
     } else {
       console.log('No animations found in player model');
     }
@@ -160,26 +121,14 @@ function LoadedPlayerModel({ isMoving, isSprinting }: { isMoving: boolean, isSpr
   }, [scene, animations]);
 
   useEffect(() => {
-    const { idle, walk, run } = actionsRef.current;
-    if (!idle) return;
-
-    let targetAction = idle;
-    if (isMoving) {
-      if (isSprinting && run) {
-        targetAction = run;
-      } else if (walk) {
-        targetAction = walk;
-      }
-    }
+    if (!actionRef.current) return;
     
-    if (currentActionRef.current !== targetAction) {
-      const prevAction = currentActionRef.current;
-      currentActionRef.current = targetAction;
-      
-      targetAction.reset().fadeIn(0.2).play();
-      if (prevAction && prevAction !== targetAction) {
-        prevAction.fadeOut(0.2);
-      }
+    if (!isMoving) {
+      actionRef.current.timeScale = 0.3;
+    } else if (isSprinting) {
+      actionRef.current.timeScale = 1.0;
+    } else {
+      actionRef.current.timeScale = 0.5;
     }
   }, [isMoving, isSprinting]);
 
