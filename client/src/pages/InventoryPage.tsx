@@ -8,14 +8,163 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { InventoryItem, Equipment } from "@shared/schema";
 
-const JOB_AVATARS: Record<string, { icon: string; color: string; silhouette: string }> = {
-  NONE: { icon: "🧑", color: "#888888", silhouette: "Hunter" },
-  WARRIOR: { icon: "⚔️", color: "#dc2626", silhouette: "Warrior" },
-  MAGE: { icon: "🔮", color: "#8b5cf6", silhouette: "Mage" },
-  SUPPORT: { icon: "✨", color: "#22c55e", silhouette: "Healer" },
-  ASSASSIN: { icon: "🗡️", color: "#1f2937", silhouette: "Assassin" },
-  RANGER: { icon: "🏹", color: "#16a34a", silhouette: "Ranger" },
-  TANK: { icon: "🛡️", color: "#3b82f6", silhouette: "Tank" },
+const JOB_AVATARS: Record<string, { color: string; name: string }> = {
+  NONE: { color: "#888888", name: "Hunter" },
+  WARRIOR: { color: "#dc2626", name: "Warrior" },
+  MAGE: { color: "#8b5cf6", name: "Mage" },
+  SUPPORT: { color: "#22c55e", name: "Healer" },
+  ASSASSIN: { color: "#1f2937", name: "Assassin" },
+  RANGER: { color: "#16a34a", name: "Ranger" },
+  TANK: { color: "#3b82f6", name: "Tank" },
+};
+
+const CharacterSilhouette = ({ job, color }: { job: string; color: string }) => {
+  const getSilhouette = () => {
+    switch (job.toUpperCase()) {
+      case 'WARRIOR':
+        return (
+          <svg viewBox="0 0 100 140" className="w-full h-full">
+            <defs>
+              <linearGradient id="warriorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="18" rx="14" ry="16" fill="url(#warriorGrad)" />
+            <rect x="35" y="32" width="30" height="45" rx="4" fill="url(#warriorGrad)" />
+            <rect x="20" y="35" width="15" height="35" rx="3" fill="url(#warriorGrad)" transform="rotate(-15, 27, 52)" />
+            <rect x="65" y="35" width="15" height="35" rx="3" fill="url(#warriorGrad)" transform="rotate(15, 73, 52)" />
+            <rect x="38" y="75" width="10" height="40" rx="3" fill="url(#warriorGrad)" />
+            <rect x="52" y="75" width="10" height="40" rx="3" fill="url(#warriorGrad)" />
+            <rect x="8" y="25" width="6" height="55" rx="2" fill={color} />
+            <polygon points="11,20 5,10 17,10" fill={color} />
+            <rect x="80" y="45" width="15" height="25" rx="5" fill={color} opacity="0.8" />
+          </svg>
+        );
+      case 'MAGE':
+        return (
+          <svg viewBox="0 0 100 140" className="w-full h-full">
+            <defs>
+              <linearGradient id="mageGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="18" rx="12" ry="14" fill="url(#mageGrad)" />
+            <polygon points="50,0 38,22 62,22" fill={color} />
+            <path d="M30,32 Q50,25 70,32 L75,90 Q50,100 25,90 Z" fill="url(#mageGrad)" />
+            <rect x="40" y="88" width="8" height="35" rx="2" fill="url(#mageGrad)" />
+            <rect x="52" y="88" width="8" height="35" rx="2" fill="url(#mageGrad)" />
+            <rect x="75" y="30" width="5" height="60" rx="2" fill={color} />
+            <circle cx="77" cy="25" r="8" fill={color} opacity="0.6" />
+            <circle cx="77" cy="25" r="4" fill="white" opacity="0.8" />
+          </svg>
+        );
+      case 'ASSASSIN':
+        return (
+          <svg viewBox="0 0 100 140" className="w-full h-full">
+            <defs>
+              <linearGradient id="assassinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#00ffff" stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="16" rx="11" ry="13" fill="url(#assassinGrad)" />
+            <rect x="40" y="8" width="20" height="8" rx="2" fill={color} />
+            <path d="M35,28 L65,28 L68,75 L32,75 Z" fill="url(#assassinGrad)" />
+            <rect x="22" y="32" width="12" height="30" rx="3" fill="url(#assassinGrad)" transform="rotate(-10, 28, 47)" />
+            <rect x="66" y="32" width="12" height="30" rx="3" fill="url(#assassinGrad)" transform="rotate(10, 72, 47)" />
+            <rect x="38" y="73" width="9" height="42" rx="2" fill="url(#assassinGrad)" />
+            <rect x="53" y="73" width="9" height="42" rx="2" fill="url(#assassinGrad)" />
+            <rect x="10" y="50" width="4" height="30" rx="1" fill="#00ffff" />
+            <polygon points="12,48 8,40 16,40" fill="#00ffff" />
+            <rect x="86" y="50" width="4" height="30" rx="1" fill="#00ffff" />
+            <polygon points="88,48 84,40 92,40" fill="#00ffff" />
+          </svg>
+        );
+      case 'RANGER':
+        return (
+          <svg viewBox="0 0 100 140" className="w-full h-full">
+            <defs>
+              <linearGradient id="rangerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="17" rx="11" ry="13" fill="url(#rangerGrad)" />
+            <path d="M50,5 Q55,0 60,8 L55,12 Z" fill={color} />
+            <path d="M33,30 L67,30 L70,78 L30,78 Z" fill="url(#rangerGrad)" />
+            <rect x="20" y="35" width="12" height="32" rx="3" fill="url(#rangerGrad)" transform="rotate(-8, 26, 51)" />
+            <rect x="68" y="35" width="12" height="32" rx="3" fill="url(#rangerGrad)" transform="rotate(8, 74, 51)" />
+            <rect x="37" y="76" width="10" height="40" rx="2" fill="url(#rangerGrad)" />
+            <rect x="53" y="76" width="10" height="40" rx="2" fill="url(#rangerGrad)" />
+            <path d="M85,20 Q95,50 85,80 L88,50 Z" fill={color} stroke={color} strokeWidth="2" />
+            <line x1="85" y1="50" x2="70" y2="50" stroke={color} strokeWidth="2" />
+            <polygon points="68,50 72,47 72,53" fill={color} />
+          </svg>
+        );
+      case 'TANK':
+        return (
+          <svg viewBox="0 0 100 140" className="w-full h-full">
+            <defs>
+              <linearGradient id="tankGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="18" rx="13" ry="15" fill="url(#tankGrad)" />
+            <rect x="37" y="5" width="26" height="18" rx="3" fill={color} opacity="0.8" />
+            <path d="M25,32 L75,32 L78,82 L22,82 Z" fill="url(#tankGrad)" />
+            <rect x="10" y="35" width="18" height="38" rx="4" fill="url(#tankGrad)" />
+            <rect x="72" y="35" width="18" height="38" rx="4" fill="url(#tankGrad)" />
+            <rect x="32" y="80" width="14" height="38" rx="3" fill="url(#tankGrad)" />
+            <rect x="54" y="80" width="14" height="38" rx="3" fill="url(#tankGrad)" />
+            <ellipse cx="15" cy="55" rx="12" ry="18" fill={color} opacity="0.7" />
+            <ellipse cx="15" cy="55" rx="8" ry="12" fill="url(#tankGrad)" />
+          </svg>
+        );
+      case 'SUPPORT':
+        return (
+          <svg viewBox="0 0 100 140" className="w-full h-full">
+            <defs>
+              <linearGradient id="supportGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="17" rx="12" ry="14" fill="url(#supportGrad)" />
+            <circle cx="50" cy="8" r="4" fill={color} opacity="0.6" />
+            <path d="M30,30 Q50,25 70,30 L73,85 Q50,95 27,85 Z" fill="url(#supportGrad)" />
+            <rect x="38" y="83" width="9" height="38" rx="2" fill="url(#supportGrad)" />
+            <rect x="53" y="83" width="9" height="38" rx="2" fill="url(#supportGrad)" />
+            <rect x="78" y="25" width="4" height="50" rx="2" fill={color} />
+            <rect x="72" y="30" width="16" height="4" rx="1" fill={color} />
+            <circle cx="25" cy="45" r="6" fill={color} opacity="0.5" />
+            <circle cx="20" cy="60" r="4" fill={color} opacity="0.4" />
+            <circle cx="28" cy="70" r="3" fill={color} opacity="0.3" />
+          </svg>
+        );
+      default:
+        return (
+          <svg viewBox="0 0 100 140" className="w-full h-full">
+            <defs>
+              <linearGradient id="defaultGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+            <ellipse cx="50" cy="18" rx="13" ry="15" fill="url(#defaultGrad)" />
+            <rect x="35" y="32" width="30" height="45" rx="4" fill="url(#defaultGrad)" />
+            <rect x="22" y="35" width="13" height="32" rx="3" fill="url(#defaultGrad)" />
+            <rect x="65" y="35" width="13" height="32" rx="3" fill="url(#defaultGrad)" />
+            <rect x="38" y="75" width="10" height="40" rx="3" fill="url(#defaultGrad)" />
+            <rect x="52" y="75" width="10" height="40" rx="3" fill="url(#defaultGrad)" />
+          </svg>
+        );
+    }
+  };
+  
+  return getSilhouette();
 };
 
 const getIconForType = (type: string) => {
@@ -86,7 +235,8 @@ export default function InventoryPage() {
     };
   }, [items, equipment]);
 
-  const jobAvatar = JOB_AVATARS[player?.job?.toUpperCase() || "NONE"] || JOB_AVATARS.NONE;
+  const jobKey = player?.job?.toUpperCase() || "NONE";
+  const jobAvatar = JOB_AVATARS[jobKey] || JOB_AVATARS.NONE;
 
   const handleEquip = (item: InventoryItem) => {
     if (!player) return;
@@ -145,18 +295,21 @@ export default function InventoryPage() {
           <div className="system-panel p-4 rounded-sm col-span-1">
             <h3 className="text-xs font-bold text-primary/70 mb-3 tracking-wider text-center">AVATAR</h3>
             
-            <div className="relative mx-auto w-32 h-40 mb-4">
+            <div className="relative mx-auto w-32 h-44 mb-4">
               <div 
-                className="absolute inset-0 rounded-lg border-2 flex flex-col items-center justify-center"
+                className="absolute inset-0 rounded-lg border-2 overflow-hidden"
                 style={{ 
                   borderColor: jobAvatar.color,
-                  background: `linear-gradient(180deg, ${jobAvatar.color}20 0%, transparent 100%)`,
-                  boxShadow: `0 0 20px ${jobAvatar.color}40`
+                  background: `linear-gradient(180deg, ${jobAvatar.color}15 0%, transparent 50%, ${jobAvatar.color}10 100%)`,
+                  boxShadow: `0 0 25px ${jobAvatar.color}50, inset 0 0 30px ${jobAvatar.color}20`
                 }}
               >
-                <div className="text-5xl mb-2">{jobAvatar.icon}</div>
-                <div className="text-xs font-bold" style={{ color: jobAvatar.color }}>{jobAvatar.silhouette}</div>
-                <div className="text-[10px] text-muted-foreground">{player.job}</div>
+                <div className="absolute inset-2 top-1">
+                  <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
+                </div>
+                <div className="absolute bottom-1 left-0 right-0 text-center">
+                  <div className="text-xs font-bold tracking-wider" style={{ color: jobAvatar.color, textShadow: `0 0 10px ${jobAvatar.color}` }}>{jobAvatar.name}</div>
+                </div>
               </div>
               
               <div 
