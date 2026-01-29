@@ -23,7 +23,7 @@ const CharacterSilhouette = ({ job, color }: { job: string; color: string }) => 
     switch (job.toUpperCase()) {
       case 'WARRIOR':
         return (
-          <svg viewBox="0 0 100 140" className="w-full h-full">
+          <svg viewBox="0 0 100 130" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
             <defs>
               <linearGradient id="warriorBody" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#4a3728" />
@@ -44,35 +44,34 @@ const CharacterSilhouette = ({ job, color }: { job: string; color: string }) => 
                 <stop offset="100%" stopColor="#a0a0a0" />
               </linearGradient>
             </defs>
-            <ellipse cx="50" cy="20" rx="12" ry="14" fill="url(#warriorSkin)" />
-            <ellipse cx="46" cy="18" rx="2" ry="2" fill="#3d2314" />
-            <ellipse cx="54" cy="18" rx="2" ry="2" fill="#3d2314" />
-            <path d="M47,23 Q50,26 53,23" stroke="#3d2314" strokeWidth="1" fill="none" />
-            <rect x="38" y="10" width="24" height="8" rx="2" fill="#5a4a3a" />
-            <polygon points="50,6 44,14 56,14" fill="#5a4a3a" />
-            <path d="M32,34 L68,34 L72,82 L28,82 Z" fill="url(#warriorArmor)" />
-            <rect x="40" y="36" width="20" height="8" rx="1" fill="#666" />
-            <rect x="38" y="48" width="24" height="3" fill="#777" />
-            <rect x="38" y="55" width="24" height="3" fill="#777" />
-            <rect x="38" y="62" width="24" height="3" fill="#777" />
-            <ellipse cx="50" cy="42" rx="6" ry="6" fill={color} opacity="0.8" />
-            <path d="M28,36 L32,34 L30,70 L22,68 Z" fill="url(#warriorArmor)" />
-            <ellipse cx="25" cy="40" rx="6" ry="5" fill="#666" />
-            <path d="M68,36 L72,34 L78,68 L70,70 Z" fill="url(#warriorArmor)" />
-            <ellipse cx="75" cy="40" rx="6" ry="5" fill="#666" />
-            <ellipse cx="20" cy="72" rx="5" ry="6" fill="url(#warriorSkin)" />
-            <ellipse cx="80" cy="72" rx="5" ry="6" fill="url(#warriorSkin)" />
-            <rect x="34" y="80" width="13" height="38" rx="3" fill="url(#warriorBody)" />
-            <rect x="53" y="80" width="13" height="38" rx="3" fill="url(#warriorBody)" />
-            <rect x="32" y="114" width="17" height="8" rx="2" fill="#3d3d3d" />
-            <rect x="51" y="114" width="17" height="8" rx="2" fill="#3d3d3d" />
-            <rect x="6" y="30" width="5" height="50" rx="1" fill="url(#swordBlade)" />
-            <polygon points="8.5,25 4,32 13,32" fill="url(#swordBlade)" />
-            <rect x="4" y="78" width="9" height="8" rx="2" fill="#8b6914" />
-            <rect x="6" y="84" width="5" height="12" rx="1" fill="#5a4a3a" />
-            <ellipse cx="88" cy="55" rx="10" ry="14" fill="#666" stroke="#888" strokeWidth="2" />
-            <ellipse cx="88" cy="55" rx="6" ry="10" fill="#555" />
-            <circle cx="88" cy="55" r="3" fill={color} />
+            <ellipse cx="50" cy="18" rx="11" ry="12" fill="url(#warriorSkin)" />
+            <ellipse cx="46" cy="16" rx="2" ry="2" fill="#3d2314" />
+            <ellipse cx="54" cy="16" rx="2" ry="2" fill="#3d2314" />
+            <path d="M47,21 Q50,24 53,21" stroke="#3d2314" strokeWidth="1" fill="none" />
+            <rect x="40" y="8" width="20" height="7" rx="2" fill="#5a4a3a" />
+            <path d="M35,30 L65,30 L68,75 L32,75 Z" fill="url(#warriorArmor)" />
+            <rect x="42" y="32" width="16" height="6" rx="1" fill="#666" />
+            <rect x="40" y="42" width="20" height="2" fill="#777" />
+            <rect x="40" y="48" width="20" height="2" fill="#777" />
+            <rect x="40" y="54" width="20" height="2" fill="#777" />
+            <ellipse cx="50" cy="38" rx="5" ry="5" fill={color} opacity="0.8" />
+            <path d="M32,32 L35,30 L33,62 L26,60 Z" fill="url(#warriorArmor)" />
+            <ellipse cx="28" cy="35" rx="5" ry="4" fill="#666" />
+            <path d="M65,32 L68,30 L74,60 L67,62 Z" fill="url(#warriorArmor)" />
+            <ellipse cx="72" cy="35" rx="5" ry="4" fill="#666" />
+            <ellipse cx="24" cy="64" rx="4" ry="5" fill="url(#warriorSkin)" />
+            <ellipse cx="76" cy="64" rx="4" ry="5" fill="url(#warriorSkin)" />
+            <rect x="37" y="73" width="11" height="35" rx="3" fill="url(#warriorBody)" />
+            <rect x="52" y="73" width="11" height="35" rx="3" fill="url(#warriorBody)" />
+            <rect x="35" y="105" width="14" height="7" rx="2" fill="#3d3d3d" />
+            <rect x="51" y="105" width="14" height="7" rx="2" fill="#3d3d3d" />
+            <rect x="18" y="30" width="4" height="40" rx="1" fill="url(#swordBlade)" />
+            <polygon points="20,26 16,32 24,32" fill="url(#swordBlade)" />
+            <rect x="16" y="68" width="8" height="6" rx="2" fill="#8b6914" />
+            <rect x="18" y="73" width="4" height="8" rx="1" fill="#5a4a3a" />
+            <ellipse cx="82" cy="50" rx="8" ry="12" fill="#666" stroke="#888" strokeWidth="2" />
+            <ellipse cx="82" cy="50" rx="5" ry="8" fill="#555" />
+            <circle cx="82" cy="50" r="2" fill={color} />
           </svg>
         );
       case 'MAGE':
@@ -329,22 +328,20 @@ export default function InventoryPage() {
           <div className="system-panel p-4 rounded-sm col-span-1">
             <h3 className="text-xs font-bold text-primary/70 mb-3 tracking-wider text-center">AVATAR</h3>
             
-            <div className="relative mx-auto w-36 h-48 mb-4">
+            <div className="relative mx-auto w-28 h-36 mb-3">
               <div 
-                className="absolute inset-0 rounded-lg border-2 overflow-hidden flex flex-col"
+                className="w-full h-full rounded-lg border-2 overflow-hidden flex flex-col"
                 style={{ 
                   borderColor: jobAvatar.color,
                   background: `linear-gradient(180deg, ${jobAvatar.color}15 0%, transparent 50%, ${jobAvatar.color}10 100%)`,
                   boxShadow: `0 0 25px ${jobAvatar.color}50, inset 0 0 30px ${jobAvatar.color}20`
                 }}
               >
-                <div className="flex-1 flex items-center justify-center px-4 py-2">
-                  <div className="w-24 h-32">
-                    <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
-                  </div>
+                <div className="flex-1 flex items-center justify-center p-1">
+                  <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
                 </div>
-                <div className="pb-2 text-center">
-                  <div className="text-xs font-bold tracking-wider" style={{ color: jobAvatar.color, textShadow: `0 0 10px ${jobAvatar.color}` }}>{jobAvatar.name}</div>
+                <div className="pb-1 text-center">
+                  <div className="text-[10px] font-bold tracking-wider" style={{ color: jobAvatar.color, textShadow: `0 0 10px ${jobAvatar.color}` }}>{jobAvatar.name}</div>
                 </div>
               </div>
               
