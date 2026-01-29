@@ -77,7 +77,7 @@ export default function StatusPage() {
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
               <span className="text-sm font-bold text-primary tracking-wide">{systemMessage}</span>
-              <button onClick={clearSystemMessage} className="text-primary/60 hover:text-primary ml-2">
+              <button data-testid="button-dismiss-message" onClick={clearSystemMessage} className="text-primary/60 hover:text-primary ml-2">
                 <X size={14} />
               </button>
             </div>

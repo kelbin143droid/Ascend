@@ -38,6 +38,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem(PLAYER_STORAGE_KEY);
   });
   const [systemMessage, setSystemMessage] = useState<string | null>(null);
+  const messageTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  const showSystemMessage = React.useCallback((message: string) => {
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current);
+    }
+    setSystemMessage(message);
+    messageTimeoutRef.current = setTimeout(() => setSystemMessage(null), 4000);
+  }, []);
 
   const { data: player, isLoading } = useQuery<PlayerWithDerived>({
     queryKey: ["/api/player", playerId],
@@ -118,8 +127,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/player", playerId], data);
       if (data.systemMessage) {
-        setSystemMessage(data.systemMessage);
-        setTimeout(() => setSystemMessage(null), 4000);
+        showSystemMessage(data.systemMessage);
       }
     },
   });
@@ -133,8 +141,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/player", playerId], data);
       if (data.systemMessage) {
-        setSystemMessage(data.systemMessage);
-        setTimeout(() => setSystemMessage(null), 4000);
+        showSystemMessage(data.systemMessage);
       }
     },
   });

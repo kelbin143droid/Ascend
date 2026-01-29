@@ -43,7 +43,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: parsed.error.errors });
       }
       const player = await storage.createPlayer(parsed.data);
-      res.status(201).json(player);
+      res.status(201).json(attachDerivedStats(player));
     } catch (error) {
       res.status(500).json({ error: "Failed to create player" });
     }
@@ -59,7 +59,7 @@ export async function registerRoutes(
       if (!player) {
         return res.status(404).json({ error: "Player not found" });
       }
-      res.json(player);
+      res.json(attachDerivedStats(player));
     } catch (error) {
       res.status(500).json({ error: "Failed to update player" });
     }
@@ -140,7 +140,7 @@ export async function registerRoutes(
       if (!player) {
         return res.status(404).json({ error: "Player not found" });
       }
-      res.json(player);
+      res.json(attachDerivedStats(player));
     } catch (error) {
       res.status(500).json({ error: "Failed to modify hp" });
     }
@@ -226,7 +226,10 @@ export async function registerRoutes(
       
       const baseXP = 10;
       const scaledXP = calculateXP({ baseXP, stats: currentPlayer.stats });
-      const player = await storage.gainExp(req.params.id, scaledXP);
+      await storage.gainExp(req.params.id, scaledXP);
+      
+      // Re-fetch to get updated HP and XP
+      const player = await storage.getPlayer(req.params.id);
       
       const message = currentPlayer.hp < currentPlayer.maxHp * 0.3
         ? `Recovery check-in! HP restored. Vitality low → stamina penalty was applied.`
