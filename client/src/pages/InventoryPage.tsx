@@ -25,20 +25,54 @@ const CharacterSilhouette = ({ job, color }: { job: string; color: string }) => 
         return (
           <svg viewBox="0 0 100 140" className="w-full h-full">
             <defs>
-              <linearGradient id="warriorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
+              <linearGradient id="warriorBody" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#4a3728" />
+                <stop offset="100%" stopColor="#2d1f15" />
+              </linearGradient>
+              <linearGradient id="warriorArmor" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#8b8b8b" />
+                <stop offset="50%" stopColor="#5a5a5a" />
+                <stop offset="100%" stopColor="#3d3d3d" />
+              </linearGradient>
+              <linearGradient id="warriorSkin" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#e8c4a0" />
+                <stop offset="100%" stopColor="#c9a882" />
+              </linearGradient>
+              <linearGradient id="swordBlade" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#c0c0c0" />
+                <stop offset="50%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#a0a0a0" />
               </linearGradient>
             </defs>
-            <ellipse cx="50" cy="18" rx="14" ry="16" fill="url(#warriorGrad)" />
-            <rect x="35" y="32" width="30" height="45" rx="4" fill="url(#warriorGrad)" />
-            <rect x="20" y="35" width="15" height="35" rx="3" fill="url(#warriorGrad)" transform="rotate(-15, 27, 52)" />
-            <rect x="65" y="35" width="15" height="35" rx="3" fill="url(#warriorGrad)" transform="rotate(15, 73, 52)" />
-            <rect x="38" y="75" width="10" height="40" rx="3" fill="url(#warriorGrad)" />
-            <rect x="52" y="75" width="10" height="40" rx="3" fill="url(#warriorGrad)" />
-            <rect x="8" y="25" width="6" height="55" rx="2" fill={color} />
-            <polygon points="11,20 5,10 17,10" fill={color} />
-            <rect x="80" y="45" width="15" height="25" rx="5" fill={color} opacity="0.8" />
+            <ellipse cx="50" cy="20" rx="12" ry="14" fill="url(#warriorSkin)" />
+            <ellipse cx="46" cy="18" rx="2" ry="2" fill="#3d2314" />
+            <ellipse cx="54" cy="18" rx="2" ry="2" fill="#3d2314" />
+            <path d="M47,23 Q50,26 53,23" stroke="#3d2314" strokeWidth="1" fill="none" />
+            <rect x="38" y="10" width="24" height="8" rx="2" fill="#5a4a3a" />
+            <polygon points="50,6 44,14 56,14" fill="#5a4a3a" />
+            <path d="M32,34 L68,34 L72,82 L28,82 Z" fill="url(#warriorArmor)" />
+            <rect x="40" y="36" width="20" height="8" rx="1" fill="#666" />
+            <rect x="38" y="48" width="24" height="3" fill="#777" />
+            <rect x="38" y="55" width="24" height="3" fill="#777" />
+            <rect x="38" y="62" width="24" height="3" fill="#777" />
+            <ellipse cx="50" cy="42" rx="6" ry="6" fill={color} opacity="0.8" />
+            <path d="M28,36 L32,34 L30,70 L22,68 Z" fill="url(#warriorArmor)" />
+            <ellipse cx="25" cy="40" rx="6" ry="5" fill="#666" />
+            <path d="M68,36 L72,34 L78,68 L70,70 Z" fill="url(#warriorArmor)" />
+            <ellipse cx="75" cy="40" rx="6" ry="5" fill="#666" />
+            <ellipse cx="20" cy="72" rx="5" ry="6" fill="url(#warriorSkin)" />
+            <ellipse cx="80" cy="72" rx="5" ry="6" fill="url(#warriorSkin)" />
+            <rect x="34" y="80" width="13" height="38" rx="3" fill="url(#warriorBody)" />
+            <rect x="53" y="80" width="13" height="38" rx="3" fill="url(#warriorBody)" />
+            <rect x="32" y="114" width="17" height="8" rx="2" fill="#3d3d3d" />
+            <rect x="51" y="114" width="17" height="8" rx="2" fill="#3d3d3d" />
+            <rect x="6" y="30" width="5" height="50" rx="1" fill="url(#swordBlade)" />
+            <polygon points="8.5,25 4,32 13,32" fill="url(#swordBlade)" />
+            <rect x="4" y="78" width="9" height="8" rx="2" fill="#8b6914" />
+            <rect x="6" y="84" width="5" height="12" rx="1" fill="#5a4a3a" />
+            <ellipse cx="88" cy="55" rx="10" ry="14" fill="#666" stroke="#888" strokeWidth="2" />
+            <ellipse cx="88" cy="55" rx="6" ry="10" fill="#555" />
+            <circle cx="88" cy="55" r="3" fill={color} />
           </svg>
         );
       case 'MAGE':
@@ -304,7 +338,7 @@ export default function InventoryPage() {
                   boxShadow: `0 0 25px ${jobAvatar.color}50, inset 0 0 30px ${jobAvatar.color}20`
                 }}
               >
-                <div className="absolute inset-2 top-1">
+                <div className="absolute inset-0 flex items-center justify-center p-2 pb-6">
                   <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
                 </div>
                 <div className="absolute bottom-1 left-0 right-0 text-center">
