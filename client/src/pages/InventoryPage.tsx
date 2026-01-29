@@ -329,19 +329,21 @@ export default function InventoryPage() {
           <div className="system-panel p-4 rounded-sm col-span-1">
             <h3 className="text-xs font-bold text-primary/70 mb-3 tracking-wider text-center">AVATAR</h3>
             
-            <div className="relative mx-auto w-32 h-44 mb-4">
+            <div className="relative mx-auto w-36 h-48 mb-4">
               <div 
-                className="absolute inset-0 rounded-lg border-2 overflow-hidden"
+                className="absolute inset-0 rounded-lg border-2 overflow-hidden flex flex-col"
                 style={{ 
                   borderColor: jobAvatar.color,
                   background: `linear-gradient(180deg, ${jobAvatar.color}15 0%, transparent 50%, ${jobAvatar.color}10 100%)`,
                   boxShadow: `0 0 25px ${jobAvatar.color}50, inset 0 0 30px ${jobAvatar.color}20`
                 }}
               >
-                <div className="absolute inset-0 flex items-center justify-center p-2 pb-6">
-                  <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
+                <div className="flex-1 flex items-center justify-center px-4 py-2">
+                  <div className="w-24 h-32">
+                    <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
+                  </div>
                 </div>
-                <div className="absolute bottom-1 left-0 right-0 text-center">
+                <div className="pb-2 text-center">
                   <div className="text-xs font-bold tracking-wider" style={{ color: jobAvatar.color, textShadow: `0 0 10px ${jobAvatar.color}` }}>{jobAvatar.name}</div>
                 </div>
               </div>
