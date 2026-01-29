@@ -3,15 +3,29 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Player, Stats } from "@shared/schema";
 
+interface DerivedStats {
+  xpMultiplier: number;
+  staminaMax: number;
+  streakForgiveness: number;
+  powerRating: number;
+}
+
+interface PlayerWithDerived extends Player {
+  derived?: DerivedStats;
+  systemMessage?: string;
+}
+
 interface GameContextType {
-  player: Player | null;
+  player: PlayerWithDerived | null;
   isLoading: boolean;
+  systemMessage: string | null;
   addStat: (stat: keyof Stats) => void;
   gainExp: (amount: number) => void;
   modifyHp: (amount: number) => void;
   modifyMp: (amount: number) => void;
   levelUp: () => void;
   updatePlayer: (updates: Partial<Player>) => void;
+  clearSystemMessage: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -23,8 +37,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [playerId, setPlayerId] = useState<string | null>(() => {
     return localStorage.getItem(PLAYER_STORAGE_KEY);
   });
+  const [systemMessage, setSystemMessage] = useState<string | null>(null);
 
-  const { data: player, isLoading } = useQuery<Player>({
+  const { data: player, isLoading } = useQuery<PlayerWithDerived>({
     queryKey: ["/api/player", playerId],
     queryFn: async () => {
       if (!playerId) throw new Error("No player ID");
@@ -80,10 +95,32 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     mutationFn: async (stat: keyof Stats) => {
       if (!playerId) throw new Error("No player");
       const res = await apiRequest("POST", `/api/player/${playerId}/add-stat`, { stat });
-      return res.json();
+      return res.json() as Promise<PlayerWithDerived>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+    onMutate: async (stat: keyof Stats) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/player", playerId] });
+      const previousPlayer = queryClient.getQueryData<PlayerWithDerived>(["/api/player", playerId]);
+      
+      if (previousPlayer && previousPlayer.availablePoints > 0) {
+        queryClient.setQueryData<PlayerWithDerived>(["/api/player", playerId], {
+          ...previousPlayer,
+          stats: { ...previousPlayer.stats, [stat]: previousPlayer.stats[stat] + 1 },
+          availablePoints: previousPlayer.availablePoints - 1,
+        });
+      }
+      return { previousPlayer };
+    },
+    onError: (_err, _stat, context) => {
+      if (context?.previousPlayer) {
+        queryClient.setQueryData(["/api/player", playerId], context.previousPlayer);
+      }
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/player", playerId], data);
+      if (data.systemMessage) {
+        setSystemMessage(data.systemMessage);
+        setTimeout(() => setSystemMessage(null), 4000);
+      }
     },
   });
 
@@ -91,10 +128,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     mutationFn: async (amount: number) => {
       if (!playerId) throw new Error("No player");
       const res = await apiRequest("POST", `/api/player/${playerId}/gain-exp`, { amount });
-      return res.json();
+      return res.json() as Promise<PlayerWithDerived>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/player", playerId], data);
+      if (data.systemMessage) {
+        setSystemMessage(data.systemMessage);
+        setTimeout(() => setSystemMessage(null), 4000);
+      }
     },
   });
 
@@ -155,16 +196,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     updatePlayerMutation.mutate(updates);
   }, [updatePlayerMutation]);
 
+  const clearSystemMessage = useCallback(() => {
+    setSystemMessage(null);
+  }, []);
+
   return (
     <GameContext.Provider value={{ 
       player: player || null, 
       isLoading: isLoading || createPlayerMutation.isPending,
+      systemMessage,
       addStat, 
       gainExp, 
       modifyHp, 
       modifyMp, 
       levelUp,
-      updatePlayer
+      updatePlayer,
+      clearSystemMessage
     }}>
       {children}
     </GameContext.Provider>

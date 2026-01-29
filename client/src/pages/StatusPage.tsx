@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { StatRow } from "@/components/game/StatRow";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Pencil } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { jobsByRank, titlesByRank, getSkillsForClass } from "@/lib/classData";
 
 export default function StatusPage() {
-  const { player, isLoading, addStat, updatePlayer } = useGame();
+  const { player, isLoading, addStat, updatePlayer, systemMessage, clearSystemMessage } = useGame();
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
 
@@ -65,6 +65,26 @@ export default function StatusPage() {
 
   return (
     <SystemLayout>
+      {/* System Message Toast */}
+      <AnimatePresence>
+        {systemMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -50, x: "-50%" }}
+            className="fixed top-4 left-1/2 z-50 bg-gradient-to-r from-primary/20 via-primary/30 to-primary/20 border border-primary/50 px-6 py-3 rounded-sm shadow-[0_0_20px_rgba(0,240,255,0.3)]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+              <span className="text-sm font-bold text-primary tracking-wide">{systemMessage}</span>
+              <button onClick={clearSystemMessage} className="text-primary/60 hover:text-primary ml-2">
+                <X size={14} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div 
         variants={container}
         initial="hidden"
