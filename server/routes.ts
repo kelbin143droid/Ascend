@@ -277,5 +277,33 @@ export async function registerRoutes(
     }
   });
 
+  // Initialize starter items if inventory is empty
+  app.post("/api/player/:id/init-inventory", async (req, res) => {
+    try {
+      const currentPlayer = await storage.getPlayer(req.params.id);
+      if (!currentPlayer) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      
+      if (currentPlayer.inventory && currentPlayer.inventory.length > 0) {
+        return res.json(attachDerivedStats(currentPlayer));
+      }
+      
+      const starterItems = [
+        { id: "sword_1", name: "Iron Sword", type: "weapon", rarity: "E", icon: "⚔️", description: "A basic iron sword", stats: { attack: 5 } },
+        { id: "armor_1", name: "Leather Armor", type: "armor", rarity: "E", icon: "🥋", description: "Basic leather protection", stats: { defense: 3 } },
+        { id: "ring_1", name: "Copper Ring", type: "accessory", rarity: "E", icon: "💍", description: "A simple copper ring", stats: { luck: 1 } },
+        { id: "sword_2", name: "Steel Blade", type: "weapon", rarity: "D", icon: "🗡️", description: "A sharp steel blade", stats: { attack: 10 } },
+        { id: "armor_2", name: "Chain Mail", type: "armor", rarity: "D", icon: "🛡️", description: "Linked chain protection", stats: { defense: 7 } },
+        { id: "amulet_1", name: "Wolf Fang Amulet", type: "accessory", rarity: "C", icon: "🐺", description: "Grants the power of wolves", stats: { attack: 3, speed: 5 } },
+      ];
+      
+      const player = await storage.updatePlayer(req.params.id, { inventory: starterItems as any });
+      res.json(attachDerivedStats(player!));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to initialize inventory" });
+    }
+  });
+
   return httpServer;
 }

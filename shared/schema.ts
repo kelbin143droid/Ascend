@@ -15,13 +15,23 @@ export type Stats = z.infer<typeof statsSchema>;
 export const inventoryItemSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
-  rarity: z.string(),
+  type: z.enum(["weapon", "armor", "accessory", "consumable"]),
+  rarity: z.enum(["E", "D", "C", "B", "A", "S"]),
   equipped: z.boolean().optional(),
   stats: z.record(z.number()).optional(),
+  icon: z.string().optional(),
+  description: z.string().optional(),
 });
 
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
+
+export const equipmentSchema = z.object({
+  weapon: z.string().nullable(),
+  armor: z.string().nullable(),
+  accessory: z.string().nullable(),
+});
+
+export type Equipment = z.infer<typeof equipmentSchema>;
 
 export const skillSchema = z.object({
   id: z.string(),
@@ -58,6 +68,11 @@ export const players = pgTable("players", {
   maxExp: integer("max_exp").notNull().default(100),
   inventory: jsonb("inventory").$type<InventoryItem[]>().notNull().default([]),
   skills: jsonb("skills").$type<Skill[]>().notNull().default([]),
+  equipment: jsonb("equipment").$type<Equipment>().notNull().default({
+    weapon: null,
+    armor: null,
+    accessory: null,
+  }),
 });
 
 export const insertPlayerSchema = createInsertSchema(players).omit({
