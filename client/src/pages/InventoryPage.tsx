@@ -328,57 +328,59 @@ export default function InventoryPage() {
           <div className="system-panel p-4 rounded-sm col-span-1">
             <h3 className="text-xs font-bold text-primary/70 mb-3 tracking-wider text-center">AVATAR</h3>
             
-            <div className="relative mx-auto w-28 h-36 mb-3">
-              <div 
-                className="w-full h-full rounded-lg border-2 overflow-hidden flex flex-col"
-                style={{ 
-                  borderColor: jobAvatar.color,
-                  background: `linear-gradient(180deg, ${jobAvatar.color}15 0%, transparent 50%, ${jobAvatar.color}10 100%)`,
-                  boxShadow: `0 0 25px ${jobAvatar.color}50, inset 0 0 30px ${jobAvatar.color}20`
-                }}
-              >
-                <div className="flex-1 flex items-center justify-center p-1">
-                  <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2">
+                <div 
+                  data-testid="slot-weapon"
+                  className={`w-9 h-9 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.weapon ? getBgForRarity(equippedItems.weapon.rarity) : 'bg-black/50'}`}
+                  style={{ borderColor: equippedItems.weapon ? undefined : '#444' }}
+                  onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
+                >
+                  {equippedItems.weapon ? (
+                    <span className="text-base">{equippedItems.weapon.icon || "⚔️"}</span>
+                  ) : (
+                    <Sword className="w-4 h-4 text-gray-600" />
+                  )}
                 </div>
-                <div className="pb-1 text-center">
-                  <div className="text-[10px] font-bold tracking-wider" style={{ color: jobAvatar.color, textShadow: `0 0 10px ${jobAvatar.color}` }}>{jobAvatar.name}</div>
+                
+                <div 
+                  className="w-20 h-28 rounded-lg border-2 overflow-hidden flex flex-col"
+                  style={{ 
+                    borderColor: jobAvatar.color,
+                    background: `linear-gradient(180deg, ${jobAvatar.color}15 0%, transparent 50%, ${jobAvatar.color}10 100%)`,
+                    boxShadow: `0 0 20px ${jobAvatar.color}40`
+                  }}
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
+                  </div>
+                  <div className="text-center pb-0.5">
+                    <div className="text-[8px] font-bold tracking-wider" style={{ color: jobAvatar.color }}>{jobAvatar.name}</div>
+                  </div>
                 </div>
-              </div>
-              
-              <div 
-                data-testid="slot-weapon"
-                className={`absolute -left-6 top-1/4 w-10 h-10 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.weapon ? getBgForRarity(equippedItems.weapon.rarity) : 'bg-black/50'}`}
-                style={{ borderColor: equippedItems.weapon ? undefined : '#444' }}
-                onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
-              >
-                {equippedItems.weapon ? (
-                  <span className="text-lg">{equippedItems.weapon.icon || "⚔️"}</span>
-                ) : (
-                  <Sword className="w-4 h-4 text-gray-600" />
-                )}
-              </div>
-              
-              <div 
-                data-testid="slot-armor"
-                className={`absolute -right-6 top-1/4 w-10 h-10 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.armor ? getBgForRarity(equippedItems.armor.rarity) : 'bg-black/50'}`}
-                style={{ borderColor: equippedItems.armor ? undefined : '#444' }}
-                onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
-              >
-                {equippedItems.armor ? (
-                  <span className="text-lg">{equippedItems.armor.icon || "🛡️"}</span>
-                ) : (
-                  <Shield className="w-4 h-4 text-gray-600" />
-                )}
+                
+                <div 
+                  data-testid="slot-armor"
+                  className={`w-9 h-9 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.armor ? getBgForRarity(equippedItems.armor.rarity) : 'bg-black/50'}`}
+                  style={{ borderColor: equippedItems.armor ? undefined : '#444' }}
+                  onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
+                >
+                  {equippedItems.armor ? (
+                    <span className="text-base">{equippedItems.armor.icon || "🛡️"}</span>
+                  ) : (
+                    <Shield className="w-4 h-4 text-gray-600" />
+                  )}
+                </div>
               </div>
               
               <div 
                 data-testid="slot-accessory"
-                className={`absolute left-1/2 -translate-x-1/2 -bottom-4 w-10 h-10 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.accessory ? getBgForRarity(equippedItems.accessory.rarity) : 'bg-black/50'}`}
+                className={`w-9 h-9 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.accessory ? getBgForRarity(equippedItems.accessory.rarity) : 'bg-black/50'}`}
                 style={{ borderColor: equippedItems.accessory ? undefined : '#444' }}
                 onClick={() => equippedItems.accessory && setSelectedItem(equippedItems.accessory)}
               >
                 {equippedItems.accessory ? (
-                  <span className="text-lg">{equippedItems.accessory.icon || "💍"}</span>
+                  <span className="text-base">{equippedItems.accessory.icon || "💍"}</span>
                 ) : (
                   <Gem className="w-4 h-4 text-gray-600" />
                 )}
