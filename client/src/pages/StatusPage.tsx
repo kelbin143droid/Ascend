@@ -207,7 +207,6 @@ export default function StatusPage() {
                 <StatRow label="AGILITY" value={player.stats.agility} canAdd={player.availablePoints > 0} onAdd={() => addStat('agility')} />
                 <StatRow label="SENSE" value={player.stats.sense} canAdd={player.availablePoints > 0} onAdd={() => addStat('sense')} />
                 <StatRow label="VITALITY" value={player.stats.vitality} canAdd={player.availablePoints > 0} onAdd={() => addStat('vitality')} />
-                <StatRow label="INTEL" value={player.stats.intelligence} canAdd={player.availablePoints > 0} onAdd={() => addStat('intelligence')} />
             </div>
         </motion.div>
 

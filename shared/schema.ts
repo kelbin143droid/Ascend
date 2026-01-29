@@ -8,7 +8,6 @@ export const statsSchema = z.object({
   agility: z.number(),
   sense: z.number(),
   vitality: z.number(),
-  intelligence: z.number(),
 });
 
 export type Stats = z.infer<typeof statsSchema>;
@@ -51,7 +50,6 @@ export const players = pgTable("players", {
     agility: 10,
     sense: 10,
     vitality: 10,
-    intelligence: 10,
   }),
   availablePoints: integer("available_points").notNull().default(3),
   gold: integer("gold").notNull().default(0),

@@ -50,7 +50,6 @@ export class DatabaseStorage implements IStorage {
     let newMaxMp = player.maxMp;
 
     if (stat === 'vitality') newMaxHp += 20;
-    if (stat === 'intelligence') newMaxMp += 10;
 
     return this.updatePlayer(id, {
       stats: newStats,
