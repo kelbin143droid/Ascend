@@ -273,8 +273,21 @@ export default function StatusPage() {
 
         <div className="flex items-center justify-center gap-3 mb-2">
           <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground tracking-widest">POWER</span>
+            <span className="text-[10px] text-muted-foreground tracking-widest">LVL</span>
             <span className="text-lg font-mono font-bold text-primary drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
+              {player.level}
+            </span>
+          </div>
+          <div className="w-px h-4 bg-primary/30" />
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-muted-foreground tracking-widest">POWER</span>
+            <span 
+              className="text-xl font-mono font-black"
+              style={{ 
+                color: "#ff6b35",
+                filter: "drop-shadow(0 0 10px rgba(255,107,53,0.6))"
+              }}
+            >
               {displayStats.strength + displayStats.agility + displayStats.sense + displayStats.vitality}
             </span>
           </div>
