@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sword, Shield, Gem, FlaskConical, Package, X, Check, Zap, Star, ChevronRight } from "lucide-react";
+import { Sword, Shield, Gem, FlaskConical, Package, X, Check, Star, ChevronRight } from "lucide-react";
 import { useGame } from "@/context/GameContext";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -163,46 +163,26 @@ export default function InventoryPage() {
 
         <div className="flex-1 flex gap-2 p-2 overflow-hidden" style={{ height: 'calc(100vh - 140px)' }}>
           <div 
-            className="w-[48%] rounded-xl overflow-hidden relative flex flex-col"
+            className="w-[48%] rounded-xl overflow-hidden relative"
             style={{ 
               background: 'linear-gradient(160deg, #5a6a7a 0%, #3a4a5a 40%, #2a3a4a 100%)',
               border: '3px solid #4a6a8a',
               boxShadow: 'inset 0 0 30px rgba(0,0,0,0.3), 0 0 20px rgba(74,106,138,0.3)'
             }}
           >
-            <div className="flex justify-between items-center p-2 z-10">
-              <div className="flex items-center gap-1 px-2 py-1 bg-gray-800/70 rounded-lg border border-gray-600">
-                <span className="text-[10px] text-gray-300">Focus</span>
-                <span className="text-yellow-400 text-xs font-bold">⚡ 25 T</span>
-              </div>
-              <div className="flex items-center gap-1 px-2 py-1 bg-gray-800/70 rounded-lg border border-gray-600">
-                <Zap className="w-3 h-3 text-yellow-400" />
-                <span className="text-yellow-400 text-xs font-bold">10</span>
-                <span className="text-[10px] text-gray-300">Energy link</span>
-              </div>
-            </div>
-
-            <div className="flex-1 relative flex items-center justify-center px-4">
-              <div 
-                className="absolute w-40 h-40 rounded-full opacity-30"
-                style={{ 
-                  background: 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, transparent 70%)',
-                }}
-              />
-              
+            <div className="absolute inset-0 flex items-center justify-center">
               {jobAvatar.image ? (
                 <img 
                   src={jobAvatar.image} 
                   alt={jobAvatar.name}
-                  className="max-h-full max-w-full object-contain z-10"
+                  className="h-full w-full object-contain"
                   style={{ 
-                    filter: 'drop-shadow(0 0 20px rgba(100,200,255,0.4))',
-                    maxHeight: 'calc(100% - 20px)'
+                    filter: 'drop-shadow(0 0 20px rgba(100,200,255,0.4))'
                   }}
                 />
               ) : (
                 <div 
-                  className="w-28 h-40 rounded-lg flex items-center justify-center text-5xl z-10"
+                  className="w-32 h-48 rounded-lg flex items-center justify-center text-6xl"
                   style={{ 
                     background: `linear-gradient(180deg, ${jobAvatar.color}40 0%, ${jobAvatar.color}20 100%)`,
                     border: `2px solid ${jobAvatar.color}50`
@@ -211,66 +191,6 @@ export default function InventoryPage() {
                   ⚔️
                 </div>
               )}
-
-              <div 
-                data-testid="slot-weapon"
-                className="absolute left-1 top-1/3 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 z-20"
-                style={{ 
-                  background: equippedItems.weapon ? getRarityBg(equippedItems.weapon.rarity) : 'rgba(60,80,100,0.8)',
-                  border: `2px solid ${equippedItems.weapon ? getRarityColor(equippedItems.weapon.rarity) : 'rgba(100,140,180,0.5)'}`,
-                  boxShadow: equippedItems.weapon ? `0 0 10px ${getRarityColor(equippedItems.weapon.rarity)}40` : 'none'
-                }}
-                onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
-              >
-                {equippedItems.weapon ? (
-                  <span className="text-lg">{equippedItems.weapon.icon || "⚔️"}</span>
-                ) : (
-                  <Sword className="w-4 h-4 text-gray-400" />
-                )}
-              </div>
-
-              <div 
-                data-testid="slot-armor"
-                className="absolute right-1 top-1/3 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 z-20"
-                style={{ 
-                  background: equippedItems.armor ? getRarityBg(equippedItems.armor.rarity) : 'rgba(60,80,100,0.8)',
-                  border: `2px solid ${equippedItems.armor ? getRarityColor(equippedItems.armor.rarity) : 'rgba(100,140,180,0.5)'}`,
-                  boxShadow: equippedItems.armor ? `0 0 10px ${getRarityColor(equippedItems.armor.rarity)}40` : 'none'
-                }}
-                onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
-              >
-                {equippedItems.armor ? (
-                  <span className="text-lg">{equippedItems.armor.icon || "🛡️"}</span>
-                ) : (
-                  <Shield className="w-4 h-4 text-gray-400" />
-                )}
-              </div>
-
-              <div 
-                data-testid="slot-accessory"
-                className="absolute left-1 bottom-1/4 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 z-20"
-                style={{ 
-                  background: equippedItems.accessory ? getRarityBg(equippedItems.accessory.rarity) : 'rgba(60,80,100,0.8)',
-                  border: `2px solid ${equippedItems.accessory ? getRarityColor(equippedItems.accessory.rarity) : 'rgba(100,140,180,0.5)'}`,
-                  boxShadow: equippedItems.accessory ? `0 0 10px ${getRarityColor(equippedItems.accessory.rarity)}40` : 'none'
-                }}
-                onClick={() => equippedItems.accessory && setSelectedItem(equippedItems.accessory)}
-              >
-                {equippedItems.accessory ? (
-                  <span className="text-lg">{equippedItems.accessory.icon || "💍"}</span>
-                ) : (
-                  <Gem className="w-4 h-4 text-gray-400" />
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center p-2 bg-gray-900/50">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-gray-700 border border-gray-600"></div>
-              </div>
-              <div className="text-2xl font-bold text-white font-mono">
-                {player.level}
-              </div>
             </div>
           </div>
 
