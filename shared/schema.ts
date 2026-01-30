@@ -81,6 +81,16 @@ export const scheduleBlockSchema = z.object({
 
 export type ScheduleBlock = z.infer<typeof scheduleBlockSchema>;
 
+export const avatarCustomizationSchema = z.object({
+  hairStyle: z.number().default(1),
+  hairColor: z.string().default("#8B4513"),
+  skinColor: z.string().default("#DEB887"),
+  eyeColor: z.string().default("#2E8B57"),
+  outfitColor: z.string().default("#4A5568"),
+});
+
+export type AvatarCustomization = z.infer<typeof avatarCustomizationSchema>;
+
 export const furnitureItemSchema = z.object({
   id: z.string(),
   itemId: z.string(),
@@ -190,6 +200,13 @@ export const players = pgTable("players", {
   unlockedAttributes: jsonb("unlocked_attributes").$type<string[]>().notNull().default(["strength", "agility", "sense", "vitality"]),
   rankHistory: jsonb("rank_history").$type<RankHistoryEntry[]>().notNull().default([]),
   pendingRankUnlock: jsonb("pending_rank_unlock").$type<PendingRankUnlock>().default(null),
+  avatarCustomization: jsonb("avatar_customization").$type<AvatarCustomization>().notNull().default({
+    hairStyle: 1,
+    hairColor: "#8B4513",
+    skinColor: "#DEB887",
+    eyeColor: "#2E8B57",
+    outfitColor: "#4A5568",
+  }),
 });
 
 export const insertPlayerSchema = createInsertSchema(players, {
