@@ -394,6 +394,24 @@ export default function StatusPage() {
             </div>
           </div>
         </div>
+
+        <a
+          href="/survival"
+          data-testid="link-survival"
+          className="mx-2 mt-3 block system-panel p-3 rounded-lg border border-cyan-500/30 hover:border-cyan-500/50 transition-all group"
+          style={{ background: "linear-gradient(135deg, rgba(0,200,200,0.1) 0%, rgba(100,50,150,0.1) 100%)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center text-xl border border-cyan-500/30 group-hover:scale-110 transition-transform">
+              🏕️
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-display text-cyan-400 group-hover:text-cyan-300">SURVIVAL MODE</div>
+              <div className="text-[10px] text-muted-foreground">3D Open World • Gather • Craft • Survive</div>
+            </div>
+            <div className="text-cyan-500/50 group-hover:text-cyan-400 transition-colors">→</div>
+          </div>
+        </a>
       </div>
 
       <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
