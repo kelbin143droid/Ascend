@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTheme } from "@/context/ThemeContext";
 
 export interface ScheduleBlock {
   id: string;
@@ -27,6 +28,7 @@ const DEFAULT_SCHEDULE: ScheduleBlock[] = [
 
 export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterClick }: SectographProps) {
   const [time, setTime] = useState(new Date());
+  const { theme } = useTheme();
   
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -88,6 +90,8 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
   const hourHandEnd = polarToCartesian(hourAngle, hourHandLength);
   const minuteHandEnd = polarToCartesian(minuteAngle, minuteHandLength);
 
+  const colors = theme.colors;
+
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size}>
@@ -104,14 +108,14 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
             </feMerge>
           </filter>
           <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#00f5d4" />
-            <stop offset="50%" stopColor="#00bfa6" />
-            <stop offset="100%" stopColor="#00f5d4" />
+            <stop offset="0%" stopColor={colors.ring} />
+            <stop offset="50%" stopColor={colors.secondary} />
+            <stop offset="100%" stopColor={colors.ring} />
           </linearGradient>
           <radialGradient id="centerDark" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#0a1628" />
-            <stop offset="80%" stopColor="#05101d" />
-            <stop offset="100%" stopColor="#020810" />
+            <stop offset="0%" stopColor={colors.background} />
+            <stop offset="80%" stopColor={colors.background} />
+            <stop offset="100%" stopColor={colors.background} />
           </radialGradient>
         </defs>
 
@@ -120,7 +124,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           cy={center}
           r={outerRadius + 4}
           fill="none"
-          stroke="rgba(0,200,200,0.08)"
+          stroke={colors.surfaceBorder}
           strokeWidth="1"
         />
 
@@ -128,8 +132,8 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           cx={center}
           cy={center}
           r={outerRadius}
-          fill="rgba(5,10,20,0.95)"
-          stroke="rgba(0,200,200,0.15)"
+          fill={colors.surface}
+          stroke={colors.surfaceBorder}
           strokeWidth="1"
         />
 
@@ -149,7 +153,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           cy={center}
           r={glowRingRadius}
           fill="none"
-          stroke="rgba(0,245,212,0.3)"
+          stroke={colors.ringGlow}
           strokeWidth={glowRingWidth + 8}
           style={{ filter: "blur(6px)" }}
         />
@@ -169,7 +173,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
               y1={start.y}
               x2={end.x}
               y2={end.y}
-              stroke={isMainHour ? "rgba(0,245,212,0.6)" : "rgba(0,245,212,0.25)"}
+              stroke={isMainHour ? colors.ring : colors.tickMark}
               strokeWidth={isMainHour ? 2 : 1}
             />
           );
@@ -185,14 +189,14 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
                 d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
                 fill={block.color}
                 opacity={0.8}
-                stroke={block.isSystemTask ? "rgba(0,245,212,0.5)" : "rgba(255,255,255,0.08)"}
+                stroke={block.isSystemTask ? colors.ring : "rgba(255,255,255,0.08)"}
                 strokeWidth={block.isSystemTask ? 1.5 : 0.5}
               />
               {block.isSystemTask && (
                 <path
                   d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
                   fill="none"
-                  stroke="rgba(0,245,212,0.25)"
+                  stroke={colors.ringGlow}
                   strokeWidth="3"
                   style={{ filter: "blur(4px)" }}
                 />
@@ -206,7 +210,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           cy={center}
           r={innerRadius}
           fill="url(#centerDark)"
-          stroke="rgba(0,200,200,0.2)"
+          stroke={colors.surfaceBorder}
           strokeWidth="1"
         />
 
@@ -215,8 +219,9 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           cy={center}
           r={innerRadius - 8}
           fill="none"
-          stroke="rgba(0,200,200,0.08)"
+          stroke={colors.surfaceBorder}
           strokeWidth="1"
+          opacity="0.5"
         />
 
         <line
@@ -224,9 +229,10 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           y1={center}
           x2={hourHandEnd.x}
           y2={hourHandEnd.y}
-          stroke="rgba(200,210,220,0.9)"
+          stroke={colors.text}
           strokeWidth="3"
           strokeLinecap="round"
+          opacity="0.9"
         />
 
         <line
@@ -234,25 +240,28 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           y1={center}
           x2={minuteHandEnd.x}
           y2={minuteHandEnd.y}
-          stroke="rgba(0,245,212,0.8)"
+          stroke={colors.clockHand}
           strokeWidth="2"
           strokeLinecap="round"
           filter="url(#softGlow)"
+          opacity="0.8"
         />
 
         <circle
           cx={center}
           cy={center}
           r={6}
-          fill="#0a1628"
-          stroke="rgba(0,245,212,0.6)"
+          fill={colors.background}
+          stroke={colors.ring}
           strokeWidth="2"
+          opacity="0.8"
         />
         <circle
           cx={center}
           cy={center}
           r={3}
-          fill="rgba(0,245,212,0.8)"
+          fill={colors.centerDot}
+          opacity="0.9"
         />
 
         {[0, 6, 12, 18].map((hour) => {
@@ -268,11 +277,11 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
               y={pos.y}
               textAnchor="middle"
               dominantBaseline="middle"
-              className="fill-cyan-400/50"
+              fill={colors.textMuted}
               style={{ fontFamily: "var(--font-mono)", fontSize: "9px" }}
             >
               {labels[hour]}
-              <tspan className="fill-cyan-400/30" style={{ fontSize: "6px" }}>{periods[hour]}</tspan>
+              <tspan fill={colors.tickMark} style={{ fontSize: "6px" }}>{periods[hour]}</tspan>
             </text>
           );
         })}
@@ -282,12 +291,17 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         <button
           data-testid="button-schedule"
           onClick={onCenterClick}
-          className="pointer-events-auto absolute bottom-4 right-4 w-10 h-10 rounded-full bg-black/80 border border-primary/30 flex items-center justify-center hover:scale-110 hover:border-primary/60 transition-all cursor-pointer group"
-          style={{ boxShadow: '0 0 15px rgba(0,245,212,0.15)' }}
+          className="pointer-events-auto absolute bottom-4 right-4 w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all cursor-pointer group"
+          style={{ 
+            backgroundColor: colors.surface,
+            border: `1px solid ${colors.surfaceBorder}`,
+            boxShadow: `0 0 15px ${colors.primaryGlow}` 
+          }}
         >
           <svg 
             viewBox="0 0 24 24" 
-            className="w-5 h-5 text-primary/70 group-hover:text-primary transition-colors"
+            className="w-5 h-5 transition-colors"
+            style={{ color: colors.primary }}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
@@ -301,7 +315,10 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none"
         style={{ bottom: center - innerRadius + 16 }}
       >
-        <div className="text-[10px] text-cyan-400/40 font-mono tracking-wider">
+        <div 
+          className="text-[10px] font-mono tracking-wider"
+          style={{ color: colors.textMuted }}
+        >
           {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
         </div>
       </div>

@@ -2,10 +2,13 @@ import React from "react";
 import { Link, useLocation } from "wouter";
 import { User, Sword, Backpack, Zap, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/context/ThemeContext";
+import { ThemeSelector } from "./ThemeSelector";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 
 export function SystemLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { theme } = useTheme();
 
   const navItems = [
     { icon: User, label: "STATUS", path: "/" },
@@ -15,11 +18,25 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
     { icon: Zap, label: "SKILLS", path: "/skills" },
   ];
 
+  const colors = theme.colors;
+
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-background text-foreground font-ui selection:bg-primary selection:text-background">
-      {/* Background Layer */}
+    <div 
+      className="relative min-h-screen w-full overflow-hidden font-ui selection:bg-primary selection:text-background"
+      style={{ 
+        backgroundColor: colors.background,
+        color: colors.text
+      }}
+    >
       <div 
-        className="fixed inset-0 z-0 opacity-20 scale-110 blur-[2px]"
+        className="fixed inset-0 z-0"
+        style={{
+          background: colors.backgroundGradient
+        }}
+      />
+      
+      <div 
+        className="fixed inset-0 z-0 opacity-15 scale-110 blur-[2px]"
         style={{
             backgroundImage: `url(${bgImage})`,
             backgroundSize: 'cover',
@@ -27,27 +44,60 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         }}
       />
       
-      {/* Cool Border Frame */}
       <div className="fixed inset-0 z-10 pointer-events-none">
-        <div className="absolute inset-2 border-2 border-primary/30 rounded-lg" />
-        <div className="absolute top-2 left-2 w-8 h-8 border-t-2 border-l-2 border-primary rounded-tl-lg" />
-        <div className="absolute top-2 right-2 w-8 h-8 border-t-2 border-r-2 border-primary rounded-tr-lg" />
-        <div className="absolute bottom-2 left-2 w-8 h-8 border-b-2 border-l-2 border-primary rounded-bl-lg" />
-        <div className="absolute bottom-2 right-2 w-8 h-8 border-b-2 border-r-2 border-primary rounded-br-lg" />
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 h-[2px] w-24 bg-gradient-to-r from-transparent via-primary to-transparent" />
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 h-[2px] w-24 bg-gradient-to-r from-transparent via-primary to-transparent" />
+        <div 
+          className="absolute inset-2 rounded-lg"
+          style={{ border: `2px solid ${colors.surfaceBorder}` }}
+        />
+        <div 
+          className="absolute top-2 left-2 w-8 h-8 rounded-tl-lg"
+          style={{ borderTop: `2px solid ${colors.primary}`, borderLeft: `2px solid ${colors.primary}` }}
+        />
+        <div 
+          className="absolute top-2 right-2 w-8 h-8 rounded-tr-lg"
+          style={{ borderTop: `2px solid ${colors.primary}`, borderRight: `2px solid ${colors.primary}` }}
+        />
+        <div 
+          className="absolute bottom-2 left-2 w-8 h-8 rounded-bl-lg"
+          style={{ borderBottom: `2px solid ${colors.primary}`, borderLeft: `2px solid ${colors.primary}` }}
+        />
+        <div 
+          className="absolute bottom-2 right-2 w-8 h-8 rounded-br-lg"
+          style={{ borderBottom: `2px solid ${colors.primary}`, borderRight: `2px solid ${colors.primary}` }}
+        />
+        <div 
+          className="absolute top-2 left-1/2 -translate-x-1/2 h-[2px] w-24"
+          style={{ background: `linear-gradient(to right, transparent, ${colors.primary}, transparent)` }}
+        />
+        <div 
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 h-[2px] w-24"
+          style={{ background: `linear-gradient(to right, transparent, ${colors.primary}, transparent)` }}
+        />
       </div>
 
-      {/* Grid Overlay */}
-      <div className="fixed inset-0 z-0 bg-[linear-gradient(rgba(0,240,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px] [background-position:center] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_90%)] opacity-30 pointer-events-none" />
+      <div 
+        className="fixed inset-0 z-0 opacity-20 pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(${colors.primary}15 1px, transparent 1px), linear-gradient(90deg, ${colors.primary}15 1px, transparent 1px)`,
+          backgroundSize: '30px 30px',
+          backgroundPosition: 'center',
+          maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 90%)'
+        }}
+      />
 
-      {/* Main Content Area */}
+      <ThemeSelector />
+
       <main className="relative z-20 container mx-auto px-4 py-6 pb-24 max-w-md md:max-w-2xl min-h-screen flex flex-col">
         {children}
       </main>
 
-      {/* Bottom Navigation HUD */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/60 backdrop-blur-xl border-t border-primary/30">
+      <nav 
+        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl"
+        style={{
+          backgroundColor: `${colors.background}99`,
+          borderTop: `1px solid ${colors.surfaceBorder}`
+        }}
+      >
         <div className="flex justify-around items-center h-16 max-w-md md:max-w-2xl mx-auto">
           {navItems.map((item) => {
             const isActive = location === item.path;
@@ -55,20 +105,27 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
               <Link key={item.path} href={item.path}>
                 <button
                   className={cn(
-                    "flex flex-col items-center justify-center w-full h-full transition-all duration-300 group",
-                    isActive ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground"
+                    "flex flex-col items-center justify-center w-full h-full transition-all duration-300 group"
                   )}
+                  style={{
+                    color: isActive ? colors.primary : colors.textMuted,
+                    transform: isActive ? 'scale(1.1)' : 'scale(1)'
+                  }}
                 >
-                  <div className={cn(
-                    "relative p-1.5 rounded-sm transition-all duration-500",
-                    isActive && "bg-primary/20 shadow-[0_0_25px_rgba(0,240,255,0.5)] border border-primary/40"
-                  )}>
+                  <div 
+                    className="relative p-1.5 rounded-sm transition-all duration-500"
+                    style={isActive ? {
+                      backgroundColor: `${colors.primary}33`,
+                      boxShadow: `0 0 25px ${colors.primaryGlow}`,
+                      border: `1px solid ${colors.surfaceBorder}`
+                    } : {}}
+                  >
                     <item.icon size={22} className={cn("transition-transform", isActive && "animate-pulse")} />
                   </div>
-                  <span className={cn(
-                    "text-[10px] tracking-[0.2em] mt-1.5 font-display font-bold uppercase transition-all",
-                    isActive ? "opacity-100 text-glow" : "opacity-60"
-                  )}>
+                  <span 
+                    className="text-[10px] tracking-[0.2em] mt-1.5 font-display font-bold uppercase transition-all"
+                    style={{ opacity: isActive ? 1 : 0.6 }}
+                  >
                     {item.label}
                   </span>
                 </button>
