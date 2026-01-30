@@ -362,9 +362,9 @@ export async function registerRoutes(
       
       const levelsToAdd = parsed.data.levels;
       let newLevel = player.level + levelsToAdd;
-      let newAvailablePoints = player.availablePoints + (levelsToAdd * 5);
-      let newMaxHp = player.maxHp + (levelsToAdd * 50);
-      let newMaxMp = player.maxMp + (levelsToAdd * 20);
+      let newAvailablePoints = Math.min(9999, player.availablePoints + (levelsToAdd * 5));
+      let newMaxHp = Math.min(999999, player.maxHp + (levelsToAdd * 50));
+      let newMaxMp = Math.min(99999, player.maxMp + (levelsToAdd * 20));
       let newRank = player.rank;
       let pendingRankUnlock = player.pendingRankUnlock;
       
@@ -379,6 +379,8 @@ export async function registerRoutes(
         }
       }
       
+      const newMaxExp = Math.min(2000000000, Math.floor(100 * Math.pow(1.2, Math.min(newLevel - 1, 100))));
+      
       const updatedPlayer = await storage.updatePlayer(req.params.id, {
         level: newLevel,
         availablePoints: newAvailablePoints,
@@ -389,7 +391,7 @@ export async function registerRoutes(
         rank: newRank,
         pendingRankUnlock,
         exp: 0,
-        maxExp: Math.floor(100 * Math.pow(1.5, newLevel - 1)),
+        maxExp: newMaxExp,
       });
       
       res.json(attachDerivedStats(updatedPlayer!, `Added ${levelsToAdd} levels! Now level ${newLevel}.`));
