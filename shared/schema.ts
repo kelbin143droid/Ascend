@@ -28,7 +28,7 @@ export const RANK_STAT_CAPS: Record<string, number> = {
   C: 80,
   B: 120,
   A: 180,
-  S: 999,
+  S: 250,
 };
 
 export const FATIGUE_MULTIPLIERS = [1.0, 0.85, 0.70, 0.50];
@@ -130,7 +130,8 @@ export const RANK_LEVEL_THRESHOLDS: Record<string, { min: number; max: number }>
   D: { min: 11, max: 25 },
   C: { min: 26, max: 45 },
   B: { min: 46, max: 70 },
-  A: { min: 71, max: 999 },
+  A: { min: 71, max: 100 },
+  S: { min: 101, max: 999 },
 };
 
 export const RANK_UNLOCK_DATA: Record<string, { attribute: string; description: string; highlights: string[] }> = {
@@ -138,6 +139,7 @@ export const RANK_UNLOCK_DATA: Record<string, { attribute: string; description: 
   C: { attribute: "Mobility", description: "Move with purpose and precision.", highlights: ["Agility training enhanced", "Cooldown reduction active"] },
   B: { attribute: "Social", description: "Build and preserve meaningful relationships.", highlights: ["Relationship sessions now available", "Weekly diversity bonus unlocked", "Social stat cap: 120"] },
   A: { attribute: "Skill", description: "Master specialized techniques.", highlights: ["Advanced skill tree unlocked", "Unique abilities available"] },
+  S: { attribute: "Ascension Mode", description: "Sustained balance unlocks elite growth.", highlights: ["Balanced Mastery Bonus unlocked", "Elite Sessions unlocked", "Stat cap increased to 250"] },
 };
 
 export const players = pgTable("players", {

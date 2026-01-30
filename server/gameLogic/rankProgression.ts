@@ -9,7 +9,7 @@ export function getRankForLevel(level: number): string {
       return rank;
     }
   }
-  return "A";
+  return "S";
 }
 
 export function isRankHigher(newRank: string, oldRank: string): boolean {

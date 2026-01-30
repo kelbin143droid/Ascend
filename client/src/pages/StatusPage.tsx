@@ -265,6 +265,7 @@ export default function StatusPage() {
               schedule={player.schedule?.length ? player.schedule as ScheduleBlock[] : undefined}
               size={280}
               onCenterClick={() => setIsScheduleOpen(true)}
+              playerRank={player.rank}
             />
           </div>
         </div>
@@ -280,7 +281,13 @@ export default function StatusPage() {
           <div className="w-px h-4 bg-primary/30" />
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-muted-foreground tracking-widest">RANK</span>
-            <span className="text-lg font-display font-black text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]">{player.rank}</span>
+            <span 
+              className="text-lg font-display font-black"
+              style={{ 
+                color: player.rank === "S" ? "#ffd700" : "#ec4899",
+                filter: player.rank === "S" ? "drop-shadow(0 0 8px rgba(255,215,0,0.5))" : "drop-shadow(0 0 8px rgba(236,72,153,0.5))"
+              }}
+            >{player.rank}</span>
           </div>
           <div className="w-px h-4 bg-primary/30" />
           <div className="flex items-center gap-1">
@@ -684,7 +691,7 @@ export default function StatusPage() {
               variant="outline"
               className="text-xs border-orange-500 text-orange-400 hover:bg-orange-500/20"
               onClick={() => {
-                const targetLevel = player.rank === "E" ? 11 : player.rank === "D" ? 26 : player.rank === "C" ? 46 : player.rank === "B" ? 71 : player.level + 1;
+                const targetLevel = player.rank === "E" ? 11 : player.rank === "D" ? 26 : player.rank === "C" ? 46 : player.rank === "B" ? 71 : player.rank === "A" ? 101 : player.level + 1;
                 const levelsNeeded = Math.max(1, targetLevel - player.level);
                 addLevels(levelsNeeded);
               }}
@@ -703,7 +710,7 @@ export default function StatusPage() {
             </Button>
           </div>
           <div className="mt-3 text-[10px] text-yellow-300/70">
-            Rank thresholds: D@11, C@26, B@46 (Social), A@71 (Skill)
+            D@11, C@26, B@46, A@71, S@101 (Ascension)
           </div>
         </motion.div>
       )}

@@ -24,7 +24,7 @@ function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithD
   
   return {
     ...player,
-    derived: calculateDerivedStats(player.stats),
+    derived: calculateDerivedStats(player.stats, player.rank),
     displayStats,
     fatigueInfo,
     rankStatCap: RANK_STAT_CAPS[player.rank] || 25,
@@ -368,13 +368,13 @@ export async function registerRoutes(
       let newRank = player.rank;
       let pendingRankUnlock = player.pendingRankUnlock;
       
-      const rankOrder = ["E", "D", "C", "B", "A"];
-      const thresholds = { D: 11, C: 26, B: 46, A: 71 };
+      const rankOrder = ["E", "D", "C", "B", "A", "S"];
+      const thresholds = { D: 11, C: 26, B: 46, A: 71, S: 101 };
       
       for (const [rank, threshold] of Object.entries(thresholds)) {
         if (newLevel >= threshold && rankOrder.indexOf(rank) > rankOrder.indexOf(newRank) && !pendingRankUnlock) {
           newRank = rank;
-          const unlockData = { D: "endurance", C: "mobility", B: "social", A: "skill" };
+          const unlockData = { D: "endurance", C: "mobility", B: "social", A: "skill", S: "ascension" };
           pendingRankUnlock = { rank: newRank, attribute: unlockData[rank as keyof typeof unlockData] };
         }
       }

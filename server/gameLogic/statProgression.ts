@@ -58,8 +58,11 @@ export function processSession(params: CompleteSessionParams): SessionResult {
 
   const fatigueMultiplier = getFatigueMultiplier(sessionCount);
   
-  const statXP = xp * 0.8;
-  const levelXP = Math.floor(xp * 0.2);
+  const isEliteSession = rank === "S" && durationMinutes >= 90;
+  const eliteSessionBonus = isEliteSession ? 1.2 : 1.0;
+  
+  const statXP = xp * 0.8 * eliteSessionBonus;
+  const levelXP = Math.floor(xp * 0.2 * eliteSessionBonus);
   
   const fatigueAdjustedXP = statXP * fatigueMultiplier;
   
@@ -89,6 +92,9 @@ export function processSession(params: CompleteSessionParams): SessionResult {
   }
 
   let message = `Session complete! +${statIncrease.toFixed(2)} ${stat}`;
+  if (isEliteSession) {
+    message += ` (Elite +20%)`;
+  }
   if (fatigueMultiplier < 1) {
     message += ` (fatigue: ${(fatigueMultiplier * 100).toFixed(0)}%)`;
   }

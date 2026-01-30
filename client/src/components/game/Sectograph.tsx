@@ -14,6 +14,7 @@ interface SectographProps {
   schedule?: ScheduleBlock[];
   size?: number;
   onCenterClick?: () => void;
+  playerRank?: string;
 }
 
 const DEFAULT_SCHEDULE: ScheduleBlock[] = [
@@ -26,7 +27,9 @@ const DEFAULT_SCHEDULE: ScheduleBlock[] = [
   { id: "evening", name: "Leisure", startHour: 19, endHour: 22, color: "#8b7aa3" },
 ];
 
-export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterClick }: SectographProps) {
+export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterClick, playerRank }: SectographProps) {
+  const isAscension = playerRank === "S";
+  const goldGlow = "#ffd700";
   const [time, setTime] = useState(new Date());
   const { theme } = useTheme();
   
@@ -182,6 +185,8 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         {schedule.map((block) => {
           const startAngle = hourToAngle(block.startHour);
           const endAngle = hourToAngle(block.endHour);
+          const systemTaskGlow = isAscension && block.isSystemTask ? goldGlow : colors.ringGlow;
+          const systemTaskStroke = isAscension && block.isSystemTask ? goldGlow : colors.ring;
           
           return (
             <g key={block.id}>
@@ -189,14 +194,14 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
                 d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
                 fill={block.color}
                 opacity={0.8}
-                stroke={block.isSystemTask ? colors.ring : "rgba(255,255,255,0.08)"}
+                stroke={block.isSystemTask ? systemTaskStroke : "rgba(255,255,255,0.08)"}
                 strokeWidth={block.isSystemTask ? 1.5 : 0.5}
               />
               {block.isSystemTask && (
                 <path
                   d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
                   fill="none"
-                  stroke={colors.ringGlow}
+                  stroke={systemTaskGlow}
                   strokeWidth="3"
                   style={{ filter: "blur(4px)" }}
                 />

@@ -1,0 +1,95 @@
+E → 1–10
+D → 11–25
+C → 26–45
+B → 46–70
+A → 71–100
+S → 101+
+We extend A to 100. S begins at 101.
+This makes S unreachable early.
+📈 Stat Cap Update
+E → 25
+D → 50
+C → 80
+B → 120
+A → 180
+S → 250
+Important:
+S Rank cap should NOT feel grindy. But reaching 250 in one stat will take serious consistency.
+🏆 What Unlocks at S Rank?
+We must not add another attribute.
+You were right earlier: Too many attributes = system collapse.
+Instead:
+S Rank unlocks:
+🔓 Ascension Mode
+Features:
+1️⃣ Balanced Mastery Bonus
+If all core stats ≥ 150: +10% global XP bonus
+2️⃣ Elite Sessions
+Sessions over 90 minutes: +20% bonus XP (replaces normal 10–15%)
+3️⃣ Golden Sectograph Glow
+System tasks glow subtle gold
+That’s it.
+No new stat. No complexity spike.
+Just refinement.
+🧠 Psychological Positioning
+E → Survival
+D → Discipline
+C → Structure
+B → Integration
+A → Purpose
+S → Mastery
+This gives the rank ladder meaning.
+🔧 What Needs Updating in Replit
+We need:
+Rank threshold update
+Stat cap update
+S Rank Unlock Screen
+Ascension Mode conditional bonus logic
+Below is your clean prompt.
+✅ REPLIT AI PROMPT — Add S Rank
+We are extending rank system to include S Rank.
+Update rank structure:
+E: 1–10
+D: 11–25
+C: 26–45
+B: 46–70
+A: 71–100
+S: 101+
+Update stat caps:
+E → 25
+D → 50
+C → 80
+B → 120
+A → 180
+S → 250
+S RANK UNLOCK BEHAVIOR
+When reaching level 101:
+Trigger Rank Unlock Screen.
+Title: Rank Advanced
+Subtitle: "You have entered Mastery."
+Reveal: Ascension Mode
+Description: "Sustained balance unlocks elite growth."
+Highlights: • Balanced Mastery Bonus unlocked
+• Elite Sessions unlocked
+• Stat cap increased to 250
+Add entry to rankHistory: { rank: "S", unlocked: "Ascension Mode", date }
+ASCENSION MODE LOGIC
+Balanced Mastery Bonus:
+If: strength ≥ 150
+agility ≥ 150
+sense ≥ 150
+vitality ≥ 150
+Then: Apply +10% global XP multiplier.
+Elite Sessions:
+If session duration ≥ 90 minutes: +20% XP bonus (override standard time bonus).
+VISUAL UPDATE
+In S Rank:
+Sectograph system tasks glow subtle gold
+Rank badge gold accent
+No flashy animation
+Keep tone disciplined.
+End instructions.
+Once this is implemented, your rank system becomes structurally complete.
+After that, we move into one of two elite-level features:
+1️⃣ Weekly Evolution Analytics (visual stat progression curves) 2️⃣ Social stat deep mechanic implementation
+Choose your direction.

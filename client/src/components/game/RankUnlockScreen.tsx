@@ -18,7 +18,16 @@ const RANK_COLORS: Record<string, string> = {
   C: "#3b82f6",
   B: "#a855f7",
   A: "#f97316",
-  S: "#ef4444",
+  S: "#ffd700",
+};
+
+const RANK_SUBTITLES: Record<string, string> = {
+  E: "Your journey begins.",
+  D: "You have evolved beyond individual strength.",
+  C: "You have evolved beyond individual strength.",
+  B: "You have evolved beyond individual strength.",
+  A: "You have evolved beyond individual strength.",
+  S: "You have entered Mastery.",
 };
 
 export function RankUnlockScreen({
@@ -158,7 +167,7 @@ export function RankUnlockScreen({
                 </motion.div>
 
                 <div className="text-sm text-muted-foreground italic">
-                  "You have evolved beyond individual strength."
+                  {RANK_SUBTITLES[newRank] || "You have evolved beyond individual strength."}
                 </div>
 
                 <motion.div
@@ -168,7 +177,7 @@ export function RankUnlockScreen({
                   className="pt-4 space-y-2"
                 >
                   <div className="text-xs tracking-widest text-muted-foreground">
-                    NEW ATTRIBUTE UNLOCKED
+                    {newRank === "S" ? "MODE UNLOCKED" : "NEW ATTRIBUTE UNLOCKED"}
                   </div>
                   <div
                     className="text-2xl font-display font-bold tracking-wide"

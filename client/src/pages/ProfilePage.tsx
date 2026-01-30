@@ -10,7 +10,7 @@ const RANK_COLORS: Record<string, string> = {
   C: "#3b82f6",
   B: "#a855f7",
   A: "#f97316",
-  S: "#ef4444",
+  S: "#ffd700",
 };
 
 export default function ProfilePage() {
