@@ -1,203 +1,23 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sword, Shield, Gem, FlaskConical, Package, X, Check, Sparkles } from "lucide-react";
+import { Sword, Shield, Gem, FlaskConical, Package, X, Check, Sparkles, Zap } from "lucide-react";
 import { useGame } from "@/context/GameContext";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { InventoryItem, Equipment } from "@shared/schema";
 
-const JOB_AVATARS: Record<string, { color: string; name: string }> = {
+import warriorAvatar from "@/assets/images/warrior-avatar.png";
+
+const JOB_AVATARS: Record<string, { color: string; name: string; image?: string }> = {
   NONE: { color: "#888888", name: "Hunter" },
-  WARRIOR: { color: "#dc2626", name: "Warrior" },
+  WARRIOR: { color: "#dc2626", name: "Warrior", image: warriorAvatar },
   MAGE: { color: "#8b5cf6", name: "Mage" },
   SUPPORT: { color: "#22c55e", name: "Healer" },
   ASSASSIN: { color: "#1f2937", name: "Assassin" },
   RANGER: { color: "#16a34a", name: "Ranger" },
   TANK: { color: "#3b82f6", name: "Tank" },
-};
-
-const CharacterSilhouette = ({ job, color }: { job: string; color: string }) => {
-  const getSilhouette = () => {
-    switch (job.toUpperCase()) {
-      case 'WARRIOR':
-        return (
-          <svg viewBox="0 0 100 130" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <linearGradient id="warriorBody" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#4a3728" />
-                <stop offset="100%" stopColor="#2d1f15" />
-              </linearGradient>
-              <linearGradient id="warriorArmor" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#8b8b8b" />
-                <stop offset="50%" stopColor="#5a5a5a" />
-                <stop offset="100%" stopColor="#3d3d3d" />
-              </linearGradient>
-              <linearGradient id="warriorSkin" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#e8c4a0" />
-                <stop offset="100%" stopColor="#c9a882" />
-              </linearGradient>
-              <linearGradient id="swordBlade" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#c0c0c0" />
-                <stop offset="50%" stopColor="#ffffff" />
-                <stop offset="100%" stopColor="#a0a0a0" />
-              </linearGradient>
-            </defs>
-            <ellipse cx="50" cy="18" rx="11" ry="12" fill="url(#warriorSkin)" />
-            <ellipse cx="46" cy="16" rx="2" ry="2" fill="#3d2314" />
-            <ellipse cx="54" cy="16" rx="2" ry="2" fill="#3d2314" />
-            <path d="M47,21 Q50,24 53,21" stroke="#3d2314" strokeWidth="1" fill="none" />
-            <rect x="40" y="8" width="20" height="7" rx="2" fill="#5a4a3a" />
-            <path d="M35,30 L65,30 L68,75 L32,75 Z" fill="url(#warriorArmor)" />
-            <rect x="42" y="32" width="16" height="6" rx="1" fill="#666" />
-            <rect x="40" y="42" width="20" height="2" fill="#777" />
-            <rect x="40" y="48" width="20" height="2" fill="#777" />
-            <rect x="40" y="54" width="20" height="2" fill="#777" />
-            <ellipse cx="50" cy="38" rx="5" ry="5" fill={color} opacity="0.8" />
-            <path d="M32,32 L35,30 L33,62 L26,60 Z" fill="url(#warriorArmor)" />
-            <ellipse cx="28" cy="35" rx="5" ry="4" fill="#666" />
-            <path d="M65,32 L68,30 L74,60 L67,62 Z" fill="url(#warriorArmor)" />
-            <ellipse cx="72" cy="35" rx="5" ry="4" fill="#666" />
-            <ellipse cx="24" cy="64" rx="4" ry="5" fill="url(#warriorSkin)" />
-            <ellipse cx="76" cy="64" rx="4" ry="5" fill="url(#warriorSkin)" />
-            <rect x="37" y="73" width="11" height="35" rx="3" fill="url(#warriorBody)" />
-            <rect x="52" y="73" width="11" height="35" rx="3" fill="url(#warriorBody)" />
-            <rect x="35" y="105" width="14" height="7" rx="2" fill="#3d3d3d" />
-            <rect x="51" y="105" width="14" height="7" rx="2" fill="#3d3d3d" />
-            <rect x="18" y="30" width="4" height="40" rx="1" fill="url(#swordBlade)" />
-            <polygon points="20,26 16,32 24,32" fill="url(#swordBlade)" />
-            <rect x="16" y="68" width="8" height="6" rx="2" fill="#8b6914" />
-            <rect x="18" y="73" width="4" height="8" rx="1" fill="#5a4a3a" />
-            <ellipse cx="82" cy="50" rx="8" ry="12" fill="#666" stroke="#888" strokeWidth="2" />
-            <ellipse cx="82" cy="50" rx="5" ry="8" fill="#555" />
-            <circle cx="82" cy="50" r="2" fill={color} />
-          </svg>
-        );
-      case 'MAGE':
-        return (
-          <svg viewBox="0 0 100 140" className="w-full h-full">
-            <defs>
-              <linearGradient id="mageGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
-              </linearGradient>
-            </defs>
-            <ellipse cx="50" cy="18" rx="12" ry="14" fill="url(#mageGrad)" />
-            <polygon points="50,0 38,22 62,22" fill={color} />
-            <path d="M30,32 Q50,25 70,32 L75,90 Q50,100 25,90 Z" fill="url(#mageGrad)" />
-            <rect x="40" y="88" width="8" height="35" rx="2" fill="url(#mageGrad)" />
-            <rect x="52" y="88" width="8" height="35" rx="2" fill="url(#mageGrad)" />
-            <rect x="75" y="30" width="5" height="60" rx="2" fill={color} />
-            <circle cx="77" cy="25" r="8" fill={color} opacity="0.6" />
-            <circle cx="77" cy="25" r="4" fill="white" opacity="0.8" />
-          </svg>
-        );
-      case 'ASSASSIN':
-        return (
-          <svg viewBox="0 0 100 140" className="w-full h-full">
-            <defs>
-              <linearGradient id="assassinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-                <stop offset="100%" stopColor="#00ffff" stopOpacity="0.4" />
-              </linearGradient>
-            </defs>
-            <ellipse cx="50" cy="16" rx="11" ry="13" fill="url(#assassinGrad)" />
-            <rect x="40" y="8" width="20" height="8" rx="2" fill={color} />
-            <path d="M35,28 L65,28 L68,75 L32,75 Z" fill="url(#assassinGrad)" />
-            <rect x="22" y="32" width="12" height="30" rx="3" fill="url(#assassinGrad)" transform="rotate(-10, 28, 47)" />
-            <rect x="66" y="32" width="12" height="30" rx="3" fill="url(#assassinGrad)" transform="rotate(10, 72, 47)" />
-            <rect x="38" y="73" width="9" height="42" rx="2" fill="url(#assassinGrad)" />
-            <rect x="53" y="73" width="9" height="42" rx="2" fill="url(#assassinGrad)" />
-            <rect x="10" y="50" width="4" height="30" rx="1" fill="#00ffff" />
-            <polygon points="12,48 8,40 16,40" fill="#00ffff" />
-            <rect x="86" y="50" width="4" height="30" rx="1" fill="#00ffff" />
-            <polygon points="88,48 84,40 92,40" fill="#00ffff" />
-          </svg>
-        );
-      case 'RANGER':
-        return (
-          <svg viewBox="0 0 100 140" className="w-full h-full">
-            <defs>
-              <linearGradient id="rangerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
-              </linearGradient>
-            </defs>
-            <ellipse cx="50" cy="17" rx="11" ry="13" fill="url(#rangerGrad)" />
-            <path d="M50,5 Q55,0 60,8 L55,12 Z" fill={color} />
-            <path d="M33,30 L67,30 L70,78 L30,78 Z" fill="url(#rangerGrad)" />
-            <rect x="20" y="35" width="12" height="32" rx="3" fill="url(#rangerGrad)" transform="rotate(-8, 26, 51)" />
-            <rect x="68" y="35" width="12" height="32" rx="3" fill="url(#rangerGrad)" transform="rotate(8, 74, 51)" />
-            <rect x="37" y="76" width="10" height="40" rx="2" fill="url(#rangerGrad)" />
-            <rect x="53" y="76" width="10" height="40" rx="2" fill="url(#rangerGrad)" />
-            <path d="M85,20 Q95,50 85,80 L88,50 Z" fill={color} stroke={color} strokeWidth="2" />
-            <line x1="85" y1="50" x2="70" y2="50" stroke={color} strokeWidth="2" />
-            <polygon points="68,50 72,47 72,53" fill={color} />
-          </svg>
-        );
-      case 'TANK':
-        return (
-          <svg viewBox="0 0 100 140" className="w-full h-full">
-            <defs>
-              <linearGradient id="tankGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
-              </linearGradient>
-            </defs>
-            <ellipse cx="50" cy="18" rx="13" ry="15" fill="url(#tankGrad)" />
-            <rect x="37" y="5" width="26" height="18" rx="3" fill={color} opacity="0.8" />
-            <path d="M25,32 L75,32 L78,82 L22,82 Z" fill="url(#tankGrad)" />
-            <rect x="10" y="35" width="18" height="38" rx="4" fill="url(#tankGrad)" />
-            <rect x="72" y="35" width="18" height="38" rx="4" fill="url(#tankGrad)" />
-            <rect x="32" y="80" width="14" height="38" rx="3" fill="url(#tankGrad)" />
-            <rect x="54" y="80" width="14" height="38" rx="3" fill="url(#tankGrad)" />
-            <ellipse cx="15" cy="55" rx="12" ry="18" fill={color} opacity="0.7" />
-            <ellipse cx="15" cy="55" rx="8" ry="12" fill="url(#tankGrad)" />
-          </svg>
-        );
-      case 'SUPPORT':
-        return (
-          <svg viewBox="0 0 100 140" className="w-full h-full">
-            <defs>
-              <linearGradient id="supportGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
-              </linearGradient>
-            </defs>
-            <ellipse cx="50" cy="17" rx="12" ry="14" fill="url(#supportGrad)" />
-            <circle cx="50" cy="8" r="4" fill={color} opacity="0.6" />
-            <path d="M30,30 Q50,25 70,30 L73,85 Q50,95 27,85 Z" fill="url(#supportGrad)" />
-            <rect x="38" y="83" width="9" height="38" rx="2" fill="url(#supportGrad)" />
-            <rect x="53" y="83" width="9" height="38" rx="2" fill="url(#supportGrad)" />
-            <rect x="78" y="25" width="4" height="50" rx="2" fill={color} />
-            <rect x="72" y="30" width="16" height="4" rx="1" fill={color} />
-            <circle cx="25" cy="45" r="6" fill={color} opacity="0.5" />
-            <circle cx="20" cy="60" r="4" fill={color} opacity="0.4" />
-            <circle cx="28" cy="70" r="3" fill={color} opacity="0.3" />
-          </svg>
-        );
-      default:
-        return (
-          <svg viewBox="0 0 100 140" className="w-full h-full">
-            <defs>
-              <linearGradient id="defaultGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.4" />
-              </linearGradient>
-            </defs>
-            <ellipse cx="50" cy="18" rx="13" ry="15" fill="url(#defaultGrad)" />
-            <rect x="35" y="32" width="30" height="45" rx="4" fill="url(#defaultGrad)" />
-            <rect x="22" y="35" width="13" height="32" rx="3" fill="url(#defaultGrad)" />
-            <rect x="65" y="35" width="13" height="32" rx="3" fill="url(#defaultGrad)" />
-            <rect x="38" y="75" width="10" height="40" rx="3" fill="url(#defaultGrad)" />
-            <rect x="52" y="75" width="10" height="40" rx="3" fill="url(#defaultGrad)" />
-          </svg>
-        );
-    }
-  };
-  
-  return getSilhouette();
 };
 
 const getIconForType = (type: string) => {
@@ -223,12 +43,12 @@ const getColorForRarity = (rarity: string) => {
 
 const getBgForRarity = (rarity: string) => {
   switch (rarity.toUpperCase()) {
-    case 'S': return 'bg-yellow-400/10';
-    case 'A': return 'bg-red-400/10';
-    case 'B': return 'bg-purple-400/10';
-    case 'C': return 'bg-blue-400/10';
-    case 'D': return 'bg-green-400/10';
-    default: return 'bg-gray-400/10';
+    case 'S': return 'bg-yellow-400/20';
+    case 'A': return 'bg-red-400/20';
+    case 'B': return 'bg-purple-400/20';
+    case 'C': return 'bg-blue-400/20';
+    case 'D': return 'bg-green-400/20';
+    default: return 'bg-gray-400/20';
   }
 };
 
@@ -236,8 +56,7 @@ const ITEM_TABS = [
   { id: 'all', label: 'All', icon: Package },
   { id: 'weapon', label: 'Weapons', icon: Sword },
   { id: 'armor', label: 'Armor', icon: Shield },
-  { id: 'accessory', label: 'Accessories', icon: Gem },
-  { id: 'consumable', label: 'Consumables', icon: FlaskConical },
+  { id: 'accessory', label: 'Acc', icon: Gem },
 ];
 
 export default function InventoryPage() {
@@ -326,117 +145,110 @@ export default function InventoryPage() {
 
   return (
     <SystemLayout>
-      <div className="space-y-3">
-        <div className="flex justify-between items-center border-b-2 border-primary pb-2">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-yellow-500" />
-            <h1 className="text-2xl font-display font-bold text-primary tracking-tighter drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">INVENTORY</h1>
+      <div className="space-y-2">
+        <div className="flex justify-between items-center border-b border-primary/30 pb-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-yellow-500" />
+            <h1 className="text-xl font-display font-bold text-primary tracking-tight">INVENTORY</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="px-3 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded">
-              <span className="text-xs text-yellow-400 font-mono">💰 {player.gold.toLocaleString()}</span>
+          <div className="flex items-center gap-2">
+            <div className="px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400 font-mono">
+              💰 {player.gold.toLocaleString()}
             </div>
           </div>
         </div>
 
-        <div className="flex gap-3 h-[calc(100vh-220px)] min-h-[400px]">
-          <div className="w-[45%] system-panel p-3 rounded-lg flex flex-col">
-            <div className="relative flex-1 flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div 
-                  className="w-3/4 h-3/4 rounded-full opacity-20"
-                  style={{ 
-                    background: `radial-gradient(circle, ${jobAvatar.color}40 0%, transparent 70%)`,
-                  }}
-                />
+        <div className="flex gap-2" style={{ height: 'calc(100vh - 180px)', minHeight: '350px' }}>
+          <div 
+            className="w-[42%] rounded-lg overflow-hidden relative"
+            style={{ 
+              background: 'linear-gradient(180deg, #3a4a5c 0%, #2a3a4c 50%, #1a2a3c 100%)',
+              border: '2px solid rgba(100,150,200,0.3)'
+            }}
+          >
+            <div className="absolute top-2 left-2 right-2 flex justify-between items-center z-10">
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-black/50 rounded text-[10px]">
+                <span className="text-muted-foreground">Focus</span>
+                <span className="text-yellow-400 font-bold">⚡ 25</span>
               </div>
-              
-              <div 
-                className="relative w-48 h-64 rounded-lg border-2 overflow-hidden flex flex-col"
-                style={{ 
-                  borderColor: jobAvatar.color,
-                  background: `linear-gradient(180deg, ${jobAvatar.color}15 0%, transparent 50%, ${jobAvatar.color}10 100%)`,
-                  boxShadow: `0 0 30px ${jobAvatar.color}40`
-                }}
-              >
-                <div className="flex-1 flex items-center justify-center p-2">
-                  <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
-                </div>
-                <div className="text-center pb-2 px-2">
-                  <div className="text-sm font-bold tracking-wider" style={{ color: jobAvatar.color }}>{jobAvatar.name}</div>
-                  <div className="text-[10px] text-muted-foreground">Lv. {player.level}</div>
-                </div>
-              </div>
-
-              <div 
-                data-testid="slot-weapon"
-                className={`absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.weapon ? getBgForRarity(equippedItems.weapon.rarity) : 'bg-black/50'}`}
-                style={{ 
-                  borderColor: equippedItems.weapon ? undefined : '#444',
-                  boxShadow: equippedItems.weapon ? `0 0 10px ${jobAvatar.color}40` : 'none'
-                }}
-                onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
-              >
-                {equippedItems.weapon ? (
-                  <span className="text-2xl">{equippedItems.weapon.icon || "⚔️"}</span>
-                ) : (
-                  <Sword className="w-5 h-5 text-gray-600" />
-                )}
-                <span className="absolute -bottom-1 text-[8px] text-muted-foreground bg-black/80 px-1 rounded">WEAPON</span>
-              </div>
-
-              <div 
-                data-testid="slot-armor"
-                className={`absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.armor ? getBgForRarity(equippedItems.armor.rarity) : 'bg-black/50'}`}
-                style={{ 
-                  borderColor: equippedItems.armor ? undefined : '#444',
-                  boxShadow: equippedItems.armor ? `0 0 10px ${jobAvatar.color}40` : 'none'
-                }}
-                onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
-              >
-                {equippedItems.armor ? (
-                  <span className="text-2xl">{equippedItems.armor.icon || "🛡️"}</span>
-                ) : (
-                  <Shield className="w-5 h-5 text-gray-600" />
-                )}
-                <span className="absolute -bottom-1 text-[8px] text-muted-foreground bg-black/80 px-1 rounded">ARMOR</span>
-              </div>
-
-              <div 
-                data-testid="slot-accessory"
-                className={`absolute bottom-4 left-1/2 -translate-x-1/2 w-12 h-12 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.accessory ? getBgForRarity(equippedItems.accessory.rarity) : 'bg-black/50'}`}
-                style={{ 
-                  borderColor: equippedItems.accessory ? undefined : '#444',
-                  boxShadow: equippedItems.accessory ? `0 0 10px ${jobAvatar.color}40` : 'none'
-                }}
-                onClick={() => equippedItems.accessory && setSelectedItem(equippedItems.accessory)}
-              >
-                {equippedItems.accessory ? (
-                  <span className="text-2xl">{equippedItems.accessory.icon || "💍"}</span>
-                ) : (
-                  <Gem className="w-5 h-5 text-gray-600" />
-                )}
-                <span className="absolute -bottom-1 text-[8px] text-muted-foreground bg-black/80 px-1 rounded">ACC</span>
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-black/50 rounded text-[10px]">
+                <Zap className="w-3 h-3 text-yellow-400" />
+                <span className="text-yellow-400 font-bold">10</span>
+                <span className="text-muted-foreground">Energy</span>
               </div>
             </div>
 
-            {Object.keys(totalStats).length > 0 && (
-              <div className="mt-3 pt-3 border-t border-primary/20">
-                <h4 className="text-[10px] text-primary/60 mb-2 tracking-wider text-center">GEAR BONUSES</h4>
-                <div className="flex justify-center gap-4">
-                  {Object.entries(totalStats).map(([stat, value]) => (
-                    <div key={stat} className="text-center">
-                      <span className="block text-green-400 font-mono font-bold">+{value}</span>
-                      <span className="text-[9px] capitalize text-muted-foreground">{stat}</span>
-                    </div>
-                  ))}
+            <div className="h-full flex items-center justify-center p-4 pt-10">
+              {jobAvatar.image ? (
+                <img 
+                  src={jobAvatar.image} 
+                  alt={jobAvatar.name}
+                  className="max-h-full max-w-full object-contain drop-shadow-[0_0_20px_rgba(100,150,255,0.3)]"
+                />
+              ) : (
+                <div 
+                  className="w-32 h-48 rounded-lg flex items-center justify-center text-6xl"
+                  style={{ 
+                    background: `linear-gradient(180deg, ${jobAvatar.color}40 0%, ${jobAvatar.color}20 100%)`,
+                    border: `2px solid ${jobAvatar.color}50`
+                  }}
+                >
+                  ⚔️
                 </div>
+              )}
+            </div>
+
+            <div 
+              data-testid="slot-weapon"
+              className={`absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 backdrop-blur-sm ${equippedItems.weapon ? getBgForRarity(equippedItems.weapon.rarity) : 'bg-black/60'}`}
+              style={{ borderColor: equippedItems.weapon ? undefined : 'rgba(100,150,200,0.4)' }}
+              onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
+            >
+              {equippedItems.weapon ? (
+                <span className="text-xl">{equippedItems.weapon.icon || "⚔️"}</span>
+              ) : (
+                <Sword className="w-5 h-5 text-gray-500" />
+              )}
+            </div>
+
+            <div 
+              data-testid="slot-armor"
+              className={`absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 backdrop-blur-sm ${equippedItems.armor ? getBgForRarity(equippedItems.armor.rarity) : 'bg-black/60'}`}
+              style={{ borderColor: equippedItems.armor ? undefined : 'rgba(100,150,200,0.4)' }}
+              onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
+            >
+              {equippedItems.armor ? (
+                <span className="text-xl">{equippedItems.armor.icon || "🛡️"}</span>
+              ) : (
+                <Shield className="w-5 h-5 text-gray-500" />
+              )}
+            </div>
+
+            <div 
+              data-testid="slot-accessory"
+              className={`absolute left-2 bottom-12 w-11 h-11 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 backdrop-blur-sm ${equippedItems.accessory ? getBgForRarity(equippedItems.accessory.rarity) : 'bg-black/60'}`}
+              style={{ borderColor: equippedItems.accessory ? undefined : 'rgba(100,150,200,0.4)' }}
+              onClick={() => equippedItems.accessory && setSelectedItem(equippedItems.accessory)}
+            >
+              {equippedItems.accessory ? (
+                <span className="text-xl">{equippedItems.accessory.icon || "💍"}</span>
+              ) : (
+                <Gem className="w-5 h-5 text-gray-500" />
+              )}
+            </div>
+
+            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
+              <div className="text-xs font-bold" style={{ color: jobAvatar.color }}>
+                {jobAvatar.name}
               </div>
-            )}
+              <div className="px-2 py-0.5 bg-black/50 rounded text-xs font-mono text-primary">
+                Lv.{player.level}
+              </div>
+            </div>
           </div>
 
-          <div className="flex-1 system-panel p-3 rounded-lg flex flex-col">
-            <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+          <div className="flex-1 system-panel rounded-lg flex flex-col overflow-hidden">
+            <div className="flex gap-1 p-2 border-b border-primary/20 overflow-x-auto">
               {ITEM_TABS.map((tab) => {
                 const Icon = tab.icon;
                 const count = tab.id === 'all' ? items.length : items.filter(i => i.type.toLowerCase() === tab.id).length;
@@ -445,7 +257,7 @@ export default function InventoryPage() {
                     key={tab.id}
                     data-testid={`tab-${tab.id}`}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all whitespace-nowrap ${
                       activeTab === tab.id 
                         ? 'bg-primary/20 text-primary border border-primary/50' 
                         : 'bg-black/30 text-muted-foreground border border-transparent hover:border-primary/30'
@@ -453,14 +265,14 @@ export default function InventoryPage() {
                   >
                     <Icon className="w-3 h-3" />
                     {tab.label}
-                    <span className="text-[10px] opacity-60">({count})</span>
+                    <span className="opacity-60">({count})</span>
                   </button>
                 );
               })}
             </div>
 
-            <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-4 gap-2">
+            <div className="flex-1 overflow-y-auto p-2">
+              <div className="grid grid-cols-4 gap-1.5">
                 {filteredItems.map((item) => {
                   const Icon = getIconForType(item.type);
                   const colorClass = getColorForRarity(item.rarity);
@@ -473,17 +285,17 @@ export default function InventoryPage() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedItem(item)}
-                      className={`aspect-square system-panel rounded flex flex-col items-center justify-center relative group cursor-pointer transition-colors border-2 ${colorClass} ${isEquipped ? 'ring-2 ring-primary ring-offset-1 ring-offset-black' : ''}`}
+                      className={`aspect-square rounded-lg flex flex-col items-center justify-center relative cursor-pointer transition-colors border-2 ${colorClass} ${getBgForRarity(item.rarity)} ${isEquipped ? 'ring-2 ring-primary ring-offset-1 ring-offset-black' : ''}`}
                     >
                       {item.icon ? (
                         <span className="text-2xl">{item.icon}</span>
                       ) : (
-                        <Icon className={`w-7 h-7 ${colorClass.split(' ')[0]}`} />
+                        <Icon className={`w-6 h-6 ${colorClass.split(' ')[0]}`} />
                       )}
                       {isEquipped && (
-                        <span className="absolute top-1 right-1 text-[8px] font-mono text-primary bg-primary/20 px-1 rounded">E</span>
+                        <span className="absolute top-0.5 right-0.5 text-[7px] font-mono text-primary bg-primary/30 px-0.5 rounded">E</span>
                       )}
-                      <span className="absolute bottom-1 left-1 text-[8px] font-mono font-bold" style={{
+                      <span className="absolute bottom-0.5 right-0.5 text-[8px] font-mono font-bold opacity-80" style={{
                         color: item.rarity === 'S' ? '#facc15' : item.rarity === 'A' ? '#f87171' : item.rarity === 'B' ? '#a78bfa' : item.rarity === 'C' ? '#60a5fa' : item.rarity === 'D' ? '#4ade80' : '#9ca3af'
                       }}>{item.rarity}</span>
                     </motion.button>
@@ -492,11 +304,25 @@ export default function InventoryPage() {
               </div>
               
               {filteredItems.length === 0 && (
-                <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-                  No items in this category
+                <div className="flex items-center justify-center h-20 text-muted-foreground text-xs">
+                  No items
                 </div>
               )}
             </div>
+
+            {Object.keys(totalStats).length > 0 && (
+              <div className="p-2 border-t border-primary/20">
+                <div className="text-[9px] text-primary/60 mb-1 tracking-wider">GEAR BONUSES</div>
+                <div className="flex gap-3">
+                  {Object.entries(totalStats).map(([stat, value]) => (
+                    <div key={stat} className="text-xs">
+                      <span className="text-green-400 font-mono font-bold">+{value}</span>
+                      <span className="text-muted-foreground ml-1 capitalize">{stat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -506,30 +332,27 @@ export default function InventoryPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-20 left-4 right-4 system-panel p-4 rounded-lg border-2 border-primary/30 z-50"
+              className="fixed bottom-20 left-2 right-2 system-panel p-3 rounded-lg border-2 border-primary/30 z-50"
               style={{ background: 'rgba(0,0,0,0.95)' }}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex gap-4">
-                  <div className={`w-16 h-16 rounded-lg flex items-center justify-center ${getBgForRarity(selectedItem.rarity)} border-2 ${getColorForRarity(selectedItem.rarity)}`}>
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex gap-3 flex-1">
+                  <div className={`w-14 h-14 rounded-lg flex items-center justify-center shrink-0 ${getBgForRarity(selectedItem.rarity)} border-2 ${getColorForRarity(selectedItem.rarity)}`}>
                     {selectedItem.icon ? (
-                      <span className="text-3xl">{selectedItem.icon}</span>
+                      <span className="text-2xl">{selectedItem.icon}</span>
                     ) : (
-                      React.createElement(getIconForType(selectedItem.type), { className: `w-8 h-8 ${getColorForRarity(selectedItem.rarity).split(' ')[0]}` })
+                      React.createElement(getIconForType(selectedItem.type), { className: `w-7 h-7 ${getColorForRarity(selectedItem.rarity).split(' ')[0]}` })
                     )}
                   </div>
-                  <div>
-                    <h3 className={`font-bold text-lg ${getColorForRarity(selectedItem.rarity).split(' ')[0]}`}>{selectedItem.name}</h3>
-                    <p className="text-xs text-muted-foreground capitalize">{selectedItem.type} • Rank {selectedItem.rarity}</p>
-                    {selectedItem.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{selectedItem.description}</p>
-                    )}
+                  <div className="min-w-0">
+                    <h3 className={`font-bold text-sm truncate ${getColorForRarity(selectedItem.rarity).split(' ')[0]}`}>{selectedItem.name}</h3>
+                    <p className="text-[10px] text-muted-foreground capitalize">{selectedItem.type} • Rank {selectedItem.rarity}</p>
                     {selectedItem.stats && (
-                      <div className="flex gap-3 mt-2">
+                      <div className="flex gap-2 mt-1 flex-wrap">
                         {Object.entries(selectedItem.stats).map(([stat, value]) => (
-                          <span key={stat} className="text-xs bg-green-500/10 px-2 py-0.5 rounded">
-                            <span className="text-muted-foreground capitalize">{stat}:</span>
-                            <span className="text-green-400 ml-1 font-bold">+{value}</span>
+                          <span key={stat} className="text-[10px] bg-green-500/20 px-1.5 py-0.5 rounded">
+                            <span className="capitalize">{stat}:</span>
+                            <span className="text-green-400 ml-0.5 font-bold">+{value}</span>
                           </span>
                         ))}
                       </div>
@@ -537,31 +360,22 @@ export default function InventoryPage() {
                   </div>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 shrink-0">
                   {selectedItem.type !== "consumable" && (
                     <Button
                       data-testid="button-equip"
                       size="sm"
                       onClick={() => handleEquip(selectedItem)}
-                      className={equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? 'bg-red-600 hover:bg-red-500' : 'bg-primary hover:bg-primary/80'}
+                      className={`text-xs h-8 ${equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? 'bg-red-600 hover:bg-red-500' : 'bg-primary hover:bg-primary/80'}`}
                     >
-                      {equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? (
-                        <>
-                          <X className="w-4 h-4 mr-1" />
-                          Unequip
-                        </>
-                      ) : (
-                        <>
-                          <Check className="w-4 h-4 mr-1" />
-                          Equip
-                        </>
-                      )}
+                      {equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? 'Unequip' : 'Equip'}
                     </Button>
                   )}
                   <Button
                     data-testid="button-close-details"
                     size="sm"
                     variant="outline"
+                    className="h-8 w-8 p-0"
                     onClick={() => setSelectedItem(null)}
                   >
                     <X className="w-4 h-4" />
