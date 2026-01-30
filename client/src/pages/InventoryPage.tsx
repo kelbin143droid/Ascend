@@ -1,18 +1,18 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sword, Shield, Gem, FlaskConical, Package, X, Check, Sparkles, Zap } from "lucide-react";
+import { Sword, Shield, Gem, FlaskConical, Package, X, Check, Zap, Star, ChevronRight } from "lucide-react";
 import { useGame } from "@/context/GameContext";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { InventoryItem, Equipment } from "@shared/schema";
 
-import warriorAvatar from "@/assets/images/warrior-avatar.png";
+import warriorHero from "@/assets/images/warrior-hero.png";
 
 const JOB_AVATARS: Record<string, { color: string; name: string; image?: string }> = {
   NONE: { color: "#888888", name: "Hunter" },
-  WARRIOR: { color: "#dc2626", name: "Warrior", image: warriorAvatar },
+  WARRIOR: { color: "#f59e0b", name: "Warrior", image: warriorHero },
   MAGE: { color: "#8b5cf6", name: "Mage" },
   SUPPORT: { color: "#22c55e", name: "Healer" },
   ASSASSIN: { color: "#1f2937", name: "Assassin" },
@@ -30,33 +30,33 @@ const getIconForType = (type: string) => {
   }
 };
 
-const getColorForRarity = (rarity: string) => {
+const getRarityColor = (rarity: string) => {
   switch (rarity.toUpperCase()) {
-    case 'S': return 'text-yellow-400 border-yellow-400/50';
-    case 'A': return 'text-red-400 border-red-400/50';
-    case 'B': return 'text-purple-400 border-purple-400/50';
-    case 'C': return 'text-blue-400 border-blue-400/50';
-    case 'D': return 'text-green-400 border-green-400/50';
-    default: return 'text-gray-400 border-gray-400/50';
+    case 'S': return '#facc15';
+    case 'A': return '#f87171';
+    case 'B': return '#a78bfa';
+    case 'C': return '#60a5fa';
+    case 'D': return '#4ade80';
+    default: return '#9ca3af';
   }
 };
 
-const getBgForRarity = (rarity: string) => {
+const getRarityBg = (rarity: string) => {
   switch (rarity.toUpperCase()) {
-    case 'S': return 'bg-yellow-400/20';
-    case 'A': return 'bg-red-400/20';
-    case 'B': return 'bg-purple-400/20';
-    case 'C': return 'bg-blue-400/20';
-    case 'D': return 'bg-green-400/20';
-    default: return 'bg-gray-400/20';
+    case 'S': return 'rgba(250,204,21,0.15)';
+    case 'A': return 'rgba(248,113,113,0.15)';
+    case 'B': return 'rgba(167,139,250,0.15)';
+    case 'C': return 'rgba(96,165,250,0.15)';
+    case 'D': return 'rgba(74,222,128,0.15)';
+    default: return 'rgba(156,163,175,0.15)';
   }
 };
 
 const ITEM_TABS = [
-  { id: 'all', label: 'All', icon: Package },
-  { id: 'weapon', label: 'Weapons', icon: Sword },
-  { id: 'armor', label: 'Armor', icon: Shield },
-  { id: 'accessory', label: 'Acc', icon: Gem },
+  { id: 'all', label: 'All' },
+  { id: 'weapon', label: 'Weapons' },
+  { id: 'armor', label: 'Armor' },
+  { id: 'accessory', label: 'Acc' },
 ];
 
 export default function InventoryPage() {
@@ -145,49 +145,64 @@ export default function InventoryPage() {
 
   return (
     <SystemLayout>
-      <div className="space-y-2">
-        <div className="flex justify-between items-center border-b border-primary/30 pb-2">
+      <div className="h-full flex flex-col">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-yellow-500" />
-            <h1 className="text-xl font-display font-bold text-primary tracking-tight">INVENTORY</h1>
+            <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+            <h1 className="text-lg font-bold text-white tracking-wide">INVENTORY</h1>
           </div>
           <div className="flex items-center gap-2">
-            <div className="px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400 font-mono">
-              💰 {player.gold.toLocaleString()}
-            </div>
+            <button className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/40 rounded-full text-xs font-bold text-yellow-400">
+              Adapt
+            </button>
+            <button className="px-3 py-1 bg-gray-700/50 border border-gray-600 rounded-full text-xs text-gray-300">
+              Design
+            </button>
           </div>
         </div>
 
-        <div className="flex gap-2" style={{ height: 'calc(100vh - 180px)', minHeight: '350px' }}>
+        <div className="flex-1 flex gap-2 p-2 overflow-hidden" style={{ height: 'calc(100vh - 140px)' }}>
           <div 
-            className="w-[42%] rounded-lg overflow-hidden relative"
+            className="w-[48%] rounded-xl overflow-hidden relative flex flex-col"
             style={{ 
-              background: 'linear-gradient(180deg, #3a4a5c 0%, #2a3a4c 50%, #1a2a3c 100%)',
-              border: '2px solid rgba(100,150,200,0.3)'
+              background: 'linear-gradient(160deg, #5a6a7a 0%, #3a4a5a 40%, #2a3a4a 100%)',
+              border: '3px solid #4a6a8a',
+              boxShadow: 'inset 0 0 30px rgba(0,0,0,0.3), 0 0 20px rgba(74,106,138,0.3)'
             }}
           >
-            <div className="absolute top-2 left-2 right-2 flex justify-between items-center z-10">
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-black/50 rounded text-[10px]">
-                <span className="text-muted-foreground">Focus</span>
-                <span className="text-yellow-400 font-bold">⚡ 25</span>
+            <div className="flex justify-between items-center p-2 z-10">
+              <div className="flex items-center gap-1 px-2 py-1 bg-gray-800/70 rounded-lg border border-gray-600">
+                <span className="text-[10px] text-gray-300">Focus</span>
+                <span className="text-yellow-400 text-xs font-bold">⚡ 25 T</span>
               </div>
-              <div className="flex items-center gap-1 px-2 py-0.5 bg-black/50 rounded text-[10px]">
+              <div className="flex items-center gap-1 px-2 py-1 bg-gray-800/70 rounded-lg border border-gray-600">
                 <Zap className="w-3 h-3 text-yellow-400" />
-                <span className="text-yellow-400 font-bold">10</span>
-                <span className="text-muted-foreground">Energy</span>
+                <span className="text-yellow-400 text-xs font-bold">10</span>
+                <span className="text-[10px] text-gray-300">Energy link</span>
               </div>
             </div>
 
-            <div className="h-full flex items-center justify-center p-4 pt-10">
+            <div className="flex-1 relative flex items-center justify-center px-4">
+              <div 
+                className="absolute w-40 h-40 rounded-full opacity-30"
+                style={{ 
+                  background: 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, transparent 70%)',
+                }}
+              />
+              
               {jobAvatar.image ? (
                 <img 
                   src={jobAvatar.image} 
                   alt={jobAvatar.name}
-                  className="max-h-full max-w-full object-contain drop-shadow-[0_0_20px_rgba(100,150,255,0.3)]"
+                  className="max-h-full max-w-full object-contain z-10"
+                  style={{ 
+                    filter: 'drop-shadow(0 0 20px rgba(100,200,255,0.4))',
+                    maxHeight: 'calc(100% - 20px)'
+                  }}
                 />
               ) : (
                 <div 
-                  className="w-32 h-48 rounded-lg flex items-center justify-center text-6xl"
+                  className="w-28 h-40 rounded-lg flex items-center justify-center text-5xl z-10"
                   style={{ 
                     background: `linear-gradient(180deg, ${jobAvatar.color}40 0%, ${jobAvatar.color}20 100%)`,
                     border: `2px solid ${jobAvatar.color}50`
@@ -196,76 +211,106 @@ export default function InventoryPage() {
                   ⚔️
                 </div>
               )}
-            </div>
 
-            <div 
-              data-testid="slot-weapon"
-              className={`absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 backdrop-blur-sm ${equippedItems.weapon ? getBgForRarity(equippedItems.weapon.rarity) : 'bg-black/60'}`}
-              style={{ borderColor: equippedItems.weapon ? undefined : 'rgba(100,150,200,0.4)' }}
-              onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
-            >
-              {equippedItems.weapon ? (
-                <span className="text-xl">{equippedItems.weapon.icon || "⚔️"}</span>
-              ) : (
-                <Sword className="w-5 h-5 text-gray-500" />
-              )}
-            </div>
-
-            <div 
-              data-testid="slot-armor"
-              className={`absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 backdrop-blur-sm ${equippedItems.armor ? getBgForRarity(equippedItems.armor.rarity) : 'bg-black/60'}`}
-              style={{ borderColor: equippedItems.armor ? undefined : 'rgba(100,150,200,0.4)' }}
-              onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
-            >
-              {equippedItems.armor ? (
-                <span className="text-xl">{equippedItems.armor.icon || "🛡️"}</span>
-              ) : (
-                <Shield className="w-5 h-5 text-gray-500" />
-              )}
-            </div>
-
-            <div 
-              data-testid="slot-accessory"
-              className={`absolute left-2 bottom-12 w-11 h-11 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 backdrop-blur-sm ${equippedItems.accessory ? getBgForRarity(equippedItems.accessory.rarity) : 'bg-black/60'}`}
-              style={{ borderColor: equippedItems.accessory ? undefined : 'rgba(100,150,200,0.4)' }}
-              onClick={() => equippedItems.accessory && setSelectedItem(equippedItems.accessory)}
-            >
-              {equippedItems.accessory ? (
-                <span className="text-xl">{equippedItems.accessory.icon || "💍"}</span>
-              ) : (
-                <Gem className="w-5 h-5 text-gray-500" />
-              )}
-            </div>
-
-            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
-              <div className="text-xs font-bold" style={{ color: jobAvatar.color }}>
-                {jobAvatar.name}
+              <div 
+                data-testid="slot-weapon"
+                className="absolute left-1 top-1/3 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 z-20"
+                style={{ 
+                  background: equippedItems.weapon ? getRarityBg(equippedItems.weapon.rarity) : 'rgba(60,80,100,0.8)',
+                  border: `2px solid ${equippedItems.weapon ? getRarityColor(equippedItems.weapon.rarity) : 'rgba(100,140,180,0.5)'}`,
+                  boxShadow: equippedItems.weapon ? `0 0 10px ${getRarityColor(equippedItems.weapon.rarity)}40` : 'none'
+                }}
+                onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
+              >
+                {equippedItems.weapon ? (
+                  <span className="text-lg">{equippedItems.weapon.icon || "⚔️"}</span>
+                ) : (
+                  <Sword className="w-4 h-4 text-gray-400" />
+                )}
               </div>
-              <div className="px-2 py-0.5 bg-black/50 rounded text-xs font-mono text-primary">
-                Lv.{player.level}
+
+              <div 
+                data-testid="slot-armor"
+                className="absolute right-1 top-1/3 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 z-20"
+                style={{ 
+                  background: equippedItems.armor ? getRarityBg(equippedItems.armor.rarity) : 'rgba(60,80,100,0.8)',
+                  border: `2px solid ${equippedItems.armor ? getRarityColor(equippedItems.armor.rarity) : 'rgba(100,140,180,0.5)'}`,
+                  boxShadow: equippedItems.armor ? `0 0 10px ${getRarityColor(equippedItems.armor.rarity)}40` : 'none'
+                }}
+                onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
+              >
+                {equippedItems.armor ? (
+                  <span className="text-lg">{equippedItems.armor.icon || "🛡️"}</span>
+                ) : (
+                  <Shield className="w-4 h-4 text-gray-400" />
+                )}
+              </div>
+
+              <div 
+                data-testid="slot-accessory"
+                className="absolute left-1 bottom-1/4 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110 z-20"
+                style={{ 
+                  background: equippedItems.accessory ? getRarityBg(equippedItems.accessory.rarity) : 'rgba(60,80,100,0.8)',
+                  border: `2px solid ${equippedItems.accessory ? getRarityColor(equippedItems.accessory.rarity) : 'rgba(100,140,180,0.5)'}`,
+                  boxShadow: equippedItems.accessory ? `0 0 10px ${getRarityColor(equippedItems.accessory.rarity)}40` : 'none'
+                }}
+                onClick={() => equippedItems.accessory && setSelectedItem(equippedItems.accessory)}
+              >
+                {equippedItems.accessory ? (
+                  <span className="text-lg">{equippedItems.accessory.icon || "💍"}</span>
+                ) : (
+                  <Gem className="w-4 h-4 text-gray-400" />
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center p-2 bg-gray-900/50">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-gray-700 border border-gray-600"></div>
+              </div>
+              <div className="text-2xl font-bold text-white font-mono">
+                {player.level}
               </div>
             </div>
           </div>
 
-          <div className="flex-1 system-panel rounded-lg flex flex-col overflow-hidden">
-            <div className="flex gap-1 p-2 border-b border-primary/20 overflow-x-auto">
+          <div 
+            className="flex-1 rounded-xl overflow-hidden flex flex-col"
+            style={{ 
+              background: 'linear-gradient(180deg, #1e2a3a 0%, #0f1a2a 100%)',
+              border: '2px solid #2a3a4a'
+            }}
+          >
+            <div className="flex items-center justify-between p-2 border-b border-gray-700">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-cyan-400" />
+                <span className="text-sm font-bold text-white">EQUIPMENT</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button className="p-1 hover:bg-gray-700 rounded">
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+                <button className="p-1 hover:bg-gray-700 rounded">
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-1 px-2 pt-2">
               {ITEM_TABS.map((tab) => {
-                const Icon = tab.icon;
                 const count = tab.id === 'all' ? items.length : items.filter(i => i.type.toLowerCase() === tab.id).length;
                 return (
                   <button
                     key={tab.id}
                     data-testid={`tab-${tab.id}`}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all whitespace-nowrap ${
+                    className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
                       activeTab === tab.id 
-                        ? 'bg-primary/20 text-primary border border-primary/50' 
-                        : 'bg-black/30 text-muted-foreground border border-transparent hover:border-primary/30'
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' 
+                        : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:border-gray-600'
                     }`}
                   >
-                    <Icon className="w-3 h-3" />
-                    {tab.label}
-                    <span className="opacity-60">({count})</span>
+                    {tab.label} ({count})
                   </button>
                 );
               })}
@@ -275,8 +320,8 @@ export default function InventoryPage() {
               <div className="grid grid-cols-4 gap-1.5">
                 {filteredItems.map((item) => {
                   const Icon = getIconForType(item.type);
-                  const colorClass = getColorForRarity(item.rarity);
                   const isEquipped = equipment[item.type as keyof Equipment] === item.id;
+                  const rarityColor = getRarityColor(item.rarity);
                   
                   return (
                     <motion.button
@@ -285,44 +330,67 @@ export default function InventoryPage() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedItem(item)}
-                      className={`aspect-square rounded-lg flex flex-col items-center justify-center relative cursor-pointer transition-colors border-2 ${colorClass} ${getBgForRarity(item.rarity)} ${isEquipped ? 'ring-2 ring-primary ring-offset-1 ring-offset-black' : ''}`}
+                      className="aspect-square rounded-lg flex flex-col items-center justify-center relative cursor-pointer transition-all"
+                      style={{
+                        background: getRarityBg(item.rarity),
+                        border: `2px solid ${rarityColor}60`,
+                        boxShadow: isEquipped ? `0 0 12px ${rarityColor}60, inset 0 0 20px ${rarityColor}20` : 'none'
+                      }}
                     >
                       {item.icon ? (
-                        <span className="text-2xl">{item.icon}</span>
+                        <span className="text-xl">{item.icon}</span>
                       ) : (
-                        <Icon className={`w-6 h-6 ${colorClass.split(' ')[0]}`} />
+                        <Icon className="w-5 h-5" style={{ color: rarityColor }} />
                       )}
                       {isEquipped && (
-                        <span className="absolute top-0.5 right-0.5 text-[7px] font-mono text-primary bg-primary/30 px-0.5 rounded">E</span>
+                        <span 
+                          className="absolute top-0.5 right-0.5 text-[7px] font-bold px-1 rounded"
+                          style={{ background: rarityColor, color: '#000' }}
+                        >E</span>
                       )}
-                      <span className="absolute bottom-0.5 right-0.5 text-[8px] font-mono font-bold opacity-80" style={{
-                        color: item.rarity === 'S' ? '#facc15' : item.rarity === 'A' ? '#f87171' : item.rarity === 'B' ? '#a78bfa' : item.rarity === 'C' ? '#60a5fa' : item.rarity === 'D' ? '#4ade80' : '#9ca3af'
-                      }}>{item.rarity}</span>
+                      <span 
+                        className="absolute bottom-0.5 right-0.5 text-[8px] font-bold"
+                        style={{ color: rarityColor }}
+                      >{item.rarity}</span>
                     </motion.button>
                   );
                 })}
               </div>
               
               {filteredItems.length === 0 && (
-                <div className="flex items-center justify-center h-20 text-muted-foreground text-xs">
-                  No items
+                <div className="flex items-center justify-center h-20 text-gray-500 text-xs">
+                  No items in this category
                 </div>
               )}
             </div>
 
             {Object.keys(totalStats).length > 0 && (
-              <div className="p-2 border-t border-primary/20">
-                <div className="text-[9px] text-primary/60 mb-1 tracking-wider">GEAR BONUSES</div>
-                <div className="flex gap-3">
+              <div className="p-2 border-t border-gray-700 bg-gray-900/50">
+                <div className="text-[9px] text-cyan-400/60 mb-1 tracking-wider uppercase">Gear Bonuses</div>
+                <div className="flex gap-3 flex-wrap">
                   {Object.entries(totalStats).map(([stat, value]) => (
                     <div key={stat} className="text-xs">
                       <span className="text-green-400 font-mono font-bold">+{value}</span>
-                      <span className="text-muted-foreground ml-1 capitalize">{stat}</span>
+                      <span className="text-gray-400 ml-1 capitalize">{stat}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
+            <div className="p-2 border-t border-gray-700 bg-gray-900/30">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white">Inventory Cart</div>
+                  <div className="text-[10px] text-gray-400">
+                    {items.length} items • 💰 {player.gold.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -332,26 +400,46 @@ export default function InventoryPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-20 left-2 right-2 system-panel p-3 rounded-lg border-2 border-primary/30 z-50"
-              style={{ background: 'rgba(0,0,0,0.95)' }}
+              className="fixed bottom-16 left-2 right-2 p-3 rounded-xl z-50"
+              style={{ 
+                background: 'linear-gradient(180deg, #1a2a3a 0%, #0a1a2a 100%)',
+                border: `2px solid ${getRarityColor(selectedItem.rarity)}60`,
+                boxShadow: `0 0 20px ${getRarityColor(selectedItem.rarity)}30`
+              }}
             >
               <div className="flex justify-between items-start gap-3">
                 <div className="flex gap-3 flex-1">
-                  <div className={`w-14 h-14 rounded-lg flex items-center justify-center shrink-0 ${getBgForRarity(selectedItem.rarity)} border-2 ${getColorForRarity(selectedItem.rarity)}`}>
+                  <div 
+                    className="w-14 h-14 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: getRarityBg(selectedItem.rarity),
+                      border: `2px solid ${getRarityColor(selectedItem.rarity)}`
+                    }}
+                  >
                     {selectedItem.icon ? (
                       <span className="text-2xl">{selectedItem.icon}</span>
                     ) : (
-                      React.createElement(getIconForType(selectedItem.type), { className: `w-7 h-7 ${getColorForRarity(selectedItem.rarity).split(' ')[0]}` })
+                      React.createElement(getIconForType(selectedItem.type), { 
+                        className: 'w-7 h-7',
+                        style: { color: getRarityColor(selectedItem.rarity) }
+                      })
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h3 className={`font-bold text-sm truncate ${getColorForRarity(selectedItem.rarity).split(' ')[0]}`}>{selectedItem.name}</h3>
-                    <p className="text-[10px] text-muted-foreground capitalize">{selectedItem.type} • Rank {selectedItem.rarity}</p>
+                    <h3 
+                      className="font-bold text-sm truncate"
+                      style={{ color: getRarityColor(selectedItem.rarity) }}
+                    >{selectedItem.name}</h3>
+                    <p className="text-[10px] text-gray-400 capitalize">{selectedItem.type} • Rank {selectedItem.rarity}</p>
                     {selectedItem.stats && (
                       <div className="flex gap-2 mt-1 flex-wrap">
                         {Object.entries(selectedItem.stats).map(([stat, value]) => (
-                          <span key={stat} className="text-[10px] bg-green-500/20 px-1.5 py-0.5 rounded">
-                            <span className="capitalize">{stat}:</span>
+                          <span 
+                            key={stat} 
+                            className="text-[10px] px-1.5 py-0.5 rounded"
+                            style={{ background: 'rgba(34,197,94,0.2)' }}
+                          >
+                            <span className="capitalize text-gray-300">{stat}:</span>
                             <span className="text-green-400 ml-0.5 font-bold">+{value}</span>
                           </span>
                         ))}
@@ -366,7 +454,7 @@ export default function InventoryPage() {
                       data-testid="button-equip"
                       size="sm"
                       onClick={() => handleEquip(selectedItem)}
-                      className={`text-xs h-8 ${equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? 'bg-red-600 hover:bg-red-500' : 'bg-primary hover:bg-primary/80'}`}
+                      className={`text-xs h-8 ${equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? 'bg-red-600 hover:bg-red-500' : 'bg-cyan-600 hover:bg-cyan-500'}`}
                     >
                       {equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? 'Unequip' : 'Equip'}
                     </Button>
@@ -375,7 +463,7 @@ export default function InventoryPage() {
                     data-testid="button-close-details"
                     size="sm"
                     variant="outline"
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 border-gray-600"
                     onClick={() => setSelectedItem(null)}
                   >
                     <X className="w-4 h-4" />
