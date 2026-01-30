@@ -193,9 +193,9 @@ export const players = pgTable("players", {
 });
 
 export const insertPlayerSchema = createInsertSchema(players, {
-  pendingRankUnlock: pendingRankUnlockSchema,
-  unlockedAttributes: z.array(z.string()),
-  rankHistory: z.array(rankHistoryEntrySchema),
+  pendingRankUnlock: pendingRankUnlockSchema.optional().default(null),
+  unlockedAttributes: z.array(z.string()).optional().default(["strength", "agility", "sense", "vitality"]),
+  rankHistory: z.array(rankHistoryEntrySchema).optional().default([]),
 }).omit({
   id: true,
 });
