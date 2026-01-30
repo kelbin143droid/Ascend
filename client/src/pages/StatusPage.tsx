@@ -52,7 +52,8 @@ export default function StatusPage() {
     lastXpGain,
     startSession,
     completeSession,
-    cancelSession
+    cancelSession,
+    gainExp
   } = useGame();
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
@@ -60,6 +61,7 @@ export default function StatusPage() {
   const [selectedStat, setSelectedStat] = useState<string | null>(null);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customName, setCustomName] = useState("");
+  const [showTestMode, setShowTestMode] = useState(true);
 
   if (isLoading || !player) {
     return (
@@ -636,6 +638,84 @@ export default function StatusPage() {
         onStartSession={startSession}
         onCancelSession={cancelSession}
       />
+
+      {showTestMode && (
+        <motion.div 
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="fixed bottom-20 left-4 right-4 z-40 bg-yellow-900/90 border border-yellow-500 rounded-lg p-4 max-w-md mx-auto"
+          data-testid="test-mode-panel"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-yellow-400 text-xs font-mono tracking-wider">TEST MODE</div>
+            <button 
+              onClick={() => setShowTestMode(false)}
+              className="text-yellow-500 hover:text-yellow-300 text-xs"
+              data-testid="button-close-test-mode"
+            >
+              [HIDE]
+            </button>
+          </div>
+          <div className="text-xs text-yellow-200 mb-3">
+            Current: Level {player.level} | Rank {player.rank} | XP: {player.exp}/{player.maxExp}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs border-yellow-500 text-yellow-400 hover:bg-yellow-500/20"
+              onClick={() => gainExp(player.maxExp - player.exp + 10)}
+              data-testid="button-level-up"
+            >
+              +1 Level
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs border-yellow-500 text-yellow-400 hover:bg-yellow-500/20"
+              onClick={() => {
+                const xpNeeded = (player.maxExp - player.exp) * 5 + 500;
+                gainExp(xpNeeded);
+              }}
+              data-testid="button-level-up-5"
+            >
+              +5 Levels
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs border-orange-500 text-orange-400 hover:bg-orange-500/20"
+              onClick={() => {
+                const targetLevel = player.rank === "E" ? 11 : player.rank === "D" ? 26 : player.rank === "C" ? 46 : player.rank === "B" ? 71 : 100;
+                let xpNeeded = 0;
+                let level = player.level;
+                let maxExp = player.maxExp;
+                while (level < targetLevel) {
+                  xpNeeded += maxExp;
+                  level++;
+                  maxExp = Math.floor(maxExp * 1.5);
+                }
+                gainExp(xpNeeded + 10);
+              }}
+              data-testid="button-next-rank"
+            >
+              → Next Rank
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs border-green-500 text-green-400 hover:bg-green-500/20"
+              onClick={() => gainExp(50)}
+              data-testid="button-gain-50xp"
+            >
+              +50 XP
+            </Button>
+          </div>
+          <div className="mt-3 text-[10px] text-yellow-300/70">
+            Rank thresholds: D@11, C@26, B@46 (Social), A@71 (Skill)
+          </div>
+        </motion.div>
+      )}
     </SystemLayout>
   );
 }
