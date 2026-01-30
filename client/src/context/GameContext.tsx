@@ -58,6 +58,7 @@ interface GameContextType {
   confirmRankUnlock: () => void;
   replayRankHistory: (entry: RankHistoryEntry) => void;
   closeRankReplay: () => void;
+  addLevels: (levels: number) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -313,6 +314,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setReplayingRankHistory(null);
   }, []);
 
+  const addLevelsMutation = useMutation({
+    mutationFn: async (levels: number) => {
+      if (!playerId) throw new Error("No player");
+      const res = await apiRequest("POST", `/api/player/${playerId}/add-levels`, { levels });
+      return res.json() as Promise<PlayerWithDerived>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/player", playerId], data);
+      if (data.systemMessage) {
+        showSystemMessage(data.systemMessage);
+      }
+    },
+  });
+
+  const addLevels = useCallback((levels: number) => {
+    addLevelsMutation.mutate(levels);
+  }, [addLevelsMutation]);
+
   return (
     <GameContext.Provider value={{ 
       player: player || null, 
@@ -334,6 +353,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       confirmRankUnlock,
       replayRankHistory,
       closeRankReplay,
+      addLevels,
     }}>
       {children}
     </GameContext.Provider>

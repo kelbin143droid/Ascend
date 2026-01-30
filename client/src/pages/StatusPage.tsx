@@ -53,7 +53,8 @@ export default function StatusPage() {
     startSession,
     completeSession,
     cancelSession,
-    gainExp
+    gainExp,
+    addLevels
   } = useGame();
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
@@ -664,19 +665,7 @@ export default function StatusPage() {
               size="sm"
               variant="outline"
               className="text-xs border-yellow-500 text-yellow-400 hover:bg-yellow-500/20"
-              onClick={() => gainExp(player.maxExp - player.exp + 10)}
-              data-testid="button-level-up"
-            >
-              +1 Level
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs border-yellow-500 text-yellow-400 hover:bg-yellow-500/20"
-              onClick={() => {
-                const xpNeeded = (player.maxExp - player.exp) * 5 + 500;
-                gainExp(xpNeeded);
-              }}
+              onClick={() => addLevels(5)}
               data-testid="button-level-up-5"
             >
               +5 Levels
@@ -684,18 +673,20 @@ export default function StatusPage() {
             <Button
               size="sm"
               variant="outline"
+              className="text-xs border-yellow-500 text-yellow-400 hover:bg-yellow-500/20"
+              onClick={() => addLevels(15)}
+              data-testid="button-level-up-15"
+            >
+              +15 Levels
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
               className="text-xs border-orange-500 text-orange-400 hover:bg-orange-500/20"
               onClick={() => {
-                const targetLevel = player.rank === "E" ? 11 : player.rank === "D" ? 26 : player.rank === "C" ? 46 : player.rank === "B" ? 71 : 100;
-                let xpNeeded = 0;
-                let level = player.level;
-                let maxExp = player.maxExp;
-                while (level < targetLevel) {
-                  xpNeeded += maxExp;
-                  level++;
-                  maxExp = Math.floor(maxExp * 1.5);
-                }
-                gainExp(xpNeeded + 10);
+                const targetLevel = player.rank === "E" ? 11 : player.rank === "D" ? 26 : player.rank === "C" ? 46 : player.rank === "B" ? 71 : player.level + 1;
+                const levelsNeeded = Math.max(1, targetLevel - player.level);
+                addLevels(levelsNeeded);
               }}
               data-testid="button-next-rank"
             >

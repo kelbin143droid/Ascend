@@ -347,6 +347,58 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/add-levels", async (req, res) => {
+    try {
+      const levelSchema = z.object({ levels: z.number().min(1).max(100) });
+      const parsed = levelSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid levels amount (1-100)" });
+      }
+      
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      
+      const levelsToAdd = parsed.data.levels;
+      let newLevel = player.level + levelsToAdd;
+      let newAvailablePoints = player.availablePoints + (levelsToAdd * 5);
+      let newMaxHp = player.maxHp + (levelsToAdd * 50);
+      let newMaxMp = player.maxMp + (levelsToAdd * 20);
+      let newRank = player.rank;
+      let pendingRankUnlock = player.pendingRankUnlock;
+      
+      const rankOrder = ["E", "D", "C", "B", "A"];
+      const thresholds = { D: 11, C: 26, B: 46, A: 71 };
+      
+      for (const [rank, threshold] of Object.entries(thresholds)) {
+        if (newLevel >= threshold && rankOrder.indexOf(rank) > rankOrder.indexOf(newRank) && !pendingRankUnlock) {
+          newRank = rank;
+          const unlockData = { D: "endurance", C: "mobility", B: "social", A: "skill" };
+          pendingRankUnlock = { rank: newRank, attribute: unlockData[rank as keyof typeof unlockData] };
+        }
+      }
+      
+      const updatedPlayer = await storage.updatePlayer(req.params.id, {
+        level: newLevel,
+        availablePoints: newAvailablePoints,
+        maxHp: newMaxHp,
+        maxMp: newMaxMp,
+        hp: newMaxHp,
+        mp: newMaxMp,
+        rank: newRank,
+        pendingRankUnlock,
+        exp: 0,
+        maxExp: Math.floor(100 * Math.pow(1.5, newLevel - 1)),
+      });
+      
+      res.json(attachDerivedStats(updatedPlayer!, `Added ${levelsToAdd} levels! Now level ${newLevel}.`));
+    } catch (error) {
+      console.error("Add levels error:", error);
+      res.status(500).json({ error: "Failed to add levels" });
+    }
+  });
+
   app.post("/api/player/:id/confirm-rank-unlock", async (req, res) => {
     try {
       const player = await storage.confirmRankUnlock(req.params.id);
