@@ -6,19 +6,40 @@ import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Pencil, X, Clock, Moon, Coffee, Book, Dumbbell, Gamepad2, Briefcase, Swords, Wind, Eye, Heart } from "lucide-react";
+import { Check, Pencil, X, Clock, Moon, Coffee, Book, Dumbbell, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { jobsByRank, titlesByRank, getSkillsForClass } from "@/lib/classData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const COLOR_OPTIONS = [
+  "#3b4d6b", "#4a6fa5", "#5a8a72", "#c97b63", "#7d9d6a", "#8b7aa3",
+  "#ff6b6b", "#4ecdc4", "#ffe66d", "#a855f7", "#f472b6", "#22d3ee"
+];
+
 const ACTIVITY_PRESETS = [
+  { id: "strength", name: "Strength", icon: Swords, color: "#ff6b6b", isSystemTask: true, stat: "strength" },
+  { id: "agility", name: "Agility", icon: Wind, color: "#4ecdc4", isSystemTask: true, stat: "agility" },
+  { id: "sense", name: "Sense", icon: Eye, color: "#ffe66d", isSystemTask: true, stat: "sense" },
+  { id: "vitality", name: "Vitality", icon: Heart, color: "#a855f7", isSystemTask: true, stat: "vitality" },
   { id: "sleep", name: "Sleep", icon: Moon, color: "#3b4d6b" },
   { id: "work", name: "Work", icon: Briefcase, color: "#4a6fa5", isSystemTask: true },
   { id: "study", name: "Study", icon: Book, color: "#5a8a72", isSystemTask: true },
   { id: "exercise", name: "Exercise", icon: Dumbbell, color: "#c97b63", isSystemTask: true },
   { id: "meal", name: "Meal", icon: Coffee, color: "#7d9d6a" },
   { id: "leisure", name: "Leisure", icon: Gamepad2, color: "#8b7aa3" },
+  { id: "custom", name: "Custom", icon: Plus, color: "#6b7280" },
 ];
+
+interface EditingBlock {
+  id: string;
+  name: string;
+  startHour: number;
+  endHour: number;
+  color: string;
+  isSystemTask?: boolean;
+  isNew?: boolean;
+}
 
 export default function StatusPage() {
   const { 
@@ -37,6 +58,8 @@ export default function StatusPage() {
   const [tempName, setTempName] = useState("");
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [selectedStat, setSelectedStat] = useState<string | null>(null);
+  const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
+  const [customName, setCustomName] = useState("");
 
   if (isLoading || !player) {
     return (
@@ -78,6 +101,74 @@ export default function StatusPage() {
     { key: 'sense', label: 'SENSE', icon: Eye, color: '#ffe66d', value: player.stats.sense },
     { key: 'vitality', label: 'VITALITY', icon: Heart, color: '#a855f7', value: player.stats.vitality },
   ];
+
+  const currentSchedule: ScheduleBlock[] = player.schedule?.length ? player.schedule as ScheduleBlock[] : [
+    { id: "sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#3b4d6b" },
+    { id: "work", name: "Focus Work", startHour: 9, endHour: 12, color: "#4a6fa5", isSystemTask: true },
+    { id: "exercise", name: "Training", startHour: 17, endHour: 18, color: "#c97b63", isSystemTask: true },
+  ];
+
+  const handlePresetClick = (preset: typeof ACTIVITY_PRESETS[0]) => {
+    const existingBlock = currentSchedule.find(b => b.id === preset.id);
+    
+    if (existingBlock) {
+      setEditingBlock({
+        ...existingBlock,
+        isNew: false,
+      });
+    } else {
+      setEditingBlock({
+        id: preset.id === 'custom' ? `custom_${Date.now()}` : preset.id,
+        name: preset.id === 'custom' ? '' : preset.name,
+        startHour: 9,
+        endHour: 10,
+        color: preset.color,
+        isSystemTask: preset.isSystemTask,
+        isNew: true,
+      });
+      if (preset.id === 'custom') {
+        setCustomName('');
+      }
+    }
+  };
+
+  const handleSaveBlock = () => {
+    if (!editingBlock) return;
+    
+    const blockToSave = {
+      ...editingBlock,
+      name: editingBlock.id.startsWith('custom') ? customName || 'Custom Task' : editingBlock.name,
+    };
+    delete (blockToSave as any).isNew;
+    
+    let newSchedule: ScheduleBlock[];
+    if (editingBlock.isNew) {
+      newSchedule = [...currentSchedule, blockToSave];
+    } else {
+      newSchedule = currentSchedule.map(b => b.id === blockToSave.id ? blockToSave : b);
+    }
+    
+    updatePlayer({ schedule: newSchedule });
+    setEditingBlock(null);
+    setCustomName('');
+  };
+
+  const handleDeleteBlock = () => {
+    if (!editingBlock) return;
+    const newSchedule = currentSchedule.filter(b => b.id !== editingBlock.id);
+    updatePlayer({ schedule: newSchedule });
+    setEditingBlock(null);
+  };
+
+  const handleEditExistingBlock = (block: ScheduleBlock) => {
+    setEditingBlock({
+      ...block,
+      isNew: false,
+    });
+    if (block.id.startsWith('custom')) {
+      setCustomName(block.name);
+    }
+  };
 
   return (
     <SystemLayout>
@@ -306,7 +397,7 @@ export default function StatusPage() {
       </div>
 
       <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
-        <DialogContent className="bg-black/95 border-primary/20 max-w-sm">
+        <DialogContent className="bg-black/95 border-primary/20 max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary/80 font-display text-sm flex items-center gap-2">
               <Clock size={16} />
@@ -315,59 +406,72 @@ export default function StatusPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-xs text-muted-foreground/70">
-              Design your day. System tasks glow with power.
+              Tap an icon to add or edit a time block.
             </p>
             
-            <div className="grid grid-cols-3 gap-2">
-              {ACTIVITY_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  className="flex flex-col items-center p-3 rounded-lg border border-white/5 hover:border-primary/30 transition-all group"
-                  style={{ backgroundColor: `${preset.color}15` }}
-                >
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center mb-1"
-                    style={{ 
-                      backgroundColor: `${preset.color}30`,
-                      boxShadow: preset.isSystemTask ? `0 0 12px ${preset.color}50` : 'none'
-                    }}
+            <div className="grid grid-cols-4 gap-2">
+              {ACTIVITY_PRESETS.map((preset) => {
+                const isInSchedule = currentSchedule.some(b => b.id === preset.id);
+                return (
+                  <button
+                    key={preset.id}
+                    data-testid={`button-preset-${preset.id}`}
+                    onClick={() => handlePresetClick(preset)}
+                    className={`flex flex-col items-center p-2 rounded-lg border transition-all group ${
+                      isInSchedule ? 'border-primary/40 bg-primary/5' : 'border-white/5 hover:border-primary/30'
+                    }`}
+                    style={{ backgroundColor: isInSchedule ? undefined : `${preset.color}10` }}
                   >
-                    <preset.icon size={16} style={{ color: preset.color }} />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground group-hover:text-white/80">{preset.name}</span>
-                  {preset.isSystemTask && (
-                    <span className="text-[8px] text-primary/60 mt-0.5">QUEST</span>
-                  )}
-                </button>
-              ))}
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center mb-1"
+                      style={{ 
+                        backgroundColor: `${preset.color}30`,
+                        boxShadow: preset.isSystemTask ? `0 0 12px ${preset.color}50` : 'none'
+                      }}
+                    >
+                      <preset.icon size={14} style={{ color: preset.color }} />
+                    </div>
+                    <span className="text-[9px] text-muted-foreground group-hover:text-white/80 truncate w-full text-center">
+                      {preset.name}
+                    </span>
+                    {preset.isSystemTask && (
+                      <span className="text-[7px] text-primary/60">QUEST</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="space-y-2 pt-2 border-t border-white/5">
               <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Current Schedule</div>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {(player.schedule?.length ? player.schedule : [
-                  { id: "sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#3b4d6b" },
-                  { id: "work", name: "Focus Work", startHour: 9, endHour: 12, color: "#4a6fa5", isSystemTask: true },
-                  { id: "exercise", name: "Training", startHour: 17, endHour: 18, color: "#c97b63", isSystemTask: true },
-                ]).map((block: any) => (
-                  <div 
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {currentSchedule.map((block) => (
+                  <button 
                     key={block.id}
-                    className="flex items-center gap-2 p-2 rounded text-xs"
-                    style={{ backgroundColor: `${block.color}20` }}
+                    data-testid={`button-edit-block-${block.id}`}
+                    onClick={() => handleEditExistingBlock(block)}
+                    className="flex items-center gap-2 p-2 rounded text-xs w-full hover:bg-white/5 transition-colors"
+                    style={{ backgroundColor: `${block.color}15` }}
                   >
                     <div 
-                      className="w-2 h-2 rounded-full"
+                      className="w-3 h-3 rounded-full shrink-0"
                       style={{ 
                         backgroundColor: block.color,
                         boxShadow: block.isSystemTask ? `0 0 6px ${block.color}` : 'none'
                       }}
                     />
-                    <span className="flex-1 text-white/70">{block.name}</span>
+                    <span className="flex-1 text-white/70 text-left">{block.name}</span>
                     <span className="text-muted-foreground/50 font-mono text-[10px]">
                       {block.startHour}:00 - {block.endHour}:00
                     </span>
-                  </div>
+                    <Pencil size={10} className="text-muted-foreground/40" />
+                  </button>
                 ))}
+                {currentSchedule.length === 0 && (
+                  <div className="text-center text-[10px] text-muted-foreground/40 py-4">
+                    No blocks scheduled. Tap an icon above to add one.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -378,6 +482,118 @@ export default function StatusPage() {
               Close
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editingBlock !== null} onOpenChange={(open) => !open && setEditingBlock(null)}>
+        <DialogContent className="bg-black/95 border-primary/20 max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-primary/80 font-display text-sm">
+              {editingBlock?.isNew ? 'Add Time Block' : 'Edit Time Block'}
+            </DialogTitle>
+          </DialogHeader>
+          {editingBlock && (
+            <div className="space-y-4 py-2">
+              {editingBlock.id.startsWith('custom') && (
+                <div>
+                  <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-1">
+                    Task Name
+                  </label>
+                  <Input
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="Enter task name"
+                    className="h-8 bg-black/50 border-white/10 text-sm"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
+                  Start Time: <span className="text-white/80 font-mono">{editingBlock.startHour}:00</span>
+                </label>
+                <Slider
+                  value={[editingBlock.startHour]}
+                  onValueChange={([v]) => setEditingBlock({ ...editingBlock, startHour: v })}
+                  min={0}
+                  max={23}
+                  step={1}
+                  className="py-2"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
+                  End Time: <span className="text-white/80 font-mono">{editingBlock.endHour}:00</span>
+                </label>
+                <Slider
+                  value={[editingBlock.endHour]}
+                  onValueChange={([v]) => setEditingBlock({ ...editingBlock, endHour: v })}
+                  min={0}
+                  max={24}
+                  step={1}
+                  className="py-2"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
+                  Color
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {COLOR_OPTIONS.map((color) => (
+                    <button
+                      key={color}
+                      data-testid={`button-color-${color}`}
+                      onClick={() => setEditingBlock({ ...editingBlock, color })}
+                      className={`w-6 h-6 rounded-full transition-all ${
+                        editingBlock.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-black scale-110' : ''
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isSystemTask"
+                  checked={editingBlock.isSystemTask || false}
+                  onChange={(e) => setEditingBlock({ ...editingBlock, isSystemTask: e.target.checked })}
+                  className="rounded border-white/20"
+                />
+                <label htmlFor="isSystemTask" className="text-xs text-muted-foreground">
+                  Mark as Quest (glows on timeline)
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                {!editingBlock.isNew && (
+                  <Button
+                    variant="outline"
+                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    onClick={handleDeleteBlock}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  className="flex-1 border-white/10"
+                  onClick={() => setEditingBlock(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30"
+                  onClick={handleSaveBlock}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
