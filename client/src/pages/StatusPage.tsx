@@ -6,7 +6,7 @@ import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Pencil, X, Clock, Moon, Coffee, Book, Dumbbell, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2 } from "lucide-react";
+import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { jobsByRank, titlesByRank, getSkillsForClass } from "@/lib/classData";
@@ -25,7 +25,7 @@ const ACTIVITY_PRESETS = [
   { id: "sleep", name: "Sleep", icon: Moon, color: "#3b4d6b" },
   { id: "work", name: "Work", icon: Briefcase, color: "#4a6fa5", isSystemTask: true },
   { id: "study", name: "Study", icon: Book, color: "#5a8a72", isSystemTask: true },
-  { id: "exercise", name: "Exercise", icon: Dumbbell, color: "#c97b63", isSystemTask: true },
+  { id: "wakeup", name: "Wake Up", icon: Sunrise, color: "#f97316", isSystemTask: false },
   { id: "meal", name: "Meal", icon: Coffee, color: "#7d9d6a" },
   { id: "leisure", name: "Leisure", icon: Gamepad2, color: "#8b7aa3" },
   { id: "custom", name: "Custom", icon: Plus, color: "#6b7280" },

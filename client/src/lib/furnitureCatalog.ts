@@ -11,7 +11,7 @@ export interface FurnitureDef {
 }
 
 export const FURNITURE_CATALOG: FurnitureDef[] = [
-  { id: "chair_basic", name: "Basic Chair", category: "seating", width: 1, height: 1, emoji: "🪑", cost: 50, rarity: "common", color: "#8B4513" },
+  { id: "chair_basic", name: "Basic Chair", category: "seating", width: 1, height: 1, emoji: "🪑", cost: 0, rarity: "common", color: "#8B4513" },
   { id: "sofa_blue", name: "Blue Sofa", category: "seating", width: 2, height: 1, emoji: "🛋️", cost: 200, rarity: "uncommon", color: "#4a6fa5" },
   { id: "throne", name: "Hunter's Throne", category: "seating", width: 2, height: 1, emoji: "👑", cost: 1000, rarity: "epic", color: "#a855f7" },
   
@@ -34,9 +34,10 @@ export const FURNITURE_CATALOG: FurnitureDef[] = [
   { id: "chandelier", name: "Crystal Chandelier", category: "lighting", width: 2, height: 1, emoji: "✨", cost: 400, rarity: "rare", color: "#f5f5f4" },
   { id: "torch_magic", name: "Magic Torch", category: "lighting", width: 1, height: 1, emoji: "🔥", cost: 150, rarity: "uncommon", color: "#f97316" },
   
-  { id: "bed_single", name: "Single Bed", category: "bed", width: 2, height: 1, emoji: "🛏️", cost: 200, rarity: "common", color: "#4a6fa5" },
+  { id: "bed_single", name: "Single Bed", category: "bed", width: 2, height: 1, emoji: "🛏️", cost: 0, rarity: "common", color: "#4a6fa5" },
   { id: "bed_king", name: "King Bed", category: "bed", width: 3, height: 2, emoji: "👑", cost: 600, rarity: "rare", color: "#7c3aed" },
   
+  { id: "fridge", name: "Fridge", category: "storage", width: 1, height: 2, emoji: "🧊", cost: 0, rarity: "common", color: "#e0e7ff" },
   { id: "plant_small", name: "Potted Plant", category: "plant", width: 1, height: 1, emoji: "🪴", cost: 40, rarity: "common", color: "#22c55e" },
   { id: "tree_bonsai", name: "Bonsai Tree", category: "plant", width: 1, height: 1, emoji: "🌳", cost: 200, rarity: "uncommon", color: "#15803d" },
   { id: "flowers", name: "Flower Vase", category: "plant", width: 1, height: 1, emoji: "💐", cost: 80, rarity: "common", color: "#ec4899" },
