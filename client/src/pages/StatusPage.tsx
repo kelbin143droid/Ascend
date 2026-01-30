@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
+import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Pencil, X, Clock, Moon, Coffee, Book, Dumbbell, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus } from "lucide-react";
+import { Check, Pencil, X, Clock, Moon, Coffee, Book, Dumbbell, Gamepad2, Briefcase, Swords, Wind, Eye, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { jobsByRank, titlesByRank, getSkillsForClass } from "@/lib/classData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,10 +21,22 @@ const ACTIVITY_PRESETS = [
 ];
 
 export default function StatusPage() {
-  const { player, isLoading, addStat, updatePlayer, systemMessage, clearSystemMessage } = useGame();
+  const { 
+    player, 
+    isLoading, 
+    updatePlayer, 
+    systemMessage, 
+    clearSystemMessage,
+    activeSession,
+    lastXpGain,
+    startSession,
+    completeSession,
+    cancelSession
+  } = useGame();
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [selectedStat, setSelectedStat] = useState<string | null>(null);
 
   if (isLoading || !player) {
     return (
@@ -176,36 +189,57 @@ export default function StatusPage() {
         </div>
 
         <div className="grid grid-cols-4 gap-2 px-2">
-          {statIcons.map((stat) => (
-            <motion.div
-              key={stat.key}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex flex-col items-center p-2 rounded-lg bg-gradient-to-b from-black/40 to-black/20 border border-white/10 relative group"
-            >
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center mb-1"
-                style={{ 
-                  background: `linear-gradient(135deg, ${stat.color}30 0%, transparent 100%)`,
-                  boxShadow: `0 0 15px ${stat.color}30`
-                }}
+          {statIcons.map((stat) => {
+            const isActive = activeSession?.stat === stat.key;
+            const hasXpGain = lastXpGain?.stat === stat.key;
+            
+            return (
+              <motion.button
+                key={stat.key}
+                data-testid={`button-stat-${stat.key}`}
+                onClick={() => setSelectedStat(stat.key)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`flex flex-col items-center p-2 rounded-lg bg-gradient-to-b from-black/40 to-black/20 border relative cursor-pointer transition-all ${
+                  isActive ? 'border-primary/50 ring-1 ring-primary/30' : 'border-white/10 hover:border-white/20'
+                }`}
               >
-                <stat.icon size={20} style={{ color: stat.color }} />
-              </div>
-              <span className="text-lg font-mono font-bold text-white">{stat.value}</span>
-              <span className="text-[8px] text-muted-foreground tracking-wider uppercase">{stat.label}</span>
-              
-              {player.availablePoints > 0 && (
-                <button
-                  data-testid={`button-add-${stat.key}`}
-                  onClick={() => addStat(stat.key as 'strength' | 'agility' | 'sense' | 'vitality')}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary"
+                <AnimatePresence>
+                  {hasXpGain && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 0 }}
+                      animate={{ opacity: 1, y: -20 }}
+                      exit={{ opacity: 0, y: -40 }}
+                      className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs font-mono font-bold text-primary"
+                      style={{ textShadow: '0 0 10px rgba(0,255,255,0.8)' }}
+                    >
+                      +{lastXpGain.amount}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                <motion.div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center mb-1"
+                  animate={hasXpGain ? { scale: [1, 1.2, 1] } : {}}
+                  transition={{ duration: 0.3 }}
+                  style={{ 
+                    background: `linear-gradient(135deg, ${stat.color}30 0%, transparent 100%)`,
+                    boxShadow: isActive 
+                      ? `0 0 25px ${stat.color}60, 0 0 10px ${stat.color}40` 
+                      : `0 0 15px ${stat.color}30`
+                  }}
                 >
-                  <Plus size={12} className="text-black" />
-                </button>
-              )}
-            </motion.div>
-          ))}
+                  <stat.icon size={20} style={{ color: stat.color }} />
+                </motion.div>
+                <span className="text-lg font-mono font-bold text-white">{stat.value}</span>
+                <span className="text-[8px] text-muted-foreground tracking-wider uppercase">{stat.label}</span>
+                
+                {isActive && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary animate-pulse" />
+                )}
+              </motion.button>
+            );
+          })}
         </div>
 
         <div className="space-y-2 px-2 pt-2">
@@ -346,6 +380,21 @@ export default function StatusPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <StatActionPanel
+        open={selectedStat !== null}
+        onOpenChange={(open) => !open && setSelectedStat(null)}
+        stat={selectedStat}
+        schedule={player.schedule?.length ? player.schedule as ScheduleBlock[] : [
+          { id: "sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#3b4d6b" },
+          { id: "work", name: "Focus Work", startHour: 9, endHour: 12, color: "#4a6fa5", isSystemTask: true },
+          { id: "exercise", name: "Training", startHour: 17, endHour: 18, color: "#c97b63", isSystemTask: true },
+        ]}
+        onCompleteSession={completeSession}
+        activeSession={activeSession}
+        onStartSession={startSession}
+        onCancelSession={cancelSession}
+      />
     </SystemLayout>
   );
 }

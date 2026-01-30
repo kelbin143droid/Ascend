@@ -15,10 +15,18 @@ interface PlayerWithDerived extends Player {
   systemMessage?: string;
 }
 
+export interface ActiveSession {
+  stat: string;
+  startTime: number;
+  scheduledDuration: number;
+}
+
 interface GameContextType {
   player: PlayerWithDerived | null;
   isLoading: boolean;
   systemMessage: string | null;
+  activeSession: ActiveSession | null;
+  lastXpGain: { amount: number; stat: string } | null;
   addStat: (stat: keyof Stats) => void;
   gainExp: (amount: number) => void;
   modifyHp: (amount: number) => void;
@@ -26,6 +34,9 @@ interface GameContextType {
   levelUp: () => void;
   updatePlayer: (updates: Partial<Player>) => void;
   clearSystemMessage: () => void;
+  startSession: (stat: string, scheduledDuration: number) => void;
+  completeSession: (stat: string, duration: number, xp: number) => void;
+  cancelSession: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -38,6 +49,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem(PLAYER_STORAGE_KEY);
   });
   const [systemMessage, setSystemMessage] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [lastXpGain, setLastXpGain] = useState<{ amount: number; stat: string } | null>(null);
   const messageTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const showSystemMessage = React.useCallback((message: string) => {
@@ -207,18 +220,55 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setSystemMessage(null);
   }, []);
 
+  const startSession = useCallback((stat: string, scheduledDuration: number) => {
+    setActiveSession({
+      stat,
+      startTime: Date.now(),
+      scheduledDuration,
+    });
+    showSystemMessage(`${stat.toUpperCase()} session started`);
+  }, [showSystemMessage]);
+
+  const completeSession = useCallback((stat: string, duration: number, xp: number) => {
+    setActiveSession(null);
+    setLastXpGain({ amount: xp, stat });
+    
+    gainExpMutation.mutate(xp);
+    
+    const statBonus = Math.floor(duration / 30);
+    if (statBonus > 0 && player && (stat === 'strength' || stat === 'agility' || stat === 'sense' || stat === 'vitality')) {
+      const newStats = { ...player.stats, [stat]: player.stats[stat] + statBonus };
+      updatePlayerMutation.mutate({ stats: newStats });
+    }
+    
+    setTimeout(() => setLastXpGain(null), 3000);
+    
+    const statBonusText = statBonus > 0 ? ` (+${statBonus} ${stat.toUpperCase()})` : '';
+    showSystemMessage(`+${xp} XP earned${statBonusText}`);
+  }, [gainExpMutation, showSystemMessage, player, updatePlayerMutation]);
+
+  const cancelSession = useCallback(() => {
+    setActiveSession(null);
+    showSystemMessage("Session cancelled");
+  }, [showSystemMessage]);
+
   return (
     <GameContext.Provider value={{ 
       player: player || null, 
       isLoading: isLoading || createPlayerMutation.isPending,
       systemMessage,
+      activeSession,
+      lastXpGain,
       addStat, 
       gainExp, 
       modifyHp, 
       modifyMp, 
       levelUp,
       updatePlayer,
-      clearSystemMessage
+      clearSystemMessage,
+      startSession,
+      completeSession,
+      cancelSession,
     }}>
       {children}
     </GameContext.Provider>
