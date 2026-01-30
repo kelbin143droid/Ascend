@@ -241,15 +241,23 @@ export default function StatusPage() {
               </SelectContent>
             </Select>
             
-            <div className="px-4 py-1 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 rounded">
+            <div 
+              className="px-4 py-1 rounded"
+              style={{
+                background: player.rank === "S" 
+                  ? "linear-gradient(to right, rgba(255,215,0,0.2), rgba(255,165,0,0.2))" 
+                  : "linear-gradient(to right, rgba(236,72,153,0.2), rgba(168,85,247,0.2))",
+                border: player.rank === "S" ? "1px solid rgba(255,215,0,0.3)" : "1px solid rgba(236,72,153,0.3)"
+              }}
+            >
               <span 
-                className="font-mono font-black text-lg"
+                className="font-display font-black text-lg"
                 style={{ 
-                  color: "#ff6b35",
-                  filter: "drop-shadow(0 0 8px rgba(255,107,53,0.5))"
+                  color: player.rank === "S" ? "#ffd700" : "#ec4899",
+                  filter: player.rank === "S" ? "drop-shadow(0 0 8px rgba(255,215,0,0.5))" : "drop-shadow(0 0 8px rgba(236,72,153,0.5))"
                 }}
               >
-                PWR.{displayStats.strength + displayStats.agility + displayStats.sense + displayStats.vitality}
+                {player.rank}-Rank
               </span>
             </div>
             
@@ -288,14 +296,16 @@ export default function StatusPage() {
           </div>
           <div className="w-px h-4 bg-primary/30" />
           <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground tracking-widest">RANK</span>
+            <span className="text-[10px] text-muted-foreground tracking-widest">POWER</span>
             <span 
-              className="text-lg font-display font-black"
+              className="text-xl font-mono font-black"
               style={{ 
-                color: player.rank === "S" ? "#ffd700" : "#ec4899",
-                filter: player.rank === "S" ? "drop-shadow(0 0 8px rgba(255,215,0,0.5))" : "drop-shadow(0 0 8px rgba(236,72,153,0.5))"
+                color: "#ff6b35",
+                filter: "drop-shadow(0 0 10px rgba(255,107,53,0.6))"
               }}
-            >{player.rank}</span>
+            >
+              {displayStats.strength + displayStats.agility + displayStats.sense + displayStats.vitality}
+            </span>
           </div>
           <div className="w-px h-4 bg-primary/30" />
           <div className="flex items-center gap-1">
