@@ -1,14 +1,23 @@
 import React, { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
-import { Sectograph } from "@/components/game/Sectograph";
+import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Pencil, X, Swords, Wind, Eye, Heart, Plus, Clock } from "lucide-react";
+import { Check, Pencil, X, Clock, Moon, Coffee, Book, Dumbbell, Gamepad2, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { jobsByRank, titlesByRank, getSkillsForClass } from "@/lib/classData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const ACTIVITY_PRESETS = [
+  { id: "sleep", name: "Sleep", icon: Moon, color: "#3b4d6b" },
+  { id: "work", name: "Work", icon: Briefcase, color: "#4a6fa5", isSystemTask: true },
+  { id: "study", name: "Study", icon: Book, color: "#5a8a72", isSystemTask: true },
+  { id: "exercise", name: "Exercise", icon: Dumbbell, color: "#c97b63", isSystemTask: true },
+  { id: "meal", name: "Meal", icon: Coffee, color: "#7d9d6a" },
+  { id: "leisure", name: "Leisure", icon: Gamepad2, color: "#8b7aa3" },
+];
 
 export default function StatusPage() {
   const { player, isLoading, addStat, updatePlayer, systemMessage, clearSystemMessage } = useGame();
@@ -49,13 +58,6 @@ export default function StatusPage() {
   const handleTitleChange = (title: string) => {
     updatePlayer({ title });
   };
-
-  const statIcons = [
-    { key: 'strength', label: 'Strength', icon: Swords, color: '#ff6b6b', value: player.stats.strength },
-    { key: 'agility', label: 'Agility', icon: Wind, color: '#4ecdc4', value: player.stats.agility },
-    { key: 'sense', label: 'Sense', icon: Eye, color: '#ffe66d', value: player.stats.sense },
-    { key: 'vitality', label: 'Vitality', icon: Heart, color: '#a855f7', value: player.stats.vitality },
-  ];
 
   return (
     <SystemLayout>
@@ -137,194 +139,103 @@ export default function StatusPage() {
 
         <div className="flex justify-center py-2">
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 via-transparent to-primary/10 rounded-full blur-xl" />
+            <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 via-transparent to-primary/5 rounded-full blur-xl" />
             <Sectograph 
-              stats={player.stats} 
-              maxStat={Math.max(50, Math.max(player.stats.strength, player.stats.agility, player.stats.sense, player.stats.vitality) + 20)}
-              size={260}
+              schedule={player.schedule?.length ? player.schedule as ScheduleBlock[] : undefined}
+              size={280}
               onCenterClick={() => setIsScheduleOpen(true)}
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground tracking-widest">POWER</span>
-            <span className="text-lg font-mono font-bold text-primary drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
-              {player.stats.strength + player.stats.agility + player.stats.sense + player.stats.vitality}
-            </span>
-          </div>
-          <div className="w-px h-4 bg-primary/30" />
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground tracking-widest">RANK</span>
-            <span className="text-lg font-display font-black text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]">{player.rank}</span>
-          </div>
-          <div className="w-px h-4 bg-primary/30" />
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground tracking-widest">PTS</span>
-            <span className="text-lg font-mono font-bold text-primary">{player.availablePoints}</span>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-4 gap-2 px-2">
-          {statIcons.map((stat) => (
-            <motion.div
-              key={stat.key}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex flex-col items-center p-2 rounded-lg bg-gradient-to-b from-black/40 to-black/20 border border-white/10 relative group"
-            >
-              <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center mb-1"
-                style={{ 
-                  background: `linear-gradient(135deg, ${stat.color}30 0%, transparent 100%)`,
-                  boxShadow: `0 0 15px ${stat.color}30`
-                }}
-              >
-                <stat.icon size={20} style={{ color: stat.color }} />
-              </div>
-              <span className="text-lg font-mono font-bold text-white">{stat.value}</span>
-              <span className="text-[8px] text-muted-foreground tracking-wider uppercase">{stat.label}</span>
-              
-              {player.availablePoints > 0 && (
-                <button
-                  data-testid={`button-add-${stat.key}`}
-                  onClick={() => addStat(stat.key as 'strength' | 'agility' | 'sense' | 'vitality')}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary"
-                >
-                  <Plus size={12} className="text-black" />
-                </button>
-              )}
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="space-y-2 px-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-red-400 font-bold tracking-wider w-8">HP</span>
-            <div className="flex-1 h-3 bg-red-950/30 rounded-full border border-red-500/20 overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(player.hp / player.maxHp) * 100}%` }}
-                className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full"
-                style={{ boxShadow: '0 0 10px rgba(239,68,68,0.5)' }}
-              />
-            </div>
-            <span className="text-[10px] font-mono text-red-400 w-16 text-right">{player.hp}/{player.maxHp}</span>
+        <div className="flex justify-center gap-6 px-4 pt-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-red-500/60" />
+            <span className="text-[10px] font-mono text-muted-foreground/60">{player.hp}/{player.maxHp}</span>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-blue-400 font-bold tracking-wider w-8">MP</span>
-            <div className="flex-1 h-3 bg-blue-950/30 rounded-full border border-blue-500/20 overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(player.mp / player.maxMp) * 100}%` }}
-                className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full"
-                style={{ boxShadow: '0 0 10px rgba(59,130,246,0.5)' }}
-              />
-            </div>
-            <span className="text-[10px] font-mono text-blue-400 w-16 text-right">{player.mp}/{player.maxMp}</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-blue-500/60" />
+            <span className="text-[10px] font-mono text-muted-foreground/60">{player.mp}/{player.maxMp}</span>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-primary font-bold tracking-wider w-8">XP</span>
-            <div className="flex-1 h-2 bg-primary/10 rounded-full border border-primary/20 overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(player.exp / player.maxExp) * 100}%` }}
-                className="h-full bg-gradient-to-r from-cyan-500 to-primary rounded-full"
-                style={{ boxShadow: '0 0 8px rgba(0,255,255,0.4)' }}
-              />
-            </div>
-            <span className="text-[10px] font-mono text-primary w-16 text-right">{player.exp}/{player.maxExp}</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 px-2 pt-2">
-          <div className="system-panel p-2 rounded flex items-center gap-2">
-            <div className="w-8 h-8 bg-purple-500/20 flex items-center justify-center rounded border border-purple-500/30">
-              🗡️
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[8px] text-muted-foreground uppercase tracking-wider">Weapon</div>
-              <div className="text-xs font-bold truncate">Kasaka's Fang</div>
-            </div>
-          </div>
-          <div className="system-panel p-2 rounded flex items-center gap-2">
-            <div className="w-8 h-8 bg-purple-500/20 flex items-center justify-center rounded border border-purple-500/30">
-              🛡️
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[8px] text-muted-foreground uppercase tracking-wider">Armor</div>
-              <div className="text-xs font-bold truncate">Hunter Armor</div>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-primary/60" />
+            <span className="text-[10px] font-mono text-muted-foreground/60">Lv.{player.level}</span>
           </div>
         </div>
       </div>
 
       <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
-        <DialogContent className="bg-black/95 border-primary/30 max-w-sm">
+        <DialogContent className="bg-black/95 border-primary/20 max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-primary font-display flex items-center gap-2">
-              <Clock size={20} />
-              LIFE SCHEDULE
+            <DialogTitle className="text-primary/80 font-display text-sm flex items-center gap-2">
+              <Clock size={16} />
+              LIFE TIMELINE
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              Set your daily schedule to optimize your training and maximize stat gains.
+          <div className="space-y-4 py-2">
+            <p className="text-xs text-muted-foreground/70">
+              Design your day. System tasks glow with power.
             </p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
-                <div className="flex items-center gap-2">
-                  <Swords size={16} className="text-red-400" />
-                  <span className="text-sm">Strength Training</span>
-                </div>
-                <Input 
-                  type="time" 
-                  className="w-24 h-8 bg-black/50 border-primary/30 text-xs"
-                  defaultValue="06:00"
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
-                <div className="flex items-center gap-2">
-                  <Wind size={16} className="text-cyan-400" />
-                  <span className="text-sm">Agility Practice</span>
-                </div>
-                <Input 
-                  type="time" 
-                  className="w-24 h-8 bg-black/50 border-primary/30 text-xs"
-                  defaultValue="08:00"
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
-                <div className="flex items-center gap-2">
-                  <Eye size={16} className="text-yellow-400" />
-                  <span className="text-sm">Focus Session</span>
-                </div>
-                <Input 
-                  type="time" 
-                  className="w-24 h-8 bg-black/50 border-primary/30 text-xs"
-                  defaultValue="14:00"
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
-                <div className="flex items-center gap-2">
-                  <Heart size={16} className="text-purple-400" />
-                  <span className="text-sm">Recovery Time</span>
-                </div>
-                <Input 
-                  type="time" 
-                  className="w-24 h-8 bg-black/50 border-primary/30 text-xs"
-                  defaultValue="21:00"
-                />
+            
+            <div className="grid grid-cols-3 gap-2">
+              {ACTIVITY_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  className="flex flex-col items-center p-3 rounded-lg border border-white/5 hover:border-primary/30 transition-all group"
+                  style={{ backgroundColor: `${preset.color}15` }}
+                >
+                  <div 
+                    className="w-8 h-8 rounded-full flex items-center justify-center mb-1"
+                    style={{ 
+                      backgroundColor: `${preset.color}30`,
+                      boxShadow: preset.isSystemTask ? `0 0 12px ${preset.color}50` : 'none'
+                    }}
+                  >
+                    <preset.icon size={16} style={{ color: preset.color }} />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground group-hover:text-white/80">{preset.name}</span>
+                  {preset.isSystemTask && (
+                    <span className="text-[8px] text-primary/60 mt-0.5">QUEST</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-white/5">
+              <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Current Schedule</div>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {(player.schedule?.length ? player.schedule : [
+                  { id: "sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#3b4d6b" },
+                  { id: "work", name: "Focus Work", startHour: 9, endHour: 12, color: "#4a6fa5", isSystemTask: true },
+                  { id: "exercise", name: "Training", startHour: 17, endHour: 18, color: "#c97b63", isSystemTask: true },
+                ]).map((block: any) => (
+                  <div 
+                    key={block.id}
+                    className="flex items-center gap-2 p-2 rounded text-xs"
+                    style={{ backgroundColor: `${block.color}20` }}
+                  >
+                    <div 
+                      className="w-2 h-2 rounded-full"
+                      style={{ 
+                        backgroundColor: block.color,
+                        boxShadow: block.isSystemTask ? `0 0 6px ${block.color}` : 'none'
+                      }}
+                    />
+                    <span className="flex-1 text-white/70">{block.name}</span>
+                    <span className="text-muted-foreground/50 font-mono text-[10px]">
+                      {block.startHour}:00 - {block.endHour}:00
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
+
             <Button 
-              className="w-full bg-primary/20 border border-primary/50 hover:bg-primary/30"
+              className="w-full bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary/80 text-xs"
               onClick={() => setIsScheduleOpen(false)}
             >
-              Save Schedule
+              Close
             </Button>
           </div>
         </DialogContent>

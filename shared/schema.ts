@@ -45,6 +45,17 @@ export const skillSchema = z.object({
 
 export type Skill = z.infer<typeof skillSchema>;
 
+export const scheduleBlockSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  startHour: z.number(),
+  endHour: z.number(),
+  color: z.string(),
+  isSystemTask: z.boolean().optional(),
+});
+
+export type ScheduleBlock = z.infer<typeof scheduleBlockSchema>;
+
 export const players = pgTable("players", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -73,6 +84,7 @@ export const players = pgTable("players", {
     armor: null,
     accessory: null,
   }),
+  schedule: jsonb("schedule").$type<ScheduleBlock[]>().notNull().default([]),
 });
 
 export const insertPlayerSchema = createInsertSchema(players).omit({
