@@ -17,10 +17,10 @@ export function Sectograph({ stats, maxStat = 100, size = 280 }: SectographProps
   const rings = 5;
   
   const statConfig = [
-    { key: 'strength', label: 'STR', color: '#ff6b6b', angle: -90 },
-    { key: 'agility', label: 'AGI', color: '#4ecdc4', angle: 0 },
-    { key: 'sense', label: 'SEN', color: '#ffe66d', angle: 90 },
-    { key: 'vitality', label: 'VIT', color: '#a855f7', angle: 180 },
+    { key: 'strength', label: 'STR', color: '#ff4444', angle: -90 },
+    { key: 'agility', label: 'AGI', color: '#00ffff', angle: 0 },
+    { key: 'sense', label: 'SEN', color: '#00ffff', angle: 90 },
+    { key: 'vitality', label: 'VIT', color: '#ff4444', angle: 180 },
   ];
 
   const getStatValue = (key: string) => {
