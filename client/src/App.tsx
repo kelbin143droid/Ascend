@@ -9,6 +9,7 @@ import DungeonPage from "@/pages/DungeonPage";
 import InventoryPage from "@/pages/InventoryPage";
 import SkillsPage from "@/pages/SkillsPage";
 import Game3DPage from "@/pages/Game3DPage";
+import HousingPage from "@/pages/HousingPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/inventory" component={InventoryPage} />
       <Route path="/skills" component={SkillsPage} />
       <Route path="/game3d" component={Game3DPage} />
+      <Route path="/housing" component={HousingPage} />
       <Route component={NotFound} />
     </Switch>
   );

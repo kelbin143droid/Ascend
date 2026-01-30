@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { User, Sword, Backpack, Zap, Menu } from "lucide-react";
+import { User, Sword, Backpack, Zap, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 
@@ -10,9 +10,9 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { icon: User, label: "STATUS", path: "/" },
     { icon: Sword, label: "DUNGEON", path: "/dungeon" },
-    { icon: Backpack, label: "INVENTORY", path: "/inventory" },
+    { icon: Backpack, label: "ITEMS", path: "/inventory" },
+    { icon: Home, label: "HOUSING", path: "/housing" },
     { icon: Zap, label: "SKILLS", path: "/skills" },
-    { icon: Menu, label: "3D MODE", path: "/game3d" },
   ];
 
   return (

@@ -56,6 +56,35 @@ export const scheduleBlockSchema = z.object({
 
 export type ScheduleBlock = z.infer<typeof scheduleBlockSchema>;
 
+export const furnitureItemSchema = z.object({
+  id: z.string(),
+  itemId: z.string(),
+  x: z.number(),
+  y: z.number(),
+  rotation: z.number().optional(),
+});
+
+export type FurnitureItem = z.infer<typeof furnitureItemSchema>;
+
+export const housingRoomSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  width: z.number(),
+  height: z.number(),
+  floorStyle: z.string(),
+  wallStyle: z.string(),
+  furniture: z.array(furnitureItemSchema),
+});
+
+export type HousingRoom = z.infer<typeof housingRoomSchema>;
+
+export const housingDataSchema = z.object({
+  rooms: z.array(housingRoomSchema),
+  activeRoomId: z.string().optional(),
+});
+
+export type HousingData = z.infer<typeof housingDataSchema>;
+
 export const players = pgTable("players", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -85,6 +114,18 @@ export const players = pgTable("players", {
     accessory: null,
   }),
   schedule: jsonb("schedule").$type<ScheduleBlock[]>().notNull().default([]),
+  housing: jsonb("housing").$type<HousingData>().notNull().default({
+    rooms: [{
+      id: "main",
+      name: "Main Room",
+      width: 8,
+      height: 6,
+      floorStyle: "wood",
+      wallStyle: "stone",
+      furniture: []
+    }],
+    activeRoomId: "main"
+  }),
 });
 
 export const insertPlayerSchema = createInsertSchema(players).omit({
