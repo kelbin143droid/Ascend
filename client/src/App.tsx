@@ -12,7 +12,9 @@ import SkillsPage from "@/pages/SkillsPage";
 import Game3DPage from "@/pages/Game3DPage";
 import HousingPage from "@/pages/HousingPage";
 import SurvivalPage from "@/pages/SurvivalPage";
+import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/not-found";
+import { RankUnlockOverlay } from "@/components/game/RankUnlockOverlay";
 
 function Router() {
   return (
@@ -24,6 +26,7 @@ function Router() {
       <Route path="/game3d" component={Game3DPage} />
       <Route path="/housing" component={HousingPage} />
       <Route path="/survival" component={SurvivalPage} />
+      <Route path="/profile" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -35,6 +38,7 @@ function App() {
       <ThemeProvider>
         <GameProvider>
           <Router />
+          <RankUnlockOverlay />
           <Toaster />
         </GameProvider>
       </ThemeProvider>

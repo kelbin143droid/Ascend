@@ -347,6 +347,18 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/confirm-rank-unlock", async (req, res) => {
+    try {
+      const player = await storage.confirmRankUnlock(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      res.json(attachDerivedStats(player, `Welcome to Rank ${player.rank}!`));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to confirm rank unlock" });
+    }
+  });
+
   app.get("/api/player/:id/fatigue", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);

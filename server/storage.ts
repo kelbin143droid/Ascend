@@ -1,7 +1,8 @@
-import { players, type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, type FatigueData } from "@shared/schema";
+import { players, type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, type FatigueData, type RankHistoryEntry, RANK_UNLOCK_DATA } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { processSession, updateFatigueTracker, type SessionResult } from "./gameLogic/statProgression";
+import { checkRankUp, createRankHistoryEntry } from "./gameLogic/rankProgression";
 
 export interface CompleteSessionInput {
   stat: StatName;
@@ -19,6 +20,7 @@ export interface IStorage {
   modifyHp(id: string, amount: number): Promise<Player | undefined>;
   modifyMp(id: string, amount: number): Promise<Player | undefined>;
   completeSession(id: string, input: CompleteSessionInput): Promise<{ player: Player; result: SessionResult } | undefined>;
+  confirmRankUnlock(id: string): Promise<Player | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -79,6 +81,10 @@ export class DatabaseStorage implements IStorage {
     let newMaxMp = player.maxMp;
     let newHp = player.hp;
     let newMp = player.mp;
+    let newRank = player.rank;
+    let pendingRankUnlock = player.pendingRankUnlock;
+    let rankHistory = [...(player.rankHistory || [])];
+    let unlockedAttributes = [...(player.unlockedAttributes || ["strength", "agility", "sense", "vitality"])];
 
     while (newExp >= newMaxExp) {
       newExp -= newMaxExp;
@@ -89,6 +95,13 @@ export class DatabaseStorage implements IStorage {
       newMaxMp += 20;
       newHp = newMaxHp;
       newMp = newMaxMp;
+
+      const rankUpResult = checkRankUp(newLevel, newRank);
+      if (rankUpResult && !pendingRankUnlock) {
+        newRank = rankUpResult.newRank;
+        const attribute = rankUpResult.unlockData.attribute.toLowerCase();
+        pendingRankUnlock = { rank: newRank, attribute };
+      }
     }
 
     return this.updatePlayer(id, {
@@ -100,6 +113,33 @@ export class DatabaseStorage implements IStorage {
       maxMp: newMaxMp,
       hp: newHp,
       mp: newMp,
+      rank: newRank,
+      pendingRankUnlock,
+      rankHistory,
+      unlockedAttributes,
+    });
+  }
+
+  async confirmRankUnlock(id: string): Promise<Player | undefined> {
+    const player = await this.getPlayer(id);
+    if (!player || !player.pendingRankUnlock) return player;
+
+    const { rank, attribute } = player.pendingRankUnlock;
+    const rankHistory = [...(player.rankHistory || [])];
+    const unlockedAttributes = [...(player.unlockedAttributes || ["strength", "agility", "sense", "vitality"])];
+
+    const unlockData = RANK_UNLOCK_DATA[rank];
+    if (unlockData) {
+      rankHistory.push(createRankHistoryEntry(rank, unlockData.attribute));
+      if (!unlockedAttributes.includes(attribute)) {
+        unlockedAttributes.push(attribute);
+      }
+    }
+
+    return this.updatePlayer(id, {
+      pendingRankUnlock: null,
+      rankHistory,
+      unlockedAttributes,
     });
   }
 

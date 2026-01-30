@@ -110,6 +110,36 @@ export const housingDataSchema = z.object({
 
 export type HousingData = z.infer<typeof housingDataSchema>;
 
+export const rankHistoryEntrySchema = z.object({
+  rank: z.string(),
+  unlocked: z.string(),
+  date: z.string(),
+});
+
+export type RankHistoryEntry = z.infer<typeof rankHistoryEntrySchema>;
+
+export const pendingRankUnlockSchema = z.object({
+  rank: z.string(),
+  attribute: z.string(),
+}).nullable();
+
+export type PendingRankUnlock = z.infer<typeof pendingRankUnlockSchema>;
+
+export const RANK_LEVEL_THRESHOLDS: Record<string, { min: number; max: number }> = {
+  E: { min: 1, max: 10 },
+  D: { min: 11, max: 25 },
+  C: { min: 26, max: 45 },
+  B: { min: 46, max: 70 },
+  A: { min: 71, max: 999 },
+};
+
+export const RANK_UNLOCK_DATA: Record<string, { attribute: string; description: string; highlights: string[] }> = {
+  D: { attribute: "Endurance", description: "Push beyond your limits.", highlights: ["Extended session bonuses", "Recovery rate improved"] },
+  C: { attribute: "Mobility", description: "Move with purpose and precision.", highlights: ["Agility training enhanced", "Cooldown reduction active"] },
+  B: { attribute: "Social", description: "Build and preserve meaningful relationships.", highlights: ["Relationship sessions now available", "Weekly diversity bonus unlocked", "Social stat cap: 120"] },
+  A: { attribute: "Skill", description: "Master specialized techniques.", highlights: ["Advanced skill tree unlocked", "Unique abilities available"] },
+};
+
 export const players = pgTable("players", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -155,13 +185,24 @@ export const players = pgTable("players", {
     date: "",
     sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 }
   }),
+  unlockedAttributes: jsonb("unlocked_attributes").$type<string[]>().notNull().default(["strength", "agility", "sense", "vitality"]),
+  rankHistory: jsonb("rank_history").$type<RankHistoryEntry[]>().notNull().default([]),
+  pendingRankUnlock: jsonb("pending_rank_unlock").$type<PendingRankUnlock>().default(null),
 });
 
-export const insertPlayerSchema = createInsertSchema(players).omit({
+export const insertPlayerSchema = createInsertSchema(players, {
+  pendingRankUnlock: pendingRankUnlockSchema,
+  unlockedAttributes: z.array(z.string()),
+  rankHistory: z.array(rankHistoryEntrySchema),
+}).omit({
   id: true,
 });
 
-export const updatePlayerSchema = createInsertSchema(players).partial().omit({
+export const updatePlayerSchema = createInsertSchema(players, {
+  pendingRankUnlock: pendingRankUnlockSchema,
+  unlockedAttributes: z.array(z.string()),
+  rankHistory: z.array(rankHistoryEntrySchema),
+}).partial().omit({
   id: true,
 });
 

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { Player, Stats } from "@shared/schema";
+import type { Player, Stats, PendingRankUnlock, RankHistoryEntry } from "@shared/schema";
 
 interface DerivedStats {
   xpMultiplier: number;
@@ -44,6 +44,7 @@ interface GameContextType {
   systemMessage: string | null;
   activeSession: ActiveSession | null;
   lastXpGain: { amount: number; stat: string } | null;
+  replayingRankHistory: RankHistoryEntry | null;
   addStat: (stat: keyof Stats) => void;
   gainExp: (amount: number) => void;
   modifyHp: (amount: number) => void;
@@ -54,6 +55,9 @@ interface GameContextType {
   startSession: (stat: string, scheduledDuration: number) => void;
   completeSession: (stat: string, duration: number, xp: number) => void;
   cancelSession: () => void;
+  confirmRankUnlock: () => void;
+  replayRankHistory: (entry: RankHistoryEntry) => void;
+  closeRankReplay: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -68,6 +72,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [systemMessage, setSystemMessage] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [lastXpGain, setLastXpGain] = useState<{ amount: number; stat: string } | null>(null);
+  const [replayingRankHistory, setReplayingRankHistory] = useState<RankHistoryEntry | null>(null);
   const messageTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const showSystemMessage = React.useCallback((message: string) => {
@@ -282,6 +287,32 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     showSystemMessage("Session cancelled");
   }, [showSystemMessage]);
 
+  const confirmRankUnlockMutation = useMutation({
+    mutationFn: async () => {
+      if (!playerId) throw new Error("No player");
+      const res = await apiRequest("POST", `/api/player/${playerId}/confirm-rank-unlock`, {});
+      return res.json() as Promise<PlayerWithDerived>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/player", playerId], data);
+      if (data.systemMessage) {
+        showSystemMessage(data.systemMessage);
+      }
+    },
+  });
+
+  const confirmRankUnlock = useCallback(() => {
+    confirmRankUnlockMutation.mutate();
+  }, [confirmRankUnlockMutation]);
+
+  const replayRankHistory = useCallback((entry: RankHistoryEntry) => {
+    setReplayingRankHistory(entry);
+  }, []);
+
+  const closeRankReplay = useCallback(() => {
+    setReplayingRankHistory(null);
+  }, []);
+
   return (
     <GameContext.Provider value={{ 
       player: player || null, 
@@ -289,6 +320,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       systemMessage,
       activeSession,
       lastXpGain,
+      replayingRankHistory,
       addStat, 
       gainExp, 
       modifyHp, 
@@ -299,6 +331,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       startSession,
       completeSession,
       cancelSession,
+      confirmRankUnlock,
+      replayRankHistory,
+      closeRankReplay,
     }}>
       {children}
     </GameContext.Provider>
