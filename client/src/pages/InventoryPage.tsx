@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sword, Shield, Gem, FlaskConical, Package, X, Check } from "lucide-react";
+import { Sword, Shield, Gem, FlaskConical, Package, X, Check, Sparkles } from "lucide-react";
 import { useGame } from "@/context/GameContext";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -232,11 +232,20 @@ const getBgForRarity = (rarity: string) => {
   }
 };
 
+const ITEM_TABS = [
+  { id: 'all', label: 'All', icon: Package },
+  { id: 'weapon', label: 'Weapons', icon: Sword },
+  { id: 'armor', label: 'Armor', icon: Shield },
+  { id: 'accessory', label: 'Accessories', icon: Gem },
+  { id: 'consumable', label: 'Consumables', icon: FlaskConical },
+];
+
 export default function InventoryPage() {
   const { player, isLoading, updatePlayer } = useGame();
   const queryClient = useQueryClient();
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [initializingInventory, setInitializingInventory] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
   
   useEffect(() => {
     const initInventory = async () => {
@@ -257,6 +266,11 @@ export default function InventoryPage() {
   const items = useMemo(() => {
     return player?.inventory || [];
   }, [player?.inventory]);
+
+  const filteredItems = useMemo(() => {
+    if (activeTab === 'all') return items;
+    return items.filter(item => item.type.toLowerCase() === activeTab);
+  }, [items, activeTab]);
 
   const equipment: Equipment = player?.equipment || { weapon: null, armor: null, accessory: null };
   
@@ -312,89 +326,108 @@ export default function InventoryPage() {
 
   return (
     <SystemLayout>
-      <div className="space-y-4">
-        <div className="flex justify-between items-end border-b-2 border-primary pb-2">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-primary tracking-tighter drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">INVENTORY</h1>
-            <p className="text-xs text-muted-foreground tracking-[0.2em] uppercase">Equipment & Storage</p>
+      <div className="space-y-3">
+        <div className="flex justify-between items-center border-b-2 border-primary pb-2">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-6 h-6 text-yellow-500" />
+            <h1 className="text-2xl font-display font-bold text-primary tracking-tighter drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">INVENTORY</h1>
           </div>
-          <div className="text-right">
-            <span className="text-xs text-muted-foreground block">GOLD</span>
-            <span className="text-xl font-mono font-bold text-yellow-500 drop-shadow-[0_0_5px_rgba(255,215,0,0.5)]">{player.gold.toLocaleString()}</span>
+          <div className="flex items-center gap-4">
+            <div className="px-3 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded">
+              <span className="text-xs text-yellow-400 font-mono">💰 {player.gold.toLocaleString()}</span>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="system-panel p-4 rounded-sm col-span-1">
-            <h3 className="text-xs font-bold text-primary/70 mb-3 tracking-wider text-center">AVATAR</h3>
-            
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex items-center gap-2">
+        <div className="flex gap-3 h-[calc(100vh-220px)] min-h-[400px]">
+          <div className="w-[45%] system-panel p-3 rounded-lg flex flex-col">
+            <div className="relative flex-1 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center">
                 <div 
-                  data-testid="slot-weapon"
-                  className={`w-9 h-9 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.weapon ? getBgForRarity(equippedItems.weapon.rarity) : 'bg-black/50'}`}
-                  style={{ borderColor: equippedItems.weapon ? undefined : '#444' }}
-                  onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
-                >
-                  {equippedItems.weapon ? (
-                    <span className="text-base">{equippedItems.weapon.icon || "⚔️"}</span>
-                  ) : (
-                    <Sword className="w-4 h-4 text-gray-600" />
-                  )}
-                </div>
-                
-                <div 
-                  className="w-20 h-28 rounded-lg border-2 overflow-hidden flex flex-col"
+                  className="w-3/4 h-3/4 rounded-full opacity-20"
                   style={{ 
-                    borderColor: jobAvatar.color,
-                    background: `linear-gradient(180deg, ${jobAvatar.color}15 0%, transparent 50%, ${jobAvatar.color}10 100%)`,
-                    boxShadow: `0 0 20px ${jobAvatar.color}40`
+                    background: `radial-gradient(circle, ${jobAvatar.color}40 0%, transparent 70%)`,
                   }}
-                >
-                  <div className="flex-1 flex items-center justify-center">
-                    <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
-                  </div>
-                  <div className="text-center pb-0.5">
-                    <div className="text-[8px] font-bold tracking-wider" style={{ color: jobAvatar.color }}>{jobAvatar.name}</div>
-                  </div>
-                </div>
-                
-                <div 
-                  data-testid="slot-armor"
-                  className={`w-9 h-9 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.armor ? getBgForRarity(equippedItems.armor.rarity) : 'bg-black/50'}`}
-                  style={{ borderColor: equippedItems.armor ? undefined : '#444' }}
-                  onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
-                >
-                  {equippedItems.armor ? (
-                    <span className="text-base">{equippedItems.armor.icon || "🛡️"}</span>
-                  ) : (
-                    <Shield className="w-4 h-4 text-gray-600" />
-                  )}
-                </div>
+                />
               </div>
               
               <div 
+                className="relative w-48 h-64 rounded-lg border-2 overflow-hidden flex flex-col"
+                style={{ 
+                  borderColor: jobAvatar.color,
+                  background: `linear-gradient(180deg, ${jobAvatar.color}15 0%, transparent 50%, ${jobAvatar.color}10 100%)`,
+                  boxShadow: `0 0 30px ${jobAvatar.color}40`
+                }}
+              >
+                <div className="flex-1 flex items-center justify-center p-2">
+                  <CharacterSilhouette job={jobKey} color={jobAvatar.color} />
+                </div>
+                <div className="text-center pb-2 px-2">
+                  <div className="text-sm font-bold tracking-wider" style={{ color: jobAvatar.color }}>{jobAvatar.name}</div>
+                  <div className="text-[10px] text-muted-foreground">Lv. {player.level}</div>
+                </div>
+              </div>
+
+              <div 
+                data-testid="slot-weapon"
+                className={`absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.weapon ? getBgForRarity(equippedItems.weapon.rarity) : 'bg-black/50'}`}
+                style={{ 
+                  borderColor: equippedItems.weapon ? undefined : '#444',
+                  boxShadow: equippedItems.weapon ? `0 0 10px ${jobAvatar.color}40` : 'none'
+                }}
+                onClick={() => equippedItems.weapon && setSelectedItem(equippedItems.weapon)}
+              >
+                {equippedItems.weapon ? (
+                  <span className="text-2xl">{equippedItems.weapon.icon || "⚔️"}</span>
+                ) : (
+                  <Sword className="w-5 h-5 text-gray-600" />
+                )}
+                <span className="absolute -bottom-1 text-[8px] text-muted-foreground bg-black/80 px-1 rounded">WEAPON</span>
+              </div>
+
+              <div 
+                data-testid="slot-armor"
+                className={`absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.armor ? getBgForRarity(equippedItems.armor.rarity) : 'bg-black/50'}`}
+                style={{ 
+                  borderColor: equippedItems.armor ? undefined : '#444',
+                  boxShadow: equippedItems.armor ? `0 0 10px ${jobAvatar.color}40` : 'none'
+                }}
+                onClick={() => equippedItems.armor && setSelectedItem(equippedItems.armor)}
+              >
+                {equippedItems.armor ? (
+                  <span className="text-2xl">{equippedItems.armor.icon || "🛡️"}</span>
+                ) : (
+                  <Shield className="w-5 h-5 text-gray-600" />
+                )}
+                <span className="absolute -bottom-1 text-[8px] text-muted-foreground bg-black/80 px-1 rounded">ARMOR</span>
+              </div>
+
+              <div 
                 data-testid="slot-accessory"
-                className={`w-9 h-9 rounded border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.accessory ? getBgForRarity(equippedItems.accessory.rarity) : 'bg-black/50'}`}
-                style={{ borderColor: equippedItems.accessory ? undefined : '#444' }}
+                className={`absolute bottom-4 left-1/2 -translate-x-1/2 w-12 h-12 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all hover:scale-110 ${equippedItems.accessory ? getBgForRarity(equippedItems.accessory.rarity) : 'bg-black/50'}`}
+                style={{ 
+                  borderColor: equippedItems.accessory ? undefined : '#444',
+                  boxShadow: equippedItems.accessory ? `0 0 10px ${jobAvatar.color}40` : 'none'
+                }}
                 onClick={() => equippedItems.accessory && setSelectedItem(equippedItems.accessory)}
               >
                 {equippedItems.accessory ? (
-                  <span className="text-base">{equippedItems.accessory.icon || "💍"}</span>
+                  <span className="text-2xl">{equippedItems.accessory.icon || "💍"}</span>
                 ) : (
-                  <Gem className="w-4 h-4 text-gray-600" />
+                  <Gem className="w-5 h-5 text-gray-600" />
                 )}
+                <span className="absolute -bottom-1 text-[8px] text-muted-foreground bg-black/80 px-1 rounded">ACC</span>
               </div>
             </div>
 
             {Object.keys(totalStats).length > 0 && (
-              <div className="mt-6 pt-3 border-t border-primary/20">
-                <h4 className="text-[10px] text-primary/60 mb-2 tracking-wider">GEAR BONUSES</h4>
-                <div className="space-y-1">
+              <div className="mt-3 pt-3 border-t border-primary/20">
+                <h4 className="text-[10px] text-primary/60 mb-2 tracking-wider text-center">GEAR BONUSES</h4>
+                <div className="flex justify-center gap-4">
                   {Object.entries(totalStats).map(([stat, value]) => (
-                    <div key={stat} className="flex justify-between text-xs">
-                      <span className="capitalize text-muted-foreground">{stat}</span>
-                      <span className="text-green-400 font-mono">+{value}</span>
+                    <div key={stat} className="text-center">
+                      <span className="block text-green-400 font-mono font-bold">+{value}</span>
+                      <span className="text-[9px] capitalize text-muted-foreground">{stat}</span>
                     </div>
                   ))}
                 </div>
@@ -402,36 +435,67 @@ export default function InventoryPage() {
             )}
           </div>
 
-          <div className="system-panel p-4 rounded-sm col-span-2">
-            <h3 className="text-xs font-bold text-primary/70 mb-3 tracking-wider">ITEMS ({items.length})</h3>
-            
-            <div className="grid grid-cols-5 gap-2 max-h-[300px] overflow-y-auto">
-              {items.map((item) => {
-                const Icon = getIconForType(item.type);
-                const colorClass = getColorForRarity(item.rarity);
-                const isEquipped = equipment[item.type as keyof Equipment] === item.id;
-                
+          <div className="flex-1 system-panel p-3 rounded-lg flex flex-col">
+            <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+              {ITEM_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const count = tab.id === 'all' ? items.length : items.filter(i => i.type.toLowerCase() === tab.id).length;
                 return (
-                  <motion.button
-                    key={item.id}
-                    data-testid={`item-${item.id}`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setSelectedItem(item)}
-                    className={`aspect-square system-panel rounded-sm flex flex-col items-center justify-center relative group cursor-pointer transition-colors border ${colorClass} ${isEquipped ? 'ring-2 ring-primary' : ''}`}
+                  <button
+                    key={tab.id}
+                    data-testid={`tab-${tab.id}`}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap ${
+                      activeTab === tab.id 
+                        ? 'bg-primary/20 text-primary border border-primary/50' 
+                        : 'bg-black/30 text-muted-foreground border border-transparent hover:border-primary/30'
+                    }`}
                   >
-                    {item.icon ? (
-                      <span className="text-xl">{item.icon}</span>
-                    ) : (
-                      <Icon className={`w-6 h-6 ${colorClass.split(' ')[0]}`} />
-                    )}
-                    {isEquipped && (
-                      <span className="absolute top-0.5 right-0.5 text-[8px] font-mono text-primary bg-primary/20 px-1 rounded">E</span>
-                    )}
-                    <span className="absolute bottom-0.5 left-0.5 text-[8px] font-mono text-muted-foreground">{item.rarity}</span>
-                  </motion.button>
+                    <Icon className="w-3 h-3" />
+                    {tab.label}
+                    <span className="text-[10px] opacity-60">({count})</span>
+                  </button>
                 );
               })}
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-4 gap-2">
+                {filteredItems.map((item) => {
+                  const Icon = getIconForType(item.type);
+                  const colorClass = getColorForRarity(item.rarity);
+                  const isEquipped = equipment[item.type as keyof Equipment] === item.id;
+                  
+                  return (
+                    <motion.button
+                      key={item.id}
+                      data-testid={`item-${item.id}`}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedItem(item)}
+                      className={`aspect-square system-panel rounded flex flex-col items-center justify-center relative group cursor-pointer transition-colors border-2 ${colorClass} ${isEquipped ? 'ring-2 ring-primary ring-offset-1 ring-offset-black' : ''}`}
+                    >
+                      {item.icon ? (
+                        <span className="text-2xl">{item.icon}</span>
+                      ) : (
+                        <Icon className={`w-7 h-7 ${colorClass.split(' ')[0]}`} />
+                      )}
+                      {isEquipped && (
+                        <span className="absolute top-1 right-1 text-[8px] font-mono text-primary bg-primary/20 px-1 rounded">E</span>
+                      )}
+                      <span className="absolute bottom-1 left-1 text-[8px] font-mono font-bold" style={{
+                        color: item.rarity === 'S' ? '#facc15' : item.rarity === 'A' ? '#f87171' : item.rarity === 'B' ? '#a78bfa' : item.rarity === 'C' ? '#60a5fa' : item.rarity === 'D' ? '#4ade80' : '#9ca3af'
+                      }}>{item.rarity}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+              
+              {filteredItems.length === 0 && (
+                <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+                  No items in this category
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -442,11 +506,12 @@ export default function InventoryPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="system-panel p-4 rounded-sm"
+              className="fixed bottom-20 left-4 right-4 system-panel p-4 rounded-lg border-2 border-primary/30 z-50"
+              style={{ background: 'rgba(0,0,0,0.95)' }}
             >
               <div className="flex justify-between items-start">
                 <div className="flex gap-4">
-                  <div className={`w-16 h-16 rounded flex items-center justify-center ${getBgForRarity(selectedItem.rarity)} border ${getColorForRarity(selectedItem.rarity)}`}>
+                  <div className={`w-16 h-16 rounded-lg flex items-center justify-center ${getBgForRarity(selectedItem.rarity)} border-2 ${getColorForRarity(selectedItem.rarity)}`}>
                     {selectedItem.icon ? (
                       <span className="text-3xl">{selectedItem.icon}</span>
                     ) : (
@@ -454,7 +519,7 @@ export default function InventoryPage() {
                     )}
                   </div>
                   <div>
-                    <h3 className={`font-bold ${getColorForRarity(selectedItem.rarity).split(' ')[0]}`}>{selectedItem.name}</h3>
+                    <h3 className={`font-bold text-lg ${getColorForRarity(selectedItem.rarity).split(' ')[0]}`}>{selectedItem.name}</h3>
                     <p className="text-xs text-muted-foreground capitalize">{selectedItem.type} • Rank {selectedItem.rarity}</p>
                     {selectedItem.description && (
                       <p className="text-sm text-muted-foreground mt-1">{selectedItem.description}</p>
@@ -462,9 +527,9 @@ export default function InventoryPage() {
                     {selectedItem.stats && (
                       <div className="flex gap-3 mt-2">
                         {Object.entries(selectedItem.stats).map(([stat, value]) => (
-                          <span key={stat} className="text-xs">
+                          <span key={stat} className="text-xs bg-green-500/10 px-2 py-0.5 rounded">
                             <span className="text-muted-foreground capitalize">{stat}:</span>
-                            <span className="text-green-400 ml-1">+{value}</span>
+                            <span className="text-green-400 ml-1 font-bold">+{value}</span>
                           </span>
                         ))}
                       </div>
@@ -478,7 +543,7 @@ export default function InventoryPage() {
                       data-testid="button-equip"
                       size="sm"
                       onClick={() => handleEquip(selectedItem)}
-                      className={equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? 'bg-red-600 hover:bg-red-500' : ''}
+                      className={equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? 'bg-red-600 hover:bg-red-500' : 'bg-primary hover:bg-primary/80'}
                     >
                       {equipment[selectedItem.type as keyof Equipment] === selectedItem.id ? (
                         <>
