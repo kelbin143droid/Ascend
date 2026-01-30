@@ -5,14 +5,16 @@ import { Sectograph } from "@/components/game/Sectograph";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Pencil, X, Swords, Wind, Eye, Heart, Plus } from "lucide-react";
+import { Check, Pencil, X, Swords, Wind, Eye, Heart, Plus, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { jobsByRank, titlesByRank, getSkillsForClass } from "@/lib/classData";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function StatusPage() {
   const { player, isLoading, addStat, updatePlayer, systemMessage, clearSystemMessage } = useGame();
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
   if (isLoading || !player) {
     return (
@@ -140,15 +142,28 @@ export default function StatusPage() {
               stats={player.stats} 
               maxStat={Math.max(50, Math.max(player.stats.strength, player.stats.agility, player.stats.sense, player.stats.vitality) + 20)}
               size={260}
+              onCenterClick={() => setIsScheduleOpen(true)}
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="text-[10px] text-muted-foreground tracking-widest">RANK</span>
-          <span className="text-xl font-display font-black text-pink-500 drop-shadow-[0_0_10px_rgba(236,72,153,0.6)]">{player.rank}</span>
-          <span className="text-[10px] text-muted-foreground tracking-widest ml-4">POINTS</span>
-          <span className="text-xl font-mono font-bold text-primary">{player.availablePoints}</span>
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-muted-foreground tracking-widest">POWER</span>
+            <span className="text-lg font-mono font-bold text-primary drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
+              {player.stats.strength + player.stats.agility + player.stats.sense + player.stats.vitality}
+            </span>
+          </div>
+          <div className="w-px h-4 bg-primary/30" />
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-muted-foreground tracking-widest">RANK</span>
+            <span className="text-lg font-display font-black text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)]">{player.rank}</span>
+          </div>
+          <div className="w-px h-4 bg-primary/30" />
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-muted-foreground tracking-widest">PTS</span>
+            <span className="text-lg font-mono font-bold text-primary">{player.availablePoints}</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-2 px-2">
@@ -246,6 +261,74 @@ export default function StatusPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
+        <DialogContent className="bg-black/95 border-primary/30 max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-primary font-display flex items-center gap-2">
+              <Clock size={20} />
+              LIFE SCHEDULE
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Set your daily schedule to optimize your training and maximize stat gains.
+            </p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
+                <div className="flex items-center gap-2">
+                  <Swords size={16} className="text-red-400" />
+                  <span className="text-sm">Strength Training</span>
+                </div>
+                <Input 
+                  type="time" 
+                  className="w-24 h-8 bg-black/50 border-primary/30 text-xs"
+                  defaultValue="06:00"
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
+                <div className="flex items-center gap-2">
+                  <Wind size={16} className="text-cyan-400" />
+                  <span className="text-sm">Agility Practice</span>
+                </div>
+                <Input 
+                  type="time" 
+                  className="w-24 h-8 bg-black/50 border-primary/30 text-xs"
+                  defaultValue="08:00"
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
+                <div className="flex items-center gap-2">
+                  <Eye size={16} className="text-yellow-400" />
+                  <span className="text-sm">Focus Session</span>
+                </div>
+                <Input 
+                  type="time" 
+                  className="w-24 h-8 bg-black/50 border-primary/30 text-xs"
+                  defaultValue="14:00"
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded">
+                <div className="flex items-center gap-2">
+                  <Heart size={16} className="text-purple-400" />
+                  <span className="text-sm">Recovery Time</span>
+                </div>
+                <Input 
+                  type="time" 
+                  className="w-24 h-8 bg-black/50 border-primary/30 text-xs"
+                  defaultValue="21:00"
+                />
+              </div>
+            </div>
+            <Button 
+              className="w-full bg-primary/20 border border-primary/50 hover:bg-primary/30"
+              onClick={() => setIsScheduleOpen(false)}
+            >
+              Save Schedule
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </SystemLayout>
   );
 }

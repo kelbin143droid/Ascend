@@ -9,9 +9,10 @@ interface SectographProps {
   };
   maxStat?: number;
   size?: number;
+  onCenterClick?: () => void;
 }
 
-export function Sectograph({ stats, maxStat = 100, size = 280 }: SectographProps) {
+export function Sectograph({ stats, maxStat = 100, size = 280, onCenterClick }: SectographProps) {
   const center = size / 2;
   const maxRadius = (size / 2) - 20;
   const rings = 5;
@@ -147,14 +148,28 @@ export function Sectograph({ stats, maxStat = 100, size = 280 }: SectographProps
 
       <div 
         className="absolute inset-0 flex items-center justify-center"
-        style={{ pointerEvents: 'none' }}
       >
-        <div className="text-center">
-          <div className="text-2xl font-display font-bold text-primary drop-shadow-[0_0_10px_rgba(0,255,255,0.5)]">
-            {stats.strength + stats.agility + stats.sense + stats.vitality}
-          </div>
-          <div className="text-[10px] text-muted-foreground tracking-widest">POWER</div>
-        </div>
+        <button
+          data-testid="button-schedule"
+          onClick={onCenterClick}
+          className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500/30 to-primary/30 border-2 border-primary/50 flex items-center justify-center hover:scale-110 hover:border-primary transition-all cursor-pointer group"
+          style={{ boxShadow: '0 0 20px rgba(168,85,247,0.3), inset 0 0 15px rgba(0,255,255,0.2)' }}
+        >
+          <svg 
+            viewBox="0 0 24 24" 
+            className="w-8 h-8 text-primary group-hover:text-white transition-colors"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+            <path d="M12 2v2" />
+            <path d="M12 20v2" />
+            <path d="M2 12h2" />
+            <path d="M20 12h2" />
+          </svg>
+        </button>
       </div>
 
       {statConfig.map((stat) => {
