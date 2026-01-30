@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, real, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -9,6 +9,31 @@ export const statsSchema = z.object({
   sense: z.number(),
   vitality: z.number(),
 });
+
+export const fatigueDataSchema = z.object({
+  date: z.string(),
+  sessions: z.object({
+    strength: z.number(),
+    agility: z.number(),
+    sense: z.number(),
+    vitality: z.number(),
+  }),
+});
+
+export type FatigueData = z.infer<typeof fatigueDataSchema>;
+
+export const RANK_STAT_CAPS: Record<string, number> = {
+  E: 25,
+  D: 50,
+  C: 80,
+  B: 120,
+  A: 180,
+  S: 999,
+};
+
+export const FATIGUE_MULTIPLIERS = [1.0, 0.85, 0.70, 0.50];
+
+export type StatName = "strength" | "agility" | "sense" | "vitality";
 
 export type Stats = z.infer<typeof statsSchema>;
 
@@ -125,6 +150,10 @@ export const players = pgTable("players", {
       furniture: []
     }],
     activeRoomId: "main"
+  }),
+  fatigue: jsonb("fatigue").$type<FatigueData>().notNull().default({
+    date: "",
+    sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 }
   }),
 });
 

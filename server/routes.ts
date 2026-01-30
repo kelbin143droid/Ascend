@@ -1,20 +1,33 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPlayerSchema, updatePlayerSchema, type Player } from "@shared/schema";
+import { insertPlayerSchema, updatePlayerSchema, type Player, type StatName, RANK_STAT_CAPS } from "@shared/schema";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { calculateXP } from "./gameLogic/xp";
+import { getDisplayStats, getTodayDateString, getFatigueMultiplier } from "./gameLogic/statProgression";
 
 interface PlayerWithDerived extends Player {
   derived: DerivedStats;
+  displayStats: { strength: number; agility: number; sense: number; vitality: number };
+  fatigueInfo: { strength: number; agility: number; sense: number; vitality: number };
+  rankStatCap: number;
   systemMessage?: string;
 }
 
 function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithDerived {
+  const displayStats = getDisplayStats(player.stats);
+  
+  const today = getTodayDateString();
+  const fatigue = player.fatigue || { date: "", sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 } };
+  const fatigueInfo = fatigue.date === today ? fatigue.sessions : { strength: 0, agility: 0, sense: 0, vitality: 0 };
+  
   return {
     ...player,
     derived: calculateDerivedStats(player.stats),
+    displayStats,
+    fatigueInfo,
+    rankStatCap: RANK_STAT_CAPS[player.rank] || 25,
     ...(systemMessage && { systemMessage }),
   };
 }
@@ -302,6 +315,59 @@ export async function registerRoutes(
       res.json(attachDerivedStats(player!));
     } catch (error) {
       res.status(500).json({ error: "Failed to initialize inventory" });
+    }
+  });
+
+  app.post("/api/player/:id/complete-session", async (req, res) => {
+    try {
+      const sessionSchema = z.object({
+        stat: z.enum(["strength", "agility", "sense", "vitality"]),
+        xp: z.number().positive(),
+        durationMinutes: z.number().positive()
+      });
+      
+      const parsed = sessionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid session data" });
+      }
+      
+      const result = await storage.completeSession(req.params.id, {
+        stat: parsed.data.stat as StatName,
+        xp: parsed.data.xp,
+        durationMinutes: parsed.data.durationMinutes
+      });
+      
+      if (!result) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      
+      res.json(attachDerivedStats(result.player, result.result.message));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete session" });
+    }
+  });
+
+  app.get("/api/player/:id/fatigue", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      
+      const today = getTodayDateString();
+      const fatigue = player.fatigue || { date: "", sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 } };
+      const sessions = fatigue.date === today ? fatigue.sessions : { strength: 0, agility: 0, sense: 0, vitality: 0 };
+      
+      const multipliers = {
+        strength: getFatigueMultiplier(sessions.strength),
+        agility: getFatigueMultiplier(sessions.agility),
+        sense: getFatigueMultiplier(sessions.sense),
+        vitality: getFatigueMultiplier(sessions.vitality),
+      };
+      
+      res.json({ sessions, multipliers, date: today });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get fatigue info" });
     }
   });
 

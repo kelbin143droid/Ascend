@@ -95,11 +95,18 @@ export default function StatusPage() {
     updatePlayer({ title });
   };
 
+  const displayStats = player.displayStats || {
+    strength: Math.floor(player.stats.strength),
+    agility: Math.floor(player.stats.agility),
+    sense: Math.floor(player.stats.sense),
+    vitality: Math.floor(player.stats.vitality),
+  };
+
   const statIcons = [
-    { key: 'strength', label: 'STRENGTH', icon: Swords, color: '#ff6b6b', value: player.stats.strength },
-    { key: 'agility', label: 'AGILITY', icon: Wind, color: '#4ecdc4', value: player.stats.agility },
-    { key: 'sense', label: 'SENSE', icon: Eye, color: '#ffe66d', value: player.stats.sense },
-    { key: 'vitality', label: 'VITALITY', icon: Heart, color: '#a855f7', value: player.stats.vitality },
+    { key: 'strength', label: 'STRENGTH', icon: Swords, color: '#ff6b6b', value: displayStats.strength },
+    { key: 'agility', label: 'AGILITY', icon: Wind, color: '#4ecdc4', value: displayStats.agility },
+    { key: 'sense', label: 'SENSE', icon: Eye, color: '#ffe66d', value: displayStats.sense },
+    { key: 'vitality', label: 'VITALITY', icon: Heart, color: '#a855f7', value: displayStats.vitality },
   ];
 
   const currentSchedule: ScheduleBlock[] = player.schedule?.length ? player.schedule as ScheduleBlock[] : [
@@ -264,7 +271,7 @@ export default function StatusPage() {
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-muted-foreground tracking-widest">POWER</span>
             <span className="text-lg font-mono font-bold text-primary drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
-              {player.stats.strength + player.stats.agility + player.stats.sense + player.stats.vitality}
+              {displayStats.strength + displayStats.agility + displayStats.sense + displayStats.vitality}
             </span>
           </div>
           <div className="w-px h-4 bg-primary/30" />

@@ -10,8 +10,25 @@ interface DerivedStats {
   powerRating: number;
 }
 
+interface DisplayStats {
+  strength: number;
+  agility: number;
+  sense: number;
+  vitality: number;
+}
+
+interface FatigueInfo {
+  strength: number;
+  agility: number;
+  sense: number;
+  vitality: number;
+}
+
 interface PlayerWithDerived extends Player {
   derived?: DerivedStats;
+  displayStats?: DisplayStats;
+  fatigueInfo?: FatigueInfo;
+  rankStatCap?: number;
   systemMessage?: string;
 }
 
@@ -229,23 +246,36 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     showSystemMessage(`${stat.toUpperCase()} session started`);
   }, [showSystemMessage]);
 
+  const completeSessionMutation = useMutation({
+    mutationFn: async ({ stat, xp, durationMinutes }: { stat: string; xp: number; durationMinutes: number }) => {
+      if (!playerId) throw new Error("No player");
+      const res = await apiRequest("POST", `/api/player/${playerId}/complete-session`, {
+        stat,
+        xp,
+        durationMinutes
+      });
+      return res.json() as Promise<PlayerWithDerived>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/player", playerId], data);
+      if (data.systemMessage) {
+        showSystemMessage(data.systemMessage);
+      }
+    },
+  });
+
   const completeSession = useCallback((stat: string, duration: number, xp: number) => {
     setActiveSession(null);
     setLastXpGain({ amount: xp, stat });
     
-    gainExpMutation.mutate(xp);
-    
-    const statBonus = Math.floor(duration / 30);
-    if (statBonus > 0 && player && (stat === 'strength' || stat === 'agility' || stat === 'sense' || stat === 'vitality')) {
-      const newStats = { ...player.stats, [stat]: player.stats[stat] + statBonus };
-      updatePlayerMutation.mutate({ stats: newStats });
-    }
+    completeSessionMutation.mutate({
+      stat,
+      xp,
+      durationMinutes: duration
+    });
     
     setTimeout(() => setLastXpGain(null), 3000);
-    
-    const statBonusText = statBonus > 0 ? ` (+${statBonus} ${stat.toUpperCase()})` : '';
-    showSystemMessage(`+${xp} XP earned${statBonusText}`);
-  }, [gainExpMutation, showSystemMessage, player, updatePlayerMutation]);
+  }, [completeSessionMutation, showSystemMessage]);
 
   const cancelSession = useCallback(() => {
     setActiveSession(null);

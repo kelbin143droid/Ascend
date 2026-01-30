@@ -1,6 +1,13 @@
-import { players, type Player, type InsertPlayer, type UpdatePlayer, type Stats } from "@shared/schema";
+import { players, type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, type FatigueData } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import { processSession, updateFatigueTracker, type SessionResult } from "./gameLogic/statProgression";
+
+export interface CompleteSessionInput {
+  stat: StatName;
+  xp: number;
+  durationMinutes: number;
+}
 
 export interface IStorage {
   getPlayer(id: string): Promise<Player | undefined>;
@@ -11,6 +18,7 @@ export interface IStorage {
   gainExp(id: string, amount: number): Promise<Player | undefined>;
   modifyHp(id: string, amount: number): Promise<Player | undefined>;
   modifyMp(id: string, amount: number): Promise<Player | undefined>;
+  completeSession(id: string, input: CompleteSessionInput): Promise<{ player: Player; result: SessionResult } | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -109,6 +117,33 @@ export class DatabaseStorage implements IStorage {
 
     const newMp = Math.min(player.maxMp, Math.max(0, player.mp + amount));
     return this.updatePlayer(id, { mp: newMp });
+  }
+
+  async completeSession(id: string, input: CompleteSessionInput): Promise<{ player: Player; result: SessionResult } | undefined> {
+    const player = await this.getPlayer(id);
+    if (!player) return undefined;
+
+    const fatigue = player.fatigue || { date: "", sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 } };
+
+    const result = processSession({
+      xp: input.xp,
+      stat: input.stat,
+      currentStats: player.stats,
+      rank: player.rank,
+      durationMinutes: input.durationMinutes,
+      fatigue
+    });
+
+    const newFatigue = updateFatigueTracker(fatigue, input.stat);
+
+    await this.updatePlayer(id, {
+      stats: result.updatedStats,
+      fatigue: newFatigue
+    });
+
+    const updatedPlayer = await this.gainExp(id, result.levelXP);
+
+    return { player: updatedPlayer!, result };
   }
 }
 
