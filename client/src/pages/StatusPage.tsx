@@ -257,7 +257,7 @@ export default function StatusPage() {
                   filter: player.rank === "S" ? "drop-shadow(0 0 8px rgba(255,215,0,0.5))" : "drop-shadow(0 0 8px rgba(236,72,153,0.5))"
                 }}
               >
-                {player.rank}-Rank
+                {player.rank} Rank
               </span>
             </div>
             
