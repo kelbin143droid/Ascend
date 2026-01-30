@@ -1,0 +1,53 @@
+Project name: babylon-mobile-dungeon-waves
+
+Goal:
+Create a mobile-first 3D action-RPG survival game in Babylon.js where the player must survive increasingly difficult monster waves inside a procedurally generated dungeon. Use GLB/GLTF 3D models optimized for mobile (Draco / KTX2 optional). Produce a ready-to-run Node.js Repl that serves the project (Express) and uses CDN Babylon modules so a build step is not required.
+
+Requirements and deliverables:
+- A Node.js project runnable with "npm start" (or Replit run button).
+- Files to create:
+  - index.html
+  - src/main.js
+  - src/game.js
+  - src/player.js
+  - src/enemy.js
+  - src/controls.js
+  - src/waves.js
+  - src/ui.js
+  - server.js
+  - package.json
+  - .replit (run = "npm start")
+  - assets/models/ (folder, with a README explaining expected filenames)
+  - assets/draco/ (empty placeholder and instructions if using Draco decoder)
+- Babylon.js usage:
+  - Use Babylon 5 (or latest stable) from CDN (unpkg/jsdelivr) to avoid bundling.
+  - Use SceneLoader to load GLB/GLTF models from /assets/models.
+  - Add instructions to support DRACO and KTX2 decoders (path /assets/draco/ and /assets/basis/), but if decoders are not present, fallback to placeholder meshes so the game still runs.
+- Gameplay / features:
+  - Procedural dungeon layout (grid of rooms connected by corridors) generated at runtime using simple algorithm (tile grid, carve rooms).
+  - Player: third-person camera (over-shoulder), movement (touch joystick + WASD), sprint with stamina, melee attack (tap button) with short cooldown.
+  - Enemies: several simple enemy types (melee chaser, ranged shooter optionally), spawn in waves. Waves get harder (more enemies and/or stronger) over time.
+  - Wave manager: handles spawn points, counts, delays between waves, boss spawn every N waves.
+  - Health, stamina and simple loot drops (health pickup or temporary buff).
+  - HUD: health, stamina, wave number, remaining enemies, on-screen buttons (attack, dodge).
+  - Mobile optimizations: clamp device pixel ratio, small shadow map sizes, low poly default materials, culling/spawn distance limits, reduce lights and particle overdraw.
+- Code quality:
+  - Modular JS (ES modules).
+  - Clear comments so a developer can swap in optimized GLBs.
+  - Keep code compact but readable and documented.
+- Fallbacks:
+  - If assets/models/*.glb are missing, use Babylon procedural meshes (box/sphere/cone) as placeholders so the game runs immediately.
+- How to run:
+  - "npm install" and "npm start" or Replit run button. Server should serve static files and index.html.
+  - Explain where to drop GLB files (assets/models/player.glb, enemy.glb, skeleton.glb, chest.glb, etc).
+- Extra:
+  - Provide notes on mobile model best practices (Draco + KTX2, lower triangles, single material, instancing).
+  - Include a simple README in assets explaining expected model filenames and recommended optimizations.
+  - Keep external dependencies minimal (only express in package.json).
+  - Keep bundle small and engine usage CDN-based so Replit can host without build step.
+
+Please produce all project files in the Node.js Repl, with full contents for each file, and ensure the project runs by default on port provided by Replit (process.env.PORT) or 3000 locally. Add helpful inline comments and short "next steps" suggestions (animations, sound, advanced AI, navmesh) at the top of the main game file.
+
+If you need to host Draco or Basis decoders add assets/draco/ and assets/basis/ placeholders and instructions but don't require them to exist for the default demo to run.
+
+End of prompt.
