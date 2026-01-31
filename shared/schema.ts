@@ -221,6 +221,7 @@ export const updatePlayerSchema = createInsertSchema(players, {
   pendingRankUnlock: pendingRankUnlockSchema,
   unlockedAttributes: z.array(z.string()),
   rankHistory: z.array(rankHistoryEntrySchema),
+  avatarCustomization: avatarCustomizationSchema,
 }).partial().omit({
   id: true,
 });
