@@ -15,6 +15,7 @@ import SurvivalPage from "@/pages/SurvivalPage";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/not-found";
 import { RankUnlockOverlay } from "@/components/game/RankUnlockOverlay";
+import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function App() {
       <ThemeProvider>
         <GameProvider>
           <Router />
+          <LevelUpOverlay />
           <RankUnlockOverlay />
           <Toaster />
         </GameProvider>
