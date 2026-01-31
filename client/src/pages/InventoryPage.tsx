@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sword, Shield, Gem, FlaskConical, Package, X, User, Palette } from "lucide-react";
+import { Sword, Shield, Gem, FlaskConical, Package, X, Check, Star, ChevronRight } from "lucide-react";
 import { useGame } from "@/context/GameContext";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { InventoryItem, Equipment, AvatarCustomization } from "@shared/schema";
+import type { InventoryItem, Equipment } from "@shared/schema";
 
 import warriorHero from "@/assets/images/warrior-hero.png";
 
@@ -59,48 +59,12 @@ const ITEM_TABS = [
   { id: 'accessory', label: 'Acc' },
 ];
 
-const HAIR_STYLES = [
-  { id: 1, name: "Short" },
-  { id: 2, name: "Spiky" },
-  { id: 3, name: "Long" },
-  { id: 4, name: "Ponytail" },
-  { id: 5, name: "Mohawk" },
-];
-
-const COLOR_PRESETS = {
-  hair: ["#1a1a1a", "#4a3728", "#8B4513", "#D4A574", "#FFD700", "#C41E3A", "#4169E1", "#9B59B6", "#2E8B57", "#FF69B4"],
-  skin: ["#FFDFC4", "#F0D5BE", "#DEB887", "#D2A679", "#C68642", "#A67B5B", "#8D5524", "#6B4423", "#5C4033", "#3D2314"],
-  eyes: ["#4169E1", "#2E8B57", "#8B4513", "#1a1a1a", "#9B59B6", "#C41E3A", "#FFD700", "#FF69B4", "#00CED1", "#DC143C"],
-  outfit: ["#4A5568", "#2D3748", "#1A202C", "#C41E3A", "#4169E1", "#2E8B57", "#9B59B6", "#FFD700", "#FF6B35", "#00CED1"],
-};
-
-type MainTab = "equipment" | "customize";
-
 export default function InventoryPage() {
   const { player, isLoading, updatePlayer } = useGame();
   const queryClient = useQueryClient();
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [initializingInventory, setInitializingInventory] = useState(false);
-  const [activeItemTab, setActiveItemTab] = useState('all');
-  const [mainTab, setMainTab] = useState<MainTab>("equipment");
-  
-  const defaultAvatar: AvatarCustomization = {
-    hairStyle: 1,
-    hairColor: "#8B4513",
-    skinColor: "#DEB887",
-    eyeColor: "#2E8B57",
-    outfitColor: "#4A5568",
-  };
-  
-  const [avatarSettings, setAvatarSettings] = useState<AvatarCustomization>(
-    player?.avatarCustomization || defaultAvatar
-  );
-
-  useEffect(() => {
-    if (player?.avatarCustomization) {
-      setAvatarSettings(player.avatarCustomization);
-    }
-  }, [player?.avatarCustomization]);
+  const [activeTab, setActiveTab] = useState('all');
   
   useEffect(() => {
     const initInventory = async () => {
@@ -123,9 +87,9 @@ export default function InventoryPage() {
   }, [player?.inventory]);
 
   const filteredItems = useMemo(() => {
-    if (activeItemTab === 'all') return items;
-    return items.filter(item => item.type.toLowerCase() === activeItemTab);
-  }, [items, activeItemTab]);
+    if (activeTab === 'all') return items;
+    return items.filter(item => item.type.toLowerCase() === activeTab);
+  }, [items, activeTab]);
 
   const equipment: Equipment = player?.equipment || { weapon: null, armor: null, accessory: null };
   
@@ -157,12 +121,6 @@ export default function InventoryPage() {
     setSelectedItem(null);
   };
 
-  const handleAvatarChange = (key: keyof AvatarCustomization, value: string | number) => {
-    const newSettings = { ...avatarSettings, [key]: value };
-    setAvatarSettings(newSettings);
-    updatePlayer({ avatarCustomization: newSettings });
-  };
-
   const totalStats = useMemo(() => {
     const stats: Record<string, number> = {};
     Object.values(equippedItems).forEach(item => {
@@ -188,37 +146,18 @@ export default function InventoryPage() {
   return (
     <SystemLayout>
       <div className="h-full flex flex-col">
-        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/50 bg-gradient-to-r from-gray-900/80 to-gray-800/80">
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1">
-              <button
-                data-testid="tab-equipment"
-                onClick={() => setMainTab("equipment")}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  mainTab === "equipment"
-                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-lg shadow-cyan-500/20"
-                    : "bg-gray-800/50 text-gray-400 border border-gray-700 hover:border-gray-500"
-                }`}
-              >
-                <Package className="w-3.5 h-3.5" />
-                Equipment
-              </button>
-              <button
-                data-testid="tab-customize"
-                onClick={() => setMainTab("customize")}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  mainTab === "customize"
-                    ? "bg-purple-500/20 text-purple-400 border border-purple-500/50 shadow-lg shadow-purple-500/20"
-                    : "bg-gray-800/50 text-gray-400 border border-gray-700 hover:border-gray-500"
-                }`}
-              >
-                <Palette className="w-3.5 h-3.5" />
-                Customize
-              </button>
-            </div>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
+          <div className="flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+            <h1 className="text-lg font-bold text-white tracking-wide">INVENTORY</h1>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">💰 {player.gold.toLocaleString()}</span>
+            <button className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/40 rounded-full text-xs font-bold text-yellow-400">
+              Adapt
+            </button>
+            <button className="px-3 py-1 bg-gray-700/50 border border-gray-600 rounded-full text-xs text-gray-300">
+              Design
+            </button>
           </div>
         </div>
 
@@ -238,7 +177,7 @@ export default function InventoryPage() {
                   alt={jobAvatar.name}
                   className="h-full w-full object-contain"
                   style={{ 
-                    filter: `drop-shadow(0 0 20px ${avatarSettings.outfitColor}60) hue-rotate(${getHueRotation(avatarSettings.outfitColor)}deg)`
+                    filter: 'drop-shadow(0 0 20px rgba(100,200,255,0.4))'
                   }}
                 />
               ) : (
@@ -253,39 +192,6 @@ export default function InventoryPage() {
                 </div>
               )}
             </div>
-            
-            {mainTab === "equipment" && (
-              <div className="absolute bottom-2 left-2 right-2 flex gap-1.5 justify-center">
-                {(["weapon", "armor", "accessory"] as const).map((slot) => {
-                  const equipped = equippedItems[slot];
-                  return (
-                    <div
-                      key={slot}
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{
-                        background: equipped ? getRarityBg(equipped.rarity) : 'rgba(0,0,0,0.4)',
-                        border: equipped ? `2px solid ${getRarityColor(equipped.rarity)}` : '2px dashed rgba(255,255,255,0.2)'
-                      }}
-                    >
-                      {equipped ? (
-                        equipped.icon ? (
-                          <span className="text-lg">{equipped.icon}</span>
-                        ) : (
-                          React.createElement(getIconForType(slot), {
-                            className: "w-4 h-4",
-                            style: { color: getRarityColor(equipped.rarity) }
-                          })
-                        )
-                      ) : (
-                        React.createElement(getIconForType(slot), {
-                          className: "w-4 h-4 text-gray-500/50"
-                        })
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
 
           <div 
@@ -295,224 +201,116 @@ export default function InventoryPage() {
               border: '2px solid #2a3a4a'
             }}
           >
-            {mainTab === "equipment" ? (
-              <>
-                <div className="flex items-center justify-between p-2 border-b border-gray-700">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-cyan-400" />
-                    <span className="text-sm font-bold text-white">INVENTORY</span>
-                  </div>
-                  <span className="text-xs text-gray-400">{items.length} items</span>
-                </div>
+            <div className="flex items-center justify-between p-2 border-b border-gray-700">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-cyan-400" />
+                <span className="text-sm font-bold text-white">EQUIPMENT</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button className="p-1 hover:bg-gray-700 rounded">
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+                <button className="p-1 hover:bg-gray-700 rounded">
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+            </div>
 
-                <div className="flex gap-1 px-2 pt-2">
-                  {ITEM_TABS.map((tab) => {
-                    const count = tab.id === 'all' ? items.length : items.filter(i => i.type.toLowerCase() === tab.id).length;
-                    return (
-                      <button
-                        key={tab.id}
-                        data-testid={`item-tab-${tab.id}`}
-                        onClick={() => setActiveItemTab(tab.id)}
-                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
-                          activeItemTab === tab.id 
-                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' 
-                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:border-gray-600'
-                        }`}
-                      >
-                        {tab.label} ({count})
-                      </button>
-                    );
-                  })}
-                </div>
+            <div className="flex gap-1 px-2 pt-2">
+              {ITEM_TABS.map((tab) => {
+                const count = tab.id === 'all' ? items.length : items.filter(i => i.type.toLowerCase() === tab.id).length;
+                return (
+                  <button
+                    key={tab.id}
+                    data-testid={`tab-${tab.id}`}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                      activeTab === tab.id 
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' 
+                        : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    {tab.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
 
-                <div className="flex-1 overflow-y-auto p-2">
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {filteredItems.map((item) => {
-                      const Icon = getIconForType(item.type);
-                      const isEquipped = equipment[item.type as keyof Equipment] === item.id;
-                      const rarityColor = getRarityColor(item.rarity);
-                      
-                      return (
-                        <motion.button
-                          key={item.id}
-                          data-testid={`item-${item.id}`}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setSelectedItem(item)}
-                          className="aspect-square rounded-lg flex flex-col items-center justify-center relative cursor-pointer transition-all"
-                          style={{
-                            background: getRarityBg(item.rarity),
-                            border: `2px solid ${rarityColor}60`,
-                            boxShadow: isEquipped ? `0 0 12px ${rarityColor}60, inset 0 0 20px ${rarityColor}20` : 'none'
-                          }}
-                        >
-                          {item.icon ? (
-                            <span className="text-xl">{item.icon}</span>
-                          ) : (
-                            <Icon className="w-5 h-5" style={{ color: rarityColor }} />
-                          )}
-                          {isEquipped && (
-                            <span 
-                              className="absolute top-0.5 right-0.5 text-[7px] font-bold px-1 rounded"
-                              style={{ background: rarityColor, color: '#000' }}
-                            >E</span>
-                          )}
-                          <span 
-                            className="absolute bottom-0.5 right-0.5 text-[8px] font-bold"
-                            style={{ color: rarityColor }}
-                          >{item.rarity}</span>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              <div className="grid grid-cols-4 gap-1.5">
+                {filteredItems.map((item) => {
+                  const Icon = getIconForType(item.type);
+                  const isEquipped = equipment[item.type as keyof Equipment] === item.id;
+                  const rarityColor = getRarityColor(item.rarity);
                   
-                  {filteredItems.length === 0 && (
-                    <div className="flex items-center justify-center h-20 text-gray-500 text-xs">
-                      No items in this category
-                    </div>
-                  )}
+                  return (
+                    <motion.button
+                      key={item.id}
+                      data-testid={`item-${item.id}`}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedItem(item)}
+                      className="aspect-square rounded-lg flex flex-col items-center justify-center relative cursor-pointer transition-all"
+                      style={{
+                        background: getRarityBg(item.rarity),
+                        border: `2px solid ${rarityColor}60`,
+                        boxShadow: isEquipped ? `0 0 12px ${rarityColor}60, inset 0 0 20px ${rarityColor}20` : 'none'
+                      }}
+                    >
+                      {item.icon ? (
+                        <span className="text-xl">{item.icon}</span>
+                      ) : (
+                        <Icon className="w-5 h-5" style={{ color: rarityColor }} />
+                      )}
+                      {isEquipped && (
+                        <span 
+                          className="absolute top-0.5 right-0.5 text-[7px] font-bold px-1 rounded"
+                          style={{ background: rarityColor, color: '#000' }}
+                        >E</span>
+                      )}
+                      <span 
+                        className="absolute bottom-0.5 right-0.5 text-[8px] font-bold"
+                        style={{ color: rarityColor }}
+                      >{item.rarity}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+              
+              {filteredItems.length === 0 && (
+                <div className="flex items-center justify-center h-20 text-gray-500 text-xs">
+                  No items in this category
                 </div>
+              )}
+            </div>
 
-                {Object.keys(totalStats).length > 0 && (
-                  <div className="p-2 border-t border-gray-700 bg-gray-900/50">
-                    <div className="text-[9px] text-cyan-400/60 mb-1 tracking-wider uppercase">Gear Bonuses</div>
-                    <div className="flex gap-3 flex-wrap">
-                      {Object.entries(totalStats).map(([stat, value]) => (
-                        <div key={stat} className="text-xs">
-                          <span className="text-green-400 font-mono font-bold">+{value}</span>
-                          <span className="text-gray-400 ml-1 capitalize">{stat}</span>
-                        </div>
-                      ))}
+            {Object.keys(totalStats).length > 0 && (
+              <div className="p-2 border-t border-gray-700 bg-gray-900/50">
+                <div className="text-[9px] text-cyan-400/60 mb-1 tracking-wider uppercase">Gear Bonuses</div>
+                <div className="flex gap-3 flex-wrap">
+                  {Object.entries(totalStats).map(([stat, value]) => (
+                    <div key={stat} className="text-xs">
+                      <span className="text-green-400 font-mono font-bold">+{value}</span>
+                      <span className="text-gray-400 ml-1 capitalize">{stat}</span>
                     </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between p-2 border-b border-gray-700">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-purple-400" />
-                    <span className="text-sm font-bold text-white">AVATAR CUSTOMIZATION</span>
-                  </div>
+                  ))}
                 </div>
-
-                <div className="flex-1 overflow-y-auto p-3 space-y-4">
-                  <div>
-                    <label className="text-[10px] text-purple-400/80 uppercase tracking-wider font-bold mb-2 block">Hair Style</label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {HAIR_STYLES.map((style) => (
-                        <button
-                          key={style.id}
-                          data-testid={`hair-style-${style.id}`}
-                          onClick={() => handleAvatarChange('hairStyle', style.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                            avatarSettings.hairStyle === style.id
-                              ? 'bg-purple-500/30 text-purple-300 border border-purple-500/60'
-                              : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:border-gray-500'
-                          }`}
-                        >
-                          {style.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-purple-400/80 uppercase tracking-wider font-bold mb-2 block">Hair Color</label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {COLOR_PRESETS.hair.map((color) => (
-                        <button
-                          key={color}
-                          data-testid={`hair-color-${color.replace('#', '')}`}
-                          onClick={() => handleAvatarChange('hairColor', color)}
-                          className={`w-8 h-8 rounded-full transition-all ${
-                            avatarSettings.hairColor === color
-                              ? 'ring-2 ring-purple-400 ring-offset-2 ring-offset-gray-900 scale-110'
-                              : 'hover:scale-105'
-                          }`}
-                          style={{ 
-                            background: color,
-                            border: '2px solid rgba(255,255,255,0.2)'
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-purple-400/80 uppercase tracking-wider font-bold mb-2 block">Skin Tone</label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {COLOR_PRESETS.skin.map((color) => (
-                        <button
-                          key={color}
-                          data-testid={`skin-color-${color.replace('#', '')}`}
-                          onClick={() => handleAvatarChange('skinColor', color)}
-                          className={`w-8 h-8 rounded-full transition-all ${
-                            avatarSettings.skinColor === color
-                              ? 'ring-2 ring-purple-400 ring-offset-2 ring-offset-gray-900 scale-110'
-                              : 'hover:scale-105'
-                          }`}
-                          style={{ 
-                            background: color,
-                            border: '2px solid rgba(255,255,255,0.2)'
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-purple-400/80 uppercase tracking-wider font-bold mb-2 block">Eye Color</label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {COLOR_PRESETS.eyes.map((color) => (
-                        <button
-                          key={color}
-                          data-testid={`eye-color-${color.replace('#', '')}`}
-                          onClick={() => handleAvatarChange('eyeColor', color)}
-                          className={`w-8 h-8 rounded-full transition-all ${
-                            avatarSettings.eyeColor === color
-                              ? 'ring-2 ring-purple-400 ring-offset-2 ring-offset-gray-900 scale-110'
-                              : 'hover:scale-105'
-                          }`}
-                          style={{ 
-                            background: color,
-                            border: '2px solid rgba(255,255,255,0.2)'
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-purple-400/80 uppercase tracking-wider font-bold mb-2 block">Outfit Color</label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {COLOR_PRESETS.outfit.map((color) => (
-                        <button
-                          key={color}
-                          data-testid={`outfit-color-${color.replace('#', '')}`}
-                          onClick={() => handleAvatarChange('outfitColor', color)}
-                          className={`w-8 h-8 rounded-full transition-all ${
-                            avatarSettings.outfitColor === color
-                              ? 'ring-2 ring-purple-400 ring-offset-2 ring-offset-gray-900 scale-110'
-                              : 'hover:scale-105'
-                          }`}
-                          style={{ 
-                            background: color,
-                            border: '2px solid rgba(255,255,255,0.2)'
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-2 border-t border-gray-700 bg-gray-900/30">
-                  <div className="text-[10px] text-gray-400 text-center">
-                    Changes save automatically
-                  </div>
-                </div>
-              </>
+              </div>
             )}
+
+            <div className="p-2 border-t border-gray-700 bg-gray-900/30">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white">Inventory Cart</div>
+                  <div className="text-[10px] text-gray-400">
+                    {items.length} items • 💰 {player.gold.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -598,26 +396,4 @@ export default function InventoryPage() {
       </div>
     </SystemLayout>
   );
-}
-
-function getHueRotation(hexColor: string): number {
-  const hex = hexColor.replace('#', '');
-  const r = parseInt(hex.substring(0, 2), 16) / 255;
-  const g = parseInt(hex.substring(2, 4), 16) / 255;
-  const b = parseInt(hex.substring(4, 6), 16) / 255;
-  
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h = 0;
-  
-  if (max !== min) {
-    const d = max - min;
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
-    }
-  }
-  
-  return Math.round(h * 360);
 }
