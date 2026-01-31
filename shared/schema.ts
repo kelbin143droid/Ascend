@@ -192,6 +192,22 @@ export const players = pgTable("players", {
   pendingRankUnlock: jsonb("pending_rank_unlock").$type<PendingRankUnlock>().default(null),
 });
 
+export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  playerId: varchar("player_id").notNull(),
+  date: date("date").notNull(),
+  level: integer("level").notNull(),
+  stats: jsonb("stats").$type<Stats>().notNull(),
+  powerRating: integer("power_rating").notNull(),
+});
+
+export const insertSnapshotSchema = createInsertSchema(dailyStatSnapshots).omit({
+  id: true,
+});
+
+export type InsertSnapshot = z.infer<typeof insertSnapshotSchema>;
+export type DailyStatSnapshot = typeof dailyStatSnapshots.$inferSelect;
+
 export const insertPlayerSchema = createInsertSchema(players, {
   pendingRankUnlock: pendingRankUnlockSchema.optional().default(null),
   unlockedAttributes: z.array(z.string()).optional().default(["strength", "agility", "sense", "vitality"]),

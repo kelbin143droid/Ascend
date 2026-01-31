@@ -413,6 +413,86 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/save-snapshot", async (req, res) => {
+    try {
+      const snapshot = await storage.saveStatSnapshot(req.params.id);
+      if (!snapshot) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      res.json(snapshot);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save snapshot" });
+    }
+  });
+
+  app.get("/api/player/:id/analytics", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+
+      await storage.saveStatSnapshot(req.params.id);
+      
+      let snapshots = await storage.getWeeklySnapshots(req.params.id);
+
+      if (snapshots.length === 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const powerRating = Math.floor(
+          player.stats.strength * 1.5 +
+          player.stats.agility * 1.2 +
+          player.stats.sense * 1.3 +
+          player.stats.vitality * 1.4 +
+          player.level * 10
+        );
+        
+        snapshots = [{
+          id: 'current',
+          playerId: player.id,
+          date: today,
+          level: player.level,
+          stats: player.stats,
+          powerRating
+        }];
+      }
+
+      const first = snapshots[0];
+      const last = snapshots[snapshots.length - 1];
+      
+      const calculateGrowthRate = (start: number, end: number) => {
+        if (start === 0) return end > 0 ? 100 : 0;
+        return Math.round(((end - start) / start) * 100);
+      };
+
+      const weeklyGrowth = {
+        strength: calculateGrowthRate(first.stats.strength, last.stats.strength),
+        agility: calculateGrowthRate(first.stats.agility, last.stats.agility),
+        sense: calculateGrowthRate(first.stats.sense, last.stats.sense),
+        vitality: calculateGrowthRate(first.stats.vitality, last.stats.vitality),
+        power: calculateGrowthRate(first.powerRating, last.powerRating),
+        level: last.level - first.level,
+      };
+
+      const totalStats = last.stats.strength + last.stats.agility + last.stats.sense + last.stats.vitality;
+      const avgDailyGrowth = snapshots.length > 1 
+        ? Math.round((last.powerRating - first.powerRating) / (snapshots.length - 1))
+        : 0;
+
+      res.json({
+        snapshots,
+        weeklyGrowth,
+        summary: {
+          totalStats,
+          currentPower: last.powerRating,
+          avgDailyGrowth,
+          daysTracked: snapshots.length,
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get analytics" });
+    }
+  });
+
   app.get("/api/player/:id/fatigue", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);

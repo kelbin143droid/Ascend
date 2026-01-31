@@ -1,7 +1,7 @@
-import { players, type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, type FatigueData, type RankHistoryEntry, RANK_UNLOCK_DATA } from "@shared/schema";
+import { players, dailyStatSnapshots, type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, type FatigueData, type RankHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, RANK_UNLOCK_DATA } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
-import { processSession, updateFatigueTracker, type SessionResult } from "./gameLogic/statProgression";
+import { eq, and, gte, desc } from "drizzle-orm";
+import { processSession, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
 import { checkRankUp, createRankHistoryEntry } from "./gameLogic/rankProgression";
 
 export interface CompleteSessionInput {
@@ -21,6 +21,8 @@ export interface IStorage {
   modifyMp(id: string, amount: number): Promise<Player | undefined>;
   completeSession(id: string, input: CompleteSessionInput): Promise<{ player: Player; result: SessionResult } | undefined>;
   confirmRankUnlock(id: string): Promise<Player | undefined>;
+  saveStatSnapshot(playerId: string): Promise<DailyStatSnapshot | undefined>;
+  getWeeklySnapshots(playerId: string): Promise<DailyStatSnapshot[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -184,6 +186,57 @@ export class DatabaseStorage implements IStorage {
     const updatedPlayer = await this.gainExp(id, result.levelXP);
 
     return { player: updatedPlayer!, result };
+  }
+
+  async saveStatSnapshot(playerId: string): Promise<DailyStatSnapshot | undefined> {
+    const player = await this.getPlayer(playerId);
+    if (!player) return undefined;
+
+    const today = getTodayDateString();
+    
+    const existing = await db.select().from(dailyStatSnapshots)
+      .where(and(
+        eq(dailyStatSnapshots.playerId, playerId),
+        eq(dailyStatSnapshots.date, today)
+      ));
+    
+    if (existing.length > 0) {
+      return existing[0];
+    }
+
+    const powerRating = Math.floor(
+      player.stats.strength * 1.5 +
+      player.stats.agility * 1.2 +
+      player.stats.sense * 1.3 +
+      player.stats.vitality * 1.4 +
+      player.level * 10
+    );
+
+    const [snapshot] = await db.insert(dailyStatSnapshots).values({
+      playerId,
+      date: today,
+      level: player.level,
+      stats: player.stats,
+      powerRating,
+    }).returning();
+
+    return snapshot;
+  }
+
+  async getWeeklySnapshots(playerId: string): Promise<DailyStatSnapshot[]> {
+    const today = getTodayDateString();
+    const todayDate = new Date(today + 'T00:00:00');
+    todayDate.setDate(todayDate.getDate() - 7);
+    const sevenDaysAgoStr = todayDate.toISOString().split('T')[0];
+
+    const snapshots = await db.select().from(dailyStatSnapshots)
+      .where(and(
+        eq(dailyStatSnapshots.playerId, playerId),
+        gte(dailyStatSnapshots.date, sevenDaysAgoStr)
+      ))
+      .orderBy(dailyStatSnapshots.date);
+
+    return snapshots;
   }
 }
 
