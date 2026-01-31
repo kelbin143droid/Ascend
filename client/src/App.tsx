@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { GameProvider } from "@/context/GameContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import StatusPage from "@/pages/StatusPage";
+import DungeonPage from "@/pages/DungeonPage";
 import InventoryPage from "@/pages/InventoryPage";
 import Game3DPage from "@/pages/Game3DPage";
 import HousingPage from "@/pages/HousingPage";
@@ -20,6 +21,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={StatusPage} />
+      <Route path="/dungeon" component={DungeonPage} />
       <Route path="/inventory" component={InventoryPage} />
       <Route path="/game3d" component={Game3DPage} />
       <Route path="/housing" component={HousingPage} />
