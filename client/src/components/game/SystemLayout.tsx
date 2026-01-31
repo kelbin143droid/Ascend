@@ -85,7 +85,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         }}
       />
 
-      <ThemeSelector />
+      {location === "/" && <ThemeSelector />}
 
       <main className="relative z-20 container mx-auto px-4 py-6 pb-24 max-w-md md:max-w-2xl min-h-screen flex flex-col">
         {children}
