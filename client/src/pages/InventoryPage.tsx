@@ -151,13 +151,8 @@ export default function InventoryPage() {
             <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
             <h1 className="text-lg font-bold text-white tracking-wide">INVENTORY</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/40 rounded-full text-xs font-bold text-yellow-400">
-              Adapt
-            </button>
-            <button className="px-3 py-1 bg-gray-700/50 border border-gray-600 rounded-full text-xs text-gray-300">
-              Design
-            </button>
+          <div className="px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400 font-mono">
+            💰 {player.gold.toLocaleString()}
           </div>
         </div>
 
