@@ -62,7 +62,7 @@ export default function StatusPage() {
   const [selectedStat, setSelectedStat] = useState<string | null>(null);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customName, setCustomName] = useState("");
-  const [showTestMode, setShowTestMode] = useState(true);
+  const [showTestMode, setShowTestMode] = useState(false);
 
   if (isLoading || !player) {
     return (
