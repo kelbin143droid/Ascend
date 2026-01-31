@@ -187,35 +187,39 @@ export default function AnalyticsPage() {
                       iconType="line"
                     />
                     <Line
-                      type="monotone"
+                      type="linear"
                       dataKey="strength"
                       stroke={STAT_COLORS.strength}
-                      strokeWidth={1.5}
-                      dot={false}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: STAT_COLORS.strength }}
+                      connectNulls
                       name="STR"
                     />
                     <Line
-                      type="monotone"
+                      type="linear"
                       dataKey="agility"
                       stroke={STAT_COLORS.agility}
-                      strokeWidth={1.5}
-                      dot={false}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: STAT_COLORS.agility }}
+                      connectNulls
                       name="AGI"
                     />
                     <Line
-                      type="monotone"
+                      type="linear"
                       dataKey="sense"
                       stroke={STAT_COLORS.sense}
-                      strokeWidth={1.5}
-                      dot={false}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: STAT_COLORS.sense }}
+                      connectNulls
                       name="SEN"
                     />
                     <Line
-                      type="monotone"
+                      type="linear"
                       dataKey="vitality"
                       stroke={STAT_COLORS.vitality}
-                      strokeWidth={1.5}
-                      dot={false}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: STAT_COLORS.vitality }}
+                      connectNulls
                       name="VIT"
                     />
                   </LineChart>
@@ -251,11 +255,12 @@ export default function AnalyticsPage() {
                       labelStyle={{ color: '#9ca3af' }}
                     />
                     <Line
-                      type="monotone"
+                      type="linear"
                       dataKey="power"
                       stroke={STAT_COLORS.power}
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 4, fill: STAT_COLORS.power }}
+                      connectNulls
                       name="Power"
                     />
                   </LineChart>
