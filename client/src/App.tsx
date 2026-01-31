@@ -8,7 +8,6 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import StatusPage from "@/pages/StatusPage";
 import DungeonPage from "@/pages/DungeonPage";
 import InventoryPage from "@/pages/InventoryPage";
-import SkillsPage from "@/pages/SkillsPage";
 import Game3DPage from "@/pages/Game3DPage";
 import HousingPage from "@/pages/HousingPage";
 import SurvivalPage from "@/pages/SurvivalPage";
@@ -24,7 +23,6 @@ function Router() {
       <Route path="/" component={StatusPage} />
       <Route path="/dungeon" component={DungeonPage} />
       <Route path="/inventory" component={InventoryPage} />
-      <Route path="/skills" component={SkillsPage} />
       <Route path="/game3d" component={Game3DPage} />
       <Route path="/housing" component={HousingPage} />
       <Route path="/survival" component={SurvivalPage} />

@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
               <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="summary-stats">
                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Stats</div>
                 <div className="text-2xl font-bold text-cyan-400 font-orbitron">
-                  {analytics?.summary.totalStats || 0}
+                  {Math.floor(analytics?.summary.totalStats || 0)}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Combined</div>
               </div>
