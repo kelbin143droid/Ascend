@@ -212,3 +212,55 @@ export const themes: AppTheme[] = [
 export const getThemeById = (id: string): AppTheme => {
   return themes.find(t => t.id === id) || themes[0];
 };
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function darkenColor(hex: string, factor: number): string {
+  const r = Math.floor(parseInt(hex.slice(1, 3), 16) * factor);
+  const g = Math.floor(parseInt(hex.slice(3, 5), 16) * factor);
+  const b = Math.floor(parseInt(hex.slice(5, 7), 16) * factor);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+export const createCustomTheme = (type: "clock" | "background", color: string): AppTheme => {
+  const baseTheme = themes[0];
+  
+  if (type === "clock") {
+    return {
+      ...baseTheme,
+      id: "custom-clock",
+      name: "Custom Clock",
+      icon: "🎨",
+      colors: {
+        ...baseTheme.colors,
+        ring: color,
+        ringGlow: hexToRgba(color, 0.4),
+        tickMark: hexToRgba(color, 0.4),
+        clockHand: color,
+        centerDot: color
+      }
+    };
+  } else {
+    const darkBg = darkenColor(color, 0.1);
+    return {
+      ...baseTheme,
+      id: "custom-background",
+      name: "Custom Background",
+      icon: "🎨",
+      colors: {
+        ...baseTheme.colors,
+        primary: color,
+        primaryGlow: hexToRgba(color, 0.3),
+        background: darkBg,
+        backgroundGradient: `radial-gradient(ellipse at center, ${hexToRgba(color, 0.15)} 0%, ${darkBg} 70%)`,
+        surface: hexToRgba(color, 0.15),
+        surfaceBorder: hexToRgba(color, 0.2)
+      }
+    };
+  }
+};
