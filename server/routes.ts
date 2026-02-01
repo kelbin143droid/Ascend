@@ -1,11 +1,24 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPlayerSchema, updatePlayerSchema, type Player, type StatName, RANK_STAT_CAPS } from "@shared/schema";
+import { 
+  insertPlayerSchema, updatePlayerSchema, type Player, type StatName, RANK_STAT_CAPS,
+  insertRoleSchema, updateRoleSchema,
+  insertWeeklyGoalSchema, updateWeeklyGoalSchema,
+  insertTaskSchema, updateTaskSchema, quadrantEnum
+} from "@shared/schema";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { calculateXP } from "./gameLogic/xp";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier } from "./gameLogic/statProgression";
+
+function getWeekStartDate(date: Date = new Date()): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  return d.toISOString().split('T')[0];
+}
 
 interface PlayerWithDerived extends Player {
   derived: DerivedStats;
@@ -514,6 +527,240 @@ export async function registerRoutes(
       res.json({ sessions, multipliers, date: today });
     } catch (error) {
       res.status(500).json({ error: "Failed to get fatigue info" });
+    }
+  });
+
+  // === ROLES API ===
+  app.get("/api/roles/:userId", async (req, res) => {
+    try {
+      const roles = await storage.getRoles(req.params.userId);
+      res.json(roles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get roles" });
+    }
+  });
+
+  app.post("/api/roles", async (req, res) => {
+    try {
+      const parsed = insertRoleSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const role = await storage.createRole(parsed.data);
+      res.status(201).json(role);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create role" });
+    }
+  });
+
+  app.patch("/api/roles/:id", async (req, res) => {
+    try {
+      const parsed = updateRoleSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const role = await storage.updateRole(req.params.id, parsed.data);
+      if (!role) {
+        return res.status(404).json({ error: "Role not found" });
+      }
+      res.json(role);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update role" });
+    }
+  });
+
+  app.delete("/api/roles/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteRole(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Role not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete role" });
+    }
+  });
+
+  // === WEEKLY GOALS API ===
+  app.get("/api/weekly-goals/:userId", async (req, res) => {
+    try {
+      const weekStartDate = req.query.week_start_date as string | undefined;
+      const goals = await storage.getWeeklyGoals(req.params.userId, weekStartDate);
+      res.json(goals);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get weekly goals" });
+    }
+  });
+
+  app.post("/api/weekly-goals", async (req, res) => {
+    try {
+      const parsed = insertWeeklyGoalSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const goal = await storage.createWeeklyGoal(parsed.data);
+      res.status(201).json(goal);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create weekly goal" });
+    }
+  });
+
+  app.patch("/api/weekly-goals/:id", async (req, res) => {
+    try {
+      const parsed = updateWeeklyGoalSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const goal = await storage.updateWeeklyGoal(req.params.id, parsed.data);
+      if (!goal) {
+        return res.status(404).json({ error: "Weekly goal not found" });
+      }
+      res.json(goal);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update weekly goal" });
+    }
+  });
+
+  app.delete("/api/weekly-goals/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteWeeklyGoal(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Weekly goal not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete weekly goal" });
+    }
+  });
+
+  // === TASKS API ===
+  app.get("/api/tasks/:userId", async (req, res) => {
+    try {
+      const weekStartDate = req.query.week_start_date as string | undefined;
+      const tasks = await storage.getTasks(req.params.userId, weekStartDate);
+      res.json(tasks);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get tasks" });
+    }
+  });
+
+  app.post("/api/tasks", async (req, res) => {
+    try {
+      const parsed = insertTaskSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      
+      const currentWeekStart = getWeekStartDate();
+      const weeklyGoals = await storage.getWeeklyGoals(parsed.data.userId, currentWeekStart);
+      if (weeklyGoals.length === 0) {
+        return res.status(400).json({ error: "Define weekly goals before scheduling." });
+      }
+      
+      const task = await storage.createTask(parsed.data);
+      res.status(201).json(task);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  app.patch("/api/tasks/:id", async (req, res) => {
+    try {
+      const existingTask = await storage.getTask(req.params.id);
+      if (!existingTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      
+      if (existingTask.quadrant === "Q2" && !req.body.confirmStrategic) {
+        return res.status(400).json({ 
+          error: "Q2 tasks require confirmation. Set confirmStrategic: true to modify." 
+        });
+      }
+      
+      const { confirmStrategic, ...updateData } = req.body;
+      const parsed = updateTaskSchema.safeParse(updateData);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      
+      const task = await storage.updateTask(req.params.id, parsed.data);
+      res.json(task);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", async (req, res) => {
+    try {
+      const existingTask = await storage.getTask(req.params.id);
+      if (!existingTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      
+      if (existingTask.quadrant === "Q2" && !req.body.confirmStrategic) {
+        return res.status(400).json({ 
+          error: "Q2 tasks require confirmation. Set confirmStrategic: true to delete." 
+        });
+      }
+      
+      const deleted = await storage.deleteTask(req.params.id);
+      res.json({ success: deleted });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  // === WEEKLY ANALYTICS API ===
+  app.get("/api/weekly-analytics/:userId", async (req, res) => {
+    try {
+      const weekStartDate = (req.query.week_start_date as string) || getWeekStartDate();
+      
+      const tasks = await storage.getTasks(req.params.userId, weekStartDate);
+      const roles = await storage.getRoles(req.params.userId);
+      
+      const totalTimePerRole: Record<string, number> = {};
+      const totalTimePerQuadrant: Record<string, number> = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+      const completedPerRole: Record<string, { completed: number; total: number }> = {};
+      
+      for (const task of tasks) {
+        const duration = (new Date(task.endTime).getTime() - new Date(task.startTime).getTime()) / (1000 * 60);
+        
+        totalTimePerRole[task.roleId] = (totalTimePerRole[task.roleId] || 0) + duration;
+        totalTimePerQuadrant[task.quadrant] = (totalTimePerQuadrant[task.quadrant] || 0) + duration;
+        
+        if (!completedPerRole[task.roleId]) {
+          completedPerRole[task.roleId] = { completed: 0, total: 0 };
+        }
+        completedPerRole[task.roleId].total++;
+        if (task.completed) {
+          completedPerRole[task.roleId].completed++;
+        }
+      }
+      
+      const totalTime = Object.values(totalTimePerQuadrant).reduce((a, b) => a + b, 0);
+      const q2Percentage = totalTime > 0 ? (totalTimePerQuadrant.Q2 / totalTime) * 100 : 0;
+      
+      const completionRatePerRole: Record<string, number> = {};
+      for (const [roleId, data] of Object.entries(completedPerRole)) {
+        completionRatePerRole[roleId] = data.total > 0 ? (data.completed / data.total) * 100 : 0;
+      }
+      
+      const roleNameMap: Record<string, string> = {};
+      for (const role of roles) {
+        roleNameMap[role.id] = role.name;
+      }
+      
+      res.json({
+        totalTimePerRole,
+        totalTimePerQuadrant,
+        q2Percentage: Math.round(q2Percentage * 10) / 10,
+        completionRatePerRole,
+        roleNameMap,
+        weekStartDate,
+        taskCount: tasks.length
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get weekly analytics" });
     }
   });
 

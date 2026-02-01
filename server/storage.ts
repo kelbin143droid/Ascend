@@ -1,6 +1,14 @@
-import { players, dailyStatSnapshots, type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, type FatigueData, type RankHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, RANK_UNLOCK_DATA } from "@shared/schema";
+import { 
+  players, dailyStatSnapshots, roles, weeklyGoals, tasks,
+  type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, 
+  type FatigueData, type RankHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, 
+  type Role, type InsertRole, type UpdateRole,
+  type WeeklyGoal, type InsertWeeklyGoal, type UpdateWeeklyGoal,
+  type Task, type InsertTask, type UpdateTask,
+  RANK_UNLOCK_DATA 
+} from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, desc } from "drizzle-orm";
+import { eq, and, gte, desc, sql } from "drizzle-orm";
 import { processSession, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
 import { checkRankUp, createRankHistoryEntry } from "./gameLogic/rankProgression";
 
@@ -23,6 +31,25 @@ export interface IStorage {
   confirmRankUnlock(id: string): Promise<Player | undefined>;
   saveStatSnapshot(playerId: string): Promise<DailyStatSnapshot | undefined>;
   getWeeklySnapshots(playerId: string): Promise<DailyStatSnapshot[]>;
+  
+  getRoles(userId: string): Promise<Role[]>;
+  getRole(id: string): Promise<Role | undefined>;
+  createRole(role: InsertRole): Promise<Role>;
+  updateRole(id: string, updates: UpdateRole): Promise<Role | undefined>;
+  deleteRole(id: string): Promise<boolean>;
+  getOrCreateDefaultRole(userId: string): Promise<Role>;
+  
+  getWeeklyGoals(userId: string, weekStartDate?: string): Promise<WeeklyGoal[]>;
+  getWeeklyGoal(id: string): Promise<WeeklyGoal | undefined>;
+  createWeeklyGoal(goal: InsertWeeklyGoal): Promise<WeeklyGoal>;
+  updateWeeklyGoal(id: string, updates: UpdateWeeklyGoal): Promise<WeeklyGoal | undefined>;
+  deleteWeeklyGoal(id: string): Promise<boolean>;
+  
+  getTasks(userId: string, weekStartDate?: string): Promise<Task[]>;
+  getTask(id: string): Promise<Task | undefined>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: string, updates: UpdateTask): Promise<Task | undefined>;
+  deleteTask(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -237,6 +264,104 @@ export class DatabaseStorage implements IStorage {
       .orderBy(dailyStatSnapshots.date);
 
     return snapshots;
+  }
+
+  async getRoles(userId: string): Promise<Role[]> {
+    return db.select().from(roles).where(eq(roles.userId, userId));
+  }
+
+  async getRole(id: string): Promise<Role | undefined> {
+    const [role] = await db.select().from(roles).where(eq(roles.id, id));
+    return role || undefined;
+  }
+
+  async createRole(role: InsertRole): Promise<Role> {
+    const [newRole] = await db.insert(roles).values(role).returning();
+    return newRole;
+  }
+
+  async updateRole(id: string, updates: UpdateRole): Promise<Role | undefined> {
+    const [role] = await db.update(roles).set(updates).where(eq(roles.id, id)).returning();
+    return role || undefined;
+  }
+
+  async deleteRole(id: string): Promise<boolean> {
+    const result = await db.delete(roles).where(eq(roles.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getOrCreateDefaultRole(userId: string): Promise<Role> {
+    const existingRoles = await this.getRoles(userId);
+    const generalRole = existingRoles.find(r => r.name === "General");
+    if (generalRole) return generalRole;
+    
+    return this.createRole({ userId, name: "General", weeklyPriority: 0 });
+  }
+
+  async getWeeklyGoals(userId: string, weekStartDate?: string): Promise<WeeklyGoal[]> {
+    if (weekStartDate) {
+      return db.select().from(weeklyGoals).where(
+        and(eq(weeklyGoals.userId, userId), eq(weeklyGoals.weekStartDate, weekStartDate))
+      );
+    }
+    return db.select().from(weeklyGoals).where(eq(weeklyGoals.userId, userId));
+  }
+
+  async getWeeklyGoal(id: string): Promise<WeeklyGoal | undefined> {
+    const [goal] = await db.select().from(weeklyGoals).where(eq(weeklyGoals.id, id));
+    return goal || undefined;
+  }
+
+  async createWeeklyGoal(goal: InsertWeeklyGoal): Promise<WeeklyGoal> {
+    const [newGoal] = await db.insert(weeklyGoals).values(goal).returning();
+    return newGoal;
+  }
+
+  async updateWeeklyGoal(id: string, updates: UpdateWeeklyGoal): Promise<WeeklyGoal | undefined> {
+    const [goal] = await db.update(weeklyGoals).set(updates).where(eq(weeklyGoals.id, id)).returning();
+    return goal || undefined;
+  }
+
+  async deleteWeeklyGoal(id: string): Promise<boolean> {
+    const result = await db.delete(weeklyGoals).where(eq(weeklyGoals.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getTasks(userId: string, weekStartDate?: string): Promise<Task[]> {
+    if (weekStartDate) {
+      const weekStart = new Date(weekStartDate);
+      const weekEnd = new Date(weekStartDate);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      
+      return db.select().from(tasks).where(
+        and(
+          eq(tasks.userId, userId),
+          gte(tasks.startTime, weekStart),
+          gte(sql`${weekEnd}`, tasks.startTime)
+        )
+      );
+    }
+    return db.select().from(tasks).where(eq(tasks.userId, userId));
+  }
+
+  async getTask(id: string): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    return task || undefined;
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const [newTask] = await db.insert(tasks).values(task).returning();
+    return newTask;
+  }
+
+  async updateTask(id: string, updates: UpdateTask): Promise<Task | undefined> {
+    const [task] = await db.update(tasks).set(updates).where(eq(tasks.id, id)).returning();
+    return task || undefined;
+  }
+
+  async deleteTask(id: string): Promise<boolean> {
+    const result = await db.delete(tasks).where(eq(tasks.id, id)).returning();
+    return result.length > 0;
   }
 }
 
