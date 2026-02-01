@@ -223,156 +223,189 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
           {/* Human figure - ascending pose with arms raised */}
           <motion.div
             className="absolute z-10"
-            style={{ bottom: "20px" }}
+            style={{ bottom: "0px" }}
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1, duration: 1.5 }}
           >
             <motion.svg 
-              width="90" 
-              height="180" 
-              viewBox="0 0 90 180" 
+              width="120" 
+              height="220" 
+              viewBox="0 0 120 220" 
               fill="none"
               animate={{
                 y: [0, -5, 0],
               }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               style={{
-                filter: "drop-shadow(0 0 15px rgba(100,150,255,0.5))",
+                filter: "drop-shadow(0 0 25px rgba(100,150,255,0.5))",
               }}
             >
               <defs>
                 <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#1a2a40" />
-                  <stop offset="50%" stopColor="#0f1825" />
-                  <stop offset="100%" stopColor="#0a1015" />
-                </linearGradient>
-                <linearGradient id="glowEdge" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(100,180,255,0.3)" />
-                  <stop offset="50%" stopColor="rgba(150,200,255,0.5)" />
-                  <stop offset="100%" stopColor="rgba(100,180,255,0.3)" />
+                  <stop offset="0%" stopColor="#15202d" />
+                  <stop offset="100%" stopColor="#080c12" />
                 </linearGradient>
               </defs>
               
               {/* Head */}
-              <ellipse cx="45" cy="22" rx="12" ry="14" fill="url(#bodyGrad)" stroke="url(#glowEdge)" strokeWidth="1" />
+              <ellipse cx="60" cy="18" rx="12" ry="14" fill="url(#bodyGrad)" />
               
               {/* Neck */}
-              <rect x="41" y="35" width="8" height="8" fill="url(#bodyGrad)" />
+              <path d="M54 30 Q60 34 66 30 L64 38 Q60 40 56 38 Z" fill="url(#bodyGrad)" />
               
-              {/* Torso */}
+              {/* Torso - with natural curves */}
               <path
-                d="M30 43 
-                   Q28 48 28 55 
-                   L28 85 
-                   Q28 95 35 100 
-                   L40 102 
-                   L45 103 
-                   L50 102 
-                   L55 100 
-                   Q62 95 62 85 
-                   L62 55 
-                   Q62 48 60 43 
-                   L55 42 
-                   Q45 40 35 42 
+                d="M40 42
+                   Q38 46 38 55
+                   L40 75
+                   Q42 90 45 100
+                   Q48 108 52 112
+                   L60 114
+                   L68 112
+                   Q72 108 75 100
+                   Q78 90 80 75
+                   L82 55
+                   Q82 46 80 42
+                   Q72 38 60 38
+                   Q48 38 40 42
                    Z"
                 fill="url(#bodyGrad)"
-                stroke="url(#glowEdge)"
-                strokeWidth="0.5"
               />
               
-              {/* Left arm - raised up */}
+              {/* Left arm raised */}
               <path
-                d="M30 45
-                   Q22 42 18 30
-                   L15 15
-                   Q14 8 18 5
-                   L22 5
-                   Q26 8 25 15
-                   L26 28
-                   Q27 38 30 43"
+                d="M40 44
+                   Q32 42 26 34
+                   Q20 26 16 16
+                   Q14 10 18 6
+                   Q22 4 26 8
+                   Q30 14 32 22
+                   Q34 30 36 38
+                   Q38 42 40 44
+                   Z"
                 fill="url(#bodyGrad)"
-                stroke="url(#glowEdge)"
-                strokeWidth="0.5"
               />
               
-              {/* Left hand */}
+              {/* Left hand with fingers */}
               <path
-                d="M18 5 L14 0 M18 5 L17 1 M18 5 L20 2 M18 5 L22 3 M18 5 L24 5"
-                stroke="#1a2a40"
-                strokeWidth="2"
+                d="M18 6 Q16 2 14 0 M18 6 Q18 2 17 0 M18 6 Q20 3 21 1 M18 6 Q23 4 25 3 M18 6 Q26 7 28 7"
+                stroke="#15202d"
+                strokeWidth="3"
                 strokeLinecap="round"
+                fill="none"
               />
               
-              {/* Right arm - raised up */}
+              {/* Right arm raised */}
               <path
-                d="M60 45
-                   Q68 42 72 30
-                   L75 15
-                   Q76 8 72 5
-                   L68 5
-                   Q64 8 65 15
-                   L64 28
-                   Q63 38 60 43"
+                d="M80 44
+                   Q88 42 94 34
+                   Q100 26 104 16
+                   Q106 10 102 6
+                   Q98 4 94 8
+                   Q90 14 88 22
+                   Q86 30 84 38
+                   Q82 42 80 44
+                   Z"
                 fill="url(#bodyGrad)"
-                stroke="url(#glowEdge)"
-                strokeWidth="0.5"
               />
               
-              {/* Right hand */}
+              {/* Right hand with fingers */}
               <path
-                d="M72 5 L76 0 M72 5 L73 1 M72 5 L70 2 M72 5 L68 3 M72 5 L66 5"
-                stroke="#1a2a40"
-                strokeWidth="2"
+                d="M102 6 Q104 2 106 0 M102 6 Q102 2 103 0 M102 6 Q100 3 99 1 M102 6 Q97 4 95 3 M102 6 Q94 7 92 7"
+                stroke="#15202d"
+                strokeWidth="3"
                 strokeLinecap="round"
+                fill="none"
               />
               
-              {/* Left leg */}
+              {/* Hips */}
               <path
-                d="M40 102
-                   L38 120
-                   L36 140
-                   L35 155
-                   Q34 165 37 172
-                   L43 172
-                   Q46 168 45 160
-                   L45 140
-                   L45 115
-                   L45 103"
+                d="M45 100
+                   Q42 106 42 112
+                   Q42 118 46 122
+                   L60 124
+                   L74 122
+                   Q78 118 78 112
+                   Q78 106 75 100
+                   Q68 108 60 108
+                   Q52 108 45 100
+                   Z"
                 fill="url(#bodyGrad)"
-                stroke="url(#glowEdge)"
-                strokeWidth="0.5"
               />
               
-              {/* Right leg */}
+              {/* Left thigh with curve */}
               <path
-                d="M50 102
-                   L52 120
-                   L54 140
-                   L55 155
-                   Q56 165 53 172
-                   L47 172
-                   Q44 168 45 160
-                   L45 140
-                   L45 115
-                   L45 103"
+                d="M46 122
+                   Q42 128 40 138
+                   Q38 148 38 158
+                   Q38 164 42 168
+                   L50 168
+                   Q54 164 54 158
+                   Q54 148 54 138
+                   Q54 128 54 122
+                   L60 124
+                   L46 122
+                   Z"
                 fill="url(#bodyGrad)"
-                stroke="url(#glowEdge)"
-                strokeWidth="0.5"
+              />
+              
+              {/* Left calf */}
+              <path
+                d="M42 168
+                   Q38 176 38 186
+                   Q38 196 40 204
+                   Q42 210 46 212
+                   L52 212
+                   Q54 208 54 202
+                   Q54 192 52 182
+                   Q50 172 50 168
+                   Z"
+                fill="url(#bodyGrad)"
+              />
+              
+              {/* Right thigh with curve */}
+              <path
+                d="M74 122
+                   Q78 128 80 138
+                   Q82 148 82 158
+                   Q82 164 78 168
+                   L70 168
+                   Q66 164 66 158
+                   Q66 148 66 138
+                   Q66 128 66 122
+                   L60 124
+                   L74 122
+                   Z"
+                fill="url(#bodyGrad)"
+              />
+              
+              {/* Right calf */}
+              <path
+                d="M78 168
+                   Q82 176 82 186
+                   Q82 196 80 204
+                   Q78 210 74 212
+                   L68 212
+                   Q66 208 66 202
+                   Q66 192 68 182
+                   Q70 172 70 168
+                   Z"
+                fill="url(#bodyGrad)"
               />
 
               {/* Energy aura around figure */}
               <motion.ellipse
-                cx="45"
-                cy="90"
-                rx="35"
-                ry="70"
+                cx="60"
+                cy="110"
+                rx="50"
+                ry="90"
                 fill="none"
-                stroke="rgba(100,180,255,0.2)"
+                stroke="rgba(100,180,255,0.12)"
                 strokeWidth="2"
                 animate={{
-                  opacity: [0.2, 0.5, 0.2],
-                  scale: [1, 1.05, 1],
+                  opacity: [0.08, 0.2, 0.08],
+                  scale: [1, 1.03, 1],
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
