@@ -33,7 +33,7 @@ export default function ProfilePage() {
     <SystemLayout>
       <div className="min-h-screen p-4 pb-24" data-testid="profile-page">
         <div className="text-center mb-6">
-          <div className="text-xs tracking-[0.3em] text-muted-foreground mb-1">HUNTER PROFILE</div>
+          <div className="text-xs tracking-[0.3em] text-muted-foreground mb-1">ASCENDANT IDENTITY</div>
           <h1 className="text-2xl font-display font-bold text-primary">
             {player.name || "AWAKENED"}
           </h1>
@@ -126,7 +126,7 @@ export default function ProfilePage() {
                             >
                               {entry.rank}
                             </span>
-                            <span className="text-xs text-muted-foreground">RANK</span>
+                            <span className="text-xs text-muted-foreground">TIER</span>
                           </div>
                           <div className="text-xs text-muted-foreground">
                             Unlocked: <span className="text-primary">{entry.unlocked}</span>
