@@ -148,7 +148,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           stroke="url(#ringGradient)"
           strokeWidth={glowRingWidth}
           filter="url(#glowRing)"
-          opacity="0.9"
+          opacity="0.5"
         />
 
         <circle
@@ -158,6 +158,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
           fill="none"
           stroke={colors.ringGlow}
           strokeWidth={glowRingWidth + 8}
+          opacity="0.4"
           style={{ filter: "blur(6px)" }}
         />
 
@@ -193,8 +194,8 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
               <path
                 d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
                 fill={block.color}
-                opacity={0.8}
-                stroke={block.isSystemTask ? systemTaskStroke : "rgba(255,255,255,0.08)"}
+                opacity={1}
+                stroke={block.isSystemTask ? systemTaskStroke : "rgba(255,255,255,0.15)"}
                 strokeWidth={block.isSystemTask ? 1.5 : 0.5}
               />
               {block.isSystemTask && (
