@@ -16,6 +16,7 @@ import AnalyticsPage from "@/pages/AnalyticsPage";
 import NotFound from "@/pages/not-found";
 import { RankUnlockOverlay } from "@/components/game/RankUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
+import { IntroWrapper } from "@/components/game/IntroWrapper";
 
 function Router() {
   return (
@@ -38,10 +39,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <GameProvider>
-          <Router />
-          <LevelUpOverlay />
-          <RankUnlockOverlay />
-          <Toaster />
+          <IntroWrapper>
+            <Router />
+            <LevelUpOverlay />
+            <RankUnlockOverlay />
+            <Toaster />
+          </IntroWrapper>
         </GameProvider>
       </ThemeProvider>
     </QueryClientProvider>
