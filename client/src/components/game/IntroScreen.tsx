@@ -84,14 +84,13 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
 
         {/* Subtitle text */}
         <motion.p
-          className="absolute top-28 md:top-32 text-xs md:text-sm max-w-sm text-center px-6 leading-relaxed"
-          style={{ color: "rgba(150,180,210,0.7)" }}
+          className="absolute top-28 md:top-32 text-sm md:text-base max-w-sm text-center px-6 leading-relaxed"
+          style={{ color: theme.colors.primary, opacity: 0.8 }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: 0.8 }}
           transition={{ delay: 1, duration: 1 }}
         >
-          You have been chosen to awaken as a Hunter. The System recognizes your potential. 
-          <span style={{ color: theme.colors.primary }}> Accept the call and begin your ascension.</span>
+          The System Invites You To Awaken Your True Potential.
         </motion.p>
 
         {/* Central portal */}
@@ -256,19 +255,35 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             transition={{ delay: 0.8, duration: 1 }}
           />
 
-          {/* Inner glow */}
+          {/* Bright core glow */}
           <motion.div
             className="absolute rounded-full"
             style={{
-              width: "140px",
-              height: "140px",
-              background: `radial-gradient(circle, ${theme.colors.primary}50 0%, ${theme.colors.primary}20 50%, transparent 80%)`,
+              width: "180px",
+              height: "180px",
+              background: `radial-gradient(circle, rgba(255,255,255,0.4) 0%, ${theme.colors.primary}60 20%, ${theme.colors.primary}30 50%, transparent 80%)`,
+              filter: "blur(2px)",
             }}
             animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.8, 1, 0.8],
+              scale: [1, 1.15, 1],
+              opacity: [0.9, 1, 0.9],
             }}
             transition={{ duration: 3, repeat: Infinity }}
+          />
+          
+          {/* Inner bright spot */}
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: "80px",
+              height: "80px",
+              background: `radial-gradient(circle, rgba(255,255,255,0.6) 0%, ${theme.colors.primary}80 40%, transparent 100%)`,
+            }}
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.8, 1, 0.8],
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
           />
 
           {/* Crosshair lines */}
@@ -297,92 +312,100 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             transition={{ delay: 1, duration: 1 }}
           >
             <motion.svg 
-              width="60" 
-              height="110" 
-              viewBox="0 0 60 110" 
+              width="50" 
+              height="95" 
+              viewBox="0 0 50 95" 
               fill="none"
               animate={{
                 y: [0, -2, 0],
               }}
               transition={{ duration: 3, repeat: Infinity }}
             >
-              {/* Full body silhouette path */}
+              {/* Realistic human silhouette */}
+              <defs>
+                <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#0a1218" />
+                  <stop offset="100%" stopColor="#050a0f" />
+                </linearGradient>
+              </defs>
+              
+              {/* Head */}
+              <ellipse cx="25" cy="8" rx="7" ry="8" fill="url(#bodyGradient)" />
+              
+              {/* Neck */}
+              <rect x="22" y="15" width="6" height="5" fill="url(#bodyGradient)" />
+              
+              {/* Torso */}
               <path
-                d="M30 0
-                   C38 0 44 6 44 14
-                   C44 22 38 28 30 28
-                   C22 28 16 22 16 14
-                   C16 6 22 0 30 0
-                   Z
-                   M30 28
-                   L30 30
-                   C36 30 42 34 44 40
-                   L48 55
-                   C49 58 48 60 46 60
-                   L44 60
-                   C42 60 40 58 40 56
-                   L38 48
-                   L38 70
-                   L42 95
-                   C43 100 40 105 36 105
-                   L34 105
-                   C32 105 30 102 30 100
-                   L30 75
-                   L30 100
-                   C30 102 28 105 26 105
-                   L24 105
-                   C20 105 17 100 18 95
-                   L22 70
-                   L22 48
-                   L20 56
-                   C20 58 18 60 16 60
-                   L14 60
-                   C12 60 11 58 12 55
-                   L16 40
-                   C18 34 24 30 30 30
+                d="M14 20 
+                   Q12 22 12 28
+                   L12 45
+                   Q12 48 15 50
+                   L20 52
+                   L20 55
+                   L25 55
+                   L30 55
+                   L30 52
+                   L35 50
+                   Q38 48 38 45
+                   L38 28
+                   Q38 22 36 20
+                   L32 20
+                   Q25 18 18 20
                    Z"
-                fill="#0a1520"
-                stroke={theme.colors.primary}
-                strokeWidth="0.5"
-                strokeOpacity="0.3"
+                fill="url(#bodyGradient)"
               />
               
-              {/* Subtle inner glow effect on silhouette */}
+              {/* Left arm */}
               <path
-                d="M30 0
-                   C38 0 44 6 44 14
-                   C44 22 38 28 30 28
-                   C22 28 16 22 16 14
-                   C16 6 22 0 30 0
-                   Z
-                   M30 28
-                   L30 30
-                   C36 30 42 34 44 40
-                   L48 55
-                   C49 58 48 60 46 60
-                   L44 60
-                   C42 60 40 58 40 56
-                   L38 48
-                   L38 70
-                   L42 95
-                   C43 100 40 105 36 105
-                   L34 105
-                   C32 105 30 102 30 100
-                   L30 75
-                   L30 100
-                   C30 102 28 105 26 105
-                   L24 105
-                   C20 105 17 100 18 95
-                   L22 70
-                   L22 48
-                   L20 56
-                   C20 58 18 60 16 60
-                   L14 60
-                   C12 60 11 58 12 55
-                   L16 40
-                   C18 34 24 30 30 30
-                   Z"
-                fill="#0c1825"
+                d="M12 22
+                   Q8 24 6 32
+                   L4 42
+                   Q3 46 5 48
+                   L7 48
+                   Q9 47 9 44
+                   L11 35
+                   L12 28"
+                fill="url(#bodyGradient)"
+              />
+              
+              {/* Right arm */}
+              <path
+                d="M38 22
+                   Q42 24 44 32
+                   L46 42
+                   Q47 46 45 48
+                   L43 48
+                   Q41 47 41 44
+                   L39 35
+                   L38 28"
+                fill="url(#bodyGradient)"
+              />
+              
+              {/* Left leg */}
+              <path
+                d="M20 55
+                   L18 70
+                   L17 82
+                   Q16 88 18 92
+                   L22 92
+                   Q24 90 24 85
+                   L25 70
+                   L25 55"
+                fill="url(#bodyGradient)"
+              />
+              
+              {/* Right leg */}
+              <path
+                d="M30 55
+                   L32 70
+                   L33 82
+                   Q34 88 32 92
+                   L28 92
+                   Q26 90 26 85
+                   L25 70
+                   L25 55"
+                fill="url(#bodyGradient)"
               />
             </motion.svg>
           </motion.div>
