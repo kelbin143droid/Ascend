@@ -316,13 +316,66 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         </button>
       </div>
 
+      {/* Center logo and time display */}
       <div 
-        className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none"
-        style={{ bottom: center - innerRadius + 16 }}
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
       >
+        {/* Rocket logo */}
+        <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
+          <defs>
+            <linearGradient id="rocketBody" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#e0e8f0" />
+            </linearGradient>
+            <linearGradient id="rocketFlame" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stopColor="#ffd700" />
+              <stop offset="50%" stopColor="#ff8c00" />
+              <stop offset="100%" stopColor="#ff4500" />
+            </linearGradient>
+            <linearGradient id="rocketWindow" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stopColor="#4dc3ff" />
+              <stop offset="100%" stopColor="#2a8ab8" />
+            </linearGradient>
+          </defs>
+          {/* Rocket body */}
+          <path
+            d="M24 6 C28 6 32 12 32 20 L32 32 L28 36 L20 36 L16 32 L16 20 C16 12 20 6 24 6 Z"
+            fill="url(#rocketBody)"
+            stroke="#1a2a4a"
+            strokeWidth="1.5"
+          />
+          {/* Rocket window */}
+          <circle cx="24" cy="18" r="4" fill="url(#rocketWindow)" stroke="#1a2a4a" strokeWidth="1" />
+          {/* Left fin */}
+          <path
+            d="M16 28 L10 36 L16 34 Z"
+            fill="url(#rocketBody)"
+            stroke="#1a2a4a"
+            strokeWidth="1"
+          />
+          {/* Right fin */}
+          <path
+            d="M32 28 L38 36 L32 34 Z"
+            fill="url(#rocketBody)"
+            stroke="#1a2a4a"
+            strokeWidth="1"
+          />
+          {/* Flame */}
+          <path
+            d="M20 36 L24 46 L28 36 Z"
+            fill="url(#rocketFlame)"
+          />
+          <path
+            d="M22 36 L24 42 L26 36 Z"
+            fill="#fff8dc"
+            opacity="0.8"
+          />
+        </svg>
+        
+        {/* Time display */}
         <div 
-          className="text-[10px] font-mono tracking-wider"
-          style={{ color: colors.textMuted }}
+          className="text-lg font-mono font-bold tracking-wider mt-1"
+          style={{ color: colors.text, textShadow: `0 0 10px ${colors.primaryGlow}` }}
         >
           {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
         </div>
