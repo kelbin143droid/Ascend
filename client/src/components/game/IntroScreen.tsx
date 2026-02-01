@@ -69,7 +69,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
         {/* Portal container */}
         <motion.div 
           className="relative flex items-center justify-center"
-          style={{ width: "260px", height: "260px" }}
+          style={{ width: "340px", height: "340px" }}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, duration: 0.8 }}
@@ -78,11 +78,11 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
           <div
             className="absolute rounded-full"
             style={{
-              width: "240px",
-              height: "240px",
+              width: "320px",
+              height: "320px",
               background: "#1a2530",
-              border: "8px solid #1e2a35",
-              boxShadow: "inset 0 0 30px rgba(0,0,0,0.8)",
+              border: "10px solid #1e2a35",
+              boxShadow: "inset 0 0 40px rgba(0,0,0,0.8)",
             }}
           />
 
@@ -90,8 +90,8 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
           <motion.div
             className="absolute rounded-full"
             style={{
-              width: "200px",
-              height: "200px",
+              width: "270px",
+              height: "270px",
               border: "3px solid #4dcfff",
               boxShadow: "0 0 12px rgba(77,207,255,0.7), 0 0 25px rgba(77,207,255,0.4), inset 0 0 12px rgba(77,207,255,0.2)",
             }}
@@ -105,15 +105,48 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             transition={{ duration: 2.5, repeat: Infinity }}
           />
 
-          {/* Inner dark area showing through */}
+          {/* Inner universe background */}
           <div
             className="absolute rounded-full overflow-hidden"
             style={{
-              width: "190px",
-              height: "190px",
-              background: "radial-gradient(circle, rgba(20,35,50,0.9) 0%, rgba(15,25,35,0.95) 100%)",
+              width: "260px",
+              height: "260px",
+              background: "radial-gradient(ellipse at 30% 20%, rgba(80,60,120,0.4) 0%, transparent 50%), radial-gradient(ellipse at 70% 70%, rgba(40,80,120,0.3) 0%, transparent 40%), radial-gradient(circle, #0a0a18 0%, #050510 100%)",
             }}
-          />
+          >
+            {/* Stars */}
+            {[...Array(50)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: `${1 + Math.random() * 2}px`,
+                  height: `${1 + Math.random() * 2}px`,
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  background: i % 5 === 0 ? "#aaccff" : i % 3 === 0 ? "#ffddaa" : "#ffffff",
+                  boxShadow: i % 5 === 0 ? "0 0 4px #aaccff" : "none",
+                }}
+                animate={{
+                  opacity: [0.3, 0.9, 0.3],
+                }}
+                transition={{
+                  duration: 2 + Math.random() * 3,
+                  repeat: Infinity,
+                  delay: Math.random() * 2,
+                }}
+              />
+            ))}
+            {/* Nebula clouds */}
+            <div
+              className="absolute"
+              style={{
+                width: "100%",
+                height: "100%",
+                background: "radial-gradient(ellipse at 25% 35%, rgba(100,50,150,0.15) 0%, transparent 40%), radial-gradient(ellipse at 75% 60%, rgba(50,100,150,0.12) 0%, transparent 35%)",
+              }}
+            />
+          </div>
 
           {/* Diamond icon in center */}
           <motion.div
