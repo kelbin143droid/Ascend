@@ -18,24 +18,13 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
   };
 
   const stars = useMemo(() => 
-    [...Array(150)].map((_, i) => ({
+    [...Array(80)].map((_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: Math.random() * 2 + 0.5,
+      size: Math.random() * 1.5 + 0.5,
       delay: Math.random() * 3,
       duration: 2 + Math.random() * 3,
-    })), []
-  );
-
-  const particles = useMemo(() =>
-    [...Array(30)].map((_, i) => ({
-      id: i,
-      angle: Math.random() * 360,
-      distance: 80 + Math.random() * 100,
-      size: 2 + Math.random() * 3,
-      delay: Math.random() * 2,
-      duration: 3 + Math.random() * 2,
     })), []
   );
 
@@ -43,54 +32,20 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
-        style={{ background: "#000" }}
+        style={{ background: "#0a1520" }}
         initial={{ opacity: 1 }}
         animate={{ opacity: isTransitioning ? 0 : 1 }}
         transition={{ duration: 1.2, ease: "easeInOut" }}
       >
-        {/* Deep space background gradient */}
+        {/* Dark gradient background */}
         <div 
           className="absolute inset-0"
           style={{
-            background: "radial-gradient(ellipse at 50% 50%, #0a1628 0%, #050d18 40%, #000 100%)",
+            background: "radial-gradient(ellipse at 50% 50%, #102030 0%, #0a1520 50%, #050a10 100%)",
           }}
         />
 
-        {/* Nebula clouds */}
-        <motion.div
-          className="absolute"
-          style={{
-            width: "600px",
-            height: "600px",
-            left: "10%",
-            top: "20%",
-            background: `radial-gradient(ellipse, ${theme.colors.primary}08 0%, transparent 70%)`,
-            filter: "blur(60px)",
-          }}
-          animate={{ 
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{ duration: 8, repeat: Infinity }}
-        />
-        <motion.div
-          className="absolute"
-          style={{
-            width: "400px",
-            height: "400px",
-            right: "5%",
-            bottom: "30%",
-            background: "radial-gradient(ellipse, rgba(100,50,150,0.1) 0%, transparent 70%)",
-            filter: "blur(50px)",
-          }}
-          animate={{ 
-            scale: [1.1, 1, 1.1],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{ duration: 10, repeat: Infinity }}
-        />
-
-        {/* Stars */}
+        {/* Subtle stars */}
         {stars.map((star) => (
           <motion.div
             key={star.id}
@@ -100,11 +55,10 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
               top: `${star.y}%`,
               width: `${star.size}px`,
               height: `${star.size}px`,
-              background: "#fff",
+              background: "rgba(150,200,255,0.6)",
             }}
             animate={{
-              opacity: [0.3, 1, 0.3],
-              scale: [0.8, 1.2, 0.8],
+              opacity: [0.2, 0.6, 0.2],
             }}
             transition={{
               duration: star.duration,
@@ -131,7 +85,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
         {/* Subtitle text */}
         <motion.p
           className="absolute top-28 md:top-32 text-xs md:text-sm max-w-sm text-center px-6 leading-relaxed"
-          style={{ color: "rgba(180,200,220,0.6)" }}
+          style={{ color: "rgba(150,180,210,0.7)" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 1 }}
@@ -141,230 +95,297 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
         </motion.p>
 
         {/* Central portal */}
-        <div className="relative flex items-center justify-center" style={{ width: "320px", height: "320px" }}>
+        <div className="relative flex items-center justify-center" style={{ width: "340px", height: "340px" }}>
           
-          {/* Dimensional vortex effect - outer */}
-          <motion.div
-            className="absolute rounded-full"
-            style={{
-              width: "300px",
-              height: "300px",
-              background: `conic-gradient(from 0deg, transparent, ${theme.colors.primary}15, transparent, ${theme.colors.primary}10, transparent)`,
-            }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          />
-
-          {/* Particles being pulled into portal */}
-          {particles.map((p) => (
-            <motion.div
-              key={`particle-${p.id}`}
-              className="absolute rounded-full"
-              style={{
-                width: `${p.size}px`,
-                height: `${p.size}px`,
-                background: theme.colors.primary,
-                boxShadow: `0 0 ${p.size * 2}px ${theme.colors.primary}`,
-              }}
-              animate={{
-                x: [
-                  Math.cos((p.angle * Math.PI) / 180) * p.distance,
-                  0,
-                ],
-                y: [
-                  Math.sin((p.angle * Math.PI) / 180) * p.distance,
-                  0,
-                ],
-                opacity: [0.8, 0],
-                scale: [1, 0.2],
-              }}
-              transition={{
-                duration: p.duration,
-                repeat: Infinity,
-                delay: p.delay,
-                ease: "easeIn",
-              }}
-            />
-          ))}
-
-          {/* Outer portal ring */}
-          <svg className="absolute" width="280" height="280" viewBox="0 0 280 280">
+          {/* Outer tech ring with segments */}
+          <svg className="absolute" width="340" height="340" viewBox="0 0 340 340">
             <defs>
-              <filter id="portalGlow">
-                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <filter id="glow1">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
                 <feMerge>
                   <feMergeNode in="coloredBlur"/>
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
             </defs>
-            <motion.circle
-              cx="140"
-              cy="140"
-              r="130"
-              fill="none"
-              stroke={theme.colors.primary}
-              strokeWidth="2"
-              strokeDasharray="15 10"
-              filter="url(#portalGlow)"
+            
+            {/* Outer segmented ring with radiating lines */}
+            <motion.g
               initial={{ rotate: 0, opacity: 0 }}
               animate={{ rotate: 360, opacity: 1 }}
-              transition={{ rotate: { duration: 40, repeat: Infinity, ease: "linear" }, opacity: { duration: 1 } }}
-              style={{ transformOrigin: "center" }}
-            />
+              transition={{ rotate: { duration: 120, repeat: Infinity, ease: "linear" }, opacity: { duration: 1 } }}
+              style={{ transformOrigin: "170px 170px" }}
+            >
+              {[...Array(24)].map((_, i) => {
+                const angle = (i * 15 * Math.PI) / 180;
+                const innerR = 145;
+                const outerR = 165;
+                const x1 = 170 + Math.cos(angle) * innerR;
+                const y1 = 170 + Math.sin(angle) * innerR;
+                const x2 = 170 + Math.cos(angle) * outerR;
+                const y2 = 170 + Math.sin(angle) * outerR;
+                return (
+                  <line
+                    key={`outer-seg-${i}`}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke={theme.colors.primary}
+                    strokeWidth={i % 3 === 0 ? 3 : 1.5}
+                    strokeOpacity={i % 3 === 0 ? 0.9 : 0.5}
+                    filter="url(#glow1)"
+                  />
+                );
+              })}
+              <circle
+                cx="170"
+                cy="170"
+                r="155"
+                fill="none"
+                stroke={theme.colors.primary}
+                strokeWidth="1"
+                strokeOpacity="0.4"
+              />
+            </motion.g>
           </svg>
 
-          {/* Middle ring */}
-          <svg className="absolute" width="220" height="220" viewBox="0 0 220 220">
-            <motion.circle
-              cx="110"
-              cy="110"
-              r="100"
-              fill="none"
-              stroke={theme.colors.primary}
-              strokeWidth="1.5"
-              strokeOpacity="0.5"
-              initial={{ rotate: 0 }}
-              animate={{ rotate: -360 }}
-              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: "center" }}
-            />
+          {/* Second ring layer */}
+          <svg className="absolute" width="300" height="300" viewBox="0 0 300 300">
+            <motion.g
+              initial={{ rotate: 0, opacity: 0 }}
+              animate={{ rotate: -360, opacity: 1 }}
+              transition={{ rotate: { duration: 80, repeat: Infinity, ease: "linear" }, opacity: { duration: 1, delay: 0.3 } }}
+              style={{ transformOrigin: "150px 150px" }}
+            >
+              {[...Array(36)].map((_, i) => {
+                const angle = (i * 10 * Math.PI) / 180;
+                const innerR = 115;
+                const outerR = i % 2 === 0 ? 135 : 125;
+                const x1 = 150 + Math.cos(angle) * innerR;
+                const y1 = 150 + Math.sin(angle) * innerR;
+                const x2 = 150 + Math.cos(angle) * outerR;
+                const y2 = 150 + Math.sin(angle) * outerR;
+                return (
+                  <line
+                    key={`mid-seg-${i}`}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke={theme.colors.primary}
+                    strokeWidth={i % 2 === 0 ? 2 : 1}
+                    strokeOpacity={0.6}
+                  />
+                );
+              })}
+              <circle
+                cx="150"
+                cy="150"
+                r="125"
+                fill="none"
+                stroke={theme.colors.primary}
+                strokeWidth="1.5"
+                strokeOpacity="0.5"
+              />
+              <circle
+                cx="150"
+                cy="150"
+                r="115"
+                fill="none"
+                stroke={theme.colors.primary}
+                strokeWidth="1"
+                strokeOpacity="0.3"
+              />
+            </motion.g>
           </svg>
 
-          {/* Inner glowing ring */}
+          {/* Inner ring with tick marks */}
+          <svg className="absolute" width="240" height="240" viewBox="0 0 240 240">
+            <motion.g
+              initial={{ rotate: 0, opacity: 0 }}
+              animate={{ rotate: 360, opacity: 1 }}
+              transition={{ rotate: { duration: 60, repeat: Infinity, ease: "linear" }, opacity: { duration: 1, delay: 0.5 } }}
+              style={{ transformOrigin: "120px 120px" }}
+            >
+              {[...Array(48)].map((_, i) => {
+                const angle = (i * 7.5 * Math.PI) / 180;
+                const innerR = 85;
+                const outerR = i % 4 === 0 ? 100 : 92;
+                const x1 = 120 + Math.cos(angle) * innerR;
+                const y1 = 120 + Math.sin(angle) * innerR;
+                const x2 = 120 + Math.cos(angle) * outerR;
+                const y2 = 120 + Math.sin(angle) * outerR;
+                return (
+                  <line
+                    key={`inner-seg-${i}`}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke={theme.colors.primary}
+                    strokeWidth={i % 4 === 0 ? 2 : 0.8}
+                    strokeOpacity={i % 4 === 0 ? 0.8 : 0.4}
+                  />
+                );
+              })}
+              <circle
+                cx="120"
+                cy="120"
+                r="95"
+                fill="none"
+                stroke={theme.colors.primary}
+                strokeWidth="2"
+                strokeOpacity="0.7"
+                filter="url(#glow1)"
+              />
+            </motion.g>
+          </svg>
+
+          {/* Core circle */}
           <motion.div
             className="absolute rounded-full"
             style={{
               width: "160px",
               height: "160px",
               border: `2px solid ${theme.colors.primary}`,
-              boxShadow: `0 0 50px ${theme.colors.primary}50, 0 0 100px ${theme.colors.primary}30, inset 0 0 50px ${theme.colors.primary}20`,
+              boxShadow: `0 0 60px ${theme.colors.primary}50, inset 0 0 60px ${theme.colors.primary}30`,
             }}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.5, duration: 1.2 }}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.8, duration: 1 }}
           />
 
-          {/* Portal core - dimensional rift */}
+          {/* Inner glow */}
           <motion.div
             className="absolute rounded-full"
             style={{
-              width: "120px",
-              height: "120px",
-              background: `radial-gradient(circle, ${theme.colors.primary}40 0%, ${theme.colors.primary}15 40%, transparent 70%)`,
+              width: "140px",
+              height: "140px",
+              background: `radial-gradient(circle, ${theme.colors.primary}50 0%, ${theme.colors.primary}20 50%, transparent 80%)`,
             }}
             animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.7, 1, 0.7],
+              scale: [1, 1.1, 1],
+              opacity: [0.8, 1, 0.8],
             }}
             transition={{ duration: 3, repeat: Infinity }}
           />
 
-          {/* Inner vortex */}
-          <motion.div
-            className="absolute rounded-full"
-            style={{
-              width: "80px",
-              height: "80px",
-              background: `conic-gradient(from 0deg, transparent, ${theme.colors.primary}30, transparent, ${theme.colors.primary}20, transparent)`,
-            }}
-            animate={{ rotate: -360 }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-          />
-
-          {/* Human figure being drawn in */}
-          <motion.div
-            className="absolute flex items-center justify-center"
-            initial={{ opacity: 0, scale: 0.3, y: 20 }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1, 
-              y: 0,
-            }}
-            transition={{ delay: 1, duration: 1.5 }}
-          >
-            <motion.svg 
-              width="55" 
-              height="100" 
-              viewBox="0 0 55 100" 
-              fill="none"
-              animate={{
-                y: [0, -3, 0],
-                filter: [
-                  `drop-shadow(0 0 8px ${theme.colors.primary}50)`,
-                  `drop-shadow(0 0 15px ${theme.colors.primary}80)`,
-                  `drop-shadow(0 0 8px ${theme.colors.primary}50)`,
-                ],
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              {/* Head */}
-              <ellipse cx="27.5" cy="12" rx="10" ry="12" fill="#0c1a2a" stroke={theme.colors.primary} strokeWidth="1.5" strokeOpacity="0.7" />
-              
-              {/* Neck */}
-              <path d="M27.5 24 L27.5 28" stroke="#0c1a2a" strokeWidth="6" strokeLinecap="round" />
-              <path d="M27.5 24 L27.5 28" stroke={theme.colors.primary} strokeWidth="1" strokeOpacity="0.6" />
-              
-              {/* Torso */}
-              <path d="M27.5 28 Q27.5 35 27.5 50" stroke="#0c1a2a" strokeWidth="14" strokeLinecap="round" />
-              <ellipse cx="27.5" cy="38" rx="12" ry="14" fill="#0c1a2a" stroke={theme.colors.primary} strokeWidth="1" strokeOpacity="0.5" />
-              
-              {/* Arms */}
-              <path d="M15 32 Q10 42 8 52" stroke="#0c1a2a" strokeWidth="6" strokeLinecap="round" />
-              <path d="M15 32 Q10 42 8 52" stroke={theme.colors.primary} strokeWidth="1" strokeOpacity="0.5" />
-              <path d="M40 32 Q45 42 47 52" stroke="#0c1a2a" strokeWidth="6" strokeLinecap="round" />
-              <path d="M40 32 Q45 42 47 52" stroke={theme.colors.primary} strokeWidth="1" strokeOpacity="0.5" />
-              
-              {/* Legs */}
-              <path d="M22 50 Q18 65 15 85" stroke="#0c1a2a" strokeWidth="7" strokeLinecap="round" />
-              <path d="M22 50 Q18 65 15 85" stroke={theme.colors.primary} strokeWidth="1" strokeOpacity="0.5" />
-              <path d="M33 50 Q37 65 40 85" stroke="#0c1a2a" strokeWidth="7" strokeLinecap="round" />
-              <path d="M33 50 Q37 65 40 85" stroke={theme.colors.primary} strokeWidth="1" strokeOpacity="0.5" />
-
-              {/* Energy aura effect */}
-              <motion.ellipse 
-                cx="27.5" 
-                cy="45" 
-                rx="20" 
-                ry="35" 
-                fill="none" 
-                stroke={theme.colors.primary} 
-                strokeWidth="1"
-                strokeOpacity="0.3"
-                animate={{
-                  ry: [35, 40, 35],
-                  opacity: [0.2, 0.4, 0.2],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            </motion.svg>
-          </motion.div>
-
-          {/* Energy wisps being pulled toward figure */}
-          {[...Array(6)].map((_, i) => (
+          {/* Crosshair lines */}
+          {[0, 90, 180, 270].map((angle) => (
             <motion.div
-              key={`wisp-${i}`}
+              key={`cross-${angle}`}
               className="absolute"
               style={{
                 width: "2px",
-                height: "20px",
-                background: `linear-gradient(to bottom, ${theme.colors.primary}, transparent)`,
-                borderRadius: "2px",
+                height: "30px",
+                background: theme.colors.primary,
+                boxShadow: `0 0 8px ${theme.colors.primary}`,
+                transform: `rotate(${angle}deg) translateY(-95px)`,
               }}
-              animate={{
-                y: [-80, 0],
-                x: [Math.sin(i * 60 * Math.PI / 180) * 60, 0],
-                opacity: [0.6, 0],
-                scale: [1, 0.3],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                delay: i * 0.3,
-                ease: "easeIn",
-              }}
+              initial={{ opacity: 0, scaleY: 0 }}
+              animate={{ opacity: 0.8, scaleY: 1 }}
+              transition={{ delay: 1.2 + angle * 0.001, duration: 0.5 }}
             />
           ))}
+
+          {/* Human silhouette - realistic body shape */}
+          <motion.div
+            className="absolute flex items-center justify-center"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1, duration: 1 }}
+          >
+            <motion.svg 
+              width="60" 
+              height="110" 
+              viewBox="0 0 60 110" 
+              fill="none"
+              animate={{
+                y: [0, -2, 0],
+              }}
+              transition={{ duration: 3, repeat: Infinity }}
+            >
+              {/* Full body silhouette path */}
+              <path
+                d="M30 0
+                   C38 0 44 6 44 14
+                   C44 22 38 28 30 28
+                   C22 28 16 22 16 14
+                   C16 6 22 0 30 0
+                   Z
+                   M30 28
+                   L30 30
+                   C36 30 42 34 44 40
+                   L48 55
+                   C49 58 48 60 46 60
+                   L44 60
+                   C42 60 40 58 40 56
+                   L38 48
+                   L38 70
+                   L42 95
+                   C43 100 40 105 36 105
+                   L34 105
+                   C32 105 30 102 30 100
+                   L30 75
+                   L30 100
+                   C30 102 28 105 26 105
+                   L24 105
+                   C20 105 17 100 18 95
+                   L22 70
+                   L22 48
+                   L20 56
+                   C20 58 18 60 16 60
+                   L14 60
+                   C12 60 11 58 12 55
+                   L16 40
+                   C18 34 24 30 30 30
+                   Z"
+                fill="#0a1520"
+                stroke={theme.colors.primary}
+                strokeWidth="0.5"
+                strokeOpacity="0.3"
+              />
+              
+              {/* Subtle inner glow effect on silhouette */}
+              <path
+                d="M30 0
+                   C38 0 44 6 44 14
+                   C44 22 38 28 30 28
+                   C22 28 16 22 16 14
+                   C16 6 22 0 30 0
+                   Z
+                   M30 28
+                   L30 30
+                   C36 30 42 34 44 40
+                   L48 55
+                   C49 58 48 60 46 60
+                   L44 60
+                   C42 60 40 58 40 56
+                   L38 48
+                   L38 70
+                   L42 95
+                   C43 100 40 105 36 105
+                   L34 105
+                   C32 105 30 102 30 100
+                   L30 75
+                   L30 100
+                   C30 102 28 105 26 105
+                   L24 105
+                   C20 105 17 100 18 95
+                   L22 70
+                   L22 48
+                   L20 56
+                   C20 58 18 60 16 60
+                   L14 60
+                   C12 60 11 58 12 55
+                   L16 40
+                   C18 34 24 30 30 30
+                   Z"
+                fill="#0c1825"
+              />
+            </motion.svg>
+          </motion.div>
         </div>
 
         {/* Begin Ascension Button */}
