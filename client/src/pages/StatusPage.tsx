@@ -1,14 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGame } from "@/context/GameContext";
+import { useRoles } from "@/context/RolesContext";
+import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
 import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2 } from "lucide-react";
+import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Quadrant } from "@shared/schema";
 
 const COLOR_OPTIONS = [
   "#3b4d6b", "#4a6fa5", "#5a8a72", "#c97b63", "#7d9d6a", "#8b7aa3",
@@ -37,7 +41,17 @@ interface EditingBlock {
   color: string;
   isSystemTask?: boolean;
   isNew?: boolean;
+  roleId?: string;
+  weeklyGoalId?: string;
+  quadrant?: Quadrant;
 }
+
+const QUADRANT_OPTIONS: { value: Quadrant; label: string; description: string; color: string }[] = [
+  { value: "Q1", label: "Q1", description: "Urgent & Important", color: "#ef4444" },
+  { value: "Q2", label: "Q2", description: "Not Urgent & Important", color: "#22c55e" },
+  { value: "Q3", label: "Q3", description: "Urgent & Not Important", color: "#f59e0b" },
+  { value: "Q4", label: "Q4", description: "Not Urgent & Not Important", color: "#6b7280" },
+];
 
 export default function StatusPage() {
   const { 
@@ -54,6 +68,9 @@ export default function StatusPage() {
     gainExp,
     addLevels
   } = useGame();
+  const { roles, getDefaultRole, createRole } = useRoles();
+  const { weeklyGoals, hasGoalsForCurrentWeek, getGoalsByRole } = useWeeklyGoals();
+  
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
@@ -61,6 +78,14 @@ export default function StatusPage() {
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customName, setCustomName] = useState("");
   const [showTestMode, setShowTestMode] = useState(false);
+  const [defaultRoleCreated, setDefaultRoleCreated] = useState(false);
+  
+  useEffect(() => {
+    if (player && roles.length === 0 && !defaultRoleCreated) {
+      setDefaultRoleCreated(true);
+      createRole({ name: "General", weeklyPriority: 0 });
+    }
+  }, [player, roles.length, defaultRoleCreated, createRole]);
 
   if (isLoading || !player) {
     return (
@@ -515,6 +540,85 @@ export default function StatusPage() {
                 <label htmlFor="isSystemTask" className="text-xs text-muted-foreground">
                   Mark as Quest (glows on timeline)
                 </label>
+              </div>
+
+              <div className="border-t border-white/5 pt-3 mt-2">
+                <div className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-2">Planning Tags</div>
+                
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground/60 block mb-1">Role</label>
+                    <Select
+                      value={editingBlock.roleId || ""}
+                      onValueChange={(v) => setEditingBlock({ ...editingBlock, roleId: v, weeklyGoalId: undefined })}
+                    >
+                      <SelectTrigger className="h-7 bg-black/50 border-white/10 text-xs">
+                        <SelectValue placeholder="Select role..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black/95 border-white/10">
+                        {roles.map((role) => (
+                          <SelectItem key={role.id} value={role.id} className="text-xs">
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {editingBlock.roleId && (
+                    <div>
+                      <label className="text-[10px] text-muted-foreground/60 block mb-1">Weekly Goal</label>
+                      <Select
+                        value={editingBlock.weeklyGoalId || ""}
+                        onValueChange={(v) => setEditingBlock({ ...editingBlock, weeklyGoalId: v })}
+                      >
+                        <SelectTrigger className="h-7 bg-black/50 border-white/10 text-xs">
+                          <SelectValue placeholder="Select goal..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-black/95 border-white/10">
+                          {getGoalsByRole(editingBlock.roleId).map((goal) => (
+                            <SelectItem key={goal.id} value={goal.id} className="text-xs">
+                              {goal.title}
+                            </SelectItem>
+                          ))}
+                          {getGoalsByRole(editingBlock.roleId).length === 0 && (
+                            <div className="text-xs text-muted-foreground/50 px-2 py-1">No goals for this role</div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-[10px] text-muted-foreground/60 block mb-1">Quadrant</label>
+                    <div className="grid grid-cols-4 gap-1">
+                      {QUADRANT_OPTIONS.map((q) => (
+                        <button
+                          key={q.value}
+                          data-testid={`button-quadrant-${q.value}`}
+                          onClick={() => setEditingBlock({ ...editingBlock, quadrant: q.value })}
+                          className={`py-1 px-2 rounded text-[10px] font-bold transition-all ${
+                            editingBlock.quadrant === q.value 
+                              ? 'ring-2 ring-white ring-offset-1 ring-offset-black' 
+                              : 'opacity-60 hover:opacity-100'
+                          }`}
+                          style={{ 
+                            backgroundColor: `${q.color}30`,
+                            color: q.color,
+                            border: `1px solid ${q.color}50`
+                          }}
+                        >
+                          {q.label}
+                        </button>
+                      ))}
+                    </div>
+                    {editingBlock.quadrant && (
+                      <div className="text-[9px] text-muted-foreground/50 mt-1">
+                        {QUADRANT_OPTIONS.find(q => q.value === editingBlock.quadrant)?.description}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">
