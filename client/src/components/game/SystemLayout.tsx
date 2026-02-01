@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { User, Sword, Backpack, Home, UserCircle, BarChart3 } from "lucide-react";
+import { User, Sword, Home, UserCircle, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { ThemeSelector } from "./ThemeSelector";
@@ -13,7 +13,6 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { icon: User, label: "STATUS", path: "/" },
     { icon: Sword, label: "DUNGEON", path: "/dungeon" },
-    { icon: Backpack, label: "ITEMS", path: "/inventory" },
     { icon: BarChart3, label: "ANALYTICS", path: "/analytics" },
     { icon: UserCircle, label: "PROFILE", path: "/profile" },
   ];
