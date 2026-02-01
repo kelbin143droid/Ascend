@@ -98,6 +98,24 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      
+      // Print Replit URL for preview
+      const replitSlug = process.env.REPL_SLUG;
+      const replitOwner = process.env.REPL_OWNER;
+      if (replitSlug && replitOwner) {
+        console.log(`\n========================================`);
+        console.log(`  SERVER RUNNING`);
+        console.log(`========================================`);
+        console.log(`  Local:    http://localhost:${port}`);
+        console.log(`  Preview:  Open the Webview tab in Replit`);
+        console.log(`========================================`);
+        console.log(`\n  API Endpoints:`);
+        console.log(`  - GET /api/weekly-analytics/:userId?week_start_date=YYYY-MM-DD`);
+        console.log(`  - GET /api/roles/:userId`);
+        console.log(`  - GET /api/weekly-goals/:userId`);
+        console.log(`  - GET /api/tasks/:userId`);
+        console.log(`========================================\n`);
+      }
     },
   );
 })();
