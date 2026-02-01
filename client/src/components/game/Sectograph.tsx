@@ -318,13 +318,24 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
 
       {/* Center time display */}
       <div 
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
+        className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
       >
         <div 
-          className="text-xl font-mono font-bold tracking-wider"
-          style={{ color: colors.text, textShadow: `0 0 10px ${colors.primaryGlow}` }}
+          className="text-2xl font-mono font-bold tracking-tighter"
+          style={{ 
+            color: colors.text, 
+            textShadow: `0 0 10px ${colors.primaryGlow}`,
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "-0.05em"
+          }}
         >
-          {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+          {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+        </div>
+        <div 
+          className="text-[10px] font-mono opacity-60 uppercase tracking-widest mt-[-4px]"
+          style={{ color: colors.text }}
+        >
+          System Time
         </div>
       </div>
     </div>
