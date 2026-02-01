@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { User, Sword, Home, UserCircle, BarChart3 } from "lucide-react";
+import { Sword, UserCircle, BarChart3, BookOpen, Rocket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { ThemeSelector } from "./ThemeSelector";
@@ -10,9 +10,12 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { backgroundTheme } = useTheme();
 
-  const navItems = [
-    { icon: User, label: "STATUS", path: "/" },
+  const leftNavItems = [
+    { icon: BookOpen, label: "LIBRARY", path: "/library" },
     { icon: Sword, label: "ARENA", path: "/arena" },
+  ];
+
+  const rightNavItems = [
     { icon: BarChart3, label: "ANALYTICS", path: "/analytics" },
     { icon: UserCircle, label: "PROFILE", path: "/profile" },
   ];
@@ -97,14 +100,71 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           borderTop: `1px solid ${colors.surfaceBorder}`
         }}
       >
-        <div className="flex justify-around items-center h-16 max-w-md md:max-w-2xl mx-auto">
-          {navItems.map((item) => {
+        <div className="flex justify-around items-end h-16 max-w-md md:max-w-2xl mx-auto pb-2 relative">
+          {leftNavItems.map((item) => {
             const isActive = location === item.path;
             return (
               <Link key={item.path} href={item.path}>
                 <button
+                  data-testid={`nav-${item.label.toLowerCase()}`}
                   className={cn(
-                    "flex flex-col items-center justify-center w-full h-full transition-all duration-300 group"
+                    "flex flex-col items-center justify-center transition-all duration-300 group px-4"
+                  )}
+                  style={{
+                    color: isActive ? colors.primary : colors.textMuted,
+                    transform: isActive ? 'scale(1.1)' : 'scale(1)'
+                  }}
+                >
+                  <div 
+                    className="relative p-1.5 rounded-sm transition-all duration-500"
+                    style={isActive ? {
+                      backgroundColor: `${colors.primary}33`,
+                      boxShadow: `0 0 25px ${colors.primaryGlow}`,
+                      border: `1px solid ${colors.surfaceBorder}`
+                    } : {}}
+                  >
+                    <item.icon size={22} className={cn("transition-transform", isActive && "animate-pulse")} />
+                  </div>
+                  <span 
+                    className="text-[10px] tracking-[0.2em] mt-1.5 font-display font-bold uppercase transition-all"
+                    style={{ opacity: isActive ? 1 : 0.6 }}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              </Link>
+            );
+          })}
+
+          <Link href="/">
+            <button
+              data-testid="nav-status"
+              className="relative -mt-6 flex items-center justify-center transition-all duration-300 group"
+              style={{
+                transform: location === "/" ? 'scale(1.1)' : 'scale(1)'
+              }}
+            >
+              <div 
+                className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-500 rotate-45"
+                style={{
+                  backgroundColor: colors.primary,
+                  boxShadow: `0 0 30px ${colors.primaryGlow}, 0 0 60px ${colors.primaryGlow}40`,
+                  border: `2px solid ${colors.surfaceBorder}`
+                }}
+              >
+                <Rocket size={26} className="-rotate-45" style={{ color: colors.background }} />
+              </div>
+            </button>
+          </Link>
+
+          {rightNavItems.map((item) => {
+            const isActive = location === item.path;
+            return (
+              <Link key={item.path} href={item.path}>
+                <button
+                  data-testid={`nav-${item.label.toLowerCase()}`}
+                  className={cn(
+                    "flex flex-col items-center justify-center transition-all duration-300 group px-4"
                   )}
                   style={{
                     color: isActive ? colors.primary : colors.textMuted,

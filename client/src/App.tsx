@@ -13,6 +13,7 @@ import HousingPage from "@/pages/HousingPage";
 import SurvivalPage from "@/pages/SurvivalPage";
 import ProfilePage from "@/pages/ProfilePage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
+import LibraryPage from "@/pages/LibraryPage";
 import NotFound from "@/pages/not-found";
 import { RankUnlockOverlay } from "@/components/game/RankUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
@@ -23,6 +24,7 @@ function Router() {
     <Switch>
       <Route path="/" component={StatusPage} />
       <Route path="/arena" component={DungeonPage} />
+      <Route path="/library" component={LibraryPage} />
       <Route path="/inventory" component={InventoryPage} />
       <Route path="/game3d" component={Game3DPage} />
       <Route path="/housing" component={HousingPage} />
