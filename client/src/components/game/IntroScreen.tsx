@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -17,46 +17,54 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
     }, 1200);
   };
 
-  // Tech ring segments
-  const outerSegments = useMemo(() => 
-    [...Array(24)].map((_, i) => ({
-      id: i,
-      angle: (i / 24) * 360,
-      length: 30 + Math.random() * 40,
-    })), []
-  );
-
-  const middleSegments = useMemo(() => 
-    [...Array(16)].map((_, i) => ({
-      id: i,
-      angle: (i / 16) * 360 + 11.25,
-      length: 20 + Math.random() * 30,
-    })), []
-  );
-
   return (
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
-        style={{ background: "#0a1420" }}
         initial={{ opacity: 1 }}
         animate={{ opacity: isTransitioning ? 0 : 1 }}
         transition={{ duration: 1.2, ease: "easeInOut" }}
       >
-        {/* Dark gradient background */}
+        {/* Dark fantasy background with mountains */}
         <div 
           className="absolute inset-0"
           style={{
-            background: "radial-gradient(ellipse at 50% 50%, #0f2035 0%, #0a1420 40%, #050a10 100%)",
+            background: `
+              linear-gradient(to bottom, 
+                #0a1520 0%, 
+                #0f2030 30%, 
+                #1a3045 50%,
+                #0f2530 70%,
+                #0a1520 100%
+              )
+            `,
           }}
         />
 
+        {/* Mountain silhouettes */}
+        <div className="absolute inset-0 overflow-hidden">
+          <svg className="absolute bottom-0 w-full h-2/3" viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice">
+            {/* Far mountains */}
+            <path
+              d="M0 200 L0 140 L40 100 L80 130 L120 80 L160 120 L200 70 L240 110 L280 60 L320 100 L360 80 L400 120 L400 200 Z"
+              fill="#1a2a3a"
+              opacity="0.6"
+            />
+            {/* Near mountains */}
+            <path
+              d="M0 200 L0 160 L50 120 L100 150 L150 100 L200 140 L250 90 L300 130 L350 110 L400 150 L400 200 Z"
+              fill="#0f1a25"
+              opacity="0.8"
+            />
+          </svg>
+        </div>
+
         {/* Title */}
         <motion.h1
-          className="absolute top-10 md:top-14 text-4xl md:text-5xl font-display font-bold tracking-[0.15em] z-20"
+          className="absolute top-12 md:top-16 text-3xl md:text-4xl font-display font-bold tracking-[0.2em] z-20"
           style={{ 
             color: "#4dc3ff",
-            textShadow: "0 0 40px rgba(77,195,255,0.5)",
+            textShadow: "0 0 30px rgba(77,195,255,0.5)",
           }}
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -65,272 +73,195 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
           INITIATION
         </motion.h1>
 
-        {/* Subtitle text */}
-        <motion.p
-          className="absolute top-24 md:top-28 text-sm md:text-base max-w-sm text-center px-6 leading-relaxed font-display font-bold z-20"
-          style={{ 
-            color: "#d4a843",
-            textShadow: "0 0 20px rgba(212, 168, 67, 0.4)",
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 1 }}
+        {/* Central portal frame */}
+        <motion.div 
+          className="relative flex items-center justify-center"
+          style={{ width: "280px", height: "280px" }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, duration: 1 }}
         >
-          The System Invites You To Awaken Your True Potential.
-        </motion.p>
-
-        {/* Central tech portal */}
-        <div className="relative flex items-center justify-center" style={{ width: "400px", height: "400px" }}>
-          
-          {/* Outermost tech ring with segments */}
-          <motion.svg 
-            className="absolute" 
-            width="380" 
-            height="380" 
-            viewBox="0 0 380 380"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3, duration: 1 }}
-          >
-            <defs>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            
-            {/* Outer ring */}
-            <motion.circle
-              cx="190"
-              cy="190"
-              r="175"
-              fill="none"
-              stroke="#2a5a7a"
-              strokeWidth="2"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: "190px 190px" }}
-            />
-            
-            {/* Outer tech segments */}
-            <motion.g
-              animate={{ rotate: -360 }}
-              transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: "190px 190px" }}
-            >
-              {outerSegments.map((seg) => {
-                const angleRad = (seg.angle * Math.PI) / 180;
-                const x1 = 190 + Math.cos(angleRad) * 160;
-                const y1 = 190 + Math.sin(angleRad) * 160;
-                const x2 = 190 + Math.cos(angleRad) * (160 + seg.length);
-                const y2 = 190 + Math.sin(angleRad) * (160 + seg.length);
-                return (
-                  <line
-                    key={seg.id}
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke="#4dc3ff"
-                    strokeWidth="2"
-                    filter="url(#glow)"
-                    opacity="0.7"
-                  />
-                );
-              })}
-            </motion.g>
-          </motion.svg>
-
-          {/* Second ring layer */}
-          <motion.svg 
-            className="absolute" 
-            width="320" 
-            height="320" 
-            viewBox="0 0 320 320"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5, duration: 1 }}
-          >
-            {/* Middle ring */}
-            <motion.circle
-              cx="160"
-              cy="160"
-              r="145"
-              fill="none"
-              stroke="#3a7a9a"
-              strokeWidth="3"
-              strokeDasharray="20 10"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: "160px 160px" }}
-            />
-            
-            {/* Middle tech segments */}
-            <motion.g
-              animate={{ rotate: 360 }}
-              transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: "160px 160px" }}
-            >
-              {middleSegments.map((seg) => {
-                const angleRad = (seg.angle * Math.PI) / 180;
-                const x1 = 160 + Math.cos(angleRad) * 120;
-                const y1 = 160 + Math.sin(angleRad) * 120;
-                const x2 = 160 + Math.cos(angleRad) * (120 + seg.length);
-                const y2 = 160 + Math.sin(angleRad) * (120 + seg.length);
-                return (
-                  <line
-                    key={seg.id}
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke="#4dc3ff"
-                    strokeWidth="1.5"
-                    filter="url(#glow)"
-                    opacity="0.6"
-                  />
-                );
-              })}
-            </motion.g>
-          </motion.svg>
-
-          {/* Inner ring */}
-          <motion.svg 
-            className="absolute" 
-            width="260" 
-            height="260" 
-            viewBox="0 0 260 260"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.7, duration: 1 }}
-          >
-            <circle
-              cx="130"
-              cy="130"
-              r="115"
-              fill="none"
-              stroke="#4dc3ff"
-              strokeWidth="2"
-              opacity="0.5"
-            />
-            <motion.circle
-              cx="130"
-              cy="130"
-              r="100"
-              fill="none"
-              stroke="#4dc3ff"
-              strokeWidth="1"
-              strokeDasharray="8 8"
-              animate={{ rotate: -360 }}
-              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-              style={{ transformOrigin: "130px 130px" }}
-              opacity="0.4"
-            />
-          </motion.svg>
-
-          {/* Glowing core */}
-          <motion.div
+          {/* Outer glow */}
+          <div
             className="absolute rounded-full"
             style={{
-              width: "180px",
-              height: "180px",
-              background: "radial-gradient(circle, rgba(77,195,255,0.4) 0%, rgba(40,120,180,0.2) 40%, transparent 70%)",
+              width: "260px",
+              height: "260px",
+              background: "radial-gradient(circle, rgba(77,195,255,0.15) 0%, transparent 70%)",
+              filter: "blur(10px)",
             }}
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.6, 0.9, 0.6],
-            }}
-            transition={{ duration: 3, repeat: Infinity }}
           />
 
-          {/* Bright inner core */}
+          {/* Portal ring - outer */}
           <motion.div
             className="absolute rounded-full"
             style={{
-              width: "120px",
-              height: "120px",
-              background: "radial-gradient(circle, rgba(150,220,255,0.5) 0%, rgba(77,195,255,0.3) 50%, transparent 80%)",
+              width: "240px",
+              height: "240px",
+              border: "4px solid #2a6080",
+              boxShadow: "0 0 20px rgba(77,195,255,0.3), inset 0 0 20px rgba(77,195,255,0.1)",
+            }}
+          />
+
+          {/* Portal ring - glowing inner edge */}
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: "220px",
+              height: "220px",
+              border: "3px solid #4dc3ff",
+              boxShadow: "0 0 15px rgba(77,195,255,0.6), 0 0 30px rgba(77,195,255,0.3)",
             }}
             animate={{
-              scale: [1, 1.15, 1],
+              boxShadow: [
+                "0 0 15px rgba(77,195,255,0.6), 0 0 30px rgba(77,195,255,0.3)",
+                "0 0 25px rgba(77,195,255,0.8), 0 0 40px rgba(77,195,255,0.4)",
+                "0 0 15px rgba(77,195,255,0.6), 0 0 30px rgba(77,195,255,0.3)",
+              ],
             }}
             transition={{ duration: 2, repeat: Infinity }}
           />
 
-          {/* Vertical scan line */}
-          <motion.div
-            className="absolute w-px h-48"
+          {/* Dark inner circle */}
+          <div
+            className="absolute rounded-full"
             style={{
-              background: "linear-gradient(to bottom, transparent, rgba(77,195,255,0.6), transparent)",
+              width: "200px",
+              height: "200px",
+              background: "radial-gradient(circle, #0a1825 0%, #050d15 100%)",
             }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.5, 0] }}
-            transition={{ duration: 3, repeat: Infinity, delay: 2 }}
           />
-        </div>
 
-        {/* Begin Ascension Button */}
+          {/* Center icon - quest/sword icon */}
+          <motion.div
+            className="absolute z-10"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.8, duration: 0.8 }}
+          >
+            <div
+              className="relative"
+              style={{
+                width: "70px",
+                height: "70px",
+                background: "linear-gradient(135deg, #2a4a60 0%, #1a2a3a 100%)",
+                border: "3px solid #c9a227",
+                borderRadius: "8px",
+                transform: "rotate(45deg)",
+                boxShadow: "0 0 15px rgba(201,162,39,0.4), inset 0 0 10px rgba(0,0,0,0.5)",
+              }}
+            >
+              {/* Sword icon inside */}
+              <svg
+                className="absolute"
+                style={{
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%) rotate(-45deg)",
+                  width: "40px",
+                  height: "40px",
+                }}
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                {/* Sword blade */}
+                <path
+                  d="M12 2 L14 4 L14 14 L12 16 L10 14 L10 4 Z"
+                  fill="#4dc3ff"
+                  stroke="#6dd3ff"
+                  strokeWidth="0.5"
+                />
+                {/* Sword guard */}
+                <path
+                  d="M8 14 L16 14 L16 15 L8 15 Z"
+                  fill="#c9a227"
+                />
+                {/* Sword handle */}
+                <path
+                  d="M11 15 L13 15 L13 20 L11 20 Z"
+                  fill="#8b6914"
+                />
+                {/* Pommel */}
+                <circle cx="12" cy="21" r="1.5" fill="#c9a227" />
+              </svg>
+            </div>
+          </motion.div>
+
+          {/* Floating particles */}
+          {[...Array(8)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: "3px",
+                height: "3px",
+                background: "#4dc3ff",
+                boxShadow: "0 0 6px #4dc3ff",
+              }}
+              animate={{
+                x: [
+                  Math.cos((i / 8) * Math.PI * 2) * 90,
+                  Math.cos((i / 8) * Math.PI * 2 + Math.PI) * 95,
+                  Math.cos((i / 8) * Math.PI * 2) * 90,
+                ],
+                y: [
+                  Math.sin((i / 8) * Math.PI * 2) * 90,
+                  Math.sin((i / 8) * Math.PI * 2 + Math.PI) * 95,
+                  Math.sin((i / 8) * Math.PI * 2) * 90,
+                ],
+                opacity: [0.4, 0.8, 0.4],
+              }}
+              transition={{
+                duration: 4 + i * 0.3,
+                repeat: Infinity,
+                delay: i * 0.2,
+              }}
+            />
+          ))}
+        </motion.div>
+
+        {/* Accept Button */}
         <motion.button
           onClick={handleBeginAscension}
-          className="absolute bottom-20 flex items-center gap-3 z-20"
+          className="mt-8 z-20"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 2.5, duration: 0.8 }}
+          transition={{ delay: 1.5, duration: 0.8 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.98 }}
           data-testid="button-begin-ascension"
         >
-          <motion.span
-            className="text-2xl font-mono"
-            style={{ color: "#4dc3ff" }}
-            animate={{ x: [-2, 2, -2] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            &lt;
-          </motion.span>
-
           <div
-            className="relative px-8 py-3 font-display tracking-[0.3em] uppercase text-lg"
+            className="relative px-12 py-3 font-display tracking-[0.2em] uppercase text-lg font-bold"
             style={{
-              background: "linear-gradient(180deg, rgba(77,195,255,0.15) 0%, rgba(77,195,255,0.05) 100%)",
-              border: "1px solid rgba(77,195,255,0.5)",
+              background: "linear-gradient(180deg, #1a3a50 0%, #0f2535 100%)",
+              border: "2px solid #4dc3ff",
               color: "#4dc3ff",
-              boxShadow: "0 0 25px rgba(77,195,255,0.2), inset 0 0 25px rgba(77,195,255,0.1)",
+              boxShadow: "0 0 20px rgba(77,195,255,0.3), inset 0 0 15px rgba(77,195,255,0.1)",
+              borderRadius: "4px",
             }}
           >
             <motion.div
-              className="absolute inset-0"
+              className="absolute inset-0 rounded"
               style={{
                 background: "linear-gradient(90deg, transparent, rgba(77,195,255,0.2), transparent)",
               }}
               animate={{ x: ["-100%", "100%"] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
             />
-            <span className="relative z-10">Begin Ascension</span>
+            <span className="relative z-10">ACCEPT!</span>
           </div>
-
-          <motion.span
-            className="text-2xl font-mono"
-            style={{ color: "#4dc3ff" }}
-            animate={{ x: [2, -2, 2] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            &gt;
-          </motion.span>
         </motion.button>
 
-        {/* Bottom tech text */}
+        {/* Decline text */}
         <motion.div
-          className="absolute bottom-8 text-xs tracking-[0.4em] font-mono z-20"
-          style={{ color: "rgba(77,195,255,0.4)" }}
+          className="mt-4 text-sm tracking-[0.15em] font-display z-20 cursor-pointer opacity-50 hover:opacity-80 transition-opacity"
+          style={{ color: "#8aa" }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 3, duration: 1 }}
+          animate={{ opacity: 0.5 }}
+          transition={{ delay: 2, duration: 0.8 }}
         >
-          SYSTEM BUILD V2.0.26
+          DECLINE
         </motion.div>
 
         {/* Transition overlay */}
