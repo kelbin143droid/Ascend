@@ -272,7 +272,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
 
         {[0, 6, 12, 18].map((hour) => {
           const angle = hourToAngle(hour);
-          const pos = polarToCartesian(angle, outerRadius + 10);
+          const pos = polarToCartesian(angle, outerRadius - 24);
           const labels: Record<number, string> = { 0: "12", 6: "6", 12: "12", 18: "6" };
           const periods: Record<number, string> = { 0: "AM", 6: "AM", 12: "PM", 18: "PM" };
           
@@ -284,10 +284,10 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
               textAnchor="middle"
               dominantBaseline="middle"
               fill={colors.textMuted}
-              style={{ fontFamily: "var(--font-mono)", fontSize: "9px" }}
+              style={{ fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: "bold" }}
             >
               {labels[hour]}
-              <tspan fill={colors.tickMark} style={{ fontSize: "6px" }}>{periods[hour]}</tspan>
+              <tspan fill={colors.tickMark} style={{ fontSize: "7px" }}>{periods[hour]}</tspan>
             </text>
           );
         })}
