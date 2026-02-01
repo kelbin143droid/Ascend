@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb, real, date } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, real, date, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const quadrantEnum = z.enum(["Q1", "Q2", "Q3", "Q4"]);
+export type Quadrant = z.infer<typeof quadrantEnum>;
 
 export const statsSchema = z.object({
   strength: z.number(),
@@ -227,3 +230,64 @@ export const updatePlayerSchema = createInsertSchema(players, {
 export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
 export type UpdatePlayer = z.infer<typeof updatePlayerSchema>;
 export type Player = typeof players.$inferSelect;
+
+export const roles = pgTable("roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  weeklyPriority: integer("weekly_priority").default(0),
+});
+
+export const insertRoleSchema = createInsertSchema(roles).omit({ id: true });
+export const updateRoleSchema = createInsertSchema(roles).partial().omit({ id: true });
+export type InsertRole = z.infer<typeof insertRoleSchema>;
+export type UpdateRole = z.infer<typeof updateRoleSchema>;
+export type Role = typeof roles.$inferSelect;
+
+export const weeklyGoals = pgTable("weekly_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  roleId: varchar("role_id").notNull(),
+  title: text("title").notNull(),
+  quadrant: text("quadrant").notNull().$type<Quadrant>(),
+  completed: boolean("completed").default(false),
+  weekStartDate: date("week_start_date").notNull(),
+});
+
+export const insertWeeklyGoalSchema = createInsertSchema(weeklyGoals, {
+  quadrant: quadrantEnum,
+}).omit({ id: true });
+export const updateWeeklyGoalSchema = createInsertSchema(weeklyGoals, {
+  quadrant: quadrantEnum,
+}).partial().omit({ id: true });
+export type InsertWeeklyGoal = z.infer<typeof insertWeeklyGoalSchema>;
+export type UpdateWeeklyGoal = z.infer<typeof updateWeeklyGoalSchema>;
+export type WeeklyGoal = typeof weeklyGoals.$inferSelect;
+
+export const tasks = pgTable("tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  roleId: varchar("role_id").notNull(),
+  weeklyGoalId: varchar("weekly_goal_id").notNull(),
+  name: text("name").notNull(),
+  quadrant: text("quadrant").notNull().$type<Quadrant>(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  color: text("color").notNull().default("#8b5cf6"),
+  completed: boolean("completed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTaskSchema = createInsertSchema(tasks, {
+  quadrant: quadrantEnum,
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date(),
+}).omit({ id: true, createdAt: true });
+export const updateTaskSchema = createInsertSchema(tasks, {
+  quadrant: quadrantEnum,
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date(),
+}).partial().omit({ id: true, createdAt: true });
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
+export type Task = typeof tasks.$inferSelect;

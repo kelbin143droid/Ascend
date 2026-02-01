@@ -1,0 +1,165 @@
+You are updating an existing productivity app.
+
+STACK:
+Frontend: Vite + React
+Backend: Node.js + Express
+Database: PostgreSQL
+ORM: Drizzle
+
+CRITICAL CONSTRAINT:
+Do NOT modify the visual design, layout, or styling of the Sectograph time-wheel UI. The wheel must render exactly the same. Only extend the data model, API logic, and state management.
+
+GOAL:
+Add a role-based weekly planning hierarchy with Quadrant tagging (Q1–Q4), while keeping Sectograph as the execution visualization layer.
+
+---
+
+1. DATABASE (Drizzle Schema Updates)
+
+---
+
+Create new tables:
+
+roles:
+
+* id (uuid, primary key)
+* user_id (foreign key)
+* name (text, not null)
+* weekly_priority (int)
+
+weekly_goals:
+
+* id (uuid, primary key)
+* user_id (foreign key)
+* role_id (foreign key -> roles.id)
+* title (text, not null)
+* quadrant (text enum: 'Q1','Q2','Q3','Q4')
+* completed (boolean default false)
+* week_start_date (date)
+
+Modify existing tasks table:
+
+Add:
+
+* role_id (foreign key -> roles.id, not null)
+* weekly_goal_id (foreign key -> weekly_goals.id, not null)
+* quadrant (text enum: 'Q1','Q2','Q3','Q4', not null)
+
+Migration requirement:
+For existing tasks:
+
+* Create default Role named "General"
+* Assign role_id = General.id
+* Assign quadrant = 'Q1'
+
+---
+
+2. BACKEND (Express API)
+
+---
+
+Create routes:
+
+/api/roles
+
+* GET
+* POST
+* PATCH
+* DELETE
+
+/api/weekly-goals
+
+* GET (filter by week_start_date)
+* POST
+* PATCH
+* DELETE
+
+Update /api/tasks:
+
+* Require role_id
+* Require weekly_goal_id
+* Require quadrant
+
+Validation:
+If no weekly goals exist for current week,
+block task creation and return:
+"Define weekly goals before scheduling."
+
+---
+
+3. Q2 PROTECTION LOGIC
+
+---
+
+In task update/delete endpoint:
+
+If task.quadrant === 'Q2':
+Require confirmation flag:
+{ confirmStrategic: true }
+
+Otherwise reject modification.
+
+---
+
+4. ANALYTICS ENDPOINT
+
+---
+
+Create:
+/api/weekly-analytics?week_start_date=
+
+Return:
+
+* totalTimePerRole
+* totalTimePerQuadrant
+* q2Percentage
+* completionRatePerRole
+
+Compute using task start_time and end_time.
+
+---
+
+5. FRONTEND (React – NO UI REDESIGN)
+
+---
+
+Add:
+
+* RolesContext
+* WeeklyGoalsContext
+
+Load weekly goals before enabling task creation.
+
+When creating/editing tasks:
+Add hidden required fields:
+
+* role selector
+* weekly goal selector
+* quadrant selector
+
+Do NOT redesign Sectograph.
+Only inject quadrant metadata and subtle internal tagging logic.
+
+---
+
+6. STATE FLOW
+
+---
+
+Hierarchy:
+
+Roles → WeeklyGoals → Tasks → Sectograph render
+
+Sectograph continues reading tasks exactly as before,
+but tasks now include role_id and quadrant metadata.
+
+---
+
+Focus on:
+
+* Clean separation of concerns
+* Proper foreign key constraints
+* Backward compatibility
+* No visual layout changes
+
+Do not refactor existing UI components unless required for data binding.
