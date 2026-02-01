@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
-import { Palette, X } from "lucide-react";
+import { Palette, X, Clock, Image as ImageIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function ThemeSelector() {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"clock" | "background">("clock");
   const { theme, setTheme, allThemes } = useTheme();
 
   return (
@@ -54,6 +56,31 @@ export function ThemeSelector() {
               </button>
             </div>
 
+            <div className="flex gap-2 mb-4 p-1 rounded-lg bg-black/20" style={{ border: `1px solid ${theme.colors.surfaceBorder}` }}>
+              <button
+                onClick={() => setActiveTab("clock")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-display tracking-wider transition-all",
+                  activeTab === "clock" ? "bg-primary text-background shadow-lg" : "text-muted-foreground hover:bg-black/10"
+                )}
+                style={activeTab === "clock" ? { backgroundColor: theme.colors.primary, color: theme.colors.background } : {}}
+              >
+                <Clock size={14} />
+                CLOCK
+              </button>
+              <button
+                onClick={() => setActiveTab("background")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-xs font-display tracking-wider transition-all",
+                  activeTab === "background" ? "bg-primary text-background shadow-lg" : "text-muted-foreground hover:bg-black/10"
+                )}
+                style={activeTab === "background" ? { backgroundColor: theme.colors.primary, color: theme.colors.background } : {}}
+              >
+                <ImageIcon size={14} />
+                BG
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               {allThemes.map((t) => (
                 <button
@@ -61,7 +88,6 @@ export function ThemeSelector() {
                   data-testid={`button-theme-${t.id}`}
                   onClick={() => {
                     setTheme(t.id);
-                    setIsOpen(false);
                   }}
                   className="relative p-3 rounded-lg text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
                   style={{
@@ -84,10 +110,10 @@ export function ThemeSelector() {
                     </span>
                   </div>
                   <p 
-                    className="text-[10px] leading-tight"
+                    className="text-[10px] leading-tight h-8"
                     style={{ color: t.colors.textMuted }}
                   >
-                    {t.description}
+                    {activeTab === "clock" ? `Clock style: ${t.name}` : `Background: ${t.name}`}
                   </p>
                   <div className="flex gap-1 mt-2">
                     <div 

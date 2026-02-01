@@ -331,12 +331,6 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         >
           {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
         </div>
-        <div 
-          className="text-[10px] font-mono opacity-60 uppercase tracking-widest mt-[-4px]"
-          style={{ color: colors.text }}
-        >
-          System Time
-        </div>
       </div>
     </div>
   );
