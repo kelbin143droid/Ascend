@@ -84,10 +84,13 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
 
         {/* Subtitle text */}
         <motion.p
-          className="absolute top-28 md:top-32 text-sm md:text-base max-w-sm text-center px-6 leading-relaxed"
-          style={{ color: theme.colors.primary, opacity: 0.8 }}
+          className="absolute top-28 md:top-32 text-sm md:text-base max-w-sm text-center px-6 leading-relaxed font-display font-bold"
+          style={{ 
+            color: "#d4a843",
+            textShadow: "0 0 20px rgba(212, 168, 67, 0.4)",
+          }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.8 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 1 }}
         >
           The System Invites You To Awaken Your True Potential.
@@ -95,9 +98,9 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
 
         {/* Central portal */}
         <div className="relative flex items-center justify-center" style={{ width: "340px", height: "340px" }}>
-          
-          {/* Outer tech ring with segments */}
-          <svg className="absolute" width="340" height="340" viewBox="0 0 340 340">
+
+          {/* Outer ring layer */}
+          <svg className="absolute" width="300" height="300" viewBox="0 0 300 300">
             <defs>
               <filter id="glow1">
                 <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -107,50 +110,6 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
                 </feMerge>
               </filter>
             </defs>
-            
-            {/* Outer segmented ring with radiating lines */}
-            <motion.g
-              initial={{ rotate: 0, opacity: 0 }}
-              animate={{ rotate: 360, opacity: 1 }}
-              transition={{ rotate: { duration: 120, repeat: Infinity, ease: "linear" }, opacity: { duration: 1 } }}
-              style={{ transformOrigin: "170px 170px" }}
-            >
-              {[...Array(24)].map((_, i) => {
-                const angle = (i * 15 * Math.PI) / 180;
-                const innerR = 145;
-                const outerR = 165;
-                const x1 = 170 + Math.cos(angle) * innerR;
-                const y1 = 170 + Math.sin(angle) * innerR;
-                const x2 = 170 + Math.cos(angle) * outerR;
-                const y2 = 170 + Math.sin(angle) * outerR;
-                return (
-                  <line
-                    key={`outer-seg-${i}`}
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke={theme.colors.primary}
-                    strokeWidth={i % 3 === 0 ? 3 : 1.5}
-                    strokeOpacity={i % 3 === 0 ? 0.9 : 0.5}
-                    filter="url(#glow1)"
-                  />
-                );
-              })}
-              <circle
-                cx="170"
-                cy="170"
-                r="155"
-                fill="none"
-                stroke={theme.colors.primary}
-                strokeWidth="1"
-                strokeOpacity="0.4"
-              />
-            </motion.g>
-          </svg>
-
-          {/* Second ring layer */}
-          <svg className="absolute" width="300" height="300" viewBox="0 0 300 300">
             <motion.g
               initial={{ rotate: 0, opacity: 0 }}
               animate={{ rotate: -360, opacity: 1 }}
@@ -312,9 +271,9 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             transition={{ delay: 1, duration: 1 }}
           >
             <motion.svg 
-              width="50" 
-              height="95" 
-              viewBox="0 0 50 95" 
+              width="55" 
+              height="105" 
+              viewBox="0 0 55 105" 
               fill="none"
               animate={{
                 y: [0, -2, 0],
@@ -324,87 +283,81 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
               {/* Realistic human silhouette */}
               <defs>
                 <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#0a1218" />
-                  <stop offset="100%" stopColor="#050a0f" />
+                  <stop offset="0%" stopColor="#080e14" />
+                  <stop offset="100%" stopColor="#040608" />
                 </linearGradient>
               </defs>
               
-              {/* Head */}
-              <ellipse cx="25" cy="8" rx="7" ry="8" fill="url(#bodyGradient)" />
-              
-              {/* Neck */}
-              <rect x="22" y="15" width="6" height="5" fill="url(#bodyGradient)" />
-              
-              {/* Torso */}
+              {/* Complete human body as single path for smooth shape */}
               <path
-                d="M14 20 
-                   Q12 22 12 28
-                   L12 45
-                   Q12 48 15 50
-                   L20 52
-                   L20 55
-                   L25 55
-                   L30 55
-                   L30 52
-                   L35 50
-                   Q38 48 38 45
-                   L38 28
-                   Q38 22 36 20
-                   L32 20
-                   Q25 18 18 20
+                d="M27.5 0
+                   C33 0 37 4 37 9
+                   C37 14 33 18 27.5 18
+                   C22 18 18 14 18 9
+                   C18 4 22 0 27.5 0
                    Z"
                 fill="url(#bodyGradient)"
               />
               
-              {/* Left arm */}
+              {/* Neck and shoulders */}
               <path
-                d="M12 22
-                   Q8 24 6 32
-                   L4 42
-                   Q3 46 5 48
-                   L7 48
-                   Q9 47 9 44
-                   L11 35
-                   L12 28"
+                d="M24 17 L24 20 L12 24 Q8 26 8 32 L8 34 Q8 36 10 36 L14 35 L16 50 
+                   L20 52 L20 55 L22 55 L22 52 L24 50 L24 22 L27.5 21 L31 22 L31 50 
+                   L33 52 L33 55 L35 55 L35 52 L39 50 L41 35 L45 36 Q47 36 47 34 L47 32 
+                   Q47 26 43 24 L31 20 L31 17 Z"
                 fill="url(#bodyGradient)"
               />
               
-              {/* Right arm */}
+              {/* Torso */}
               <path
-                d="M38 22
-                   Q42 24 44 32
-                   L46 42
-                   Q47 46 45 48
-                   L43 48
-                   Q41 47 41 44
-                   L39 35
-                   L38 28"
+                d="M20 55
+                   L18 58
+                   Q16 60 17 65
+                   L19 70
+                   L20 75
+                   L22 75
+                   L24 72
+                   L27.5 72
+                   L31 72
+                   L33 75
+                   L35 75
+                   L36 70
+                   L38 65
+                   Q39 60 37 58
+                   L35 55
+                   Z"
                 fill="url(#bodyGradient)"
               />
               
               {/* Left leg */}
               <path
-                d="M20 55
-                   L18 70
-                   L17 82
-                   Q16 88 18 92
-                   L22 92
-                   Q24 90 24 85
-                   L25 70
-                   L25 55"
+                d="M22 75
+                   L20 80
+                   L19 88
+                   L18 95
+                   Q17 100 19 102
+                   L23 102
+                   Q25 100 25 97
+                   L26 88
+                   L27 80
+                   L27.5 75
+                   Z"
                 fill="url(#bodyGradient)"
               />
               
               {/* Right leg */}
               <path
-                d="M30 55
-                   L32 70
-                   L33 82
-                   Q34 88 32 92
-                   L28 92
-                   Q26 90 26 85
-                   L25 70
-                   L25 55"
+                d="M33 75
+                   L35 80
+                   L36 88
+                   L37 95
+                   Q38 100 36 102
+                   L32 102
+                   Q30 100 30 97
+                   L29 88
+                   L28 80
+                   L27.5 75
+                   Z"
                 fill="url(#bodyGradient)"
               />
             </motion.svg>
