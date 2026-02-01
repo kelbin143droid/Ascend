@@ -3,8 +3,11 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { GameProvider } from "@/context/GameContext";
+import { GameProvider, useGame } from "@/context/GameContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { RolesProvider } from "@/context/RolesContext";
+import { WeeklyGoalsProvider } from "@/context/WeeklyGoalsContext";
+import { TasksProvider } from "@/context/TasksContext";
 import StatusPage from "@/pages/StatusPage";
 import DungeonPage from "@/pages/DungeonPage";
 import InventoryPage from "@/pages/InventoryPage";
@@ -18,6 +21,21 @@ import NotFound from "@/pages/not-found";
 import { RankUnlockOverlay } from "@/components/game/RankUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
 import { IntroWrapper } from "@/components/game/IntroWrapper";
+
+function PlanningProviders({ children }: { children: React.ReactNode }) {
+  const { player } = useGame();
+  const userId = player?.id || null;
+  
+  return (
+    <RolesProvider userId={userId}>
+      <WeeklyGoalsProvider userId={userId}>
+        <TasksProvider userId={userId}>
+          {children}
+        </TasksProvider>
+      </WeeklyGoalsProvider>
+    </RolesProvider>
+  );
+}
 
 function Router() {
   return (
@@ -41,12 +59,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <GameProvider>
-          <IntroWrapper>
-            <Router />
-            <LevelUpOverlay />
-            <RankUnlockOverlay />
-            <Toaster />
-          </IntroWrapper>
+          <PlanningProviders>
+            <IntroWrapper>
+              <Router />
+              <LevelUpOverlay />
+              <RankUnlockOverlay />
+              <Toaster />
+            </IntroWrapper>
+          </PlanningProviders>
         </GameProvider>
       </ThemeProvider>
     </QueryClientProvider>
