@@ -5,11 +5,9 @@ import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
 import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { jobsByRank, titlesByRank, getSkillsForClass } from "@/lib/classData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const COLOR_OPTIONS = [
@@ -74,8 +72,6 @@ export default function StatusPage() {
     );
   }
 
-  const availableJobs = jobsByRank[player.rank] || jobsByRank["E"];
-  const availableTitles = titlesByRank[player.rank] || titlesByRank["E"];
 
   const handleStartEditName = () => {
     setTempName(player.name);
@@ -89,14 +85,6 @@ export default function StatusPage() {
     setIsEditingName(false);
   };
 
-  const handleJobChange = (job: string) => {
-    const newSkills = getSkillsForClass(job);
-    updatePlayer({ job, skills: newSkills });
-  };
-
-  const handleTitleChange = (title: string) => {
-    updatePlayer({ title });
-  };
 
   const displayStats = player.displayStats || {
     strength: Math.floor(player.stats.strength),
@@ -229,18 +217,7 @@ export default function StatusPage() {
             </div>
           )}
           
-          <div className="flex items-center justify-center gap-3">
-            <Select value={player.job} onValueChange={handleJobChange}>
-              <SelectTrigger className="w-28 h-7 bg-black/30 border-purple-500/30 text-purple-400 text-xs font-bold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-black/95 border-purple-500/30">
-                {availableJobs.map((job) => (
-                  <SelectItem key={job} value={job} className="text-purple-400 font-bold text-xs">{job}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
+          <div className="flex items-center justify-center">
             <div 
               className="px-4 py-1 rounded"
               style={{
@@ -260,17 +237,6 @@ export default function StatusPage() {
                 {player.rank} Rank
               </span>
             </div>
-            
-            <Select value={player.title} onValueChange={handleTitleChange}>
-              <SelectTrigger className="w-28 h-7 bg-black/30 border-pink-500/30 text-pink-400 text-xs font-bold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-black/95 border-pink-500/30">
-                {availableTitles.map((title) => (
-                  <SelectItem key={title} value={title} className="text-pink-400 font-bold text-xs">{title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
@@ -406,27 +372,6 @@ export default function StatusPage() {
               />
             </div>
             <span className="text-[10px] font-mono text-primary w-16 text-right">{player.exp}/{player.maxExp}</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 px-2 pt-2">
-          <div className="system-panel p-2 rounded flex items-center gap-2">
-            <div className="w-8 h-8 bg-purple-500/20 flex items-center justify-center rounded border border-purple-500/30">
-              🗡️
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[8px] text-muted-foreground uppercase tracking-wider">Weapon</div>
-              <div className="text-xs font-bold truncate">Kasaka's Fang</div>
-            </div>
-          </div>
-          <div className="system-panel p-2 rounded flex items-center gap-2">
-            <div className="w-8 h-8 bg-purple-500/20 flex items-center justify-center rounded border border-purple-500/30">
-              🛡️
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[8px] text-muted-foreground uppercase tracking-wider">Armor</div>
-              <div className="text-xs font-bold truncate">Hunter Armor</div>
-            </div>
           </div>
         </div>
 
