@@ -137,7 +137,7 @@ export default function DungeonPage() {
                         <div className="flex justify-between items-center">
                             <div>
                                 <h3 className="font-bold text-lg">{d.name}</h3>
-                                <p className="text-xs text-muted-foreground">Rank {d.rank} • Min Lv. {d.minLevel}</p>
+                                <p className="text-xs text-muted-foreground">TIER {d.rank} • Min Lv. {d.minLevel}</p>
                             </div>
                             <Sword size={24} className="text-primary group-hover:animate-pulse" />
                         </div>
@@ -158,7 +158,7 @@ export default function DungeonPage() {
                         <div className="flex flex-col items-center">
                             <Skull size={48} className="text-destructive mb-2 animate-bounce" />
                             <h2 className="text-xl font-display text-destructive tracking-widest">{enemy.name}</h2>
-                            <div className="text-[10px] text-muted-foreground uppercase">Rank {enemy.rank} Enemy</div>
+                            <div className="text-[10px] text-muted-foreground uppercase">TIER {enemy.rank} Enemy</div>
                         </div>
 
                         <div className="space-y-1">

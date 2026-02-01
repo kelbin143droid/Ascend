@@ -12,7 +12,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { icon: User, label: "STATUS", path: "/" },
-    { icon: Sword, label: "DUNGEON", path: "/dungeon" },
+    { icon: Sword, label: "ARENA", path: "/arena" },
     { icon: BarChart3, label: "ANALYTICS", path: "/analytics" },
     { icon: UserCircle, label: "PROFILE", path: "/profile" },
   ];

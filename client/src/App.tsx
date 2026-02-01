@@ -22,7 +22,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={StatusPage} />
-      <Route path="/dungeon" component={DungeonPage} />
+      <Route path="/arena" component={DungeonPage} />
       <Route path="/inventory" component={InventoryPage} />
       <Route path="/game3d" component={Game3DPage} />
       <Route path="/housing" component={HousingPage} />

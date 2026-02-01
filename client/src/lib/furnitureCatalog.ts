@@ -13,7 +13,7 @@ export interface FurnitureDef {
 export const FURNITURE_CATALOG: FurnitureDef[] = [
   { id: "chair_basic", name: "Basic Chair", category: "seating", width: 1, height: 1, emoji: "🪑", cost: 0, rarity: "common", color: "#8B4513" },
   { id: "sofa_blue", name: "Blue Sofa", category: "seating", width: 2, height: 1, emoji: "🛋️", cost: 200, rarity: "uncommon", color: "#4a6fa5" },
-  { id: "throne", name: "Hunter's Throne", category: "seating", width: 2, height: 1, emoji: "👑", cost: 1000, rarity: "epic", color: "#a855f7" },
+  { id: "throne", name: "Ascendant's Throne", category: "seating", width: 2, height: 1, emoji: "👑", cost: 1000, rarity: "epic", color: "#a855f7" },
   
   { id: "table_wood", name: "Wooden Table", category: "table", width: 2, height: 1, emoji: "🪵", cost: 100, rarity: "common", color: "#654321" },
   { id: "desk_crystal", name: "Crystal Desk", category: "table", width: 2, height: 1, emoji: "💎", cost: 500, rarity: "rare", color: "#22d3ee" },
@@ -22,7 +22,7 @@ export const FURNITURE_CATALOG: FurnitureDef[] = [
   { id: "chest_wood", name: "Wooden Chest", category: "storage", width: 1, height: 1, emoji: "📦", cost: 80, rarity: "common", color: "#8B4513" },
   { id: "bookshelf", name: "Bookshelf", category: "storage", width: 1, height: 2, emoji: "📚", cost: 150, rarity: "uncommon", color: "#654321" },
   { id: "wardrobe", name: "Wardrobe", category: "storage", width: 2, height: 1, emoji: "🚪", cost: 250, rarity: "uncommon", color: "#3d2817" },
-  { id: "vault", name: "Hunter's Vault", category: "storage", width: 2, height: 1, emoji: "🔐", cost: 800, rarity: "rare", color: "#374151" },
+  { id: "vault", name: "Ascendant's Vault", category: "storage", width: 2, height: 1, emoji: "🔐", cost: 800, rarity: "rare", color: "#374151" },
   
   { id: "painting_landscape", name: "Landscape Art", category: "decor", width: 1, height: 1, emoji: "🖼️", cost: 120, rarity: "uncommon", color: "#8b7aa3" },
   { id: "statue_knight", name: "Knight Statue", category: "decor", width: 1, height: 1, emoji: "🗿", cost: 300, rarity: "rare", color: "#6b7280" },

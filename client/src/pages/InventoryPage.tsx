@@ -11,7 +11,7 @@ import type { InventoryItem, Equipment } from "@shared/schema";
 import warriorHero from "@/assets/images/warrior-hero.png";
 
 const JOB_AVATARS: Record<string, { color: string; name: string; image?: string }> = {
-  NONE: { color: "#888888", name: "Hunter" },
+  NONE: { color: "#888888", name: "Ascendant" },
   WARRIOR: { color: "#f59e0b", name: "Warrior", image: warriorHero },
   MAGE: { color: "#8b5cf6", name: "Mage" },
   SUPPORT: { color: "#22c55e", name: "Healer" },
@@ -345,7 +345,7 @@ export default function InventoryPage() {
                       className="font-bold text-sm truncate"
                       style={{ color: getRarityColor(selectedItem.rarity) }}
                     >{selectedItem.name}</h3>
-                    <p className="text-[10px] text-gray-400 capitalize">{selectedItem.type} • Rank {selectedItem.rarity}</p>
+                    <p className="text-[10px] text-gray-400 capitalize">{selectedItem.type} • TIER {selectedItem.rarity}</p>
                     {selectedItem.stats && (
                       <div className="flex gap-2 mt-1 flex-wrap">
                         {Object.entries(selectedItem.stats).map(([stat, value]) => (

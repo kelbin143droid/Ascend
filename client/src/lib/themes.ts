@@ -48,7 +48,7 @@ export const themes: AppTheme[] = [
   },
   {
     id: "aggressive",
-    name: "Blood Hunter",
+    name: "Blood Ascendant",
     description: "Intense red and black combat theme",
     icon: "🔥",
     colors: {
@@ -186,7 +186,7 @@ export const themes: AppTheme[] = [
   },
   {
     id: "gold",
-    name: "S-Rank Elite",
+    name: "S-TIER Elite",
     description: "Prestigious gold and black",
     icon: "👑",
     colors: {

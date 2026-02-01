@@ -50,7 +50,7 @@ export default function ProfilePage() {
               className="w-5 h-5 mx-auto mb-1"
               style={{ color: RANK_COLORS[player.rank] }}
             />
-            <div className="text-xs text-muted-foreground">Rank</div>
+            <div className="text-xs text-muted-foreground">TIER</div>
             <div
               className="text-xl font-display font-bold"
               style={{ color: RANK_COLORS[player.rank] }}
@@ -160,12 +160,12 @@ export default function ProfilePage() {
         </div>
 
         <div className="mt-8 text-center text-xs text-muted-foreground">
-          <div className="mb-2">NEXT RANK REQUIREMENTS</div>
-          {player.rank === "E" && <div>Level 11+ → Rank D</div>}
-          {player.rank === "D" && <div>Level 26+ → Rank C</div>}
-          {player.rank === "C" && <div>Level 46+ → Rank B (Unlocks: Social)</div>}
-          {player.rank === "B" && <div>Level 71+ → Rank A (Unlocks: Skill)</div>}
-          {player.rank === "A" && <div>Maximum rank achieved</div>}
+          <div className="mb-2">NEXT TIER REQUIREMENTS</div>
+          {player.rank === "E" && <div>Level 11+ → TIER D</div>}
+          {player.rank === "D" && <div>Level 26+ → TIER C</div>}
+          {player.rank === "C" && <div>Level 46+ → TIER B (Unlocks: Social)</div>}
+          {player.rank === "B" && <div>Level 71+ → TIER A (Unlocks: Skill)</div>}
+          {player.rank === "A" && <div>Maximum tier achieved</div>}
         </div>
       </div>
     </SystemLayout>

@@ -234,7 +234,7 @@ export default function StatusPage() {
                   filter: player.rank === "S" ? "drop-shadow(0 0 8px rgba(255,215,0,0.5))" : "drop-shadow(0 0 8px rgba(236,72,153,0.5))"
                 }}
               >
-                {player.rank} Rank
+                {player.rank} TIER
               </span>
             </div>
           </div>
@@ -611,7 +611,7 @@ export default function StatusPage() {
             </button>
           </div>
           <div className="text-xs text-yellow-200 mb-3">
-            Current: Level {player.level} | Rank {player.rank} | XP: {player.exp}/{player.maxExp}
+            Current: Level {player.level} | TIER {player.rank} | XP: {player.exp}/{player.maxExp}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button
@@ -643,7 +643,7 @@ export default function StatusPage() {
               }}
               data-testid="button-next-rank"
             >
-              → Next Rank
+              → Next TIER
             </Button>
             <Button
               size="sm"
