@@ -205,39 +205,7 @@ export default function StatusPage() {
                 <Check size={16} className="text-primary" />
               </Button>
             </div>
-          ) : (
-            <div 
-              className="flex items-center justify-center gap-2 cursor-pointer group"
-              onClick={handleStartEditName}
-            >
-              <h1 className="text-3xl font-display font-black text-white tracking-wide drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
-                {player.name || "HUNTER"}
-              </h1>
-              <Pencil size={14} className="text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-          )}
-          
-          <div className="flex items-center justify-center">
-            <div 
-              className="px-4 py-1 rounded"
-              style={{
-                background: player.rank === "S" 
-                  ? "linear-gradient(to right, rgba(255,215,0,0.2), rgba(255,165,0,0.2))" 
-                  : "linear-gradient(to right, rgba(236,72,153,0.2), rgba(168,85,247,0.2))",
-                border: player.rank === "S" ? "1px solid rgba(255,215,0,0.3)" : "1px solid rgba(236,72,153,0.3)"
-              }}
-            >
-              <span 
-                className="font-display font-black text-lg"
-                style={{ 
-                  color: player.rank === "S" ? "#ffd700" : "#ec4899",
-                  filter: player.rank === "S" ? "drop-shadow(0 0 8px rgba(255,215,0,0.5))" : "drop-shadow(0 0 8px rgba(236,72,153,0.5))"
-                }}
-              >
-                {player.rank} TIER
-              </span>
-            </div>
-          </div>
+          ) : null}
         </div>
 
         <div className="flex justify-center py-2">
