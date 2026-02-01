@@ -8,7 +8,7 @@ import bgImage from "@assets/generated_images/dark_cinematic_digital_void_backgr
 
 export function SystemLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { theme } = useTheme();
+  const { bgTheme } = useTheme();
 
   const navItems = [
     { icon: User, label: "STATUS", path: "/" },
@@ -17,7 +17,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
     { icon: UserCircle, label: "PROFILE", path: "/profile" },
   ];
 
-  const colors = theme.colors;
+  const colors = bgTheme.colors;
 
   return (
     <div 

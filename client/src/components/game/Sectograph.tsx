@@ -31,7 +31,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
   const isAscension = playerRank === "S";
   const goldGlow = "#ffd700";
   const [time, setTime] = useState(new Date());
-  const { theme } = useTheme();
+  const { clockTheme } = useTheme();
   
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -93,7 +93,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
   const hourHandEnd = polarToCartesian(hourAngle, hourHandLength);
   const minuteHandEnd = polarToCartesian(minuteAngle, minuteHandLength);
 
-  const colors = theme.colors;
+  const colors = clockTheme.colors;
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
