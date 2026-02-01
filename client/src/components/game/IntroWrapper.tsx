@@ -15,6 +15,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   const { player, isLoading, updatePlayer } = useGame();
   const { theme } = useTheme();
   const [step, setStep] = useState<IntroStep>("loading");
+  const [playerName, setPlayerName] = useState("");
   const initialCheckDone = useRef(false);
 
   useEffect(() => {
@@ -32,11 +33,10 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     setStep("info");
   };
 
-  const handleInfoComplete = (data: { name: string; job: string; title: string }) => {
+  const handleInfoComplete = (data: { name: string }) => {
+    setPlayerName(data.name);
     updatePlayer({
       name: data.name,
-      job: data.job,
-      title: data.title,
     });
     setStep("transitioning");
     setTimeout(() => {
@@ -44,16 +44,32 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     }, 2500);
   };
 
+  // Get first name from player name
+  const getFirstName = () => {
+    const name = playerName || player?.name || "";
+    return name.split(" ")[0] || name;
+  };
+
   if (step === "loading" || isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black">
+      <div 
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ 
+          background: `
+            linear-gradient(to bottom, 
+              #1a2a4a 0%, 
+              #2a4a6a 50%,
+              #3a5070 100%
+            )
+          `
+        }}
+      >
         <motion.div
-          className="text-lg font-display tracking-widest"
-          style={{ color: theme.colors.primary }}
+          className="text-lg font-display tracking-widest text-white"
           animate={{ opacity: [0.3, 1, 0.3] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          INITIALIZING SYSTEM...
+          LOADING...
         </motion.div>
       </div>
     );
@@ -71,7 +87,15 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     return (
       <motion.div
         className="fixed inset-0 z-[100] flex items-center justify-center"
-        style={{ background: "#000" }}
+        style={{ 
+          background: `
+            linear-gradient(to bottom, 
+              #1a2a4a 0%, 
+              #2a4a6a 50%,
+              #3a5070 100%
+            )
+          `
+        }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
@@ -83,20 +107,20 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
           transition={{ duration: 0.8, delay: 0.3 }}
         >
           <motion.div
-            className="text-2xl font-display mb-2"
-            style={{ color: theme.colors.primary }}
+            className="text-3xl font-display mb-4 text-white"
             animate={{ opacity: [0.7, 1, 0.7] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
-            SYSTEM SYNCHRONIZED
+            Welcome, {getFirstName()}!
           </motion.div>
           <motion.div
-            className="text-sm text-muted-foreground"
+            className="text-sm"
+            style={{ color: "rgba(255,255,255,0.6)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
           >
-            Welcome, Hunter
+            Your journey begins now
           </motion.div>
         </motion.div>
       </motion.div>
