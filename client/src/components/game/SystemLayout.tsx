@@ -100,7 +100,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           borderTop: `1px solid ${colors.surfaceBorder}`
         }}
       >
-        <div className="flex justify-around items-end h-16 max-w-md md:max-w-2xl mx-auto pb-2 relative">
+        <div className="flex justify-between items-end h-16 max-w-md md:max-w-2xl mx-auto pb-2 relative px-2">
           {leftNavItems.map((item) => {
             const isActive = location === item.path;
             return (
@@ -108,7 +108,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                 <button
                   data-testid={`nav-${item.label.toLowerCase()}`}
                   className={cn(
-                    "flex flex-col items-center justify-center transition-all duration-300 group px-4"
+                    "flex flex-col items-center justify-center transition-all duration-300 group px-2"
                   )}
                   style={{
                     color: isActive ? colors.primary : colors.textMuted,
@@ -164,7 +164,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                 <button
                   data-testid={`nav-${item.label.toLowerCase()}`}
                   className={cn(
-                    "flex flex-col items-center justify-center transition-all duration-300 group px-4"
+                    "flex flex-col items-center justify-center transition-all duration-300 group px-2"
                   )}
                   style={{
                     color: isActive ? colors.primary : colors.textMuted,
