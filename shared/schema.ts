@@ -193,6 +193,7 @@ export const players = pgTable("players", {
   unlockedAttributes: jsonb("unlocked_attributes").$type<string[]>().notNull().default(["strength", "agility", "sense", "vitality"]),
   rankHistory: jsonb("rank_history").$type<RankHistoryEntry[]>().notNull().default([]),
   pendingRankUnlock: jsonb("pending_rank_unlock").$type<PendingRankUnlock>().default(null),
+  planningMode: text("planning_mode").notNull().default("basic"),
 });
 
 export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {
@@ -268,7 +269,7 @@ export const tasks = pgTable("tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   roleId: varchar("role_id").notNull(),
-  weeklyGoalId: varchar("weekly_goal_id").notNull(),
+  weeklyGoalId: varchar("weekly_goal_id"),
   name: text("name").notNull(),
   quadrant: text("quadrant").notNull().$type<Quadrant>(),
   startTime: timestamp("start_time").notNull(),

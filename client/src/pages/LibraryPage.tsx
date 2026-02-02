@@ -21,7 +21,7 @@ export default function LibraryPage() {
   const [, navigate] = useLocation();
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
-  const { player } = useGame();
+  const { player, updatePlayer } = useGame();
   const { weeklyGoals, deleteWeeklyGoal, updateWeeklyGoal } = useWeeklyGoals();
   const { roles } = useRoles();
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -103,6 +103,66 @@ export default function LibraryPage() {
             )}
           </div>
         </button>
+
+        {canAccessPlanning && (
+          <div 
+            className="rounded-lg p-4"
+            style={{
+              backgroundColor: colors.surface,
+              border: `1px solid ${colors.surfaceBorder}`
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-display font-bold text-sm" style={{ color: colors.text }}>
+                  Planning Mode
+                </h3>
+                <p className="text-xs" style={{ color: colors.textMuted }}>
+                  {player?.planningMode === "advanced" 
+                    ? "Requires weekly goals for tasks" 
+                    : "Tasks can be created freely"
+                  }
+                </p>
+              </div>
+              <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: colors.background }}>
+                <button
+                  onClick={() => {
+                    if (player?.planningMode !== "basic") {
+                      updatePlayer({ planningMode: "basic" });
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${
+                    player?.planningMode === "basic" ? 'text-white' : ''
+                  }`}
+                  style={{
+                    backgroundColor: player?.planningMode === "basic" ? colors.primary : 'transparent',
+                    color: player?.planningMode === "basic" ? colors.background : colors.textMuted
+                  }}
+                  data-testid="button-mode-basic"
+                >
+                  Basic
+                </button>
+                <button
+                  onClick={() => {
+                    if (player?.planningMode !== "advanced") {
+                      updatePlayer({ planningMode: "advanced" });
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${
+                    player?.planningMode === "advanced" ? 'text-white' : ''
+                  }`}
+                  style={{
+                    backgroundColor: player?.planningMode === "advanced" ? colors.primary : 'transparent',
+                    color: player?.planningMode === "advanced" ? colors.background : colors.textMuted
+                  }}
+                  data-testid="button-mode-advanced"
+                >
+                  Advanced
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div 
           className="rounded-lg overflow-hidden"

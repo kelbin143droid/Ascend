@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import type { Quadrant } from "@shared/schema";
 
 const COLOR_OPTIONS = [
@@ -72,6 +73,7 @@ export default function StatusPage() {
   const { roles, getDefaultRole, createRole } = useRoles();
   const { weeklyGoals, hasGoalsForCurrentWeek, getGoalsByRole } = useWeeklyGoals();
   const { createTask } = useTasks();
+  const { toast } = useToast();
   
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
@@ -166,7 +168,21 @@ export default function StatusPage() {
     };
     delete (blockToSave as any).isNew;
     
-    if (blockToSave.roleId && blockToSave.weeklyGoalId && blockToSave.quadrant) {
+    const isAdvancedMode = player.planningMode === "advanced";
+    
+    if (isAdvancedMode && !blockToSave.weeklyGoalId) {
+      toast({
+        title: "Weekly Goal Required",
+        description: "In Advanced mode, you must select a weekly goal for each task.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const hasFullTags = blockToSave.roleId && blockToSave.weeklyGoalId && blockToSave.quadrant;
+    const hasBasicTags = blockToSave.roleId && blockToSave.quadrant;
+    
+    if (hasFullTags || (!isAdvancedMode && hasBasicTags)) {
       try {
         const today = new Date();
         const startTime = new Date(today);
@@ -179,10 +195,10 @@ export default function StatusPage() {
         endTime.setHours(blockToSave.endHour, 0, 0, 0);
         
         await createTask({
-          roleId: blockToSave.roleId,
+          roleId: blockToSave.roleId!,
           weeklyGoalId: blockToSave.weeklyGoalId,
           name: blockToSave.name,
-          quadrant: blockToSave.quadrant,
+          quadrant: blockToSave.quadrant!,
           startTime: startTime,
           endTime: endTime,
           color: blockToSave.color,
