@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useGame } from "@/context/GameContext";
 import { useRoles } from "@/context/RolesContext";
 import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
+import { useTasks } from "@/context/TasksContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
 import { StatActionPanel } from "@/components/game/StatActionPanel";
@@ -70,6 +71,7 @@ export default function StatusPage() {
   } = useGame();
   const { roles, getDefaultRole, createRole } = useRoles();
   const { weeklyGoals, hasGoalsForCurrentWeek, getGoalsByRole } = useWeeklyGoals();
+  const { createTask } = useTasks();
   
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
@@ -155,7 +157,7 @@ export default function StatusPage() {
     }
   };
 
-  const handleSaveBlock = () => {
+  const handleSaveBlock = async () => {
     if (!editingBlock) return;
     
     const blockToSave = {
@@ -163,6 +165,32 @@ export default function StatusPage() {
       name: editingBlock.id.startsWith('custom') ? customName || 'Custom Task' : editingBlock.name,
     };
     delete (blockToSave as any).isNew;
+    
+    if (blockToSave.roleId && blockToSave.weeklyGoalId && blockToSave.quadrant) {
+      try {
+        const today = new Date();
+        const startTime = new Date(today);
+        startTime.setHours(blockToSave.startHour, 0, 0, 0);
+        
+        const endTime = new Date(today);
+        if (blockToSave.endHour <= blockToSave.startHour) {
+          endTime.setDate(endTime.getDate() + 1);
+        }
+        endTime.setHours(blockToSave.endHour, 0, 0, 0);
+        
+        await createTask({
+          roleId: blockToSave.roleId,
+          weeklyGoalId: blockToSave.weeklyGoalId,
+          name: blockToSave.name,
+          quadrant: blockToSave.quadrant,
+          startTime: startTime,
+          endTime: endTime,
+          color: blockToSave.color,
+        });
+      } catch (error) {
+        console.error("Failed to persist task to database:", error);
+      }
+    }
     
     let newSchedule: ScheduleBlock[];
     if (editingBlock.isNew) {
