@@ -657,6 +657,19 @@ export default function StatusPage() {
 
               <div>
                 <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={editingBlock.date || selectedDateKey}
+                  onChange={(e) => setEditingBlock({ ...editingBlock, date: e.target.value })}
+                  className="w-full h-10 px-3 bg-black/50 border border-white/10 rounded text-white/90 font-mono"
+                  data-testid="input-block-date"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
                   Color
                 </label>
                 <div className="flex flex-wrap gap-2">
