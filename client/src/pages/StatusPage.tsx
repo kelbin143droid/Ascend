@@ -328,6 +328,7 @@ export default function StatusPage() {
               schedule={player.schedule?.length ? player.schedule as ScheduleBlock[] : undefined}
               size={280}
               onCenterClick={() => setIsScheduleOpen(true)}
+              onBlockClick={(block) => handleEditExistingBlock(block)}
               playerRank={player.rank}
             />
           </div>

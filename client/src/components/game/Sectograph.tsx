@@ -5,7 +5,9 @@ export interface ScheduleBlock {
   id: string;
   name: string;
   startHour: number;
+  startMinute?: number;
   endHour: number;
+  endMinute?: number;
   color: string;
   isSystemTask?: boolean;
 }
@@ -14,6 +16,7 @@ interface SectographProps {
   schedule?: ScheduleBlock[];
   size?: number;
   onCenterClick?: () => void;
+  onBlockClick?: (block: ScheduleBlock) => void;
   playerRank?: string;
 }
 
@@ -27,7 +30,7 @@ const DEFAULT_SCHEDULE: ScheduleBlock[] = [
   { id: "evening", name: "Leisure", startHour: 19, endHour: 22, color: "#8b7aa3" },
 ];
 
-export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterClick, playerRank }: SectographProps) {
+export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterClick, onBlockClick, playerRank }: SectographProps) {
   const isAscension = playerRank === "S";
   const goldGlow = "#ffd700";
   const [time, setTime] = useState(new Date());
@@ -45,6 +48,11 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
   const innerRadius = outerRadius * 0.55;
   const scheduleInnerRadius = innerRadius + 4;
   const scheduleOuterRadius = glowRingRadius - glowRingWidth / 2 - 2;
+
+  const timeToAngle = (hour: number, minute: number = 0) => {
+    const totalMinutes = hour * 60 + minute;
+    return (totalMinutes / (24 * 60)) * 360 - 90;
+  };
 
   const hourToAngle = (hour: number) => {
     return ((hour % 24) / 24) * 360 - 90;
@@ -184,19 +192,25 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         })}
 
         {schedule.map((block) => {
-          const startAngle = hourToAngle(block.startHour);
-          const endAngle = hourToAngle(block.endHour);
+          const startAngle = timeToAngle(block.startHour, block.startMinute ?? 0);
+          const endAngle = timeToAngle(block.endHour, block.endMinute ?? 0);
           const systemTaskGlow = isAscension && block.isSystemTask ? goldGlow : colors.ringGlow;
           const systemTaskStroke = isAscension && block.isSystemTask ? goldGlow : colors.ring;
           
           return (
-            <g key={block.id}>
+            <g 
+              key={block.id} 
+              onClick={() => onBlockClick?.(block)}
+              style={{ cursor: onBlockClick ? 'pointer' : 'default' }}
+              data-testid={`sectograph-block-${block.id}`}
+            >
               <path
                 d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
                 fill={block.color}
                 opacity={1}
                 stroke={block.isSystemTask ? systemTaskStroke : "rgba(255,255,255,0.15)"}
                 strokeWidth={block.isSystemTask ? 1.5 : 0.5}
+                className={onBlockClick ? "hover:opacity-80 transition-opacity" : ""}
               />
               {block.isSystemTask && (
                 <path
@@ -204,7 +218,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
                   fill="none"
                   stroke={systemTaskGlow}
                   strokeWidth="3"
-                  style={{ filter: "blur(4px)" }}
+                  style={{ filter: "blur(4px)", pointerEvents: 'none' }}
                 />
               )}
             </g>
