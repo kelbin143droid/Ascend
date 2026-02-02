@@ -76,6 +76,7 @@ export type Skill = z.infer<typeof skillSchema>;
 export const scheduleBlockSchema = z.object({
   id: z.string(),
   name: z.string(),
+  date: z.string().optional(),
   startHour: z.number(),
   startMinute: z.number().optional().default(0),
   endHour: z.number(),

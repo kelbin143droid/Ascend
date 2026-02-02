@@ -9,7 +9,7 @@ import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
 import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown } from "lucide-react";
+import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,6 +38,7 @@ const ACTIVITY_PRESETS = [
 interface EditingBlock {
   id: string;
   name: string;
+  date?: string;
   startHour: number;
   startMinute: number;
   endHour: number;
@@ -85,6 +86,14 @@ export default function StatusPage() {
   const [customName, setCustomName] = useState("");
   const [showTestMode, setShowTestMode] = useState(false);
   const [defaultRoleCreated, setDefaultRoleCreated] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  
+  const formatDateKey = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  };
+  
+  const selectedDateKey = formatDateKey(selectedDate);
+  const isToday = formatDateKey(new Date()) === selectedDateKey;
   
   const isAdvancedMode = player?.planningMode === "advanced";
   
@@ -147,11 +156,14 @@ export default function StatusPage() {
     { key: 'vitality', label: 'VITALITY', icon: Heart, color: '#a855f7', value: displayStats.vitality },
   ];
 
-  const currentSchedule: ScheduleBlock[] = player.schedule?.length ? player.schedule as ScheduleBlock[] : [
-    { id: "sleep", name: "Sleep", startHour: 22, startMinute: 0, endHour: 6, endMinute: 0, color: "#3b4d6b" },
-    { id: "work", name: "Focus Work", startHour: 9, startMinute: 0, endHour: 12, endMinute: 0, color: "#4a6fa5", isSystemTask: true },
-    { id: "exercise", name: "Training", startHour: 17, startMinute: 0, endHour: 18, endMinute: 0, color: "#c97b63", isSystemTask: true },
-  ];
+  const allScheduleBlocks: (ScheduleBlock & { date?: string })[] = player.schedule?.length 
+    ? player.schedule as (ScheduleBlock & { date?: string })[] 
+    : [];
+  
+  const currentSchedule: ScheduleBlock[] = allScheduleBlocks.filter(block => {
+    if (!block.date) return isToday;
+    return block.date === selectedDateKey;
+  });
 
   const handlePresetClick = (preset: typeof ACTIVITY_PRESETS[0]) => {
     const existingBlock = currentSchedule.find(b => b.id === preset.id);
@@ -165,8 +177,9 @@ export default function StatusPage() {
       });
     } else {
       setEditingBlock({
-        id: preset.id === 'custom' ? `custom_${Date.now()}` : preset.id,
+        id: preset.id === 'custom' ? `custom_${Date.now()}` : `${preset.id}_${selectedDateKey}`,
         name: preset.id === 'custom' ? '' : preset.name,
+        date: selectedDateKey,
         startHour: 9,
         startMinute: 0,
         endHour: 10,
@@ -229,11 +242,13 @@ export default function StatusPage() {
       }
     }
     
-    let newSchedule: ScheduleBlock[];
+    let newSchedule: (ScheduleBlock & { date?: string })[];
+    const blockWithDate = { ...blockToSave, date: blockToSave.date || selectedDateKey };
+    
     if (editingBlock.isNew) {
-      newSchedule = [...currentSchedule, blockToSave];
+      newSchedule = [...allScheduleBlocks, blockWithDate];
     } else {
-      newSchedule = currentSchedule.map(b => b.id === blockToSave.id ? blockToSave : b);
+      newSchedule = allScheduleBlocks.map(b => b.id === blockWithDate.id ? blockWithDate : b);
     }
     
     updatePlayer({ schedule: newSchedule });
@@ -243,7 +258,7 @@ export default function StatusPage() {
 
   const handleDeleteBlock = () => {
     if (!editingBlock) return;
-    const newSchedule = currentSchedule.filter(b => b.id !== editingBlock.id);
+    const newSchedule = allScheduleBlocks.filter(b => b.id !== editingBlock.id);
     updatePlayer({ schedule: newSchedule });
     setEditingBlock(null);
   };
@@ -321,11 +336,48 @@ export default function StatusPage() {
           </div>
         )}
 
+        <div className="flex justify-center items-center gap-2 mb-2">
+          <button
+            onClick={() => {
+              const prev = new Date(selectedDate);
+              prev.setDate(prev.getDate() - 1);
+              setSelectedDate(prev);
+            }}
+            className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+            data-testid="button-prev-day"
+          >
+            <ChevronLeft size={18} className="text-primary/70" />
+          </button>
+          
+          <button
+            onClick={() => setSelectedDate(new Date())}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/30 border border-primary/20 hover:bg-black/50 transition-colors"
+            data-testid="button-date-display"
+          >
+            <CalendarDays size={14} className="text-primary/70" />
+            <span className="text-xs font-mono text-white/80">
+              {isToday ? 'Today' : selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </span>
+          </button>
+          
+          <button
+            onClick={() => {
+              const next = new Date(selectedDate);
+              next.setDate(next.getDate() + 1);
+              setSelectedDate(next);
+            }}
+            className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+            data-testid="button-next-day"
+          >
+            <ChevronRight size={18} className="text-primary/70" />
+          </button>
+        </div>
+
         <div className="flex justify-center py-2">
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 via-transparent to-primary/5 rounded-full blur-xl" />
             <Sectograph 
-              schedule={player.schedule?.length ? player.schedule as ScheduleBlock[] : undefined}
+              schedule={currentSchedule}
               size={280}
               onCenterClick={() => setIsScheduleOpen(true)}
               onBlockClick={(block) => handleEditExistingBlock(block)}
@@ -747,11 +799,7 @@ export default function StatusPage() {
         open={selectedStat !== null}
         onOpenChange={(open) => !open && setSelectedStat(null)}
         stat={selectedStat}
-        schedule={player.schedule?.length ? player.schedule as ScheduleBlock[] : [
-          { id: "sleep", name: "Sleep", startHour: 22, startMinute: 0, endHour: 6, endMinute: 0, color: "#3b4d6b" },
-          { id: "work", name: "Focus Work", startHour: 9, startMinute: 0, endHour: 12, endMinute: 0, color: "#4a6fa5", isSystemTask: true },
-          { id: "exercise", name: "Training", startHour: 17, startMinute: 0, endHour: 18, endMinute: 0, color: "#c97b63", isSystemTask: true },
-        ]}
+        schedule={currentSchedule}
         onCompleteSession={completeSession}
         activeSession={activeSession}
         onStartSession={startSession}
