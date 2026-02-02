@@ -750,6 +750,37 @@ export async function registerRoutes(
         ? Math.round((tasksWithGoal / tasks.length) * 100 * 10) / 10 
         : 100;
       
+      const today = new Date().toISOString().split('T')[0];
+      const focusTrial = await storage.getActiveTrial(req.params.userId, "focus");
+      
+      if (focusTrial && focusTrial.lastEvaluatedDate !== today) {
+        const player = await storage.getPlayer(req.params.userId);
+        
+        if (q2Percentage >= 60) {
+          const newProgress = focusTrial.progressDays + 1;
+          if (newProgress >= 7) {
+            await storage.updateTrial(focusTrial.id, {
+              progressDays: 7,
+              status: "completed",
+              lastEvaluatedDate: today
+            });
+            if (player) {
+              await storage.gainExp(player.id, 500);
+            }
+          } else {
+            await storage.updateTrial(focusTrial.id, {
+              progressDays: newProgress,
+              lastEvaluatedDate: today
+            });
+          }
+        } else {
+          await storage.updateTrial(focusTrial.id, {
+            progressDays: 0,
+            lastEvaluatedDate: today
+          });
+        }
+      }
+      
       res.json({
         totalTimePerRole,
         totalTimePerQuadrant,
@@ -762,6 +793,45 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get weekly analytics" });
+    }
+  });
+
+  // === TRIALS API ===
+  app.get("/api/trials/:userId", async (req, res) => {
+    try {
+      const trials = await storage.getTrials(req.params.userId);
+      res.json(trials);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get trials" });
+    }
+  });
+
+  app.post("/api/trials/start", async (req, res) => {
+    try {
+      const { userId, trialType } = req.body;
+      
+      if (!userId || !trialType) {
+        return res.status(400).json({ error: "userId and trialType are required" });
+      }
+      
+      const existingTrial = await storage.getActiveTrial(userId, trialType);
+      if (existingTrial) {
+        return res.status(400).json({ error: "An active trial of this type already exists" });
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      const trial = await storage.createTrial({
+        userId,
+        trialType,
+        startDate: today,
+        progressDays: 0,
+        status: "active",
+        lastEvaluatedDate: null
+      });
+      
+      res.json(trial);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start trial" });
     }
   });
 

@@ -1,10 +1,11 @@
 import { 
-  players, dailyStatSnapshots, roles, weeklyGoals, tasks,
+  players, dailyStatSnapshots, roles, weeklyGoals, tasks, trials,
   type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, 
   type FatigueData, type RankHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, 
   type Role, type InsertRole, type UpdateRole,
   type WeeklyGoal, type InsertWeeklyGoal, type UpdateWeeklyGoal,
   type Task, type InsertTask, type UpdateTask,
+  type Trial, type InsertTrial,
   RANK_UNLOCK_DATA 
 } from "@shared/schema";
 import { db } from "./db";
@@ -50,6 +51,11 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, updates: UpdateTask): Promise<Task | undefined>;
   deleteTask(id: string): Promise<boolean>;
+  
+  getTrials(userId: string): Promise<Trial[]>;
+  getActiveTrial(userId: string, trialType: string): Promise<Trial | undefined>;
+  createTrial(trial: InsertTrial): Promise<Trial>;
+  updateTrial(id: string, updates: Partial<Trial>): Promise<Trial | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -362,6 +368,31 @@ export class DatabaseStorage implements IStorage {
   async deleteTask(id: string): Promise<boolean> {
     const result = await db.delete(tasks).where(eq(tasks.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getTrials(userId: string): Promise<Trial[]> {
+    return await db.select().from(trials).where(eq(trials.userId, userId));
+  }
+
+  async getActiveTrial(userId: string, trialType: string): Promise<Trial | undefined> {
+    const [trial] = await db.select().from(trials).where(
+      and(
+        eq(trials.userId, userId),
+        eq(trials.trialType, trialType),
+        eq(trials.status, "active")
+      )
+    );
+    return trial || undefined;
+  }
+
+  async createTrial(trial: InsertTrial): Promise<Trial> {
+    const [newTrial] = await db.insert(trials).values(trial).returning();
+    return newTrial;
+  }
+
+  async updateTrial(id: string, updates: Partial<Trial>): Promise<Trial | undefined> {
+    const [trial] = await db.update(trials).set(updates).where(eq(trials.id, id)).returning();
+    return trial || undefined;
   }
 }
 

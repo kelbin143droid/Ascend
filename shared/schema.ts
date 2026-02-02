@@ -292,3 +292,22 @@ export const updateTaskSchema = createInsertSchema(tasks, {
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
+
+export const trialStatusEnum = z.enum(["active", "completed"]);
+export type TrialStatus = z.infer<typeof trialStatusEnum>;
+
+export const trials = pgTable("trials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  trialType: text("trial_type").notNull(),
+  status: text("status").notNull().$type<TrialStatus>().default("active"),
+  startDate: date("start_date").notNull(),
+  progressDays: integer("progress_days").notNull().default(0),
+  lastEvaluatedDate: date("last_evaluated_date"),
+});
+
+export const insertTrialSchema = createInsertSchema(trials, {
+  status: trialStatusEnum.optional().default("active"),
+}).omit({ id: true });
+export type InsertTrial = z.infer<typeof insertTrialSchema>;
+export type Trial = typeof trials.$inferSelect;

@@ -10,6 +10,7 @@ import { BookOpen, Scroll, Trophy, Star, Lock, Target, ChevronDown, ChevronUp, T
 
 const RANK_ORDER = ["E", "D", "C", "B", "A", "S"];
 const PLANNING_UNLOCK_RANK = "C";
+const TRIALS_UNLOCK_RANK = "B";
 
 function isRankUnlocked(playerRank: string, requiredRank: string): boolean {
   const playerIndex = RANK_ORDER.indexOf(playerRank);
@@ -28,6 +29,7 @@ export default function LibraryPage() {
   
   const playerRank = player?.rank || "E";
   const canAccessPlanning = isRankUnlocked(playerRank, PLANNING_UNLOCK_RANK);
+  const canAccessTrials = isRankUnlocked(playerRank, TRIALS_UNLOCK_RANK);
 
   const libraryItems = [
     { id: 1, title: "Ascendant's Guide", type: "Tutorial", icon: BookOpen, unlocked: true },
@@ -163,6 +165,56 @@ export default function LibraryPage() {
             </div>
           </div>
         )}
+
+        <button
+          onClick={() => canAccessTrials && navigate("/trials")}
+          disabled={!canAccessTrials}
+          className={`w-full rounded-lg overflow-hidden transition-all ${
+            canAccessTrials ? 'hover:scale-[1.02] cursor-pointer' : 'opacity-60 cursor-not-allowed'
+          }`}
+          style={{
+            backgroundColor: canAccessTrials ? `${colors.primary}15` : colors.surface,
+            border: `1px solid ${canAccessTrials ? colors.primary + '40' : colors.surfaceBorder}`
+          }}
+          data-testid="button-trials"
+        >
+          <div className="p-4 flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{
+                backgroundColor: canAccessTrials ? `${colors.primary}30` : 'rgba(100,100,100,0.2)',
+                border: `1px solid ${canAccessTrials ? colors.primary + '60' : 'rgba(100,100,100,0.3)'}`
+              }}
+            >
+              {canAccessTrials ? (
+                <Target size={20} style={{ color: colors.primary }} />
+              ) : (
+                <Lock size={20} style={{ color: colors.textMuted }} />
+              )}
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="font-display font-bold" style={{ color: canAccessTrials ? colors.text : colors.textMuted }}>
+                Trials
+              </h3>
+              <p className="text-xs" style={{ color: colors.textMuted }}>
+                {canAccessTrials 
+                  ? "Test your resolve with focused challenges" 
+                  : `Unlock at Rank ${TRIALS_UNLOCK_RANK}`
+                }
+              </p>
+            </div>
+            {canAccessTrials ? (
+              <ChevronRight size={20} style={{ color: colors.primary }} />
+            ) : (
+              <span 
+                className="text-xs font-bold px-2 py-1 rounded"
+                style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#ef4444' }}
+              >
+                LOCKED
+              </span>
+            )}
+          </div>
+        </button>
 
         <div 
           className="rounded-lg overflow-hidden"

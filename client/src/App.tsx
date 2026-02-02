@@ -18,6 +18,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import LibraryPage from "@/pages/LibraryPage";
 import WeeklyPlanningPage from "@/pages/WeeklyPlanningPage";
+import TrialsPage from "@/pages/TrialsPage";
 import NotFound from "@/pages/not-found";
 import { RankUnlockOverlay } from "@/components/game/RankUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
@@ -46,6 +47,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/weekly-planning" component={WeeklyPlanningPage} />
+      <Route path="/trials" component={TrialsPage} />
       <Route path="/" component={StatusPage} />
       <Route path="/arena" component={DungeonPage} />
       <Route path="/library" component={LibraryPage} />
