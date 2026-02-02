@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import React from "react";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -39,16 +39,6 @@ function PlanningProviders({ children }: { children: React.ReactNode }) {
 }
 
 function PlanningGate({ children }: { children: React.ReactNode }) {
-  const [location, navigate] = useLocation();
-  const { hasGoalsForCurrentWeek, isLoading } = useWeeklyGoals();
-  const { player } = useGame();
-
-  useEffect(() => {
-    if (!isLoading && player && !hasGoalsForCurrentWeek && location !== "/weekly-planning") {
-      navigate("/weekly-planning");
-    }
-  }, [isLoading, hasGoalsForCurrentWeek, location, navigate, player]);
-
   return <>{children}</>;
 }
 

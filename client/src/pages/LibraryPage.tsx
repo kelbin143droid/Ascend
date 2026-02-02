@@ -1,17 +1,33 @@
 import React, { useState } from "react";
+import { useLocation } from "wouter";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useTheme } from "@/context/ThemeContext";
+import { useGame } from "@/context/GameContext";
 import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { useRoles } from "@/context/RolesContext";
 import { WeeklyGoalForm } from "@/components/game/WeeklyGoalForm";
-import { BookOpen, Scroll, Trophy, Star, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle } from "lucide-react";
+import { BookOpen, Scroll, Trophy, Star, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle, Calendar, ChevronRight } from "lucide-react";
+
+const RANK_ORDER = ["E", "D", "C", "B", "A", "S"];
+const PLANNING_UNLOCK_RANK = "C";
+
+function isRankUnlocked(playerRank: string, requiredRank: string): boolean {
+  const playerIndex = RANK_ORDER.indexOf(playerRank);
+  const requiredIndex = RANK_ORDER.indexOf(requiredRank);
+  return playerIndex >= requiredIndex;
+}
 
 export default function LibraryPage() {
+  const [, navigate] = useLocation();
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
+  const { player } = useGame();
   const { weeklyGoals, deleteWeeklyGoal, updateWeeklyGoal } = useWeeklyGoals();
   const { roles } = useRoles();
   const [showGoalForm, setShowGoalForm] = useState(false);
+  
+  const playerRank = player?.rank || "E";
+  const canAccessPlanning = isRankUnlocked(playerRank, PLANNING_UNLOCK_RANK);
 
   const libraryItems = [
     { id: 1, title: "Ascendant's Guide", type: "Tutorial", icon: BookOpen, unlocked: true },
@@ -37,6 +53,56 @@ export default function LibraryPage() {
             Knowledge Archive
           </p>
         </div>
+
+        <button
+          onClick={() => canAccessPlanning && navigate("/weekly-planning")}
+          disabled={!canAccessPlanning}
+          className={`w-full rounded-lg overflow-hidden transition-all ${
+            canAccessPlanning ? 'hover:scale-[1.02] cursor-pointer' : 'opacity-60 cursor-not-allowed'
+          }`}
+          style={{
+            backgroundColor: canAccessPlanning ? `${colors.primary}15` : colors.surface,
+            border: `1px solid ${canAccessPlanning ? colors.primary + '40' : colors.surfaceBorder}`
+          }}
+          data-testid="button-advanced-planning"
+        >
+          <div className="p-4 flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{
+                backgroundColor: canAccessPlanning ? `${colors.primary}30` : 'rgba(100,100,100,0.2)',
+                border: `1px solid ${canAccessPlanning ? colors.primary + '60' : 'rgba(100,100,100,0.3)'}`
+              }}
+            >
+              {canAccessPlanning ? (
+                <Calendar size={20} style={{ color: colors.primary }} />
+              ) : (
+                <Lock size={20} style={{ color: colors.textMuted }} />
+              )}
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="font-display font-bold" style={{ color: canAccessPlanning ? colors.text : colors.textMuted }}>
+                Advanced Weekly Planning
+              </h3>
+              <p className="text-xs" style={{ color: colors.textMuted }}>
+                {canAccessPlanning 
+                  ? "Set goals and priorities for the week" 
+                  : `Unlock at Rank ${PLANNING_UNLOCK_RANK}`
+                }
+              </p>
+            </div>
+            {canAccessPlanning ? (
+              <ChevronRight size={20} style={{ color: colors.primary }} />
+            ) : (
+              <span 
+                className="text-xs font-bold px-2 py-1 rounded"
+                style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#ef4444' }}
+              >
+                LOCKED
+              </span>
+            )}
+          </div>
+        </button>
 
         <div 
           className="rounded-lg overflow-hidden"
