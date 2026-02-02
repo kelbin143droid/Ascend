@@ -77,7 +77,9 @@ export const scheduleBlockSchema = z.object({
   id: z.string(),
   name: z.string(),
   startHour: z.number(),
+  startMinute: z.number().optional().default(0),
   endHour: z.number(),
+  endMinute: z.number().optional().default(0),
   color: z.string(),
   isSystemTask: z.boolean().optional(),
 });

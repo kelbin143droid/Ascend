@@ -11,7 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -40,7 +39,9 @@ interface EditingBlock {
   id: string;
   name: string;
   startHour: number;
+  startMinute: number;
   endHour: number;
+  endMinute: number;
   color: string;
   isSystemTask?: boolean;
   isNew?: boolean;
@@ -147,9 +148,9 @@ export default function StatusPage() {
   ];
 
   const currentSchedule: ScheduleBlock[] = player.schedule?.length ? player.schedule as ScheduleBlock[] : [
-    { id: "sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#3b4d6b" },
-    { id: "work", name: "Focus Work", startHour: 9, endHour: 12, color: "#4a6fa5", isSystemTask: true },
-    { id: "exercise", name: "Training", startHour: 17, endHour: 18, color: "#c97b63", isSystemTask: true },
+    { id: "sleep", name: "Sleep", startHour: 22, startMinute: 0, endHour: 6, endMinute: 0, color: "#3b4d6b" },
+    { id: "work", name: "Focus Work", startHour: 9, startMinute: 0, endHour: 12, endMinute: 0, color: "#4a6fa5", isSystemTask: true },
+    { id: "exercise", name: "Training", startHour: 17, startMinute: 0, endHour: 18, endMinute: 0, color: "#c97b63", isSystemTask: true },
   ];
 
   const handlePresetClick = (preset: typeof ACTIVITY_PRESETS[0]) => {
@@ -158,6 +159,8 @@ export default function StatusPage() {
     if (existingBlock) {
       setEditingBlock({
         ...existingBlock,
+        startMinute: existingBlock.startMinute ?? 0,
+        endMinute: existingBlock.endMinute ?? 0,
         isNew: false,
       });
     } else {
@@ -165,7 +168,9 @@ export default function StatusPage() {
         id: preset.id === 'custom' ? `custom_${Date.now()}` : preset.id,
         name: preset.id === 'custom' ? '' : preset.name,
         startHour: 9,
+        startMinute: 0,
         endHour: 10,
+        endMinute: 0,
         color: preset.color,
         isSystemTask: preset.isSystemTask,
         isNew: true,
@@ -200,13 +205,15 @@ export default function StatusPage() {
       try {
         const today = new Date();
         const startTime = new Date(today);
-        startTime.setHours(blockToSave.startHour, 0, 0, 0);
+        startTime.setHours(blockToSave.startHour, blockToSave.startMinute || 0, 0, 0);
         
         const endTime = new Date(today);
-        if (blockToSave.endHour <= blockToSave.startHour) {
+        const startTotalMinutes = blockToSave.startHour * 60 + (blockToSave.startMinute || 0);
+        const endTotalMinutes = blockToSave.endHour * 60 + (blockToSave.endMinute || 0);
+        if (endTotalMinutes <= startTotalMinutes) {
           endTime.setDate(endTime.getDate() + 1);
         }
-        endTime.setHours(blockToSave.endHour, 0, 0, 0);
+        endTime.setHours(blockToSave.endHour, blockToSave.endMinute || 0, 0, 0);
         
         await createTask({
           roleId: blockToSave.roleId!,
@@ -244,6 +251,8 @@ export default function StatusPage() {
   const handleEditExistingBlock = (block: ScheduleBlock) => {
     setEditingBlock({
       ...block,
+      startMinute: block.startMinute ?? 0,
+      endMinute: block.endMinute ?? 0,
       isNew: false,
     });
     if (block.id.startsWith('custom')) {
@@ -515,7 +524,7 @@ export default function StatusPage() {
                     />
                     <span className="flex-1 text-white/70 text-left">{block.name}</span>
                     <span className="text-muted-foreground/50 font-mono text-[10px]">
-                      {block.startHour}:00 - {block.endHour}:00
+                      {String(block.startHour).padStart(2, '0')}:{String(block.startMinute ?? 0).padStart(2, '0')} - {String(block.endHour).padStart(2, '0')}:{String(block.endMinute ?? 0).padStart(2, '0')}
                     </span>
                     <Pencil size={10} className="text-muted-foreground/40" />
                   </button>
@@ -563,29 +572,33 @@ export default function StatusPage() {
 
               <div>
                 <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
-                  Start Time: <span className="text-white/80 font-mono">{editingBlock.startHour}:00</span>
+                  Start Time
                 </label>
-                <Slider
-                  value={[editingBlock.startHour]}
-                  onValueChange={([v]) => setEditingBlock({ ...editingBlock, startHour: v })}
-                  min={0}
-                  max={23}
-                  step={1}
-                  className="py-2"
+                <input
+                  type="time"
+                  value={`${String(editingBlock.startHour).padStart(2, '0')}:${String(editingBlock.startMinute).padStart(2, '0')}`}
+                  onChange={(e) => {
+                    const [hours, minutes] = e.target.value.split(':').map(Number);
+                    setEditingBlock({ ...editingBlock, startHour: hours, startMinute: minutes });
+                  }}
+                  className="w-full h-10 px-3 bg-black/50 border border-white/10 rounded text-white/90 font-mono text-lg"
+                  data-testid="input-start-time"
                 />
               </div>
 
               <div>
                 <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
-                  End Time: <span className="text-white/80 font-mono">{editingBlock.endHour}:00</span>
+                  End Time
                 </label>
-                <Slider
-                  value={[editingBlock.endHour]}
-                  onValueChange={([v]) => setEditingBlock({ ...editingBlock, endHour: v })}
-                  min={0}
-                  max={24}
-                  step={1}
-                  className="py-2"
+                <input
+                  type="time"
+                  value={`${String(editingBlock.endHour).padStart(2, '0')}:${String(editingBlock.endMinute).padStart(2, '0')}`}
+                  onChange={(e) => {
+                    const [hours, minutes] = e.target.value.split(':').map(Number);
+                    setEditingBlock({ ...editingBlock, endHour: hours, endMinute: minutes });
+                  }}
+                  className="w-full h-10 px-3 bg-black/50 border border-white/10 rounded text-white/90 font-mono text-lg"
+                  data-testid="input-end-time"
                 />
               </div>
 
@@ -734,9 +747,9 @@ export default function StatusPage() {
         onOpenChange={(open) => !open && setSelectedStat(null)}
         stat={selectedStat}
         schedule={player.schedule?.length ? player.schedule as ScheduleBlock[] : [
-          { id: "sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#3b4d6b" },
-          { id: "work", name: "Focus Work", startHour: 9, endHour: 12, color: "#4a6fa5", isSystemTask: true },
-          { id: "exercise", name: "Training", startHour: 17, endHour: 18, color: "#c97b63", isSystemTask: true },
+          { id: "sleep", name: "Sleep", startHour: 22, startMinute: 0, endHour: 6, endMinute: 0, color: "#3b4d6b" },
+          { id: "work", name: "Focus Work", startHour: 9, startMinute: 0, endHour: 12, endMinute: 0, color: "#4a6fa5", isSystemTask: true },
+          { id: "exercise", name: "Training", startHour: 17, startMinute: 0, endHour: 18, endMinute: 0, color: "#c97b63", isSystemTask: true },
         ]}
         onCompleteSession={completeSession}
         activeSession={activeSession}
