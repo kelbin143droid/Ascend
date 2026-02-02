@@ -1,12 +1,12 @@
-import React from "react";
-import { Switch, Route } from "wouter";
+import React, { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { GameProvider, useGame } from "@/context/GameContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { RolesProvider } from "@/context/RolesContext";
-import { WeeklyGoalsProvider } from "@/context/WeeklyGoalsContext";
+import { WeeklyGoalsProvider, useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { TasksProvider } from "@/context/TasksContext";
 import StatusPage from "@/pages/StatusPage";
 import DungeonPage from "@/pages/DungeonPage";
@@ -17,6 +17,7 @@ import SurvivalPage from "@/pages/SurvivalPage";
 import ProfilePage from "@/pages/ProfilePage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import LibraryPage from "@/pages/LibraryPage";
+import WeeklyPlanningPage from "@/pages/WeeklyPlanningPage";
 import NotFound from "@/pages/not-found";
 import { RankUnlockOverlay } from "@/components/game/RankUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
@@ -37,9 +38,24 @@ function PlanningProviders({ children }: { children: React.ReactNode }) {
   );
 }
 
+function PlanningGate({ children }: { children: React.ReactNode }) {
+  const [location, navigate] = useLocation();
+  const { hasGoalsForCurrentWeek, isLoading } = useWeeklyGoals();
+  const { player } = useGame();
+
+  useEffect(() => {
+    if (!isLoading && player && !hasGoalsForCurrentWeek && location !== "/weekly-planning") {
+      navigate("/weekly-planning");
+    }
+  }, [isLoading, hasGoalsForCurrentWeek, location, navigate, player]);
+
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
+      <Route path="/weekly-planning" component={WeeklyPlanningPage} />
       <Route path="/" component={StatusPage} />
       <Route path="/arena" component={DungeonPage} />
       <Route path="/library" component={LibraryPage} />
@@ -61,7 +77,9 @@ function App() {
         <GameProvider>
           <PlanningProviders>
             <IntroWrapper>
-              <Router />
+              <PlanningGate>
+                <Router />
+              </PlanningGate>
               <LevelUpOverlay />
               <RankUnlockOverlay />
               <Toaster />
