@@ -745,6 +745,11 @@ export async function registerRoutes(
         roleNameMap[role.id] = role.name;
       }
       
+      const tasksWithGoal = tasks.filter(t => t.weeklyGoalId != null).length;
+      const goalLinkedPercentage = tasks.length > 0 
+        ? Math.round((tasksWithGoal / tasks.length) * 100 * 10) / 10 
+        : 100;
+      
       res.json({
         totalTimePerRole,
         totalTimePerQuadrant,
@@ -752,7 +757,8 @@ export async function registerRoutes(
         completionRatePerRole,
         roleNameMap,
         weekStartDate,
-        taskCount: tasks.length
+        taskCount: tasks.length,
+        goalLinkedPercentage
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get weekly analytics" });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useRoles } from "@/context/RolesContext";
 import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
@@ -83,6 +84,22 @@ export default function StatusPage() {
   const [customName, setCustomName] = useState("");
   const [showTestMode, setShowTestMode] = useState(false);
   const [defaultRoleCreated, setDefaultRoleCreated] = useState(false);
+  
+  const isAdvancedMode = player?.planningMode === "advanced";
+  
+  const { data: weeklyAnalytics } = useQuery({
+    queryKey: ["weekly-analytics", player?.id],
+    queryFn: async () => {
+      if (!player?.id) return null;
+      const response = await fetch(`/api/weekly-analytics/${player.id}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!player?.id && isAdvancedMode,
+    refetchInterval: 30000,
+  });
+  
+  const goalLinkedPercentage = weeklyAnalytics?.goalLinkedPercentage ?? 100;
   
   useEffect(() => {
     if (player && roles.length === 0 && !defaultRoleCreated) {
@@ -172,17 +189,14 @@ export default function StatusPage() {
     
     if (isAdvancedMode && !blockToSave.weeklyGoalId) {
       toast({
-        title: "Weekly Goal Required",
-        description: "In Advanced mode, you must select a weekly goal for each task.",
-        variant: "destructive",
+        title: "Not linked to weekly goal",
+        description: "Consider linking tasks to goals for better alignment tracking.",
       });
-      return;
     }
     
-    const hasFullTags = blockToSave.roleId && blockToSave.weeklyGoalId && blockToSave.quadrant;
-    const hasBasicTags = blockToSave.roleId && blockToSave.quadrant;
+    const hasRequiredTags = blockToSave.roleId && blockToSave.quadrant;
     
-    if (hasFullTags || (!isAdvancedMode && hasBasicTags)) {
+    if (hasRequiredTags) {
       try {
         const today = new Date();
         const startTime = new Date(today);
@@ -276,6 +290,27 @@ export default function StatusPage() {
             </div>
           ) : null}
         </div>
+
+        {isAdvancedMode && (
+          <div className="flex flex-col items-center gap-1 mb-2">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Goal Alignment:</span>
+              <span 
+                className="font-mono font-bold"
+                style={{ 
+                  color: goalLinkedPercentage >= 60 ? '#22c55e' : '#f59e0b' 
+                }}
+              >
+                {goalLinkedPercentage}%
+              </span>
+            </div>
+            {goalLinkedPercentage < 60 && (
+              <p className="text-[10px] text-amber-400/80 text-center max-w-[200px]">
+                Link more tasks to weekly goals for better focus
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-center py-2">
           <div className="relative">
