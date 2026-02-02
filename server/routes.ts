@@ -651,15 +651,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: parsed.error.errors });
       }
       
-      const currentWeekStart = getWeekStartDate();
-      const weeklyGoals = await storage.getWeeklyGoals(parsed.data.userId, currentWeekStart);
-      if (weeklyGoals.length === 0) {
-        return res.status(400).json({ error: "Define weekly goals before scheduling." });
-      }
-      
       const task = await storage.createTask(parsed.data);
       res.status(201).json(task);
     } catch (error) {
+      console.error("Failed to create task:", error);
       res.status(500).json({ error: "Failed to create task" });
     }
   });
