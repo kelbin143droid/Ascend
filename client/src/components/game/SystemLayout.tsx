@@ -100,7 +100,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           borderTop: `1px solid ${colors.surfaceBorder}`
         }}
       >
-        <div className="flex justify-between items-end h-16 max-w-md md:max-w-2xl mx-auto pb-2 relative px-2">
+        <div className="flex justify-center items-end h-16 w-full mx-auto pb-2 relative gap-4">
           {leftNavItems.map((item) => {
             const isActive = location === item.path;
             return (
@@ -108,7 +108,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                 <button
                   data-testid={`nav-${item.label.toLowerCase()}`}
                   className={cn(
-                    "flex flex-col items-center justify-center transition-all duration-300 group px-2"
+                    "flex flex-col items-center justify-center transition-all duration-300 group min-w-[60px]"
                   )}
                   style={{
                     color: isActive ? colors.primary : colors.textMuted,
@@ -126,7 +126,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                     <item.icon size={22} className={cn("transition-transform", isActive && "animate-pulse")} />
                   </div>
                   <span 
-                    className="text-[10px] tracking-[0.2em] mt-1.5 font-display font-bold uppercase transition-all"
+                    className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase transition-all"
                     style={{ opacity: isActive ? 1 : 0.6 }}
                   >
                     {item.label}
@@ -139,7 +139,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           <Link href="/">
             <button
               data-testid="nav-status"
-              className="relative -mt-6 flex items-center justify-center transition-all duration-300 group"
+              className="relative -mt-6 flex items-center justify-center transition-all duration-300 group min-w-[60px]"
               style={{
                 transform: location === "/" ? 'scale(1.1)' : 'scale(1)'
               }}
@@ -164,7 +164,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                 <button
                   data-testid={`nav-${item.label.toLowerCase()}`}
                   className={cn(
-                    "flex flex-col items-center justify-center transition-all duration-300 group px-2"
+                    "flex flex-col items-center justify-center transition-all duration-300 group min-w-[60px]"
                   )}
                   style={{
                     color: isActive ? colors.primary : colors.textMuted,
@@ -182,7 +182,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                     <item.icon size={22} className={cn("transition-transform", isActive && "animate-pulse")} />
                   </div>
                   <span 
-                    className="text-[10px] tracking-[0.2em] mt-1.5 font-display font-bold uppercase transition-all"
+                    className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase transition-all"
                     style={{ opacity: isActive ? 1 : 0.6 }}
                   >
                     {item.label}
