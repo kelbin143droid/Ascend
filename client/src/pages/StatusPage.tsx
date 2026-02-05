@@ -656,7 +656,7 @@ export default function StatusPage() {
       </Dialog>
 
       <Dialog open={editingBlock !== null} onOpenChange={(open) => !open && setEditingBlock(null)}>
-        <DialogContent className="bg-black/95 border-primary/20 max-w-xs">
+        <DialogContent className="bg-black/95 border-primary/20 max-w-xs max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary/80 font-display text-sm">
               {editingBlock?.isNew ? 'Add Time Block' : 'Edit Time Block'}
@@ -863,12 +863,14 @@ export default function StatusPage() {
                   variant="outline"
                   className="flex-1 border-white/10"
                   onClick={() => setEditingBlock(null)}
+                  data-testid="button-cancel-block"
                 >
                   Cancel
                 </Button>
                 <Button
                   className="flex-1 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30"
                   onClick={handleSaveBlock}
+                  data-testid="button-save-block"
                 >
                   Save
                 </Button>
