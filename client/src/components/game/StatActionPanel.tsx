@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Plus, Check } from "lucide-react";
+import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Plus, Check, Flame } from "lucide-react";
 import { getDailyTip, STAT_MULTIPLIERS } from "@/lib/statTips";
 import type { ScheduleBlock } from "./Sectograph";
 import type { DailyStatProgress } from "@shared/schema";
@@ -29,13 +29,16 @@ const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
     { id: "squats", name: "Squats", targetValue: 10, unit: "reps" },
   ],
   agility: [
-    { id: "cardio", name: "Cardio Training", targetValue: 5, unit: "minutes" },
+    { id: "sprint", name: "Sprint Training", targetValue: 5, unit: "minutes" },
   ],
   sense: [
     { id: "meditation", name: "Meditation", targetValue: 5, unit: "minutes" },
   ],
   vitality: [
     { id: "sleep", name: "Sleep", targetValue: 7, unit: "hours" },
+  ],
+  stamina: [
+    { id: "cardio", name: "Cardio", targetValue: 5, unit: "minutes" },
   ],
 };
 
@@ -57,6 +60,7 @@ const STAT_CONFIG: Record<string, { icon: typeof Swords; color: string; label: s
   agility: { icon: Wind, color: "#4ecdc4", label: "AGILITY" },
   sense: { icon: Eye, color: "#ffe66d", label: "SENSE" },
   vitality: { icon: Heart, color: "#a855f7", label: "VITALITY" },
+  stamina: { icon: Flame, color: "#f97316", label: "STAMINA" },
 };
 
 const STAT_TO_SCHEDULE_MAP: Record<string, string[]> = {
@@ -64,6 +68,7 @@ const STAT_TO_SCHEDULE_MAP: Record<string, string[]> = {
   agility: ["exercise", "training", "sports"],
   sense: ["study", "work", "focus", "deep work", "meditation", "reading"],
   vitality: ["sleep", "rest", "recovery", "meal", "walk"],
+  stamina: ["cardio", "running", "cycling", "swimming", "hiit"],
 };
 
 export function StatActionPanel({
