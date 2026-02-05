@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme } from "@/context/ThemeContext";
+import { Shield, Zap, Check } from "lucide-react";
 
 interface IntroScreenProps {
   onBeginAscension: () => void;
 }
 
 export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
-  const { theme } = useTheme();
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleBeginAscension = () => {
@@ -25,220 +24,191 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
         animate={{ opacity: isTransitioning ? 0 : 1 }}
         transition={{ duration: 1.2, ease: "easeInOut" }}
       >
-        {/* Positive, uplifting gradient background */}
+        {/* Dark blue gradient background */}
         <div 
           className="absolute inset-0"
           style={{
             background: `
               linear-gradient(to bottom, 
-                #1a2a4a 0%, 
-                #2a4a6a 25%, 
-                #3a5a7a 50%,
-                #4a6a8a 75%,
-                #3a5070 100%
+                #0a0f1a 0%, 
+                #0d1424 25%, 
+                #111a2e 50%,
+                #0d1424 75%,
+                #0a0f1a 100%
               )
             `,
           }}
         />
 
-        {/* Soft light rays from center */}
+        {/* Subtle glow behind card */}
         <div className="absolute inset-0 overflow-hidden">
           <motion.div
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             style={{
-              width: "600px",
-              height: "600px",
-              background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)",
+              width: "500px",
+              height: "400px",
+              background: "radial-gradient(ellipse, rgba(99,102,241,0.15) 0%, transparent 70%)",
+              filter: "blur(40px)",
             }}
             animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.5, 0.7, 0.5],
+              scale: [1, 1.05, 1],
+              opacity: [0.6, 0.8, 0.6],
             }}
             transition={{ duration: 4, repeat: Infinity }}
           />
         </div>
 
-        {/* Floating particles */}
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: `${2 + Math.random() * 4}px`,
-              height: `${2 + Math.random() * 4}px`,
-              background: "rgba(255,255,255,0.6)",
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              opacity: [0.3, 0.7, 0.3],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-
-        {/* Title */}
-        <motion.h1
-          className="absolute top-12 md:top-16 text-3xl md:text-4xl font-display font-bold tracking-[0.2em] z-20"
-          style={{ 
-            color: "#ffffff",
-            textShadow: "0 0 30px rgba(255,255,255,0.5)",
+        {/* Main card container */}
+        <motion.div
+          className="relative z-10 flex flex-col items-center px-8 py-12 mx-4"
+          style={{
+            background: "linear-gradient(135deg, rgba(30,41,59,0.8) 0%, rgba(15,23,42,0.9) 100%)",
+            borderRadius: "16px",
+            border: "1px solid rgba(99,102,241,0.3)",
+            boxShadow: "0 0 60px rgba(99,102,241,0.2), inset 0 1px 0 rgba(255,255,255,0.05)",
+            maxWidth: "400px",
+            width: "100%",
           }}
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 1 }}
+          transition={{ delay: 0.3, duration: 0.8 }}
         >
-          WELCOME
-        </motion.h1>
-
-        {/* Central portal frame */}
-        <motion.div 
-          className="relative flex items-center justify-center"
-          style={{ width: "280px", height: "280px" }}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3, duration: 1 }}
-        >
-          {/* Outer glow */}
-          <div
-            className="absolute rounded-full"
-            style={{
-              width: "260px",
-              height: "260px",
-              background: "radial-gradient(circle, rgba(100,180,255,0.2) 0%, transparent 70%)",
-              filter: "blur(10px)",
-            }}
-          />
-
-          {/* Portal ring - outer */}
+          {/* Shield icon with checkmark */}
           <motion.div
-            className="absolute rounded-full"
-            style={{
-              width: "240px",
-              height: "240px",
-              border: "4px solid rgba(100,180,255,0.4)",
-              boxShadow: "0 0 20px rgba(100,180,255,0.3), inset 0 0 20px rgba(100,180,255,0.1)",
-            }}
-          />
-
-          {/* Portal ring - glowing inner edge */}
-          <motion.div
-            className="absolute rounded-full"
-            style={{
-              width: "220px",
-              height: "220px",
-              border: "3px solid #6dd3ff",
-              boxShadow: "0 0 15px rgba(109,211,255,0.6), 0 0 30px rgba(109,211,255,0.3)",
-            }}
-            animate={{
-              boxShadow: [
-                "0 0 15px rgba(109,211,255,0.6), 0 0 30px rgba(109,211,255,0.3)",
-                "0 0 25px rgba(109,211,255,0.8), 0 0 40px rgba(109,211,255,0.4)",
-                "0 0 15px rgba(109,211,255,0.6), 0 0 30px rgba(109,211,255,0.3)",
-              ],
-            }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-
-          {/* Bright inner circle */}
-          <div
-            className="absolute rounded-full"
-            style={{
-              width: "200px",
-              height: "200px",
-              background: "radial-gradient(circle, rgba(150,200,255,0.3) 0%, rgba(100,150,200,0.1) 100%)",
-            }}
-          />
-
-          {/* Floating particles around portal */}
-          {[...Array(8)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full"
+            className="relative mb-6"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.5, duration: 0.5, type: "spring" }}
+          >
+            <div
+              className="relative flex items-center justify-center"
               style={{
-                width: "4px",
-                height: "4px",
-                background: "#6dd3ff",
-                boxShadow: "0 0 8px #6dd3ff",
+                width: "80px",
+                height: "80px",
               }}
-              animate={{
-                x: [
-                  Math.cos((i / 8) * Math.PI * 2) * 90,
-                  Math.cos((i / 8) * Math.PI * 2 + Math.PI) * 95,
-                  Math.cos((i / 8) * Math.PI * 2) * 90,
-                ],
-                y: [
-                  Math.sin((i / 8) * Math.PI * 2) * 90,
-                  Math.sin((i / 8) * Math.PI * 2 + Math.PI) * 95,
-                  Math.sin((i / 8) * Math.PI * 2) * 90,
-                ],
-                opacity: [0.4, 0.8, 0.4],
+            >
+              {/* Glow behind shield */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: "radial-gradient(circle, rgba(139,92,246,0.4) 0%, transparent 70%)",
+                  filter: "blur(15px)",
+                }}
+              />
+              {/* Shield */}
+              <Shield 
+                size={64} 
+                strokeWidth={1.5}
+                style={{ 
+                  color: "#8b5cf6",
+                  filter: "drop-shadow(0 0 10px rgba(139,92,246,0.5))",
+                }}
+              />
+              {/* Checkmark inside shield */}
+              <Check 
+                size={28} 
+                strokeWidth={3}
+                className="absolute"
+                style={{ 
+                  color: "#a78bfa",
+                  marginTop: "-4px",
+                }}
+              />
+            </div>
+          </motion.div>
+
+          {/* Title */}
+          <motion.h1
+            className="text-3xl md:text-4xl font-display font-bold tracking-wide text-center mb-4"
+            style={{ 
+              color: "#a78bfa",
+              textShadow: "0 0 30px rgba(167,139,250,0.5)",
+            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.6 }}
+          >
+            SOLO LIFE PRO
+          </motion.h1>
+
+          {/* Tagline */}
+          <motion.p
+            className="text-center text-sm md:text-base mb-8 px-4"
+            style={{ 
+              color: "rgba(148,163,184,0.9)",
+              lineHeight: "1.6",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9, duration: 0.6 }}
+          >
+            Gamify your existence. Track habits. Earn XP. Ascend the ranks.
+          </motion.p>
+
+          {/* Initialize System Button */}
+          <motion.button
+            onClick={handleBeginAscension}
+            className="w-full max-w-xs"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.1, duration: 0.6 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            data-testid="button-begin-ascension"
+          >
+            <div
+              className="relative flex items-center justify-center gap-2 px-6 py-3 font-display tracking-wider uppercase text-sm font-bold"
+              style={{
+                background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)",
+                color: "#ffffff",
+                borderRadius: "8px",
+                boxShadow: "0 4px 20px rgba(124,58,237,0.4), 0 0 40px rgba(99,102,241,0.2)",
               }}
-              transition={{
-                duration: 4 + i * 0.3,
-                repeat: Infinity,
-                delay: i * 0.2,
-              }}
-            />
-          ))}
+            >
+              <motion.div
+                className="absolute inset-0 rounded-lg"
+                style={{
+                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)",
+                }}
+                animate={{ x: ["-100%", "100%"] }}
+                transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 1 }}
+              />
+              <Zap size={18} className="relative z-10" />
+              <span className="relative z-10">INITIALIZE SYSTEM</span>
+            </div>
+          </motion.button>
+
+          {/* Secure connection text */}
+          <motion.p
+            className="mt-4 text-xs tracking-widest uppercase"
+            style={{ color: "rgba(100,116,139,0.7)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.3, duration: 0.6 }}
+          >
+            SECURE CONNECTION REQUIRED
+          </motion.p>
         </motion.div>
 
-        {/* Subtitle */}
+        {/* System version at bottom */}
         <motion.p
-          className="mt-6 text-center text-lg font-display z-20"
-          style={{ 
-            color: "rgba(255,255,255,0.8)",
-          }}
+          className="absolute bottom-8 text-xs tracking-wider"
+          style={{ color: "rgba(100,116,139,0.5)" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 1 }}
+          transition={{ delay: 1.5, duration: 0.6 }}
         >
-          Begin Your Journey
+          SYSTEM VERSION 2.0.4 // BUILD: NEON_GENESIS
         </motion.p>
-
-        {/* Accept Button */}
-        <motion.button
-          onClick={handleBeginAscension}
-          className="mt-8 z-20"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.5, duration: 0.8 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.98 }}
-          data-testid="button-begin-ascension"
-        >
-          <div
-            className="relative px-12 py-3 font-display tracking-[0.2em] uppercase text-lg font-bold"
-            style={{
-              background: "linear-gradient(180deg, rgba(100,180,255,0.3) 0%, rgba(80,150,220,0.2) 100%)",
-              border: "2px solid #6dd3ff",
-              color: "#ffffff",
-              boxShadow: "0 0 20px rgba(109,211,255,0.3), inset 0 0 15px rgba(109,211,255,0.1)",
-              borderRadius: "4px",
-            }}
-          >
-            <motion.div
-              className="absolute inset-0 rounded"
-              style={{
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-              }}
-              animate={{ x: ["-100%", "100%"] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-            />
-            <span className="relative z-10">START</span>
-          </div>
-        </motion.button>
 
         {/* Transition overlay */}
         {isTransitioning && (
           <motion.div
             className="absolute inset-0 z-50"
-            style={{ transformOrigin: "center", background: "#ffffff" }}
+            style={{ 
+              transformOrigin: "center", 
+              background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" 
+            }}
             initial={{ scale: 0, borderRadius: "100%" }}
             animate={{ scale: 3, borderRadius: "0%" }}
             transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
