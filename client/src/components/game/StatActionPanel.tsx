@@ -24,9 +24,9 @@ interface StatExercise {
 
 const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
   strength: [
-    { id: "pushups", name: "Pushups", targetValue: 10, unit: "reps" },
-    { id: "abs", name: "Abs", targetValue: 10, unit: "reps" },
-    { id: "squats", name: "Squats", targetValue: 10, unit: "reps" },
+    { id: "pushups", name: "Pushups (3 sets)", targetValue: 30, unit: "reps" },
+    { id: "abs", name: "Abs (3 sets)", targetValue: 30, unit: "reps" },
+    { id: "squats", name: "Squats (3 sets)", targetValue: 30, unit: "reps" },
   ],
   agility: [
     { id: "sprint", name: "Sprint Training", targetValue: 5, unit: "minutes" },
