@@ -202,34 +202,34 @@ export function StatActionPanel({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-black/95 border-primary/20 max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
+      <DialogContent className="bg-black/95 border-primary/20 max-w-sm max-h-[85vh] flex flex-col">
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="flex items-center gap-2">
             <div 
-              className="w-12 h-12 rounded-full flex items-center justify-center"
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
               style={{ 
                 background: `linear-gradient(135deg, ${config.color}30 0%, transparent 100%)`,
-                boxShadow: `0 0 20px ${config.color}40`
+                boxShadow: `0 0 15px ${config.color}40`
               }}
             >
-              <Icon size={24} style={{ color: config.color }} />
+              <Icon size={20} style={{ color: config.color }} />
             </div>
             <div>
-              <span className="text-lg font-display tracking-wider" style={{ color: config.color }}>
+              <span className="text-base font-display tracking-wider" style={{ color: config.color }}>
                 {config.label}
               </span>
-              <div className="text-[10px] text-muted-foreground/60 font-mono">
-                {multiplier}x XP MULTIPLIER
+              <div className="text-[9px] text-muted-foreground/60 font-mono">
+                {multiplier}x XP
               </div>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="p-3 rounded-lg bg-gradient-to-r from-black/40 to-black/20 border border-white/5">
+        <div className="space-y-3 py-1 overflow-y-auto flex-1 min-h-0">
+          <div className="p-2 rounded-lg bg-gradient-to-r from-black/40 to-black/20 border border-white/5">
             <div className="flex items-start gap-2">
-              <Zap size={14} className="text-primary/60 mt-0.5 shrink-0" />
-              <p className="text-xs text-muted-foreground/80 italic leading-relaxed">
+              <Zap size={12} className="text-primary/60 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-muted-foreground/80 italic leading-snug">
                 "{tip}"
               </p>
             </div>
@@ -298,33 +298,33 @@ export function StatActionPanel({
           </div>
 
           {scheduledBlocks.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider flex items-center gap-1">
-                <Clock size={10} />
-                Today's Scheduled Blocks
+            <div className="space-y-1">
+              <div className="text-[9px] text-muted-foreground/50 uppercase tracking-wider flex items-center gap-1">
+                <Clock size={9} />
+                Scheduled
               </div>
               <div className="space-y-1">
-                {scheduledBlocks.slice(0, 3).map(block => (
+                {scheduledBlocks.slice(0, 2).map(block => (
                   <div 
                     key={block.id}
-                    className={`flex items-center gap-2 p-2 rounded text-xs ${
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-[11px] ${
                       block === currentBlock ? 'ring-1 ring-primary/40' : ''
                     }`}
                     style={{ backgroundColor: `${block.color}20` }}
                   >
                     <div 
-                      className="w-2 h-2 rounded-full"
+                      className="w-2 h-2 rounded-full shrink-0"
                       style={{ 
                         backgroundColor: block.color,
                         boxShadow: block.isSystemTask ? `0 0 6px ${block.color}` : 'none'
                       }}
                     />
-                    <span className="flex-1 text-white/70">{block.name}</span>
-                    <span className="text-muted-foreground/50 font-mono text-[10px]">
+                    <span className="flex-1 text-white/70 truncate">{block.name}</span>
+                    <span className="text-muted-foreground/50 font-mono text-[9px] shrink-0">
                       {block.startHour}:00 - {block.endHour}:00
                     </span>
                     {block === currentBlock && (
-                      <span className="text-[8px] text-primary font-bold">NOW</span>
+                      <span className="text-[8px] text-primary font-bold shrink-0">NOW</span>
                     )}
                   </div>
                 ))}
@@ -339,22 +339,22 @@ export function StatActionPanel({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-4"
+                className="space-y-3"
               >
-                <div className="text-center py-4">
-                  <div className="text-4xl font-mono font-bold text-primary mb-1">
+                <div className="text-center py-2">
+                  <div className="text-3xl font-mono font-bold text-primary mb-0.5">
                     {formatTime(elapsedTime)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground/60">
+                  <div className="text-[9px] text-muted-foreground/60">
                     Session in progress
                   </div>
                 </div>
 
                 {showDurationAdjust ? (
-                  <div className="space-y-3 p-3 rounded-lg bg-black/30 border border-primary/20">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Adjust Duration</span>
-                      <span className="font-mono text-primary">{adjustedDuration} min</span>
+                  <div className="space-y-2 p-2 rounded-lg bg-black/30 border border-primary/20">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">Adjust</span>
+                      <span className="font-mono text-primary">{adjustedDuration} min (+{calculateXP(adjustedDuration)} XP)</span>
                     </div>
                     <Slider
                       value={[adjustedDuration]}
@@ -362,13 +362,8 @@ export function StatActionPanel({
                       min={1}
                       max={180}
                       step={5}
-                      className="py-2"
+                      className="py-1"
                     />
-                    <div className="flex justify-between text-[10px] text-muted-foreground/50">
-                      <span>1 min</span>
-                      <span>+{calculateXP(adjustedDuration)} XP</span>
-                      <span>180 min</span>
-                    </div>
                   </div>
                 ) : null}
 
@@ -395,14 +390,12 @@ export function StatActionPanel({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-3"
+                className="space-y-2 pt-1"
               >
-                <div className="text-center py-2">
-                  <div className="text-sm text-muted-foreground/60 mb-1">
-                    Default session: <span className="font-mono text-white/80">{defaultDuration} min</span>
-                  </div>
-                  <div className="text-[10px] text-muted-foreground/40">
-                    Estimated XP: +{calculateXP(defaultDuration)}
+                <div className="text-center">
+                  <div className="text-[11px] text-muted-foreground/60">
+                    Session: <span className="font-mono text-white/80">{defaultDuration} min</span>
+                    <span className="text-muted-foreground/40 ml-2">(+{calculateXP(defaultDuration)} XP)</span>
                   </div>
                 </div>
 
