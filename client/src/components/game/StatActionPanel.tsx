@@ -20,6 +20,7 @@ interface StatExercise {
   name: string;
   targetValue: number;
   unit: "reps" | "minutes" | "hours";
+  instructions?: string;
 }
 
 const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
@@ -32,7 +33,7 @@ const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
     { id: "sprint", name: "Sprint Training", targetValue: 5, unit: "minutes" },
   ],
   sense: [
-    { id: "meditation", name: "Meditation", targetValue: 5, unit: "minutes" },
+    { id: "meditation", name: "Meditation", targetValue: 5, unit: "minutes", instructions: "Breathe in for 4 seconds, breathe out for 6 seconds." },
   ],
   vitality: [
     { id: "sleep", name: "Sleep", targetValue: 7, unit: "hours" },
@@ -257,6 +258,11 @@ export function StatActionPanel({
                   >
                     <div className="flex-1">
                       <div className="text-xs text-white/80">{exercise.name}</div>
+                      {exercise.instructions && (
+                        <div className="text-[10px] text-muted-foreground/60 italic leading-tight mt-0.5">
+                          {exercise.instructions}
+                        </div>
+                      )}
                       <div className="text-sm font-mono" style={{ color: isComplete ? '#22c55e' : config.color }}>
                         {current}/{exercise.targetValue}{unitLabel}
                       </div>
