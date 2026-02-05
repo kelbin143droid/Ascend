@@ -160,3 +160,74 @@ export function floorStats(stats: Stats): Stats {
 export function getDisplayStats(stats: Stats): Stats {
   return floorStats(stats);
 }
+
+// HP Penalty/Recovery based on Vitality goal (7 hours sleep = 420 minutes)
+export const VITALITY_GOAL_MINUTES = 420; // 7 hours
+export const HP_CHANGE_PERCENT = 0.10; // 10% change
+export const MIN_HP_PERCENT = 0.50; // Cannot drop below 50% of max HP
+
+export interface HPUpdateResult {
+  newHp: number;
+  changed: boolean;
+  message: string;
+  direction: 'increase' | 'decrease' | 'none';
+}
+
+export function calculateHPUpdate(
+  currentHp: number,
+  maxHp: number,
+  vitalityMinutesToday: number,
+  lastHpCheckDate: string | null
+): HPUpdateResult {
+  const today = getTodayDateString();
+  
+  // If we already checked today, no change
+  if (lastHpCheckDate === today) {
+    return { newHp: currentHp, changed: false, message: '', direction: 'none' };
+  }
+  
+  const goalMet = vitalityMinutesToday >= VITALITY_GOAL_MINUTES;
+  const minHp = Math.floor(maxHp * MIN_HP_PERCENT);
+  
+  if (goalMet) {
+    // Recovery: +10% HP, up to max
+    const hpIncrease = Math.floor(maxHp * HP_CHANGE_PERCENT);
+    const newHp = Math.min(currentHp + hpIncrease, maxHp);
+    
+    if (newHp > currentHp) {
+      return {
+        newHp,
+        changed: true,
+        message: `Vitality goal met! HP restored +${hpIncrease}`,
+        direction: 'increase'
+      };
+    }
+    return { newHp: currentHp, changed: false, message: 'HP already at maximum', direction: 'none' };
+  } else {
+    // Penalty: -10% HP, min 50% of max
+    const hpDecrease = Math.floor(maxHp * HP_CHANGE_PERCENT);
+    const newHp = Math.max(currentHp - hpDecrease, minHp);
+    
+    if (newHp < currentHp) {
+      return {
+        newHp,
+        changed: true,
+        message: `Vitality goal not met! HP decreased -${currentHp - newHp}`,
+        direction: 'decrease'
+      };
+    }
+    return { newHp: currentHp, changed: false, message: 'HP already at minimum threshold', direction: 'none' };
+  }
+}
+
+export function getVitalityMinutesForDate(
+  dailyProgress: Array<{ date: string; progress: Record<string, Record<string, number>> }>,
+  date: string
+): number {
+  const dayProgress = dailyProgress.find(p => p.date === date);
+  if (!dayProgress || !dayProgress.progress.vitality) {
+    return 0;
+  }
+  // Sum all vitality exercises for the day
+  return Object.values(dayProgress.progress.vitality).reduce((total, val) => total + (val || 0), 0);
+}

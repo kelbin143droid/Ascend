@@ -10,7 +10,7 @@ import {
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { calculateXP } from "./gameLogic/xp";
-import { getDisplayStats, getTodayDateString, getFatigueMultiplier } from "./gameLogic/statProgression";
+import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES } from "./gameLogic/statProgression";
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -184,6 +184,50 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Player not found" });
       }
       res.json(attachDerivedStats(player));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to modify mp" });
+    }
+  });
+
+  // HP check based on vitality goal (7 hours sleep)
+  app.post("/api/player/:id/check-hp", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      
+      const today = getTodayDateString();
+      const dailyProgress = player.dailyStatProgress || [];
+      const vitalityMinutes = getVitalityMinutesForDate(dailyProgress, today);
+      
+      const hpResult = calculateHPUpdate(
+        player.hp,
+        player.maxHp,
+        vitalityMinutes,
+        player.lastHpCheckDate || null
+      );
+      
+      if (hpResult.changed) {
+        const updatedPlayer = await storage.updatePlayer(req.params.id, {
+          hp: hpResult.newHp,
+          lastHpCheckDate: today
+        });
+        if (!updatedPlayer) {
+          return res.status(500).json({ error: "Failed to update HP" });
+        }
+        res.json({
+          ...attachDerivedStats(updatedPlayer),
+          hpUpdate: hpResult
+        });
+      } else {
+        res.json({
+          ...attachDerivedStats(player),
+          hpUpdate: hpResult,
+          vitalityMinutes,
+          vitalityGoal: VITALITY_GOAL_MINUTES
+        });
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to modify mp" });
     }

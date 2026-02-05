@@ -191,6 +191,7 @@ export const players = pgTable("players", {
   title: text("title").notNull().default("WOLF SLAYER"),
   hp: integer("hp").notNull().default(100),
   maxHp: integer("max_hp").notNull().default(100),
+  lastHpCheckDate: text("last_hp_check_date"),
   mp: integer("mp").notNull().default(10),
   maxMp: integer("max_mp").notNull().default(10),
   stats: jsonb("stats").$type<Stats>().notNull().default({
