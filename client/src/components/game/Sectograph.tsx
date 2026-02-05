@@ -11,6 +11,7 @@ export interface ScheduleBlock {
   endMinute?: number;
   color: string;
   isSystemTask?: boolean;
+  isTemplate?: boolean;
 }
 
 interface SectographProps {

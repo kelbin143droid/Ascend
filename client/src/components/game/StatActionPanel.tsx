@@ -3,15 +3,41 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Plus, Check } from "lucide-react";
 import { getDailyTip, STAT_MULTIPLIERS } from "@/lib/statTips";
 import type { ScheduleBlock } from "./Sectograph";
+import type { DailyStatProgress } from "@shared/schema";
 
 interface ActiveSession {
   stat: string;
   startTime: number;
   scheduledDuration: number;
 }
+
+interface StatExercise {
+  id: string;
+  name: string;
+  targetValue: number;
+  unit: "reps" | "minutes" | "hours";
+}
+
+const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
+  strength: [
+    { id: "pushups", name: "Pushups", targetValue: 10, unit: "reps" },
+    { id: "abs", name: "Abs", targetValue: 10, unit: "reps" },
+    { id: "squats", name: "Squats", targetValue: 10, unit: "reps" },
+  ],
+  agility: [
+    { id: "cardio", name: "Cardio Training", targetValue: 5, unit: "minutes" },
+  ],
+  sense: [
+    { id: "meditation", name: "Meditation", targetValue: 5, unit: "minutes" },
+  ],
+  vitality: [
+    { id: "sleep", name: "Sleep", targetValue: 7, unit: "hours" },
+  ],
+};
 
 interface StatActionPanelProps {
   open: boolean;
@@ -22,6 +48,8 @@ interface StatActionPanelProps {
   activeSession: ActiveSession | null;
   onStartSession: (stat: string, scheduledDuration: number) => void;
   onCancelSession: () => void;
+  dailyProgress?: DailyStatProgress[];
+  onUpdateProgress?: (stat: string, exerciseId: string, value: number) => void;
 }
 
 const STAT_CONFIG: Record<string, { icon: typeof Swords; color: string; label: string }> = {
@@ -47,10 +75,39 @@ export function StatActionPanel({
   activeSession,
   onStartSession,
   onCancelSession,
+  dailyProgress = [],
+  onUpdateProgress,
 }: StatActionPanelProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [adjustedDuration, setAdjustedDuration] = useState(30);
   const [showDurationAdjust, setShowDurationAdjust] = useState(false);
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+
+  const getTodayKey = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  };
+
+  const getTodayProgress = () => {
+    const todayKey = getTodayKey();
+    return dailyProgress.find(p => p.date === todayKey)?.progress || {};
+  };
+
+  const getExerciseProgress = (exerciseId: string): number => {
+    const todayProgress = getTodayProgress();
+    return stat ? (todayProgress[stat]?.[exerciseId] || 0) : 0;
+  };
+
+  const handleAddProgress = (exerciseId: string, exercise: StatExercise) => {
+    if (!stat || !onUpdateProgress) return;
+    const inputVal = inputValues[exerciseId];
+    const addValue = inputVal ? parseFloat(inputVal) : 1;
+    if (isNaN(addValue) || addValue <= 0) return;
+    
+    const currentValue = getExerciseProgress(exerciseId);
+    onUpdateProgress(stat, exerciseId, currentValue + addValue);
+    setInputValues(prev => ({ ...prev, [exerciseId]: '' }));
+  };
 
   useEffect(() => {
     if (activeSession) {
@@ -165,6 +222,68 @@ export function StatActionPanel({
               <p className="text-xs text-muted-foreground/80 italic leading-relaxed">
                 "{tip}"
               </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">
+              Daily Goals
+            </div>
+            <div className="space-y-2">
+              {(DEFAULT_EXERCISES[stat] || []).map((exercise) => {
+                const current = getExerciseProgress(exercise.id);
+                const isComplete = current >= exercise.targetValue;
+                const unitLabel = exercise.unit === "reps" ? "" : ` ${exercise.unit}`;
+                
+                return (
+                  <div 
+                    key={exercise.id}
+                    className={`flex items-center gap-2 p-2 rounded-lg border ${
+                      isComplete 
+                        ? 'bg-green-500/10 border-green-500/30' 
+                        : 'bg-black/30 border-white/10'
+                    }`}
+                    data-testid={`exercise-${exercise.id}`}
+                  >
+                    <div className="flex-1">
+                      <div className="text-xs text-white/80">{exercise.name}</div>
+                      <div className="text-sm font-mono" style={{ color: isComplete ? '#22c55e' : config.color }}>
+                        {current}/{exercise.targetValue}{unitLabel}
+                      </div>
+                    </div>
+                    
+                    {isComplete ? (
+                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <Check size={16} className="text-green-500" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          placeholder={exercise.unit === "reps" ? "1" : "1"}
+                          value={inputValues[exercise.id] || ''}
+                          onChange={(e) => setInputValues(prev => ({ ...prev, [exercise.id]: e.target.value }))}
+                          className="w-14 h-8 text-xs bg-black/50 border-white/20 text-center"
+                          min="0"
+                          step={exercise.unit === "hours" ? "0.5" : "1"}
+                          data-testid={`input-${exercise.id}`}
+                        />
+                        <button
+                          onClick={() => handleAddProgress(exercise.id, exercise)}
+                          className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                          style={{ 
+                            backgroundColor: `${config.color}20`,
+                            border: `1px solid ${config.color}40`
+                          }}
+                          data-testid={`button-add-${exercise.id}`}
+                        >
+                          <Plus size={16} style={{ color: config.color }} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

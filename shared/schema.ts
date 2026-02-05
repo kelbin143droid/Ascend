@@ -83,7 +83,41 @@ export const scheduleBlockSchema = z.object({
   endMinute: z.number().optional().default(0),
   color: z.string(),
   isSystemTask: z.boolean().optional(),
+  isTemplate: z.boolean().optional().default(true),
 });
+
+export const statExerciseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  targetValue: z.number(),
+  unit: z.enum(["reps", "minutes", "hours"]),
+});
+
+export const statGoalsSchema = z.object({
+  strength: z.array(statExerciseSchema).default([
+    { id: "pushups", name: "Pushups", targetValue: 10, unit: "reps" },
+    { id: "abs", name: "Abs", targetValue: 10, unit: "reps" },
+    { id: "squats", name: "Squats", targetValue: 10, unit: "reps" },
+  ]),
+  agility: z.array(statExerciseSchema).default([
+    { id: "cardio", name: "Cardio Training", targetValue: 5, unit: "minutes" },
+  ]),
+  sense: z.array(statExerciseSchema).default([
+    { id: "meditation", name: "Meditation", targetValue: 5, unit: "minutes" },
+  ]),
+  vitality: z.array(statExerciseSchema).default([
+    { id: "sleep", name: "Sleep", targetValue: 7, unit: "hours" },
+  ]),
+});
+
+export const dailyStatProgressSchema = z.object({
+  date: z.string(),
+  progress: z.record(z.record(z.number())),
+});
+
+export type StatExercise = z.infer<typeof statExerciseSchema>;
+export type StatGoals = z.infer<typeof statGoalsSchema>;
+export type DailyStatProgress = z.infer<typeof dailyStatProgressSchema>;
 
 export type ScheduleBlock = z.infer<typeof scheduleBlockSchema>;
 
@@ -197,6 +231,7 @@ export const players = pgTable("players", {
   rankHistory: jsonb("rank_history").$type<RankHistoryEntry[]>().notNull().default([]),
   pendingRankUnlock: jsonb("pending_rank_unlock").$type<PendingRankUnlock>().default(null),
   planningMode: text("planning_mode").notNull().default("basic"),
+  dailyStatProgress: jsonb("daily_stat_progress").$type<DailyStatProgress[]>().notNull().default([]),
 });
 
 export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { Quadrant } from "@shared/schema";
+import type { Quadrant, DailyStatProgress } from "@shared/schema";
 
 const COLOR_OPTIONS = [
   "#3b4d6b", "#4a6fa5", "#5a8a72", "#c97b63", "#7d9d6a", "#8b7aa3",
@@ -156,13 +156,14 @@ export default function StatusPage() {
     { key: 'vitality', label: 'VITALITY', icon: Heart, color: '#a855f7', value: displayStats.vitality },
   ];
 
-  const allScheduleBlocks: (ScheduleBlock & { date?: string })[] = player.schedule?.length 
-    ? player.schedule as (ScheduleBlock & { date?: string })[] 
+  const allScheduleBlocks: (ScheduleBlock & { date?: string; isTemplate?: boolean })[] = player.schedule?.length 
+    ? player.schedule as (ScheduleBlock & { date?: string; isTemplate?: boolean })[] 
     : [];
   
   const currentSchedule: ScheduleBlock[] = allScheduleBlocks.filter(block => {
-    if (!block.date) return isToday;
-    return block.date === selectedDateKey;
+    if (block.date === selectedDateKey) return true;
+    if (!block.date && block.isTemplate !== false) return true;
+    return false;
   });
 
   const handlePresetClick = (preset: typeof ACTIVITY_PRESETS[0]) => {
@@ -273,6 +274,55 @@ export default function StatusPage() {
     if (block.id.startsWith('custom')) {
       setCustomName(block.name);
     }
+  };
+
+  const getTodayKey = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  };
+
+  const handleUpdateProgress = (stat: string, exerciseId: string, newValue: number) => {
+    const todayKey = getTodayKey();
+    const existingProgress: DailyStatProgress[] = (player.dailyStatProgress as DailyStatProgress[]) || [];
+    
+    const todayIndex = existingProgress.findIndex(p => p.date === todayKey);
+    let updatedProgress: DailyStatProgress[];
+    
+    if (todayIndex >= 0) {
+      updatedProgress = existingProgress.map((p, i) => {
+        if (i === todayIndex) {
+          return {
+            ...p,
+            progress: {
+              ...p.progress,
+              [stat]: {
+                ...(p.progress[stat] || {}),
+                [exerciseId]: newValue
+              }
+            }
+          };
+        }
+        return p;
+      });
+    } else {
+      updatedProgress = [
+        ...existingProgress,
+        {
+          date: todayKey,
+          progress: {
+            [stat]: {
+              [exerciseId]: newValue
+            }
+          }
+        }
+      ];
+    }
+    
+    updatePlayer({ dailyStatProgress: updatedProgress });
+    toast({
+      title: "Progress Updated",
+      description: `+${newValue} recorded!`,
+    });
   };
 
   return (
@@ -817,6 +867,8 @@ export default function StatusPage() {
         activeSession={activeSession}
         onStartSession={startSession}
         onCancelSession={cancelSession}
+        dailyProgress={(player.dailyStatProgress as DailyStatProgress[]) || []}
+        onUpdateProgress={handleUpdateProgress}
       />
 
       {showTestMode && (
