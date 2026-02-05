@@ -78,12 +78,12 @@ export const scheduleBlockSchema = z.object({
   name: z.string(),
   date: z.string().optional(),
   startHour: z.number(),
-  startMinute: z.number().optional().default(0),
+  startMinute: z.number().optional(),
   endHour: z.number(),
-  endMinute: z.number().optional().default(0),
+  endMinute: z.number().optional(),
   color: z.string(),
   isSystemTask: z.boolean().optional(),
-  isTemplate: z.boolean().optional().default(true),
+  isTemplate: z.boolean().optional(),
 });
 
 export const statExerciseSchema = z.object({
