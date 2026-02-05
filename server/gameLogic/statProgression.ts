@@ -86,7 +86,7 @@ export function processSession(params: CompleteSessionParams): SessionResult {
   if (durationMinutes >= 45) {
     const spilloverStat = getSpilloverStat(stat);
     if (spilloverStat) {
-      const spilloverXP = xp * 0.05;
+      const spilloverXP = calculatedXP * 0.05;
       const spilloverIncrease = calculateStatIncrease(spilloverXP, updatedStats[spilloverStat]);
       
       let newSpilloverValue = updatedStats[spilloverStat] + spilloverIncrease;
