@@ -48,7 +48,7 @@ export function getSpilloverStat(primaryStat: StatName): StatName | null {
 }
 
 export function processSession(params: CompleteSessionParams): SessionResult {
-  const { xp, stat, currentStats, rank, durationMinutes, fatigue } = params;
+  const { stat, currentStats, rank, durationMinutes, fatigue } = params;
 
   const today = getTodayDateString();
   let sessionCount = 0;
@@ -61,8 +61,15 @@ export function processSession(params: CompleteSessionParams): SessionResult {
   const isEliteSession = rank === "S" && durationMinutes >= 90;
   const eliteSessionBonus = isEliteSession ? 1.2 : 1.0;
   
-  const statXP = xp * 0.8 * eliteSessionBonus;
-  const levelXP = Math.floor(xp * 0.2 * eliteSessionBonus);
+  // Calculate XP based on duration: small workout = 10-15 XP
+  // Base: 10 XP, +1 per 10 minutes, capped at +5
+  const baseXP = 10;
+  const durationBonus = Math.min(5, Math.floor(durationMinutes / 10));
+  const calculatedXP = Math.floor((baseXP + durationBonus) * eliteSessionBonus);
+  
+  // 80% goes to stat progression, 20% to level XP
+  const statXP = calculatedXP * 0.8;
+  const levelXP = Math.floor(calculatedXP * 0.2);
   
   const fatigueAdjustedXP = statXP * fatigueMultiplier;
   

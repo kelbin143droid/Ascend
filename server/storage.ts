@@ -108,9 +108,16 @@ export class DatabaseStorage implements IStorage {
     const player = await this.getPlayer(id);
     if (!player) return undefined;
 
-    let newExp = player.exp + amount;
-    let newLevel = player.level;
-    let newMaxExp = player.maxExp;
+    const { getLevelFromXP, getRankFromLevel } = await import("./gameLogic/levelSystem");
+
+    const newTotalExp = (player.totalExp || 0) + amount;
+    const levelInfo = getLevelFromXP(newTotalExp);
+    
+    const oldLevel = player.level;
+    const newLevel = levelInfo.level;
+    const newExp = levelInfo.remainingXP;
+    const newMaxExp = levelInfo.xpForNext;
+    
     let newAvailablePoints = player.availablePoints;
     let newMaxHp = player.maxHp;
     let newMaxMp = player.maxMp;
@@ -121,26 +128,28 @@ export class DatabaseStorage implements IStorage {
     let rankHistory = [...(player.rankHistory || [])];
     let unlockedAttributes = [...(player.unlockedAttributes || ["strength", "agility", "sense", "vitality"])];
 
-    while (newExp >= newMaxExp) {
-      newExp -= newMaxExp;
-      newLevel += 1;
-      newAvailablePoints += 5;
-      newMaxExp = Math.floor(newMaxExp * 1.5);
-      newMaxHp += 50;
-      newMaxMp += 20;
+    if (newLevel > oldLevel) {
+      const levelsGained = newLevel - oldLevel;
+      newAvailablePoints += levelsGained * 5;
+      newMaxHp += levelsGained * 50;
+      newMaxMp += levelsGained * 20;
       newHp = newMaxHp;
       newMp = newMaxMp;
 
-      const rankUpResult = checkRankUp(newLevel, newRank);
-      if (rankUpResult && !pendingRankUnlock) {
-        newRank = rankUpResult.newRank;
-        const attribute = rankUpResult.unlockData.attribute.toLowerCase();
-        pendingRankUnlock = { rank: newRank, attribute };
+      const expectedRank = getRankFromLevel(newLevel);
+      if (expectedRank !== newRank && !pendingRankUnlock) {
+        const rankUpResult = checkRankUp(newLevel, newRank);
+        if (rankUpResult) {
+          newRank = rankUpResult.newRank;
+          const attribute = rankUpResult.unlockData.attribute.toLowerCase();
+          pendingRankUnlock = { rank: newRank, attribute };
+        }
       }
     }
 
     return this.updatePlayer(id, {
       exp: newExp,
+      totalExp: newTotalExp,
       level: newLevel,
       maxExp: newMaxExp,
       availablePoints: newAvailablePoints,

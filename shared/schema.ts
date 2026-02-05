@@ -204,6 +204,7 @@ export const players = pgTable("players", {
   rank: text("rank").notNull().default("E"),
   exp: integer("exp").notNull().default(0),
   maxExp: integer("max_exp").notNull().default(100),
+  totalExp: integer("total_exp").notNull().default(0),
   inventory: jsonb("inventory").$type<InventoryItem[]>().notNull().default([]),
   skills: jsonb("skills").$type<Skill[]>().notNull().default([]),
   equipment: jsonb("equipment").$type<Equipment>().notNull().default({

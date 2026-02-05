@@ -164,11 +164,16 @@ export function StatActionPanel({
   };
 
   const calculateXP = (duration: number) => {
-    let xp = duration * multiplier;
+    // Match server logic: base 10 XP + 1 per 10 minutes, capped at +5
+    const baseXP = 10;
+    const durationBonus = Math.min(5, Math.floor(duration / 10));
+    let xp = baseXP + durationBonus;
+    
+    // Scheduled block bonus
     if (currentBlock) {
-      xp *= 1.1;
+      xp = Math.floor(xp * 1.1);
     }
-    return Math.round(xp);
+    return xp;
   };
 
   const handleStartSession = () => {
