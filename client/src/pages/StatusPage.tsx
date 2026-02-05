@@ -38,6 +38,7 @@ const ACTIVITY_PRESETS = [
 interface EditingBlock {
   id: string;
   name: string;
+  description?: string;
   date?: string;
   startHour: number;
   startMinute: number;
@@ -84,6 +85,7 @@ export default function StatusPage() {
   const [selectedStat, setSelectedStat] = useState<string | null>(null);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customName, setCustomName] = useState("");
+  const [customDescription, setCustomDescription] = useState("");
   const [showTestMode, setShowTestMode] = useState(false);
   const [defaultRoleCreated, setDefaultRoleCreated] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -201,6 +203,7 @@ export default function StatusPage() {
     const blockToSave = {
       ...editingBlock,
       name: editingBlock.id.startsWith('custom') ? customName || 'Custom Task' : editingBlock.name,
+      description: editingBlock.id.startsWith('custom') ? customDescription : editingBlock.description,
     };
     delete (blockToSave as any).isNew;
     
@@ -255,6 +258,7 @@ export default function StatusPage() {
     updatePlayer({ schedule: newSchedule });
     setEditingBlock(null);
     setCustomName('');
+    setCustomDescription('');
   };
 
   const handleDeleteBlock = () => {
@@ -264,7 +268,7 @@ export default function StatusPage() {
     setEditingBlock(null);
   };
 
-  const handleEditExistingBlock = (block: ScheduleBlock) => {
+  const handleEditExistingBlock = (block: ScheduleBlock & { description?: string }) => {
     setEditingBlock({
       ...block,
       startMinute: block.startMinute ?? 0,
@@ -273,6 +277,7 @@ export default function StatusPage() {
     });
     if (block.id.startsWith('custom')) {
       setCustomName(block.name);
+      setCustomDescription(block.description || '');
     }
   };
 
@@ -660,17 +665,32 @@ export default function StatusPage() {
           {editingBlock && (
             <div className="space-y-4 py-2">
               {editingBlock.id.startsWith('custom') && (
-                <div>
-                  <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-1">
-                    Task Name
-                  </label>
-                  <Input
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="Enter task name"
-                    className="h-8 bg-black/50 border-white/10 text-sm"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-1">
+                      Task Name
+                    </label>
+                    <Input
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="Enter task name"
+                      className="h-8 bg-black/50 border-white/10 text-sm"
+                      data-testid="input-custom-name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      value={customDescription}
+                      onChange={(e) => setCustomDescription(e.target.value)}
+                      placeholder="What is this task about?"
+                      className="w-full h-20 px-3 py-2 bg-black/50 border border-white/10 rounded text-sm text-white/90 resize-none"
+                      data-testid="input-custom-description"
+                    />
+                  </div>
+                </>
               )}
 
               <div>

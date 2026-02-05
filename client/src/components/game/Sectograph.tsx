@@ -4,6 +4,7 @@ import { useTheme } from "@/context/ThemeContext";
 export interface ScheduleBlock {
   id: string;
   name: string;
+  description?: string;
   date?: string;
   startHour: number;
   startMinute?: number;

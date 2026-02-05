@@ -1,0 +1,82 @@
+// ------------------------------
+// XP, Level, Strength, and Rank System
+// ------------------------------
+
+// 1️⃣ XP required for next level
+function getXPForNextLevel(level, baseXP = 100, growthFactor = 1.5) {
+    // Exponential XP growth: higher levels require more XP
+    return Math.floor(baseXP * Math.pow(level, growthFactor));
+}
+
+// 2️⃣ Level from total XP
+function getLevelFromXP(totalXP, baseXP = 100, growthFactor = 1.5) {
+    let level = 1;
+    let xpForNext = getXPForNextLevel(level, baseXP, growthFactor);
+
+    while (totalXP >= xpForNext) {
+        totalXP -= xpForNext;
+        level++;
+        xpForNext = getXPForNextLevel(level, baseXP, growthFactor);
+    }
+
+    return level;
+}
+
+// 3️⃣ Strength / Power scaling
+function getStrength(level, baseStrength = 1, strengthPerLevel = 1) {
+    return baseStrength + (level - 1) * strengthPerLevel;
+}
+
+// 4️⃣ Rank system
+function getRank(level) {
+    if (level >= 15) return "S";
+    if (level >= 10) return "A";
+    if (level >= 5) return "B";
+    return "C"; // levels 1-4
+}
+
+// 5️⃣ XP gain per task
+function getXPForTask(taskDifficulty, userLevel, baseXP = 10) {
+    // Difficulty multiplier
+    const difficultyMultiplier = {
+        small: 1,
+        medium: 2,
+        large: 4
+    }[taskDifficulty] || 1;
+
+    // Slight level scaling (optional)
+    const levelMultiplier = 1 + (userLevel - 1) * 0.1;
+
+    return Math.floor(baseXP * difficultyMultiplier * levelMultiplier);
+}
+
+// ------------------------------
+// Example usage
+// ------------------------------
+
+let totalXP = 0;
+
+// Record a small workout
+totalXP += getXPForTask("small", getLevelFromXP(totalXP));
+console.log("Total XP:", totalXP);
+
+let level = getLevelFromXP(totalXP);
+let strength = getStrength(level);
+let rank = getRank(level);
+
+console.log("Level:", level);
+console.log("Strength:", strength);
+console.log("Rank:", rank);
+
+// Record multiple tasks
+totalXP += getXPForTask("medium", level);
+totalXP += getXPForTask("large", level);
+
+level = getLevelFromXP(totalXP);
+strength = getStrength(level);
+rank = getRank(level);
+
+console.log("After more tasks → Total XP:", totalXP);
+console.log("Level:", level);
+console.log("Strength:", strength);
+console.log("Rank:", rank);
