@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Plus, Check, Flame } from "lucide-react";
+import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Plus, Check, Timer, RotateCcw, Pause } from "lucide-react";
 import { getDailyTip, STAT_MULTIPLIERS } from "@/lib/statTips";
 import type { ScheduleBlock } from "./Sectograph";
 import type { DailyStatProgress } from "@shared/schema";
@@ -39,9 +37,6 @@ const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
   vitality: [
     { id: "sleep", name: "Sleep", targetValue: 7, unit: "hours" },
   ],
-  stamina: [
-    { id: "cardio", name: "Cardio", targetValue: 5, unit: "minutes" },
-  ],
 };
 
 interface StatActionPanelProps {
@@ -70,8 +65,251 @@ const STAT_TO_SCHEDULE_MAP: Record<string, string[]> = {
   agility: ["exercise", "training", "sports"],
   sense: ["study", "work", "focus", "deep work", "meditation", "reading"],
   vitality: ["sleep", "rest", "recovery", "meal", "walk"],
-  stamina: ["cardio", "running", "cycling", "swimming", "hiit"],
 };
+
+const TIMER_PRESETS: Record<string, { label: string; seconds: number }[]> = {
+  strength: [
+    { label: "30s", seconds: 30 },
+    { label: "60s", seconds: 60 },
+    { label: "90s", seconds: 90 },
+    { label: "2m", seconds: 120 },
+    { label: "3m", seconds: 180 },
+  ],
+  agility: [
+    { label: "15s", seconds: 15 },
+    { label: "30s", seconds: 30 },
+    { label: "60s", seconds: 60 },
+    { label: "90s", seconds: 90 },
+    { label: "2m", seconds: 120 },
+  ],
+  sense: [
+    { label: "1m", seconds: 60 },
+    { label: "3m", seconds: 180 },
+    { label: "5m", seconds: 300 },
+    { label: "10m", seconds: 600 },
+    { label: "15m", seconds: 900 },
+  ],
+};
+
+const TIMER_LABELS: Record<string, string> = {
+  strength: "Rest / Tension Timer",
+  agility: "Rest / Tension Timer",
+  sense: "Meditation Timer",
+};
+
+function playBeep() {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const playTone = (startTime: number, freq: number, duration: number) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.3, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    const now = audioCtx.currentTime;
+    playTone(now, 880, 0.15);
+    playTone(now + 0.2, 880, 0.15);
+    playTone(now + 0.4, 1100, 0.3);
+  } catch (e) {}
+}
+
+function CountdownTimer({ stat, color }: { stat: string; color: string }) {
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [remaining, setRemaining] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [hasFinished, setHasFinished] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasBeepedRef = useRef(false);
+
+  const presets = TIMER_PRESETS[stat] || [];
+  const label = TIMER_LABELS[stat] || "Timer";
+
+  const clearTimer = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return clearTimer;
+  }, [clearTimer]);
+
+  useEffect(() => {
+    if (isRunning && remaining > 0) {
+      intervalRef.current = setInterval(() => {
+        setRemaining(prev => {
+          if (prev <= 1) {
+            setIsRunning(false);
+            setHasFinished(true);
+            if (!hasBeepedRef.current) {
+              hasBeepedRef.current = true;
+              playBeep();
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return clearTimer;
+    }
+  }, [isRunning, remaining, clearTimer]);
+
+  const startTimer = (seconds: number) => {
+    clearTimer();
+    hasBeepedRef.current = false;
+    setTimerSeconds(seconds);
+    setRemaining(seconds);
+    setIsRunning(true);
+    setHasFinished(false);
+  };
+
+  const handleCustomStart = () => {
+    const val = parseInt(customInput);
+    if (!isNaN(val) && val > 0) {
+      startTimer(val);
+      setCustomInput("");
+    }
+  };
+
+  const togglePause = () => {
+    if (isRunning) {
+      clearTimer();
+      setIsRunning(false);
+    } else if (remaining > 0) {
+      setIsRunning(true);
+    }
+  };
+
+  const resetTimer = () => {
+    clearTimer();
+    setIsRunning(false);
+    setHasFinished(false);
+    setRemaining(0);
+    setTimerSeconds(0);
+    hasBeepedRef.current = false;
+  };
+
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const progress = timerSeconds > 0 ? ((timerSeconds - remaining) / timerSeconds) * 100 : 0;
+
+  return (
+    <div className="space-y-2 p-3 rounded-lg border border-white/10 bg-black/30">
+      <div className="flex items-center gap-2 mb-1">
+        <Timer size={12} style={{ color }} />
+        <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{label}</span>
+      </div>
+
+      {remaining > 0 || hasFinished ? (
+        <div className="space-y-2">
+          <div className="relative">
+            <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-1000"
+                style={{ width: `${progress}%`, backgroundColor: color }}
+              />
+            </div>
+          </div>
+
+          <div className="text-center">
+            <div
+              className={`text-3xl font-mono font-bold ${hasFinished ? 'animate-pulse' : ''}`}
+              style={{ color: hasFinished ? '#22c55e' : color }}
+              data-testid="timer-display"
+            >
+              {hasFinished ? "00:00" : formatCountdown(remaining)}
+            </div>
+            {hasFinished && (
+              <div className="text-xs text-green-400 mt-1">Time's up!</div>
+            )}
+          </div>
+
+          <div className="flex gap-2 justify-center">
+            {!hasFinished && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-white/20 text-white/60 text-xs"
+                onClick={togglePause}
+                data-testid="button-timer-pause"
+              >
+                {isRunning ? <Pause size={12} className="mr-1" /> : <Play size={12} className="mr-1" />}
+                {isRunning ? "Pause" : "Resume"}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white/60 text-xs"
+              onClick={resetTimer}
+              data-testid="button-timer-reset"
+            >
+              <RotateCcw size={12} className="mr-1" />
+              Reset
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {presets.map(preset => (
+              <button
+                key={preset.label}
+                onClick={() => startTimer(preset.seconds)}
+                className="px-2.5 py-1.5 rounded text-xs font-mono transition-colors"
+                style={{
+                  backgroundColor: `${color}15`,
+                  border: `1px solid ${color}30`,
+                  color: color,
+                }}
+                data-testid={`button-timer-${preset.seconds}`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="number"
+              placeholder="sec"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              className="w-16 h-7 text-xs bg-black/50 border-white/20 text-center"
+              min="1"
+              data-testid="input-custom-timer"
+              onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
+            />
+            <button
+              onClick={handleCustomStart}
+              className="h-7 px-2 rounded text-[10px] transition-colors"
+              style={{
+                backgroundColor: `${color}20`,
+                border: `1px solid ${color}40`,
+                color: color,
+              }}
+              data-testid="button-custom-timer-start"
+            >
+              Start
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function StatActionPanel({
   open,
@@ -85,9 +323,6 @@ export function StatActionPanel({
   dailyProgress = [],
   onUpdateProgress,
 }: StatActionPanelProps) {
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [adjustedDuration, setAdjustedDuration] = useState(30);
-  const [showDurationAdjust, setShowDurationAdjust] = useState(false);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
 
   const getTodayKey = () => {
@@ -115,17 +350,6 @@ export function StatActionPanel({
     onUpdateProgress(stat, exerciseId, currentValue + addValue);
     setInputValues(prev => ({ ...prev, [exerciseId]: '' }));
   };
-
-  useEffect(() => {
-    if (activeSession) {
-      const interval = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - activeSession.startTime) / 1000));
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      setElapsedTime(0);
-    }
-  }, [activeSession]);
 
   if (!stat) return null;
 
@@ -164,12 +388,6 @@ export function StatActionPanel({
 
   const isActiveForThisStat = activeSession?.stat === stat;
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
   const STAT_XP: Record<string, number> = {
     strength: 15,
     sense: 5,
@@ -186,19 +404,13 @@ export function StatActionPanel({
   };
 
   const handleCompleteSession = () => {
-    const duration = showDurationAdjust 
-      ? adjustedDuration 
-      : (activeSession?.scheduledDuration || defaultDuration);
+    const duration = activeSession?.scheduledDuration || defaultDuration;
     const xp = calculateXP(duration);
     onCompleteSession(stat, duration, xp);
-    setShowDurationAdjust(false);
     onOpenChange(false);
   };
 
-  const handleShowAdjust = () => {
-    setAdjustedDuration(Math.max(1, Math.floor(elapsedTime / 60)));
-    setShowDurationAdjust(true);
-  };
+  const hasTimer = stat === "strength" || stat === "agility" || stat === "sense";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -302,6 +514,10 @@ export function StatActionPanel({
             </div>
           </div>
 
+          {hasTimer && (
+            <CountdownTimer stat={stat} color={config.color} />
+          )}
+
           {scheduledBlocks.length > 0 && (
             <div className="space-y-1">
               <div className="text-[9px] text-muted-foreground/50 uppercase tracking-wider flex items-center gap-1">
@@ -337,77 +553,28 @@ export function StatActionPanel({
             </div>
           )}
 
-          <AnimatePresence mode="wait">
+          <div className="space-y-2 pt-1">
             {isActiveForThisStat ? (
-              <motion.div
-                key="active"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-3"
+              <Button
+                className="w-full bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30"
+                onClick={handleCompleteSession}
+                data-testid="button-complete-session"
               >
-                <div className="text-center py-2">
-                  <div className="text-3xl font-mono font-bold text-primary mb-0.5">
-                    {formatTime(elapsedTime)}
-                  </div>
-                  <div className="text-[9px] text-muted-foreground/60">
-                    Session in progress
-                  </div>
-                </div>
-
-                {showDurationAdjust ? (
-                  <div className="space-y-2 p-2 rounded-lg bg-black/30 border border-primary/20">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Adjust</span>
-                      <span className="font-mono text-primary">{adjustedDuration} min</span>
-                    </div>
-                    <Slider
-                      value={[adjustedDuration]}
-                      onValueChange={([v]) => setAdjustedDuration(v)}
-                      min={1}
-                      max={600}
-                      step={5}
-                      className="py-1"
-                    />
-                  </div>
-                ) : null}
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1 border-muted-foreground/20 text-muted-foreground/60"
-                    onClick={handleShowAdjust}
-                  >
-                    Adjust Time
-                  </Button>
-                  <Button
-                    className="flex-1 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30"
-                    onClick={handleCompleteSession}
-                  >
-                    <Square size={14} className="mr-2" />
-                    Complete
-                  </Button>
-                </div>
-              </motion.div>
+                <Square size={14} className="mr-2" />
+                Complete Session
+              </Button>
             ) : (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-2 pt-1"
+              <Button
+                className="w-full bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/30 text-primary hover:border-primary/50"
+                onClick={handleStartSession}
+                style={{ boxShadow: `0 0 20px ${config.color}20` }}
+                data-testid="button-start-session"
               >
-                <Button
-                  className="w-full bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/30 text-primary hover:border-primary/50"
-                  onClick={handleStartSession}
-                  style={{ boxShadow: `0 0 20px ${config.color}20` }}
-                >
-                  <Play size={16} className="mr-2" />
-                  Start Session
-                </Button>
-              </motion.div>
+                <Play size={16} className="mr-2" />
+                Start Session
+              </Button>
             )}
-          </AnimatePresence>
+          </div>
 
           {activeSession && activeSession.stat !== stat && (
             <div className="text-center text-[10px] text-amber-400/70 py-2">

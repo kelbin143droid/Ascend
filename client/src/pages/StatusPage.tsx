@@ -469,12 +469,6 @@ export default function StatusPage() {
             <span className="text-[10px] text-muted-foreground tracking-widest">STREAK</span>
             <span className="text-sm font-mono font-bold text-orange-400">{player.streak || 0}</span>
           </div>
-          <div className="w-px h-4 bg-primary/30" />
-          <div className="flex items-center gap-1" data-testid="text-stamina">
-            <Zap size={12} className="text-yellow-400" />
-            <span className="text-[10px] text-muted-foreground tracking-widest">STA</span>
-            <span className="text-sm font-mono font-bold text-yellow-400">{(player as any).computedStamina || player.stamina || 1}</span>
-          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-2 px-2">
