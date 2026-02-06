@@ -95,7 +95,7 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
   const minutes = time.getMinutes();
   const seconds = time.getSeconds();
   
-  const hourAngle = ((hours % 12) / 12) * 360 + (minutes / 60) * 30 - 90;
+  const hourAngle = (hours / 24) * 360 + (minutes / 60) * 15 - 90;
   const minuteAngle = (minutes / 60) * 360 + (seconds / 60) * 6 - 90;
 
   const hourHandLength = innerRadius * 0.5;
