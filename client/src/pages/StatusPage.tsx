@@ -26,7 +26,6 @@ const ACTIVITY_PRESETS = [
   { id: "agility", name: "Agility", icon: Wind, color: "#4ecdc4", isSystemTask: true, stat: "agility" },
   { id: "sense", name: "Sense", icon: Eye, color: "#ffe66d", isSystemTask: true, stat: "sense" },
   { id: "vitality", name: "Vitality", icon: Heart, color: "#a855f7", isSystemTask: true, stat: "vitality" },
-  { id: "stamina", name: "Stamina", icon: Flame, color: "#f97316", isSystemTask: true, stat: "stamina" },
   { id: "sleep", name: "Sleep", icon: Moon, color: "#3b4d6b" },
   { id: "work", name: "Work", icon: Briefcase, color: "#4a6fa5", isSystemTask: true },
   { id: "study", name: "Study", icon: Book, color: "#5a8a72", isSystemTask: true },
@@ -158,7 +157,6 @@ export default function StatusPage() {
     { key: 'agility', label: 'AGI', icon: Wind, color: '#4ecdc4', value: displayStats.agility },
     { key: 'sense', label: 'SEN', icon: Eye, color: '#ffe66d', value: displayStats.sense },
     { key: 'vitality', label: 'VIT', icon: Heart, color: '#a855f7', value: displayStats.vitality },
-    { key: 'stamina', label: 'STA', icon: Flame, color: '#f97316', value: displayStats.stamina || 0 },
   ];
 
   const allScheduleBlocks: (ScheduleBlock & { date?: string; isTemplate?: boolean })[] = player.schedule?.length 
@@ -472,7 +470,7 @@ export default function StatusPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-5 gap-1 px-2">
+        <div className="grid grid-cols-4 gap-2 px-2">
           {statIcons.map((stat) => {
             const isActive = activeSession?.stat === stat.key;
             const hasXpGain = lastXpGain?.stat === stat.key;

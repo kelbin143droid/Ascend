@@ -28,6 +28,7 @@ const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
     { id: "pushups", name: "Pushups (3 sets)", targetValue: 30, unit: "reps" },
     { id: "abs", name: "Abs (3 sets)", targetValue: 30, unit: "reps" },
     { id: "squats", name: "Squats (3 sets)", targetValue: 30, unit: "reps" },
+    { id: "cardio", name: "Cardio", targetValue: 15, unit: "minutes" },
   ],
   agility: [
     { id: "sprint", name: "Sprint Training", targetValue: 5, unit: "minutes" },
