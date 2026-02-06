@@ -569,15 +569,15 @@ export default function StatusPage() {
       </div>
 
       <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
-        <DialogContent className="bg-black/95 border-primary/20 max-w-sm max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-gray-900/98 border-primary/30 max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary/80 font-display text-sm flex items-center gap-2">
+            <DialogTitle className="text-primary font-display text-sm flex items-center gap-2">
               <Clock size={16} />
               LIFE TIMELINE
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-xs text-muted-foreground/70">
+            <p className="text-xs text-white/60">
               Tap an icon to add or edit a time block.
             </p>
             
@@ -590,50 +590,50 @@ export default function StatusPage() {
                     data-testid={`button-preset-${preset.id}`}
                     onClick={() => handlePresetClick(preset)}
                     className={`flex flex-col items-center p-2 rounded-lg border transition-all group ${
-                      isInSchedule ? 'border-primary/40 bg-primary/5' : 'border-white/5 hover:border-primary/30'
+                      isInSchedule ? 'border-primary/50 bg-primary/10' : 'border-white/10 hover:border-primary/40 hover:bg-white/5'
                     }`}
-                    style={{ backgroundColor: isInSchedule ? undefined : `${preset.color}10` }}
+                    style={{ backgroundColor: isInSchedule ? undefined : `${preset.color}15` }}
                   >
                     <div 
                       className="w-8 h-8 rounded-full flex items-center justify-center mb-1"
                       style={{ 
-                        backgroundColor: `${preset.color}30`,
-                        boxShadow: preset.isSystemTask ? `0 0 12px ${preset.color}50` : 'none'
+                        backgroundColor: `${preset.color}40`,
+                        boxShadow: `0 0 10px ${preset.color}30`
                       }}
                     >
-                      <preset.icon size={14} style={{ color: preset.color }} />
+                      <preset.icon size={14} style={{ color: preset.color, filter: 'brightness(1.3)' }} />
                     </div>
-                    <span className="text-[9px] text-muted-foreground group-hover:text-white/80 truncate w-full text-center">
+                    <span className="text-[9px] text-white/70 group-hover:text-white truncate w-full text-center">
                       {preset.name}
                     </span>
                     {preset.isSystemTask && (
-                      <span className="text-[7px] text-primary/60">QUEST</span>
+                      <span className="text-[7px] text-primary/80 font-semibold">QUEST</span>
                     )}
                   </button>
                 );
               })}
             </div>
 
-            <div className="space-y-2 pt-2 border-t border-white/5">
-              <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Current Schedule</div>
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <div className="text-[10px] text-white/50 uppercase tracking-wider font-semibold">Current Schedule</div>
               <div className="space-y-1 max-h-40 overflow-y-auto">
                 {currentSchedule.map((block) => (
                   <button 
                     key={block.id}
                     data-testid={`button-edit-block-${block.id}`}
                     onClick={() => handleEditExistingBlock(block)}
-                    className="flex items-center gap-2 p-2 rounded text-xs w-full hover:bg-white/5 transition-colors"
-                    style={{ backgroundColor: `${block.color}15` }}
+                    className="flex items-center gap-2 p-2 rounded text-xs w-full hover:bg-white/10 transition-colors"
+                    style={{ backgroundColor: `${block.color}20` }}
                   >
                     <div 
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ 
                         backgroundColor: block.color,
-                        boxShadow: block.isSystemTask ? `0 0 6px ${block.color}` : 'none'
+                        boxShadow: `0 0 6px ${block.color}60`
                       }}
                     />
-                    <span className="flex-1 text-white/70 text-left">{block.name}</span>
-                    <span className="text-muted-foreground/50 font-mono text-[10px]">
+                    <span className="flex-1 text-white/80 text-left">{block.name}</span>
+                    <span className="text-white/40 font-mono text-[10px]">
                       {String(block.startHour).padStart(2, '0')}:{String(block.startMinute ?? 0).padStart(2, '0')} - {String(block.endHour).padStart(2, '0')}:{String(block.endMinute ?? 0).padStart(2, '0')}
                     </span>
                     <Pencil size={10} className="text-muted-foreground/40" />

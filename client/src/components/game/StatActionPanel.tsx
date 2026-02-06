@@ -118,6 +118,265 @@ function playBeep() {
   } catch (e) {}
 }
 
+function createBreathingAudioContext() {
+  return new (window.AudioContext || (window as any).webkitAudioContext)();
+}
+
+function playBreathSound(audioCtx: AudioContext, phase: "inhale" | "exhale") {
+  const duration = phase === "inhale" ? 4 : 6;
+  const baseFreq = phase === "inhale" ? 220 : 165;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.type = "sine";
+  filter.type = "lowpass";
+  filter.frequency.value = 400;
+
+  const now = audioCtx.currentTime;
+
+  if (phase === "inhale") {
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.linearRampToValueAtTime(baseFreq * 1.2, now + duration);
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.12, now + duration * 0.6);
+    gain.gain.linearRampToValueAtTime(0.08, now + duration);
+  } else {
+    osc.frequency.setValueAtTime(baseFreq * 1.1, now);
+    osc.frequency.linearRampToValueAtTime(baseFreq, now + duration);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.linearRampToValueAtTime(0.06, now + duration * 0.7);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+  }
+
+  osc.start(now);
+  osc.stop(now + duration);
+
+  return { osc, gain };
+}
+
+function BreathingGuide({ isActive, color }: { isActive: boolean; color: string }) {
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [phase, setPhase] = useState<"idle" | "countdown" | "inhale" | "exhale">("idle");
+  const [phaseTime, setPhaseTime] = useState(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const phaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (phaseTimeoutRef.current) clearTimeout(phaseTimeoutRef.current);
+    intervalRef.current = null;
+    phaseTimeoutRef.current = null;
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      audioCtxRef.current.close().catch(() => {});
+    }
+    audioCtxRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
+
+  const startBreathingCycle = useCallback(() => {
+    const runPhase = (currentPhase: "inhale" | "exhale") => {
+      setPhase(currentPhase);
+      setPhaseTime(0);
+      const duration = currentPhase === "inhale" ? 4 : 6;
+
+      try {
+        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+          audioCtxRef.current = createBreathingAudioContext();
+        }
+        playBreathSound(audioCtxRef.current, currentPhase);
+      } catch (e) {}
+
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      let elapsed = 0;
+      intervalRef.current = setInterval(() => {
+        elapsed++;
+        setPhaseTime(elapsed);
+      }, 1000);
+
+      phaseTimeoutRef.current = setTimeout(() => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        const nextPhase = currentPhase === "inhale" ? "exhale" : "inhale";
+        runPhase(nextPhase as "inhale" | "exhale");
+      }, duration * 1000);
+    };
+
+    runPhase("inhale");
+  }, []);
+
+  const prevActiveRef = useRef(false);
+
+  useEffect(() => {
+    if (isActive && !prevActiveRef.current && phase === "idle") {
+      setPhase("countdown");
+      setCountdown(3);
+
+      try {
+        audioCtxRef.current = createBreathingAudioContext();
+      } catch (e) {}
+
+      let count = 3;
+      const countdownInterval = setInterval(() => {
+        count--;
+        if (count <= 0) {
+          clearInterval(countdownInterval);
+          setCountdown(null);
+          startBreathingCycle();
+        } else {
+          setCountdown(count);
+        }
+      }, 1000);
+      intervalRef.current = countdownInterval;
+    } else if (!isActive && prevActiveRef.current) {
+      cleanup();
+      setPhase("idle");
+      setCountdown(null);
+      setPhaseTime(0);
+    }
+    prevActiveRef.current = isActive;
+  }, [isActive, phase, startBreathingCycle, cleanup]);
+
+  const handleStart = () => {
+    setPhase("countdown");
+    setCountdown(3);
+
+    try {
+      audioCtxRef.current = createBreathingAudioContext();
+    } catch (e) {}
+
+    let count = 3;
+    const countdownInterval = setInterval(() => {
+      count--;
+      if (count <= 0) {
+        clearInterval(countdownInterval);
+        setCountdown(null);
+        startBreathingCycle();
+      } else {
+        setCountdown(count);
+      }
+    }, 1000);
+
+    intervalRef.current = countdownInterval;
+  };
+
+  const handleStop = () => {
+    cleanup();
+    setPhase("idle");
+    setCountdown(null);
+    setPhaseTime(0);
+  };
+
+  const phaseDuration = phase === "inhale" ? 4 : phase === "exhale" ? 6 : 0;
+  const progress = phaseDuration > 0 ? (phaseTime / phaseDuration) * 100 : 0;
+
+  const circleSize = 100;
+  const strokeWidth = 4;
+  const radius = (circleSize - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <div className="space-y-3 p-3 rounded-lg border border-white/10 bg-black/30" data-testid="breathing-guide">
+      <div className="flex items-center gap-2 mb-1">
+        <Eye size={12} style={{ color }} />
+        <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Breathing Guide</span>
+      </div>
+
+      {phase === "idle" && (
+        <div className="text-center">
+          <p className="text-[11px] text-muted-foreground/60 mb-2">
+            Inhale 4s, Exhale 6s
+          </p>
+          <button
+            onClick={handleStart}
+            className="px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+            style={{
+              backgroundColor: `${color}20`,
+              border: `1px solid ${color}40`,
+              color: color,
+            }}
+            data-testid="button-start-breathing"
+          >
+            <Play size={12} className="inline mr-1.5" />
+            Start Breathing
+          </button>
+        </div>
+      )}
+
+      {phase === "countdown" && (
+        <div className="text-center py-4">
+          <div
+            className="text-5xl font-mono font-bold animate-pulse"
+            style={{ color }}
+            data-testid="breathing-countdown"
+          >
+            {countdown}
+          </div>
+          <div className="text-xs text-muted-foreground/60 mt-2">Get ready...</div>
+        </div>
+      )}
+
+      {(phase === "inhale" || phase === "exhale") && (
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative" style={{ width: circleSize, height: circleSize }}>
+            <svg width={circleSize} height={circleSize} className="transform -rotate-90">
+              <circle
+                cx={circleSize / 2}
+                cy={circleSize / 2}
+                r={radius}
+                fill="none"
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth={strokeWidth}
+              />
+              <circle
+                cx={circleSize / 2}
+                cy={circleSize / 2}
+                r={radius}
+                fill="none"
+                stroke={phase === "inhale" ? "#60a5fa" : "#34d399"}
+                strokeWidth={strokeWidth}
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                className="transition-all duration-1000"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div
+                className="text-lg font-bold"
+                style={{ color: phase === "inhale" ? "#60a5fa" : "#34d399" }}
+              >
+                {phase === "inhale" ? "INHALE" : "EXHALE"}
+              </div>
+              <div className="text-xs font-mono text-white/50">
+                {phaseTime}s / {phaseDuration}s
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleStop}
+            className="px-3 py-1.5 rounded text-xs border border-white/20 text-white/60 hover:bg-white/10 transition-colors"
+            data-testid="button-stop-breathing"
+          >
+            <Square size={10} className="inline mr-1" />
+            Stop
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CountdownTimer({ stat, color }: { stat: string; color: string }) {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [remaining, setRemaining] = useState(0);
@@ -409,8 +668,6 @@ export function StatActionPanel({
     onOpenChange(false);
   };
 
-  const hasTimer = stat === "strength" || stat === "agility" || stat === "sense";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-black/95 border-primary/20 max-w-sm max-h-[85vh] flex flex-col">
@@ -513,9 +770,11 @@ export function StatActionPanel({
             </div>
           </div>
 
-          {hasTimer && (
+          {stat === "sense" ? (
+            <BreathingGuide isActive={isActiveForThisStat} color={config.color} />
+          ) : (stat === "strength" || stat === "agility") ? (
             <CountdownTimer stat={stat} color={config.color} />
-          )}
+          ) : null}
 
           {scheduledBlocks.length > 0 && (
             <div className="space-y-1">

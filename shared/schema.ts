@@ -195,7 +195,7 @@ export const RANK_UNLOCK_DATA: Record<string, { attribute: string; description: 
 export const players = pgTable("players", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  level: integer("level").notNull().default(1),
+  level: integer("level").notNull().default(0),
   job: text("job").notNull().default("NONE"),
   title: text("title").notNull().default("WOLF SLAYER"),
   hp: integer("hp").notNull().default(100),
