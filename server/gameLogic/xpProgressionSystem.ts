@@ -4,10 +4,10 @@ import { getTotalXPForLevel, getXPForNextLevel } from "./levelSystem";
 export type TaskStatType = "strength" | "sense" | "agility" | "vitality";
 
 const BASE_XP: Record<TaskStatType, number> = {
-  strength: 10,
-  sense: 8,
-  agility: 8,
-  vitality: 6,
+  strength: 15,
+  sense: 5,
+  agility: 5,
+  vitality: 5,
 };
 
 const MINIMUM_COMPLETION_THRESHOLD = 30;
@@ -26,7 +26,7 @@ export function calculateTaskXP(statType: TaskStatType, completionPercentage: nu
 }
 
 export function calculateVitalityXP(sleepQualityPercentage: number): number {
-  if (sleepQualityPercentage >= 80) return 6;
+  if (sleepQualityPercentage >= 80) return 5;
   if (sleepQualityPercentage >= 60) return 3;
   return 0;
 }
