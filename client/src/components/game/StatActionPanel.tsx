@@ -170,17 +170,15 @@ export function StatActionPanel({
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const calculateXP = (duration: number) => {
-    // Match server logic: base 10 XP + 1 per 10 minutes, capped at +5
-    const baseXP = 10;
-    const durationBonus = Math.min(5, Math.floor(duration / 10));
-    let xp = baseXP + durationBonus;
-    
-    // Scheduled block bonus
-    if (currentBlock) {
-      xp = Math.floor(xp * 1.1);
-    }
-    return xp;
+  const STAT_XP: Record<string, number> = {
+    strength: 15,
+    sense: 5,
+    agility: 5,
+    vitality: 5,
+  };
+
+  const calculateXP = (_duration: number) => {
+    return STAT_XP[stat] || 5;
   };
 
   const handleStartSession = () => {
@@ -367,7 +365,7 @@ export function StatActionPanel({
                       value={[adjustedDuration]}
                       onValueChange={([v]) => setAdjustedDuration(v)}
                       min={1}
-                      max={180}
+                      max={600}
                       step={5}
                       className="py-1"
                     />
