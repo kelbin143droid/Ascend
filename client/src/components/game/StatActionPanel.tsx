@@ -361,7 +361,7 @@ export function StatActionPanel({
                   <div className="space-y-2 p-2 rounded-lg bg-black/30 border border-primary/20">
                     <div className="flex justify-between text-[11px]">
                       <span className="text-muted-foreground">Adjust</span>
-                      <span className="font-mono text-primary">{adjustedDuration} min (+{calculateXP(adjustedDuration)} XP)</span>
+                      <span className="font-mono text-primary">{adjustedDuration} min</span>
                     </div>
                     <Slider
                       value={[adjustedDuration]}
@@ -399,13 +399,6 @@ export function StatActionPanel({
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-2 pt-1"
               >
-                <div className="text-center">
-                  <div className="text-[11px] text-muted-foreground/60">
-                    Session: <span className="font-mono text-white/80">{defaultDuration} min</span>
-                    <span className="text-muted-foreground/40 ml-2">(+{calculateXP(defaultDuration)} XP)</span>
-                  </div>
-                </div>
-
                 <Button
                   className="w-full bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/30 text-primary hover:border-primary/50"
                   onClick={handleStartSession}
