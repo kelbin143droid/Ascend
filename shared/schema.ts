@@ -122,6 +122,15 @@ export type DailyStatProgress = z.infer<typeof dailyStatProgressSchema>;
 
 export type ScheduleBlock = z.infer<typeof scheduleBlockSchema>;
 
+export const statXPSchema = z.object({
+  strength: z.number().default(0),
+  agility: z.number().default(0),
+  sense: z.number().default(0),
+  vitality: z.number().default(0),
+});
+
+export type StatXP = z.infer<typeof statXPSchema>;
+
 export const furnitureItemSchema = z.object({
   id: z.string(),
   itemId: z.string(),
@@ -235,6 +244,11 @@ export const players = pgTable("players", {
   pendingRankUnlock: jsonb("pending_rank_unlock").$type<PendingRankUnlock>().default(null),
   planningMode: text("planning_mode").notNull().default("basic"),
   dailyStatProgress: jsonb("daily_stat_progress").$type<DailyStatProgress[]>().notNull().default([]),
+  statXP: jsonb("stat_xp").$type<StatXP>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0 }),
+  streak: integer("streak").notNull().default(0),
+  consecutiveMissedDays: integer("consecutive_missed_days").notNull().default(0),
+  stamina: integer("stamina").notNull().default(1),
+  lastMVDCheckDate: text("last_mvd_check_date"),
 });
 
 export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {
