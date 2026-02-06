@@ -57,7 +57,6 @@ const STAT_CONFIG: Record<string, { icon: typeof Swords; color: string; label: s
   agility: { icon: Wind, color: "#4ecdc4", label: "AGILITY" },
   sense: { icon: Eye, color: "#ffe66d", label: "SENSE" },
   vitality: { icon: Heart, color: "#a855f7", label: "VITALITY" },
-  stamina: { icon: Flame, color: "#f97316", label: "STAMINA" },
 };
 
 const STAT_TO_SCHEDULE_MAP: Record<string, string[]> = {
