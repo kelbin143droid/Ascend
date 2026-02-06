@@ -9,7 +9,7 @@ import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
 import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Flame } from "lucide-react";
+import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Flame, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -443,7 +443,7 @@ export default function StatusPage() {
         </div>
 
 
-        <div className="flex items-center justify-center gap-3 mb-2">
+        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-muted-foreground tracking-widest">LVL</span>
             <span className="text-lg font-mono font-bold text-primary drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
@@ -464,9 +464,16 @@ export default function StatusPage() {
             </span>
           </div>
           <div className="w-px h-4 bg-primary/30" />
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground tracking-widest">PTS</span>
-            <span className="text-lg font-mono font-bold text-primary">{player.availablePoints}</span>
+          <div className="flex items-center gap-1" data-testid="text-streak">
+            <Flame size={12} className="text-orange-400" />
+            <span className="text-[10px] text-muted-foreground tracking-widest">STREAK</span>
+            <span className="text-sm font-mono font-bold text-orange-400">{player.streak || 0}</span>
+          </div>
+          <div className="w-px h-4 bg-primary/30" />
+          <div className="flex items-center gap-1" data-testid="text-stamina">
+            <Zap size={12} className="text-yellow-400" />
+            <span className="text-[10px] text-muted-foreground tracking-widest">STA</span>
+            <span className="text-sm font-mono font-bold text-yellow-400">{(player as any).computedStamina || player.stamina || 1}</span>
           </div>
         </div>
 

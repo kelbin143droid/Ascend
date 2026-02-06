@@ -11,6 +11,8 @@ import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { calculateXP } from "./gameLogic/xp";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES } from "./gameLogic/statProgression";
+import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, calculateXPRequired, type TaskStatType } from "./gameLogic/xpProgressionSystem";
+import { getTotalXPForLevel } from "./gameLogic/levelSystem";
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -26,6 +28,7 @@ interface PlayerWithDerived extends Player {
   fatigueInfo: { strength: number; agility: number; sense: number; vitality: number };
   rankStatCap: number;
   systemMessage?: string;
+  computedStamina: number;
 }
 
 function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithDerived {
@@ -35,12 +38,16 @@ function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithD
   const fatigue = player.fatigue || { date: "", sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 } };
   const fatigueInfo = fatigue.date === today ? fatigue.sessions : { strength: 0, agility: 0, sense: 0, vitality: 0 };
   
+  const sxp = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+  const computedStamina = updateStamina(sxp.strength, sxp.agility);
+  
   return {
     ...player,
     derived: calculateDerivedStats(player.stats, player.rank),
     displayStats,
     fatigueInfo,
     rankStatCap: RANK_STAT_CAPS[player.rank] || 25,
+    computedStamina,
     ...(systemMessage && { systemMessage }),
   };
 }
@@ -401,6 +408,139 @@ export async function registerRoutes(
       res.json(attachDerivedStats(result.player, result.result.message));
     } catch (error) {
       res.status(500).json({ error: "Failed to complete session" });
+    }
+  });
+
+  app.post("/api/player/:id/complete-task", async (req, res) => {
+    try {
+      const taskSchema = z.object({
+        stat: z.enum(["strength", "agility", "sense", "vitality"]),
+        completionPercentage: z.number().min(0).max(100),
+      });
+      const parsed = taskSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid task data" });
+      }
+
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+
+      const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+      const result = processTaskCompletion(
+        parsed.data.stat as TaskStatType,
+        parsed.data.completionPercentage,
+        player.totalExp,
+        player.level,
+        currentStatXP
+      );
+
+      const updates: Record<string, any> = {
+        totalExp: result.newTotalXP,
+        statXP: result.newStatXP,
+        stamina: result.newStamina,
+      };
+
+      if (result.leveledUp) {
+        updates.level = result.newLevel;
+        updates.exp = result.newTotalXP - getTotalXPForLevel(result.newLevel);
+        updates.maxExp = calculateXPRequired(result.newLevel);
+      } else {
+        updates.exp = result.newTotalXP - getTotalXPForLevel(player.level);
+        updates.maxExp = calculateXPRequired(player.level);
+      }
+
+      const updatedPlayer = await storage.updatePlayer(req.params.id, updates);
+      res.json({
+        ...attachDerivedStats(updatedPlayer!, result.message),
+        taskResult: result,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete task" });
+    }
+  });
+
+  app.post("/api/player/:id/check-mvd", async (req, res) => {
+    try {
+      const mvdSchema = z.object({
+        tasksCompletedToday: z.array(z.object({
+          stat: z.enum(["strength", "agility", "sense", "vitality"]),
+          xpEarned: z.number(),
+        })),
+      });
+      const parsed = mvdSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid MVD data" });
+      }
+
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+
+      const today = getTodayDateString();
+      if (player.lastMVDCheckDate === today) {
+        return res.json({
+          ...attachDerivedStats(player),
+          mvdResult: { achieved: false, alreadyChecked: true, message: "MVD already checked today" },
+        });
+      }
+
+      const mvdResult = applyMinimumViableDay(
+        parsed.data.tasksCompletedToday as { stat: TaskStatType; xpEarned: number }[],
+        player.streak
+      );
+
+      const updates: Record<string, any> = {
+        streak: mvdResult.newStreak,
+        lastMVDCheckDate: today,
+      };
+
+      if (mvdResult.achieved) {
+        updates.totalExp = player.totalExp + mvdResult.bonusXP;
+        updates.consecutiveMissedDays = 0;
+      } else {
+        const missedDays = (player.consecutiveMissedDays || 0) + 1;
+        const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+        const penaltyResult = applyPenalty(player.totalExp, player.level, missedDays, currentStatXP);
+
+        updates.totalExp = penaltyResult.newTotalXP;
+        updates.consecutiveMissedDays = missedDays;
+
+        if (penaltyResult.statPenalties.strength > 0 || penaltyResult.statPenalties.vitality > 0) {
+          updates.statXP = {
+            ...currentStatXP,
+            strength: Math.max(0, currentStatXP.strength - penaltyResult.statPenalties.strength),
+            vitality: Math.max(0, currentStatXP.vitality - penaltyResult.statPenalties.vitality),
+          };
+          updates.stamina = updateStamina(
+            updates.statXP.strength,
+            updates.statXP.agility ?? currentStatXP.agility
+          );
+        }
+      }
+
+      const newTotalXP = updates.totalExp;
+      let lvl = 1;
+      let xpCheck = newTotalXP;
+      let xpForNext = calculateXPRequired(lvl);
+      while (xpCheck >= xpForNext) {
+        xpCheck -= xpForNext;
+        lvl++;
+        xpForNext = calculateXPRequired(lvl);
+      }
+      updates.level = lvl;
+      updates.exp = xpCheck;
+      updates.maxExp = xpForNext;
+
+      const updatedPlayer = await storage.updatePlayer(req.params.id, updates);
+      res.json({
+        ...attachDerivedStats(updatedPlayer!),
+        mvdResult,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check MVD" });
     }
   });
 

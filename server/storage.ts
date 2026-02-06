@@ -12,6 +12,7 @@ import { db } from "./db";
 import { eq, and, gte, desc, sql } from "drizzle-orm";
 import { processSession, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
 import { checkRankUp, createRankHistoryEntry } from "./gameLogic/rankProgression";
+import { updateStamina } from "./gameLogic/xpProgressionSystem";
 
 export interface CompleteSessionInput {
   stat: StatName;
@@ -220,9 +221,20 @@ export class DatabaseStorage implements IStorage {
 
     const newFatigue = updateFatigueTracker(fatigue, input.stat);
 
+    const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+    const statKey = input.stat as keyof typeof currentStatXP;
+    const newStatXP = {
+      ...currentStatXP,
+      [statKey]: (currentStatXP[statKey] || 0) + result.levelXP,
+    };
+
+    const newStamina = updateStamina(newStatXP.strength, newStatXP.agility);
+
     await this.updatePlayer(id, {
       stats: result.updatedStats,
-      fatigue: newFatigue
+      fatigue: newFatigue,
+      statXP: newStatXP,
+      stamina: newStamina,
     });
 
     const updatedPlayer = await this.gainExp(id, result.levelXP);
