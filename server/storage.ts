@@ -131,7 +131,7 @@ export class DatabaseStorage implements IStorage {
 
     if (newLevel > oldLevel) {
       const levelsGained = newLevel - oldLevel;
-      newAvailablePoints += levelsGained * 5;
+      newAvailablePoints += levelsGained * 3;
       newMaxHp += levelsGained * 50;
       newMaxMp += levelsGained * 20;
       newHp = newMaxHp;

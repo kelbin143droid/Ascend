@@ -10,7 +10,7 @@ import {
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { calculateXP } from "./gameLogic/xp";
-import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES } from "./gameLogic/statProgression";
+import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
 import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, calculateXPRequired, type TaskStatType } from "./gameLogic/xpProgressionSystem";
 import { getTotalXPForLevel } from "./gameLogic/levelSystem";
 
@@ -153,7 +153,7 @@ export async function registerRoutes(
       
       const leveledUp = player.level > currentPlayer.level;
       const message = leveledUp 
-        ? `Level up! Now level ${player.level}. +5 stat points available.`
+        ? `Level up! Now level ${player.level}. +3 stat points available.`
         : `Gained ${scaledXP} XP (base: ${parsed.data.amount}, multiplier: ${(1 + currentPlayer.stats.sense * 0.02).toFixed(2)}x)`;
       
       res.json(attachDerivedStats(player, message));
@@ -196,7 +196,6 @@ export async function registerRoutes(
     }
   });
 
-  // HP check based on vitality goal (7 hours sleep)
   app.post("/api/player/:id/check-hp", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);
@@ -207,6 +206,7 @@ export async function registerRoutes(
       const today = getTodayDateString();
       const dailyProgress = player.dailyStatProgress || [];
       const vitalityMinutes = getVitalityMinutesForDate(dailyProgress, today);
+      const senseMinutes = getSenseMinutesForDate(dailyProgress, today);
       
       const hpResult = calculateHPUpdate(
         player.hp,
@@ -215,28 +215,46 @@ export async function registerRoutes(
         player.lastHpCheckDate || null
       );
       
+      const mpResult = calculateMPUpdate(
+        player.mp,
+        player.maxMp,
+        senseMinutes,
+        player.lastMpCheckDate || null
+      );
+      
+      const updates: Partial<{ hp: number; lastHpCheckDate: string; mp: number; lastMpCheckDate: string }> = {};
       if (hpResult.changed) {
-        const updatedPlayer = await storage.updatePlayer(req.params.id, {
-          hp: hpResult.newHp,
-          lastHpCheckDate: today
-        });
+        updates.hp = hpResult.newHp;
+        updates.lastHpCheckDate = today;
+      }
+      if (mpResult.changed) {
+        updates.mp = mpResult.newMp;
+        updates.lastMpCheckDate = today;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        const updatedPlayer = await storage.updatePlayer(req.params.id, updates);
         if (!updatedPlayer) {
-          return res.status(500).json({ error: "Failed to update HP" });
+          return res.status(500).json({ error: "Failed to update HP/MP" });
         }
         res.json({
           ...attachDerivedStats(updatedPlayer),
-          hpUpdate: hpResult
+          hpUpdate: hpResult,
+          mpUpdate: mpResult
         });
       } else {
         res.json({
           ...attachDerivedStats(player),
           hpUpdate: hpResult,
+          mpUpdate: mpResult,
           vitalityMinutes,
-          vitalityGoal: VITALITY_GOAL_MINUTES
+          vitalityGoal: VITALITY_GOAL_MINUTES,
+          senseMinutes,
+          senseGoal: SENSE_GOAL_MINUTES
         });
       }
     } catch (error) {
-      res.status(500).json({ error: "Failed to modify mp" });
+      res.status(500).json({ error: "Failed to check HP/MP" });
     }
   });
 
@@ -559,7 +577,7 @@ export async function registerRoutes(
       
       const levelsToAdd = parsed.data.levels;
       let newLevel = player.level + levelsToAdd;
-      let newAvailablePoints = Math.min(9999, player.availablePoints + (levelsToAdd * 5));
+      let newAvailablePoints = Math.min(9999, player.availablePoints + (levelsToAdd * 3));
       let newMaxHp = Math.min(999999, player.maxHp + (levelsToAdd * 50));
       let newMaxMp = Math.min(99999, player.maxMp + (levelsToAdd * 20));
       let newRank = player.rank;

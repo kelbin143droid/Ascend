@@ -334,17 +334,18 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         </button>
       </div>
 
-      {/* Center time display */}
+      {/* Bottom time display */}
       <div 
-        className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
+        className="absolute left-1/2 bottom-[4%] -translate-x-1/2 flex flex-col items-center pointer-events-none"
       >
         <div 
-          className="text-2xl font-mono font-bold tracking-tighter"
+          className="text-sm font-mono font-bold tracking-tighter"
           style={{ 
             color: colors.text, 
-            textShadow: `0 0 10px ${colors.primaryGlow}`,
+            textShadow: `0 0 8px ${colors.primaryGlow}`,
             fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "-0.05em"
+            letterSpacing: "-0.02em",
+            opacity: 0.8
           }}
         >
           {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}

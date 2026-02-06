@@ -159,7 +159,7 @@ export function getDisplayStats(stats: Stats): Stats {
 
 // HP Penalty/Recovery based on Vitality goal (7 hours sleep = 420 minutes)
 export const VITALITY_GOAL_MINUTES = 420; // 7 hours
-export const HP_CHANGE_PERCENT = 0.10; // 10% change
+export const HP_CHANGE_PERCENT = 0.05; // 5% change
 export const MIN_HP_PERCENT = 0.50; // Cannot drop below 50% of max HP
 
 export interface HPUpdateResult {
@@ -186,7 +186,7 @@ export function calculateHPUpdate(
   const minHp = Math.floor(maxHp * MIN_HP_PERCENT);
   
   if (goalMet) {
-    // Recovery: +10% HP, up to max
+    // Recovery: +5% HP, up to max
     const hpIncrease = Math.floor(maxHp * HP_CHANGE_PERCENT);
     const newHp = Math.min(currentHp + hpIncrease, maxHp);
     
@@ -200,7 +200,7 @@ export function calculateHPUpdate(
     }
     return { newHp: currentHp, changed: false, message: 'HP already at maximum', direction: 'none' };
   } else {
-    // Penalty: -10% HP, min 50% of max
+    // Penalty: -5% HP, min 50% of max
     const hpDecrease = Math.floor(maxHp * HP_CHANGE_PERCENT);
     const newHp = Math.max(currentHp - hpDecrease, minHp);
     
@@ -224,6 +224,71 @@ export function getVitalityMinutesForDate(
   if (!dayProgress || !dayProgress.progress.vitality) {
     return 0;
   }
-  // Sum all vitality exercises for the day
   return Object.values(dayProgress.progress.vitality).reduce((total, val) => total + (val || 0), 0);
+}
+
+export const SENSE_GOAL_MINUTES = 5;
+export const MP_CHANGE_PERCENT = 0.05;
+export const MIN_MP_PERCENT = 0.50;
+
+export interface MPUpdateResult {
+  newMp: number;
+  changed: boolean;
+  message: string;
+  direction: 'increase' | 'decrease' | 'none';
+}
+
+export function calculateMPUpdate(
+  currentMp: number,
+  maxMp: number,
+  senseMinutesToday: number,
+  lastMpCheckDate: string | null
+): MPUpdateResult {
+  const today = getTodayDateString();
+
+  if (lastMpCheckDate === today) {
+    return { newMp: currentMp, changed: false, message: '', direction: 'none' };
+  }
+
+  const goalMet = senseMinutesToday >= SENSE_GOAL_MINUTES;
+  const minMp = Math.floor(maxMp * MIN_MP_PERCENT);
+
+  if (goalMet) {
+    const mpIncrease = Math.floor(maxMp * MP_CHANGE_PERCENT);
+    const newMp = Math.min(currentMp + mpIncrease, maxMp);
+
+    if (newMp > currentMp) {
+      return {
+        newMp,
+        changed: true,
+        message: `Sense goal met! Mana restored +${mpIncrease}`,
+        direction: 'increase'
+      };
+    }
+    return { newMp: currentMp, changed: false, message: 'Mana already at maximum', direction: 'none' };
+  } else {
+    const mpDecrease = Math.floor(maxMp * MP_CHANGE_PERCENT);
+    const newMp = Math.max(currentMp - mpDecrease, minMp);
+
+    if (newMp < currentMp) {
+      return {
+        newMp,
+        changed: true,
+        message: `Sense goal not met! Mana decreased -${currentMp - newMp}`,
+        direction: 'decrease'
+      };
+    }
+    return { newMp: currentMp, changed: false, message: 'Mana already at minimum threshold', direction: 'none' };
+  }
+}
+
+export function getSenseMinutesForDate(
+  dailyProgress: Array<{ date: string; progress: Record<string, Record<string, number>> }>,
+  date: string
+): number {
+  const dayProgress = dailyProgress.find(p => p.date === date);
+  if (!dayProgress || !dayProgress.progress.sense) {
+    return 0;
+  }
+  return Object.values(dayProgress.progress.sense).reduce((total, val) => total + (val || 0), 0);
 }
