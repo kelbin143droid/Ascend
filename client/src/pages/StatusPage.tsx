@@ -437,7 +437,6 @@ export default function StatusPage() {
               size={280}
               onCenterClick={() => setIsScheduleOpen(true)}
               onBlockClick={(block) => handleEditExistingBlock(block)}
-              playerRank={player.rank}
             />
           </div>
         </div>
@@ -913,7 +912,7 @@ export default function StatusPage() {
             </button>
           </div>
           <div className="text-xs text-yellow-200 mb-3">
-            Current: Level {player.level} | TIER {player.rank} | XP: {player.exp}/{player.maxExp}
+            Current: Level {player.level} | Phase {player.phase} | XP: {player.exp}/{player.maxExp}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button
@@ -939,7 +938,7 @@ export default function StatusPage() {
               variant="outline"
               className="text-xs border-orange-500 text-orange-400 hover:bg-orange-500/20"
               onClick={() => {
-                const targetLevel = player.rank === "E" ? 11 : player.rank === "D" ? 26 : player.rank === "C" ? 46 : player.rank === "B" ? 71 : player.rank === "A" ? 101 : player.level + 1;
+                const targetLevel = player.phase === 1 ? 11 : player.phase === 2 ? 26 : player.phase === 3 ? 46 : player.phase === 4 ? 71 : player.level + 1;
                 const levelsNeeded = Math.max(1, targetLevel - player.level);
                 addLevels(levelsNeeded);
               }}

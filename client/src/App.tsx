@@ -20,7 +20,7 @@ import LibraryPage from "@/pages/LibraryPage";
 import WeeklyPlanningPage from "@/pages/WeeklyPlanningPage";
 import TrialsPage from "@/pages/TrialsPage";
 import NotFound from "@/pages/not-found";
-import { RankUnlockOverlay } from "@/components/game/RankUnlockOverlay";
+import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
 import { IntroWrapper } from "@/components/game/IntroWrapper";
 
@@ -73,7 +73,7 @@ function App() {
                 <Router />
               </PlanningGate>
               <LevelUpOverlay />
-              <RankUnlockOverlay />
+              <PhaseUnlockOverlay />
               <Toaster />
             </IntroWrapper>
           </PlanningProviders>

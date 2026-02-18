@@ -3,28 +3,25 @@ import type { Skill } from "@shared/schema";
 export const basicClasses = ["NONE", "WARRIOR", "MAGE", "SUPPORT", "ASSASSIN", "RANGER", "TANK"];
 
 export const advancedClasses: Record<string, string[]> = {
-  C: ["BERSERKER", "ELEMENTALIST", "PRIEST", "SHADOW BLADE", "MARKSMAN", "GUARDIAN"],
-  B: ["CHAMPION", "ARCHMAGE", "ORACLE", "PHANTOM", "SHARPSHOOTER", "PALADIN"],
-  A: ["WARLORD", "SAGE", "SAINT", "NIGHTLORD", "SNIPER", "CRUSADER"],
-  S: ["SHADOW MONARCH", "DRAGON KNIGHT", "GRAND SAGE", "ARCHANGEL", "DEATH DEALER", "IMMORTAL"],
+  3: ["BERSERKER", "ELEMENTALIST", "PRIEST", "SHADOW BLADE", "MARKSMAN", "GUARDIAN"],
+  4: ["CHAMPION", "ARCHMAGE", "ORACLE", "PHANTOM", "SHARPSHOOTER", "PALADIN"],
+  5: ["WARLORD", "SAGE", "SAINT", "NIGHTLORD", "SNIPER", "CRUSADER", "SHADOW MONARCH", "DRAGON KNIGHT", "GRAND SAGE", "ARCHANGEL", "DEATH DEALER", "IMMORTAL"],
 };
 
-export const jobsByRank: Record<string, string[]> = {
-  E: basicClasses,
-  D: basicClasses,
-  C: [...basicClasses, ...advancedClasses.C],
-  B: [...basicClasses, ...advancedClasses.C, ...advancedClasses.B],
-  A: [...basicClasses, ...advancedClasses.C, ...advancedClasses.B, ...advancedClasses.A],
-  S: [...basicClasses, ...advancedClasses.C, ...advancedClasses.B, ...advancedClasses.A, ...advancedClasses.S],
+export const jobsByPhase: Record<number, string[]> = {
+  1: basicClasses,
+  2: basicClasses,
+  3: [...basicClasses, ...advancedClasses[3]],
+  4: [...basicClasses, ...advancedClasses[3], ...advancedClasses[4]],
+  5: [...basicClasses, ...advancedClasses[3], ...advancedClasses[4], ...advancedClasses[5]],
 };
 
-export const titlesByRank: Record<string, string[]> = {
-  E: ["NOVICE HUNTER"],
-  D: ["NOVICE HUNTER", "WOLF SLAYER", "GOBLIN HUNTER"],
-  C: ["WOLF SLAYER", "GOBLIN HUNTER", "DUNGEON BREAKER", "BEAST TAMER"],
-  B: ["DUNGEON BREAKER", "BEAST TAMER", "BOSS KILLER", "SHADOW WALKER"],
-  A: ["BOSS KILLER", "SHADOW WALKER", "GATE CRUSHER", "DEMON SLAYER"],
-  S: ["GATE CRUSHER", "DEMON SLAYER", "MONARCH'S VESSEL", "SHADOW SOVEREIGN"],
+export const titlesByPhase: Record<number, string[]> = {
+  1: ["NOVICE HUNTER"],
+  2: ["NOVICE HUNTER", "WOLF SLAYER", "GOBLIN HUNTER"],
+  3: ["WOLF SLAYER", "GOBLIN HUNTER", "DUNGEON BREAKER", "BEAST TAMER"],
+  4: ["DUNGEON BREAKER", "BEAST TAMER", "BOSS KILLER", "SHADOW WALKER"],
+  5: ["BOSS KILLER", "SHADOW WALKER", "GATE CRUSHER", "DEMON SLAYER", "MONARCH'S VESSEL", "SHADOW SOVEREIGN"],
 };
 
 export const skillsByClass: Record<string, Skill[]> = {

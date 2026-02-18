@@ -1,14 +1,9 @@
-import type { StatName, StatXP } from "@shared/schema";
+import type { StatName, StatXP, EffortTier } from "@shared/schema";
+import { EFFORT_TIER_XP } from "@shared/schema";
 import { getTotalXPForLevel, getXPForNextLevel } from "./levelSystem";
+import { getStatCapForPhase } from "./phaseConfig";
 
 export type TaskStatType = "strength" | "sense" | "agility" | "vitality";
-
-const BASE_XP: Record<TaskStatType, number> = {
-  strength: 15,
-  sense: 5,
-  agility: 5,
-  vitality: 5,
-};
 
 const MINIMUM_COMPLETION_THRESHOLD = 30;
 const MVD_BONUS_PERCENT = 0.05;
@@ -17,11 +12,15 @@ const CONSECUTIVE_MISS_THRESHOLD = 3;
 const CONSECUTIVE_MISS_STAT_PENALTY = 5;
 const STAMINA_XP_PER_POINT = 20;
 
-export function calculateTaskXP(statType: TaskStatType, completionPercentage: number): number {
+export function getEffortTierXP(tier: EffortTier): number {
+  return EFFORT_TIER_XP[tier] || 5;
+}
+
+export function calculateTaskXP(effortTier: EffortTier, completionPercentage: number): number {
   if (completionPercentage < MINIMUM_COMPLETION_THRESHOLD) {
     return 0;
   }
-  const baseXP = BASE_XP[statType];
+  const baseXP = getEffortTierXP(effortTier);
   return Math.floor(baseXP * (completionPercentage / 100));
 }
 
@@ -131,6 +130,7 @@ export interface TaskCompletionResult {
   leveledUp: boolean;
   newLevel: number;
   message: string;
+  statCapReached: boolean;
 }
 
 export function processTaskCompletion(
@@ -138,16 +138,22 @@ export function processTaskCompletion(
   completionPercentage: number,
   currentTotalXP: number,
   currentLevel: number,
-  currentStatXP: StatXP
+  currentStatXP: StatXP,
+  effortTier: EffortTier = 1,
+  phase: number = 1
 ): TaskCompletionResult {
   const xpEarned =
     statType === "vitality"
       ? calculateVitalityXP(completionPercentage)
-      : calculateTaskXP(statType, completionPercentage);
+      : calculateTaskXP(effortTier, completionPercentage);
+
+  const statCap = getStatCapForPhase(phase);
+  const currentStatValue = currentStatXP[statType] || 0;
+  const statCapReached = currentStatValue >= statCap;
 
   const newStatXP: StatXP = {
     ...currentStatXP,
-    [statType]: (currentStatXP[statType] || 0) + xpEarned,
+    [statType]: statCapReached ? currentStatValue : currentStatValue + xpEarned,
   };
 
   const newTotalXP = currentTotalXP + xpEarned;
@@ -171,8 +177,11 @@ export function processTaskCompletion(
   const newStamina = updateStamina(newStatXP.strength, newStatXP.agility);
 
   let message = xpEarned > 0
-    ? `+${xpEarned} ${statType.toUpperCase()} XP`
+    ? `+${xpEarned} XP (${statType.toUpperCase()}, Tier ${effortTier})`
     : `Below threshold — no XP earned.`;
+  if (statCapReached) {
+    message += ` | Stat cap reached for ${statType.toUpperCase()}`;
+  }
   if (leveledUp) {
     message += ` | Level up! → ${newLevel}`;
   }
@@ -186,6 +195,7 @@ export function processTaskCompletion(
     leveledUp,
     newLevel,
     message,
+    statCapReached,
   };
 }
 

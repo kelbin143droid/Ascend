@@ -8,15 +8,8 @@ import { useRoles } from "@/context/RolesContext";
 import { WeeklyGoalForm } from "@/components/game/WeeklyGoalForm";
 import { BookOpen, Scroll, Trophy, Star, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle, Calendar, ChevronRight } from "lucide-react";
 
-const RANK_ORDER = ["E", "D", "C", "B", "A", "S"];
-const PLANNING_UNLOCK_RANK = "C";
-const TRIALS_UNLOCK_RANK = "B";
-
-function isRankUnlocked(playerRank: string, requiredRank: string): boolean {
-  const playerIndex = RANK_ORDER.indexOf(playerRank);
-  const requiredIndex = RANK_ORDER.indexOf(requiredRank);
-  return playerIndex >= requiredIndex;
-}
+const PLANNING_UNLOCK_PHASE = 3;
+const TRIALS_UNLOCK_PHASE = 4;
 
 export default function LibraryPage() {
   const [, navigate] = useLocation();
@@ -27,14 +20,14 @@ export default function LibraryPage() {
   const { roles } = useRoles();
   const [showGoalForm, setShowGoalForm] = useState(false);
   
-  const playerRank = player?.rank || "E";
-  const canAccessPlanning = isRankUnlocked(playerRank, PLANNING_UNLOCK_RANK);
-  const canAccessTrials = isRankUnlocked(playerRank, TRIALS_UNLOCK_RANK);
+  const playerPhase = player?.phase || 1;
+  const canAccessPlanning = playerPhase >= PLANNING_UNLOCK_PHASE;
+  const canAccessTrials = playerPhase >= TRIALS_UNLOCK_PHASE;
 
   const libraryItems = [
     { id: 1, title: "Ascendant's Guide", type: "Tutorial", icon: BookOpen, unlocked: true },
     { id: 2, title: "Combat Manual", type: "Skills", icon: Scroll, unlocked: true },
-    { id: 3, title: "Tier Codex", type: "Progression", icon: Trophy, unlocked: true },
+    { id: 3, title: "Phase Codex", type: "Progression", icon: Trophy, unlocked: true },
     { id: 4, title: "Secret Techniques", type: "Advanced", icon: Star, unlocked: false },
   ];
 
@@ -89,7 +82,7 @@ export default function LibraryPage() {
               <p className="text-xs" style={{ color: colors.textMuted }}>
                 {canAccessPlanning 
                   ? "Set goals and priorities for the week" 
-                  : `Unlock at Rank ${PLANNING_UNLOCK_RANK}`
+                  : `Unlock at Phase ${PLANNING_UNLOCK_PHASE}`
                 }
               </p>
             </div>
@@ -199,7 +192,7 @@ export default function LibraryPage() {
               <p className="text-xs" style={{ color: colors.textMuted }}>
                 {canAccessTrials 
                   ? "Test your resolve with focused challenges" 
-                  : `Unlock at Rank ${TRIALS_UNLOCK_RANK}`
+                  : `Unlock at Phase ${TRIALS_UNLOCK_PHASE}`
                 }
               </p>
             </div>

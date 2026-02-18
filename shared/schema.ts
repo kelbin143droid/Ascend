@@ -25,14 +25,23 @@ export const fatigueDataSchema = z.object({
 
 export type FatigueData = z.infer<typeof fatigueDataSchema>;
 
-export const RANK_STAT_CAPS: Record<string, number> = {
-  E: 25,
-  D: 50,
-  C: 80,
-  B: 120,
-  A: 180,
-  S: 250,
+export const PHASE_STAT_CAPS: Record<number, number> = {
+  1: 30,
+  2: 60,
+  3: 80,
+  4: 100,
+  5: 120,
 };
+
+export const EFFORT_TIER_XP: Record<number, number> = {
+  1: 5,
+  2: 10,
+  3: 20,
+  4: 30,
+  5: 50,
+};
+
+export type EffortTier = 1 | 2 | 3 | 4 | 5;
 
 export const FATIGUE_MULTIPLIERS = [1.0, 0.85, 0.70, 0.50];
 
@@ -44,7 +53,7 @@ export const inventoryItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(["weapon", "armor", "accessory", "consumable"]),
-  rarity: z.enum(["E", "D", "C", "B", "A", "S"]),
+  rarity: z.enum(["T1", "T2", "T3", "T4", "T5"]),
   equipped: z.boolean().optional(),
   stats: z.record(z.number()).optional(),
   icon: z.string().optional(),
@@ -160,44 +169,32 @@ export const housingDataSchema = z.object({
 
 export type HousingData = z.infer<typeof housingDataSchema>;
 
-export const rankHistoryEntrySchema = z.object({
-  rank: z.string(),
-  unlocked: z.string(),
+export const phaseHistoryEntrySchema = z.object({
+  phase: z.number(),
   date: z.string(),
 });
 
-export type RankHistoryEntry = z.infer<typeof rankHistoryEntrySchema>;
+export type PhaseHistoryEntry = z.infer<typeof phaseHistoryEntrySchema>;
 
-export const pendingRankUnlockSchema = z.object({
-  rank: z.string(),
-  attribute: z.string(),
+export const pendingPhaseUnlockSchema = z.object({
+  phase: z.number(),
 }).nullable();
 
-export type PendingRankUnlock = z.infer<typeof pendingRankUnlockSchema>;
+export type PendingPhaseUnlock = z.infer<typeof pendingPhaseUnlockSchema>;
 
-export const RANK_LEVEL_THRESHOLDS: Record<string, { min: number; max: number }> = {
-  E: { min: 1, max: 10 },
-  D: { min: 11, max: 25 },
-  C: { min: 26, max: 45 },
-  B: { min: 46, max: 70 },
-  A: { min: 71, max: 100 },
-  S: { min: 101, max: 999 },
-};
-
-export const RANK_UNLOCK_DATA: Record<string, { attribute: string; description: string; highlights: string[] }> = {
-  D: { attribute: "Endurance", description: "Push beyond your limits.", highlights: ["Extended session bonuses", "Recovery rate improved"] },
-  C: { attribute: "Mobility", description: "Move with purpose and precision.", highlights: ["Agility training enhanced", "Cooldown reduction active"] },
-  B: { attribute: "Social", description: "Build and preserve meaningful relationships.", highlights: ["Relationship sessions now available", "Weekly diversity bonus unlocked", "Social stat cap: 120"] },
-  A: { attribute: "Skill", description: "Master specialized techniques.", highlights: ["Advanced skill tree unlocked", "Unique abilities available"] },
-  S: { attribute: "Ascension Mode", description: "Sustained balance unlocks elite growth.", highlights: ["Balanced Mastery Bonus unlocked", "Elite Sessions unlocked", "Stat cap increased to 250"] },
+export const PHASE_UNLOCK_DATA: Record<number, { title: string; description: string; highlights: string[] }> = {
+  2: { title: "Phase 2", description: "Building consistency.", highlights: ["Stat cap raised to 60", "Extended session bonuses"] },
+  3: { title: "Phase 3", description: "Deepening practice.", highlights: ["Stat cap raised to 80", "Advanced weekly planning unlocked"] },
+  4: { title: "Phase 4", description: "Sustained growth.", highlights: ["Stat cap raised to 100", "Trials system unlocked"] },
+  5: { title: "Phase 5", description: "Long-term mastery.", highlights: ["Stat cap raised to 120", "All features unlocked"] },
 };
 
 export const players = pgTable("players", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  level: integer("level").notNull().default(0),
+  level: integer("level").notNull().default(1),
   job: text("job").notNull().default("NONE"),
-  title: text("title").notNull().default("WOLF SLAYER"),
+  title: text("title").notNull().default("AWAKENED"),
   hp: integer("hp").notNull().default(100),
   maxHp: integer("max_hp").notNull().default(100),
   lastHpCheckDate: text("last_hp_check_date"),
@@ -205,12 +202,12 @@ export const players = pgTable("players", {
   mp: integer("mp").notNull().default(50),
   maxMp: integer("max_mp").notNull().default(50),
   stats: jsonb("stats").$type<Stats>().notNull().default({
-    strength: 10,
-    agility: 10,
-    sense: 10,
-    vitality: 10,
+    strength: 1,
+    agility: 1,
+    sense: 1,
+    vitality: 1,
   }),
-  availablePoints: integer("available_points").notNull().default(3),
+  phase: integer("phase").notNull().default(1),
   gold: integer("gold").notNull().default(0),
   rank: text("rank").notNull().default("E"),
   exp: integer("exp").notNull().default(0),
@@ -241,8 +238,8 @@ export const players = pgTable("players", {
     sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 }
   }),
   unlockedAttributes: jsonb("unlocked_attributes").$type<string[]>().notNull().default(["strength", "agility", "sense", "vitality"]),
-  rankHistory: jsonb("rank_history").$type<RankHistoryEntry[]>().notNull().default([]),
-  pendingRankUnlock: jsonb("pending_rank_unlock").$type<PendingRankUnlock>().default(null),
+  phaseHistory: jsonb("phase_history").$type<PhaseHistoryEntry[]>().notNull().default([]),
+  pendingPhaseUnlock: jsonb("pending_phase_unlock").$type<PendingPhaseUnlock>().default(null),
   planningMode: text("planning_mode").notNull().default("basic"),
   dailyStatProgress: jsonb("daily_stat_progress").$type<DailyStatProgress[]>().notNull().default([]),
   statXP: jsonb("stat_xp").$type<StatXP>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0 }),
@@ -269,17 +266,17 @@ export type InsertSnapshot = z.infer<typeof insertSnapshotSchema>;
 export type DailyStatSnapshot = typeof dailyStatSnapshots.$inferSelect;
 
 export const insertPlayerSchema = createInsertSchema(players, {
-  pendingRankUnlock: pendingRankUnlockSchema.optional().default(null),
+  pendingPhaseUnlock: pendingPhaseUnlockSchema.optional().default(null),
   unlockedAttributes: z.array(z.string()).optional().default(["strength", "agility", "sense", "vitality"]),
-  rankHistory: z.array(rankHistoryEntrySchema).optional().default([]),
+  phaseHistory: z.array(phaseHistoryEntrySchema).optional().default([]),
 }).omit({
   id: true,
 });
 
 export const updatePlayerSchema = createInsertSchema(players, {
-  pendingRankUnlock: pendingRankUnlockSchema,
+  pendingPhaseUnlock: pendingPhaseUnlockSchema,
   unlockedAttributes: z.array(z.string()),
-  rankHistory: z.array(rankHistoryEntrySchema),
+  phaseHistory: z.array(phaseHistoryEntrySchema),
 }).partial().omit({
   id: true,
 });

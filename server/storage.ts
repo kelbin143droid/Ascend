@@ -1,17 +1,17 @@
 import { 
   players, dailyStatSnapshots, roles, weeklyGoals, tasks, trials,
   type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, 
-  type FatigueData, type RankHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, 
+  type FatigueData, type PhaseHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, 
   type Role, type InsertRole, type UpdateRole,
   type WeeklyGoal, type InsertWeeklyGoal, type UpdateWeeklyGoal,
   type Task, type InsertTask, type UpdateTask,
   type Trial, type InsertTrial,
-  RANK_UNLOCK_DATA 
+  PHASE_UNLOCK_DATA 
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc, sql } from "drizzle-orm";
 import { processSession, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
-import { checkRankUp, createRankHistoryEntry } from "./gameLogic/rankProgression";
+import { checkPhaseEligibility } from "./gameLogic/phaseConfig";
 import { updateStamina } from "./gameLogic/xpProgressionSystem";
 
 export interface CompleteSessionInput {
@@ -25,12 +25,11 @@ export interface IStorage {
   getPlayerByName(name: string): Promise<Player | undefined>;
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayer(id: string, updates: UpdatePlayer): Promise<Player | undefined>;
-  addStat(id: string, stat: keyof Stats): Promise<Player | undefined>;
   gainExp(id: string, amount: number): Promise<Player | undefined>;
   modifyHp(id: string, amount: number): Promise<Player | undefined>;
   modifyMp(id: string, amount: number): Promise<Player | undefined>;
   completeSession(id: string, input: CompleteSessionInput): Promise<{ player: Player; result: SessionResult } | undefined>;
-  confirmRankUnlock(id: string): Promise<Player | undefined>;
+  confirmPhaseUnlock(id: string): Promise<Player | undefined>;
   saveStatSnapshot(playerId: string): Promise<DailyStatSnapshot | undefined>;
   getWeeklySnapshots(playerId: string): Promise<DailyStatSnapshot[]>;
   
@@ -87,29 +86,11 @@ export class DatabaseStorage implements IStorage {
     return player || undefined;
   }
 
-  async addStat(id: string, stat: keyof Stats): Promise<Player | undefined> {
-    const player = await this.getPlayer(id);
-    if (!player || player.availablePoints <= 0) return player;
-
-    const newStats = { ...player.stats, [stat]: player.stats[stat] + 1 };
-    let newMaxHp = player.maxHp;
-    let newMaxMp = player.maxMp;
-
-    if (stat === 'vitality') newMaxHp += 20;
-
-    return this.updatePlayer(id, {
-      stats: newStats,
-      maxHp: newMaxHp,
-      maxMp: newMaxMp,
-      availablePoints: player.availablePoints - 1,
-    });
-  }
-
   async gainExp(id: string, amount: number): Promise<Player | undefined> {
     const player = await this.getPlayer(id);
     if (!player) return undefined;
 
-    const { getLevelFromXP, getRankFromLevel } = await import("./gameLogic/levelSystem");
+    const { getLevelFromXP } = await import("./gameLogic/levelSystem");
 
     const newTotalExp = (player.totalExp || 0) + amount;
     const levelInfo = getLevelFromXP(newTotalExp);
@@ -118,73 +99,41 @@ export class DatabaseStorage implements IStorage {
     const newLevel = levelInfo.level;
     const newExp = levelInfo.remainingXP;
     const newMaxExp = levelInfo.xpForNext;
-    
-    let newAvailablePoints = player.availablePoints;
-    let newMaxHp = player.maxHp;
-    let newMaxMp = player.maxMp;
-    let newHp = player.hp;
-    let newMp = player.mp;
-    let newRank = player.rank;
-    let pendingRankUnlock = player.pendingRankUnlock;
-    let rankHistory = [...(player.rankHistory || [])];
-    let unlockedAttributes = [...(player.unlockedAttributes || ["strength", "agility", "sense", "vitality"])];
 
-    if (newLevel > oldLevel) {
-      const levelsGained = newLevel - oldLevel;
-      newAvailablePoints += levelsGained * 3;
-      newMaxHp += levelsGained * 50;
-      newMaxMp += levelsGained * 20;
-      newHp = newMaxHp;
-      newMp = newMaxMp;
-
-      const expectedRank = getRankFromLevel(newLevel);
-      if (expectedRank !== newRank && !pendingRankUnlock) {
-        const rankUpResult = checkRankUp(newLevel, newRank);
-        if (rankUpResult) {
-          newRank = rankUpResult.newRank;
-          const attribute = rankUpResult.unlockData.attribute.toLowerCase();
-          pendingRankUnlock = { rank: newRank, attribute };
-        }
-      }
-    }
-
-    return this.updatePlayer(id, {
+    const updates: UpdatePlayer = {
       exp: newExp,
       totalExp: newTotalExp,
       level: newLevel,
       maxExp: newMaxExp,
-      availablePoints: newAvailablePoints,
-      maxHp: newMaxHp,
-      maxMp: newMaxMp,
-      hp: newHp,
-      mp: newMp,
-      rank: newRank,
-      pendingRankUnlock,
-      rankHistory,
-      unlockedAttributes,
-    });
-  }
+    };
 
-  async confirmRankUnlock(id: string): Promise<Player | undefined> {
-    const player = await this.getPlayer(id);
-    if (!player || !player.pendingRankUnlock) return player;
-
-    const { rank, attribute } = player.pendingRankUnlock;
-    const rankHistory = [...(player.rankHistory || [])];
-    const unlockedAttributes = [...(player.unlockedAttributes || ["strength", "agility", "sense", "vitality"])];
-
-    const unlockData = RANK_UNLOCK_DATA[rank];
-    if (unlockData) {
-      rankHistory.push(createRankHistoryEntry(rank, unlockData.attribute));
-      if (!unlockedAttributes.includes(attribute)) {
-        unlockedAttributes.push(attribute);
-      }
+    if (newLevel > oldLevel) {
+      const levelsGained = newLevel - oldLevel;
+      updates.maxHp = Math.min(999999, player.maxHp + (levelsGained * 50));
+      updates.maxMp = Math.min(99999, player.maxMp + (levelsGained * 20));
+      updates.hp = updates.maxHp;
+      updates.mp = updates.maxMp;
     }
 
+    return this.updatePlayer(id, updates);
+  }
+
+  async confirmPhaseUnlock(id: string): Promise<Player | undefined> {
+    const player = await this.getPlayer(id);
+    if (!player || !player.pendingPhaseUnlock) return player;
+
+    const { phase } = player.pendingPhaseUnlock;
+    const phaseHistory = [...(player.phaseHistory || [])];
+
+    phaseHistory.push({
+      phase,
+      date: new Date().toISOString().split('T')[0],
+    });
+
     return this.updatePlayer(id, {
-      pendingRankUnlock: null,
-      rankHistory,
-      unlockedAttributes,
+      phase,
+      pendingPhaseUnlock: null,
+      phaseHistory,
     });
   }
 
@@ -214,7 +163,7 @@ export class DatabaseStorage implements IStorage {
       xp: input.xp,
       stat: input.stat,
       currentStats: player.stats,
-      rank: player.rank,
+      phase: player.phase,
       durationMinutes: input.durationMinutes,
       fatigue
     });

@@ -12,13 +12,13 @@ interface Enemy {
   maxHp: number;
   atk: number;
   exp: number;
-  rank: string;
+  tier: string;
 }
 
 const dungeonList = [
-    { id: 1, name: "Subway Station", rank: "E", minLevel: 1, enemies: ["Shadow Wolf", "Hungry Goblin"] },
-    { id: 2, name: "Goblin Forest", rank: "D", minLevel: 5, enemies: ["Goblin Shaman", "Hobgoblin"] },
-    { id: 3, name: "Red Gate", rank: "B", minLevel: 15, enemies: ["Ice Bear", "White Walker"] },
+    { id: 1, name: "Subway Station", tier: "T1", minLevel: 1, enemies: ["Shadow Wolf", "Hungry Goblin"] },
+    { id: 2, name: "Goblin Forest", tier: "T2", minLevel: 5, enemies: ["Goblin Shaman", "Hobgoblin"] },
+    { id: 3, name: "Red Gate", tier: "T4", minLevel: 15, enemies: ["Ice Bear", "White Walker"] },
 ];
 
 export default function DungeonPage() {
@@ -49,7 +49,7 @@ export default function DungeonPage() {
         hp: 50 * player.level,
         atk: 5 + player.level * 2,
         exp: 30 * player.level,
-        rank: dungeon.rank
+        tier: dungeon.tier
     });
   };
 
@@ -137,7 +137,7 @@ export default function DungeonPage() {
                         <div className="flex justify-between items-center">
                             <div>
                                 <h3 className="font-bold text-lg">{d.name}</h3>
-                                <p className="text-xs text-muted-foreground">TIER {d.rank} • Min Lv. {d.minLevel}</p>
+                                <p className="text-xs text-muted-foreground">TIER {d.tier} • Min Lv. {d.minLevel}</p>
                             </div>
                             <Sword size={24} className="text-primary group-hover:animate-pulse" />
                         </div>
@@ -158,7 +158,7 @@ export default function DungeonPage() {
                         <div className="flex flex-col items-center">
                             <Skull size={48} className="text-destructive mb-2 animate-bounce" />
                             <h2 className="text-xl font-display text-destructive tracking-widest">{enemy.name}</h2>
-                            <div className="text-[10px] text-muted-foreground uppercase">TIER {enemy.rank} Enemy</div>
+                            <div className="text-[10px] text-muted-foreground uppercase">TIER {enemy.tier} Enemy</div>
                         </div>
 
                         <div className="space-y-1">

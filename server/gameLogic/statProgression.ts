@@ -1,11 +1,11 @@
 import type { Stats, StatName, FatigueData } from "@shared/schema";
-import { RANK_STAT_CAPS, FATIGUE_MULTIPLIERS } from "@shared/schema";
+import { PHASE_STAT_CAPS, FATIGUE_MULTIPLIERS } from "@shared/schema";
 
 export interface SessionResult {
   updatedStats: Stats;
   levelXP: number;
   message: string;
-  rankLimitReached: boolean;
+  phaseLimitReached: boolean;
   spilloverApplied?: { stat: StatName; amount: number };
 }
 
@@ -13,7 +13,7 @@ export interface CompleteSessionParams {
   xp: number;
   stat: StatName;
   currentStats: Stats;
-  rank: string;
+  phase: number;
   durationMinutes: number;
   fatigue: FatigueData;
 }
@@ -33,8 +33,8 @@ export function calculateStatIncrease(xp: number, currentStat: number): number {
   return xp / (50 + currentStat * 2);
 }
 
-export function applyRankCap(newStat: number, rank: string): { cappedStat: number; wasLimited: boolean } {
-  const cap = RANK_STAT_CAPS[rank] || 25;
+export function applyPhaseCap(newStat: number, phase: number): { cappedStat: number; wasLimited: boolean } {
+  const cap = PHASE_STAT_CAPS[phase] || 30;
   if (newStat > cap) {
     return { cappedStat: cap, wasLimited: true };
   }
@@ -48,7 +48,7 @@ export function getSpilloverStat(primaryStat: StatName): StatName | null {
 }
 
 export function processSession(params: CompleteSessionParams): SessionResult {
-  const { stat, currentStats, rank, durationMinutes, fatigue } = params;
+  const { stat, currentStats, phase, durationMinutes, fatigue } = params;
 
   const today = getTodayDateString();
   let sessionCount = 0;
@@ -75,7 +75,7 @@ export function processSession(params: CompleteSessionParams): SessionResult {
   const statIncrease = calculateStatIncrease(fatigueAdjustedXP, currentStats[stat]);
   
   let newStatValue = currentStats[stat] + statIncrease;
-  const { cappedStat, wasLimited } = applyRankCap(newStatValue, rank);
+  const { cappedStat, wasLimited } = applyPhaseCap(newStatValue, phase);
   newStatValue = cappedStat;
 
   const updatedStats: Stats = { ...currentStats, [stat]: newStatValue };
@@ -89,7 +89,7 @@ export function processSession(params: CompleteSessionParams): SessionResult {
       const spilloverIncrease = calculateStatIncrease(spilloverXP, updatedStats[spilloverStat]);
       
       let newSpilloverValue = updatedStats[spilloverStat] + spilloverIncrease;
-      const spilloverCapped = applyRankCap(newSpilloverValue, rank);
+      const spilloverCapped = applyPhaseCap(newSpilloverValue, phase);
       newSpilloverValue = spilloverCapped.cappedStat;
       
       updatedStats[spilloverStat] = newSpilloverValue;
@@ -105,14 +105,14 @@ export function processSession(params: CompleteSessionParams): SessionResult {
     message += ` | Synergy: +${spilloverApplied.amount.toFixed(2)} ${spilloverApplied.stat}`;
   }
   if (wasLimited) {
-    message = "Rank limit reached. Advance to grow further.";
+    message = "Phase stat cap reached. Advance to next phase to grow further.";
   }
 
   return {
     updatedStats,
     levelXP,
     message,
-    rankLimitReached: wasLimited,
+    phaseLimitReached: wasLimited,
     spilloverApplied
   };
 }
@@ -157,10 +157,9 @@ export function getDisplayStats(stats: Stats): Stats {
   return floorStats(stats);
 }
 
-// HP Penalty/Recovery based on Vitality goal (7 hours sleep = 420 minutes)
-export const VITALITY_GOAL_MINUTES = 420; // 7 hours
-export const HP_CHANGE_PERCENT = 0.05; // 5% change
-export const MIN_HP_PERCENT = 0.50; // Cannot drop below 50% of max HP
+export const VITALITY_GOAL_MINUTES = 420;
+export const HP_CHANGE_PERCENT = 0.05;
+export const MIN_HP_PERCENT = 0.50;
 
 export interface HPUpdateResult {
   newHp: number;
@@ -177,7 +176,6 @@ export function calculateHPUpdate(
 ): HPUpdateResult {
   const today = getTodayDateString();
   
-  // If we already checked today, no change
   if (lastHpCheckDate === today) {
     return { newHp: currentHp, changed: false, message: '', direction: 'none' };
   }
@@ -186,7 +184,6 @@ export function calculateHPUpdate(
   const minHp = Math.floor(maxHp * MIN_HP_PERCENT);
   
   if (goalMet) {
-    // Recovery: +5% HP, up to max
     const hpIncrease = Math.floor(maxHp * HP_CHANGE_PERCENT);
     const newHp = Math.min(currentHp + hpIncrease, maxHp);
     
@@ -200,7 +197,6 @@ export function calculateHPUpdate(
     }
     return { newHp: currentHp, changed: false, message: 'HP already at maximum', direction: 'none' };
   } else {
-    // Penalty: -5% HP, min 50% of max
     const hpDecrease = Math.floor(maxHp * HP_CHANGE_PERCENT);
     const newHp = Math.max(currentHp - hpDecrease, minHp);
     

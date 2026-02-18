@@ -142,7 +142,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.9, duration: 0.6 }}
           >
-            Gamify your existence. Track habits. Earn XP. Ascend the ranks.
+            Gamify your existence. Track habits. Earn XP. Advance through phases.
           </motion.p>
 
           {/* Initialize System Button */}

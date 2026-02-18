@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { Player, Stats, PendingRankUnlock, RankHistoryEntry } from "@shared/schema";
+import type { Player, Stats, PendingPhaseUnlock, PhaseHistoryEntry } from "@shared/schema";
 
 interface DerivedStats {
   xpMultiplier: number;
@@ -28,8 +28,9 @@ interface PlayerWithDerived extends Player {
   derived?: DerivedStats;
   displayStats?: DisplayStats;
   fatigueInfo?: FatigueInfo;
-  rankStatCap?: number;
+  phaseStatCap?: number;
   systemMessage?: string;
+  computedStamina?: number;
 }
 
 export interface ActiveSession {
@@ -44,8 +45,7 @@ interface GameContextType {
   systemMessage: string | null;
   activeSession: ActiveSession | null;
   lastXpGain: { amount: number; stat: string } | null;
-  replayingRankHistory: RankHistoryEntry | null;
-  addStat: (stat: keyof Stats) => void;
+  replayingPhaseHistory: PhaseHistoryEntry | null;
   gainExp: (amount: number) => void;
   modifyHp: (amount: number) => void;
   modifyMp: (amount: number) => void;
@@ -55,9 +55,9 @@ interface GameContextType {
   startSession: (stat: string, scheduledDuration: number) => void;
   completeSession: (stat: string, duration: number, xp: number) => void;
   cancelSession: () => void;
-  confirmRankUnlock: () => void;
-  replayRankHistory: (entry: RankHistoryEntry) => void;
-  closeRankReplay: () => void;
+  confirmPhaseUnlock: () => void;
+  replayPhaseHistory: (entry: PhaseHistoryEntry) => void;
+  closePhaseReplay: () => void;
   addLevels: (levels: number) => void;
 }
 
@@ -73,7 +73,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [systemMessage, setSystemMessage] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [lastXpGain, setLastXpGain] = useState<{ amount: number; stat: string } | null>(null);
-  const [replayingRankHistory, setReplayingRankHistory] = useState<RankHistoryEntry | null>(null);
+  const [replayingPhaseHistory, setReplayingPhaseHistory] = useState<PhaseHistoryEntry | null>(null);
   const messageTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const showSystemMessage = React.useCallback((message: string) => {
@@ -102,14 +102,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         name: "",
         level: 1,
         job: "NONE",
-        title: "WOLF SLAYER",
+        title: "AWAKENED",
         hp: 100,
         maxHp: 100,
         mp: 10,
         maxMp: 10,
-        stats: { strength: 10, agility: 10, sense: 10, vitality: 10 },
-        availablePoints: 3,
+        stats: { strength: 1, agility: 1, sense: 1, vitality: 1 },
         gold: 0,
+        phase: 1,
         rank: "E",
         exp: 0,
         maxExp: 100,
@@ -135,38 +135,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       createPlayerMutation.mutate();
     }
   }, [playerId]);
-
-  const addStatMutation = useMutation({
-    mutationFn: async (stat: keyof Stats) => {
-      if (!playerId) throw new Error("No player");
-      const res = await apiRequest("POST", `/api/player/${playerId}/add-stat`, { stat });
-      return res.json() as Promise<PlayerWithDerived>;
-    },
-    onMutate: async (stat: keyof Stats) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/player", playerId] });
-      const previousPlayer = queryClient.getQueryData<PlayerWithDerived>(["/api/player", playerId]);
-      
-      if (previousPlayer && previousPlayer.availablePoints > 0) {
-        queryClient.setQueryData<PlayerWithDerived>(["/api/player", playerId], {
-          ...previousPlayer,
-          stats: { ...previousPlayer.stats, [stat]: previousPlayer.stats[stat] + 1 },
-          availablePoints: previousPlayer.availablePoints - 1,
-        });
-      }
-      return { previousPlayer };
-    },
-    onError: (_err, _stat, context) => {
-      if (context?.previousPlayer) {
-        queryClient.setQueryData(["/api/player", playerId], context.previousPlayer);
-      }
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/player", playerId], data);
-      if (data.systemMessage) {
-        showSystemMessage(data.systemMessage);
-      }
-    },
-  });
 
   const gainExpMutation = useMutation({
     mutationFn: async (amount: number) => {
@@ -214,10 +182,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
     },
   });
-
-  const addStat = useCallback((stat: keyof Stats) => {
-    addStatMutation.mutate(stat);
-  }, [addStatMutation]);
 
   const gainExp = useCallback((amount: number) => {
     gainExpMutation.mutate(amount);
@@ -288,10 +252,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     showSystemMessage("Session cancelled");
   }, [showSystemMessage]);
 
-  const confirmRankUnlockMutation = useMutation({
+  const confirmPhaseUnlockMutation = useMutation({
     mutationFn: async () => {
       if (!playerId) throw new Error("No player");
-      const res = await apiRequest("POST", `/api/player/${playerId}/confirm-rank-unlock`, {});
+      const res = await apiRequest("POST", `/api/player/${playerId}/confirm-phase-unlock`, {});
       return res.json() as Promise<PlayerWithDerived>;
     },
     onSuccess: (data) => {
@@ -302,22 +266,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const confirmRankUnlock = useCallback(() => {
-    confirmRankUnlockMutation.mutate();
-  }, [confirmRankUnlockMutation]);
+  const confirmPhaseUnlock = useCallback(() => {
+    confirmPhaseUnlockMutation.mutate();
+  }, [confirmPhaseUnlockMutation]);
 
-  const replayRankHistory = useCallback((entry: RankHistoryEntry) => {
-    setReplayingRankHistory(entry);
+  const replayPhaseHistory = useCallback((entry: PhaseHistoryEntry) => {
+    setReplayingPhaseHistory(entry);
   }, []);
 
-  const closeRankReplay = useCallback(() => {
-    setReplayingRankHistory(null);
+  const closePhaseReplay = useCallback(() => {
+    setReplayingPhaseHistory(null);
   }, []);
 
   const addLevelsMutation = useMutation({
     mutationFn: async (levels: number) => {
       if (!playerId) throw new Error("No player");
-      const res = await apiRequest("POST", `/api/player/${playerId}/add-levels`, { levels });
+      const xpNeeded = (player?.maxExp || 100) * levels;
+      const res = await apiRequest("POST", `/api/player/${playerId}/gain-exp`, { amount: xpNeeded });
       return res.json() as Promise<PlayerWithDerived>;
     },
     onSuccess: (data) => {
@@ -339,8 +304,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       systemMessage,
       activeSession,
       lastXpGain,
-      replayingRankHistory,
-      addStat, 
+      replayingPhaseHistory,
       gainExp, 
       modifyHp, 
       modifyMp, 
@@ -350,9 +314,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       startSession,
       completeSession,
       cancelSession,
-      confirmRankUnlock,
-      replayRankHistory,
-      closeRankReplay,
+      confirmPhaseUnlock,
+      replayPhaseHistory,
+      closePhaseReplay,
       addLevels,
     }}>
       {children}

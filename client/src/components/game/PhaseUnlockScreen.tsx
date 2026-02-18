@@ -1,49 +1,47 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, CheckCircle } from "lucide-react";
-import { RANK_STAT_CAPS } from "@shared/schema";
+import { PHASE_STAT_CAPS } from "@shared/schema";
 
-interface RankUnlockScreenProps {
-  newRank: string;
-  unlockedAttribute: string;
+interface PhaseUnlockScreenProps {
+  newPhase: number;
+  title: string;
   description: string;
   highlights: string[];
   onConfirm: () => void;
   isReplay?: boolean;
 }
 
-const RANK_COLORS: Record<string, string> = {
-  E: "#6b7280",
-  D: "#22c55e",
-  C: "#3b82f6",
-  B: "#a855f7",
-  A: "#f97316",
-  S: "#ffd700",
+const PHASE_COLORS: Record<number, string> = {
+  1: "#6b7280",
+  2: "#22c55e",
+  3: "#3b82f6",
+  4: "#a855f7",
+  5: "#ffd700",
 };
 
-const RANK_SUBTITLES: Record<string, string> = {
-  E: "Your journey begins.",
-  D: "You have evolved beyond individual strength.",
-  C: "You have evolved beyond individual strength.",
-  B: "You have evolved beyond individual strength.",
-  A: "You have evolved beyond individual strength.",
-  S: "You have entered Mastery.",
+const PHASE_SUBTITLES: Record<number, string> = {
+  1: "Your journey begins.",
+  2: "Consistency builds momentum.",
+  3: "Deeper practice emerges.",
+  4: "Sustained growth takes shape.",
+  5: "Long-term mastery achieved.",
 };
 
-export function RankUnlockScreen({
-  newRank,
-  unlockedAttribute,
+export function PhaseUnlockScreen({
+  newPhase,
+  title,
   description,
   highlights,
   onConfirm,
   isReplay = false,
-}: RankUnlockScreenProps) {
+}: PhaseUnlockScreenProps) {
   const [showContent, setShowContent] = useState(false);
   const [showHighlights, setShowHighlights] = useState(false);
   const [showButton, setShowButton] = useState(false);
 
-  const rankColor = RANK_COLORS[newRank] || "#00ffff";
-  const statCap = RANK_STAT_CAPS[newRank] || 25;
+  const phaseColor = PHASE_COLORS[newPhase] || "#00ffff";
+  const statCap = PHASE_STAT_CAPS[newPhase] || 30;
 
   useEffect(() => {
     const timer1 = setTimeout(() => setShowContent(true), 500);
@@ -84,12 +82,12 @@ export function RankUnlockScreen({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto"
         style={{ backgroundColor: "rgba(0, 0, 0, 0.95)" }}
-        data-testid="rank-unlock-screen"
+        data-testid="phase-unlock-screen"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="rank-unlock-title"
+        aria-labelledby="phase-unlock-title"
       >
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
@@ -98,7 +96,7 @@ export function RankUnlockScreen({
             transition={{ duration: 2, ease: "easeOut" }}
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full"
             style={{
-              background: `radial-gradient(circle, ${rankColor} 0%, transparent 70%)`,
+              background: `radial-gradient(circle, ${phaseColor} 0%, transparent 70%)`,
             }}
           />
         </div>
@@ -124,18 +122,18 @@ export function RankUnlockScreen({
             <motion.div
               animate={{
                 boxShadow: [
-                  `0 0 20px ${rankColor}40`,
-                  `0 0 40px ${rankColor}60`,
-                  `0 0 20px ${rankColor}40`,
+                  `0 0 20px ${phaseColor}40`,
+                  `0 0 40px ${phaseColor}60`,
+                  `0 0 20px ${phaseColor}40`,
                 ],
               }}
               transition={{ duration: 2, repeat: Infinity }}
               className="w-24 h-24 rounded-full border-2 flex items-center justify-center"
-              style={{ borderColor: rankColor }}
+              style={{ borderColor: phaseColor }}
             >
               <Shield
                 className="w-12 h-12"
-                style={{ color: rankColor }}
+                style={{ color: phaseColor }}
               />
             </motion.div>
           </motion.div>
@@ -148,11 +146,11 @@ export function RankUnlockScreen({
                 className="space-y-4"
               >
                 <div 
-                  id="rank-unlock-title"
+                  id="phase-unlock-title"
                   className="text-xs tracking-[0.3em] text-muted-foreground"
-                  data-testid="text-rank-advanced"
+                  data-testid="text-phase-advanced"
                 >
-                  RANK ADVANCED
+                  PHASE ADVANCED
                 </div>
 
                 <motion.div
@@ -160,14 +158,14 @@ export function RankUnlockScreen({
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.2 }}
                   className="text-5xl font-display font-black"
-                  style={{ color: rankColor }}
-                  data-testid="text-new-rank"
+                  style={{ color: phaseColor }}
+                  data-testid="text-new-phase"
                 >
-                  {newRank}
+                  PHASE {newPhase}
                 </motion.div>
 
                 <div className="text-sm text-muted-foreground italic">
-                  {RANK_SUBTITLES[newRank] || "You have evolved beyond individual strength."}
+                  {PHASE_SUBTITLES[newPhase] || "Growth continues."}
                 </div>
 
                 <motion.div
@@ -177,14 +175,7 @@ export function RankUnlockScreen({
                   className="pt-4 space-y-2"
                 >
                   <div className="text-xs tracking-widest text-muted-foreground">
-                    {newRank === "S" ? "MODE UNLOCKED" : "NEW ATTRIBUTE UNLOCKED"}
-                  </div>
-                  <div
-                    className="text-2xl font-display font-bold tracking-wide"
-                    style={{ color: rankColor }}
-                    data-testid="text-unlocked-attribute"
-                  >
-                    {unlockedAttribute.toUpperCase()}
+                    {title.toUpperCase()}
                   </div>
                   <div className="text-sm text-muted-foreground max-w-xs">
                     {description}
@@ -213,17 +204,6 @@ export function RankUnlockScreen({
                     <span className="text-muted-foreground">{highlight}</span>
                   </motion.div>
                 ))}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: highlights.length * 0.15 }}
-                  className="flex items-center gap-2 text-xs text-left"
-                >
-                  <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
-                  <span className="text-muted-foreground">
-                    Stat cap increased to {statCap}
-                  </span>
-                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -236,10 +216,10 @@ export function RankUnlockScreen({
                 onClick={onConfirm}
                 className="mt-8 px-8 py-3 border text-sm tracking-widest font-medium transition-all hover:bg-white/5"
                 style={{
-                  borderColor: rankColor,
-                  color: rankColor,
+                  borderColor: phaseColor,
+                  color: phaseColor,
                 }}
-                data-testid="button-confirm-rank"
+                data-testid="button-confirm-phase"
               >
                 [ BEGIN INTEGRATION ]
               </motion.button>

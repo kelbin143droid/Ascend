@@ -2,17 +2,18 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
-  insertPlayerSchema, updatePlayerSchema, type Player, type StatName, RANK_STAT_CAPS,
+  insertPlayerSchema, updatePlayerSchema, type Player, type StatName, PHASE_STAT_CAPS,
   insertRoleSchema, updateRoleSchema,
   insertWeeklyGoalSchema, updateWeeklyGoalSchema,
-  insertTaskSchema, updateTaskSchema, quadrantEnum
+  insertTaskSchema, updateTaskSchema, quadrantEnum,
+  type EffortTier
 } from "@shared/schema";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
-import { calculateXP } from "./gameLogic/xp";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
 import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, calculateXPRequired, type TaskStatType } from "./gameLogic/xpProgressionSystem";
 import { getTotalXPForLevel } from "./gameLogic/levelSystem";
+import { checkPhaseEligibility, getStatCapForPhase } from "./gameLogic/phaseConfig";
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -26,7 +27,7 @@ interface PlayerWithDerived extends Player {
   derived: DerivedStats;
   displayStats: { strength: number; agility: number; sense: number; vitality: number };
   fatigueInfo: { strength: number; agility: number; sense: number; vitality: number };
-  rankStatCap: number;
+  phaseStatCap: number;
   systemMessage?: string;
   computedStamina: number;
 }
@@ -43,10 +44,10 @@ function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithD
   
   return {
     ...player,
-    derived: calculateDerivedStats(player.stats, player.rank),
+    derived: calculateDerivedStats(player.stats),
     displayStats,
     fatigueInfo,
-    rankStatCap: RANK_STAT_CAPS[player.rank] || 25,
+    phaseStatCap: PHASE_STAT_CAPS[player.phase] || 30,
     computedStamina,
     ...(systemMessage && { systemMessage }),
   };
@@ -98,40 +99,6 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/player/:id/add-stat", async (req, res) => {
-    try {
-      const statSchema = z.object({ stat: z.enum(["strength", "agility", "sense", "vitality"]) });
-      const parsed = statSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid stat" });
-      }
-      
-      const currentPlayer = await storage.getPlayer(req.params.id);
-      if (!currentPlayer) {
-        return res.status(404).json({ error: "Player not found" });
-      }
-      if (currentPlayer.availablePoints <= 0) {
-        return res.status(400).json({ error: "No stat points available" });
-      }
-      
-      const player = await storage.addStat(req.params.id, parsed.data.stat);
-      if (!player) {
-        return res.status(500).json({ error: "Failed to update stat" });
-      }
-      
-      const statMessages: Record<string, string> = {
-        strength: `Strength increased → Power rating now ${(player.stats.strength * 1.5).toFixed(1)}`,
-        agility: `Agility increased → Streak forgiveness now ${Math.floor(player.stats.agility / 10)} days`,
-        sense: `Sense increased → XP efficiency +${((player.stats.sense * 0.02) * 100).toFixed(0)}%`,
-        vitality: `Vitality increased → Max stamina now ${100 + player.stats.vitality * 5}`,
-      };
-      
-      res.json(attachDerivedStats(player, statMessages[parsed.data.stat]));
-    } catch (error) {
-      res.status(500).json({ error: "Failed to add stat" });
-    }
-  });
-
   app.post("/api/player/:id/gain-exp", async (req, res) => {
     try {
       const expSchema = z.object({ amount: z.number().positive() });
@@ -145,16 +112,15 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Player not found" });
       }
       
-      const scaledXP = calculateXP({ baseXP: parsed.data.amount, stats: currentPlayer.stats });
-      const player = await storage.gainExp(req.params.id, scaledXP);
+      const player = await storage.gainExp(req.params.id, parsed.data.amount);
       if (!player) {
         return res.status(404).json({ error: "Player not found" });
       }
       
       const leveledUp = player.level > currentPlayer.level;
       const message = leveledUp 
-        ? `Level up! Now level ${player.level}. +3 stat points available.`
-        : `Gained ${scaledXP} XP (base: ${parsed.data.amount}, multiplier: ${(1 + currentPlayer.stats.sense * 0.02).toFixed(2)}x)`;
+        ? `Level up! Now level ${player.level}.`
+        : `Gained ${parsed.data.amount} XP`;
       
       res.json(attachDerivedStats(player, message));
     } catch (error) {
@@ -258,148 +224,6 @@ export async function registerRoutes(
     }
   });
 
-  // Action: Workout (Strength) - requires timer >= 10 minutes
-  app.post("/api/player/:id/action/workout", async (req, res) => {
-    try {
-      const workoutSchema = z.object({ durationMinutes: z.number().min(10) });
-      const parsed = workoutSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Workout must be at least 10 minutes" });
-      }
-      
-      const currentPlayer = await storage.getPlayer(req.params.id);
-      if (!currentPlayer) {
-        return res.status(404).json({ error: "Player not found" });
-      }
-      
-      const baseXP = Math.floor(parsed.data.durationMinutes * 2);
-      const scaledXP = calculateXP({ baseXP, stats: currentPlayer.stats });
-      const player = await storage.gainExp(req.params.id, scaledXP);
-      
-      res.json(attachDerivedStats(player!, `Workout complete! Gained ${scaledXP} XP from ${parsed.data.durationMinutes} min session.`));
-    } catch (error) {
-      res.status(500).json({ error: "Failed to complete workout" });
-    }
-  });
-
-  // Action: Focus (Sense) - single-task focus timer
-  app.post("/api/player/:id/action/focus", async (req, res) => {
-    try {
-      const focusSchema = z.object({ durationMinutes: z.number().min(5) });
-      const parsed = focusSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Focus session must be at least 5 minutes" });
-      }
-      
-      const currentPlayer = await storage.getPlayer(req.params.id);
-      if (!currentPlayer) {
-        return res.status(404).json({ error: "Player not found" });
-      }
-      
-      const baseXP = Math.floor(parsed.data.durationMinutes * 1.5);
-      const scaledXP = calculateXP({ baseXP, stats: currentPlayer.stats });
-      const player = await storage.gainExp(req.params.id, scaledXP);
-      
-      res.json(attachDerivedStats(player!, `Focus complete! Gained ${scaledXP} XP. Sense sharpened.`));
-    } catch (error) {
-      res.status(500).json({ error: "Failed to complete focus session" });
-    }
-  });
-
-  // Action: Recovery (Vitality) - daily check-in
-  app.post("/api/player/:id/action/recovery", async (req, res) => {
-    try {
-      const currentPlayer = await storage.getPlayer(req.params.id);
-      if (!currentPlayer) {
-        return res.status(404).json({ error: "Player not found" });
-      }
-      
-      const derived = calculateDerivedStats(currentPlayer.stats);
-      const hpRecovery = Math.floor(derived.staminaMax * 0.2);
-      
-      await storage.modifyHp(req.params.id, hpRecovery);
-      
-      const baseXP = 10;
-      const scaledXP = calculateXP({ baseXP, stats: currentPlayer.stats });
-      await storage.gainExp(req.params.id, scaledXP);
-      
-      // Re-fetch to get updated HP and XP
-      const player = await storage.getPlayer(req.params.id);
-      
-      const message = currentPlayer.hp < currentPlayer.maxHp * 0.3
-        ? `Recovery check-in! HP restored. Vitality low → stamina penalty was applied.`
-        : `Recovery check-in! HP +${hpRecovery}. Gained ${scaledXP} XP.`;
-      
-      res.json(attachDerivedStats(player!, message));
-    } catch (error) {
-      res.status(500).json({ error: "Failed to complete recovery" });
-    }
-  });
-
-  // Action: Streak Check (Agility) - streak protection
-  app.post("/api/player/:id/action/streak-check", async (req, res) => {
-    try {
-      const streakSchema = z.object({ missedDays: z.number().min(0) });
-      const parsed = streakSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid streak data" });
-      }
-      
-      const currentPlayer = await storage.getPlayer(req.params.id);
-      if (!currentPlayer) {
-        return res.status(404).json({ error: "Player not found" });
-      }
-      
-      const derived = calculateDerivedStats(currentPlayer.stats);
-      const forgiven = parsed.data.missedDays <= derived.streakForgiveness;
-      
-      let message: string;
-      if (parsed.data.missedDays === 0) {
-        const baseXP = 15;
-        const scaledXP = calculateXP({ baseXP, stats: currentPlayer.stats });
-        const player = await storage.gainExp(req.params.id, scaledXP);
-        message = `Streak maintained! Gained ${scaledXP} XP.`;
-        return res.json(attachDerivedStats(player!, message));
-      } else if (forgiven) {
-        message = `Streak preserved by Agility bonus! (${parsed.data.missedDays} days forgiven)`;
-      } else {
-        message = `Streak broken. Agility forgiveness (${derived.streakForgiveness} days) exceeded.`;
-      }
-      
-      res.json(attachDerivedStats(currentPlayer, message));
-    } catch (error) {
-      res.status(500).json({ error: "Failed to check streak" });
-    }
-  });
-
-  // Initialize starter items if inventory is empty
-  app.post("/api/player/:id/init-inventory", async (req, res) => {
-    try {
-      const currentPlayer = await storage.getPlayer(req.params.id);
-      if (!currentPlayer) {
-        return res.status(404).json({ error: "Player not found" });
-      }
-      
-      if (currentPlayer.inventory && currentPlayer.inventory.length > 0) {
-        return res.json(attachDerivedStats(currentPlayer));
-      }
-      
-      const starterItems = [
-        { id: "sword_1", name: "Iron Sword", type: "weapon", rarity: "E", icon: "⚔️", description: "A basic iron sword", stats: { attack: 5 } },
-        { id: "armor_1", name: "Leather Armor", type: "armor", rarity: "E", icon: "🥋", description: "Basic leather protection", stats: { defense: 3 } },
-        { id: "ring_1", name: "Copper Ring", type: "accessory", rarity: "E", icon: "💍", description: "A simple copper ring", stats: { luck: 1 } },
-        { id: "sword_2", name: "Steel Blade", type: "weapon", rarity: "D", icon: "🗡️", description: "A sharp steel blade", stats: { attack: 10 } },
-        { id: "armor_2", name: "Chain Mail", type: "armor", rarity: "D", icon: "🛡️", description: "Linked chain protection", stats: { defense: 7 } },
-        { id: "amulet_1", name: "Wolf Fang Amulet", type: "accessory", rarity: "C", icon: "🐺", description: "Grants the power of wolves", stats: { attack: 3, speed: 5 } },
-      ];
-      
-      const player = await storage.updatePlayer(req.params.id, { inventory: starterItems as any });
-      res.json(attachDerivedStats(player!));
-    } catch (error) {
-      res.status(500).json({ error: "Failed to initialize inventory" });
-    }
-  });
-
   app.post("/api/player/:id/complete-session", async (req, res) => {
     try {
       const sessionSchema = z.object({
@@ -434,6 +258,7 @@ export async function registerRoutes(
       const taskSchema = z.object({
         stat: z.enum(["strength", "agility", "sense", "vitality"]),
         completionPercentage: z.number().min(0).max(100),
+        effortTier: z.number().min(1).max(5).default(1),
       });
       const parsed = taskSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -451,7 +276,9 @@ export async function registerRoutes(
         parsed.data.completionPercentage,
         player.totalExp,
         player.level,
-        currentStatXP
+        currentStatXP,
+        parsed.data.effortTier as EffortTier,
+        player.phase
       );
 
       const updates: Record<string, any> = {
@@ -562,69 +389,56 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/player/:id/add-levels", async (req, res) => {
+  app.post("/api/player/:id/check-phase", async (req, res) => {
     try {
-      const levelSchema = z.object({ levels: z.number().min(1).max(100) });
-      const parsed = levelSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid levels amount (1-100)" });
-      }
-      
       const player = await storage.getPlayer(req.params.id);
       if (!player) {
         return res.status(404).json({ error: "Player not found" });
       }
-      
-      const levelsToAdd = parsed.data.levels;
-      let newLevel = player.level + levelsToAdd;
-      let newAvailablePoints = Math.min(9999, player.availablePoints + (levelsToAdd * 3));
-      let newMaxHp = Math.min(999999, player.maxHp + (levelsToAdd * 50));
-      let newMaxMp = Math.min(99999, player.maxMp + (levelsToAdd * 20));
-      let newRank = player.rank;
-      let pendingRankUnlock = player.pendingRankUnlock;
-      
-      const rankOrder = ["E", "D", "C", "B", "A", "S"];
-      const thresholds = { D: 11, C: 26, B: 46, A: 71, S: 101 };
-      
-      for (const [rank, threshold] of Object.entries(thresholds)) {
-        if (newLevel >= threshold && rankOrder.indexOf(rank) > rankOrder.indexOf(newRank) && !pendingRankUnlock) {
-          newRank = rank;
-          const unlockData = { D: "endurance", C: "mobility", B: "social", A: "skill", S: "ascension" };
-          pendingRankUnlock = { rank: newRank, attribute: unlockData[rank as keyof typeof unlockData] };
-        }
+
+      const displayStats = getDisplayStats(player.stats);
+      const result = checkPhaseEligibility(
+        player.phase,
+        player.level,
+        displayStats,
+        player.streak
+      );
+
+      if (!result) {
+        return res.json({
+          ...attachDerivedStats(player),
+          phaseCheck: { eligible: false, message: "Maximum phase reached." },
+        });
       }
-      
-      const newMaxExp = Math.min(2000000000, Math.floor(100 * Math.pow(1.2, Math.min(newLevel - 1, 100))));
-      
-      const updatedPlayer = await storage.updatePlayer(req.params.id, {
-        level: newLevel,
-        availablePoints: newAvailablePoints,
-        maxHp: newMaxHp,
-        maxMp: newMaxMp,
-        hp: newMaxHp,
-        mp: newMaxMp,
-        rank: newRank,
-        pendingRankUnlock,
-        exp: 0,
-        maxExp: newMaxExp,
+
+      if (result.eligible && !player.pendingPhaseUnlock) {
+        const updatedPlayer = await storage.updatePlayer(req.params.id, {
+          pendingPhaseUnlock: { phase: result.nextPhase },
+        });
+        return res.json({
+          ...attachDerivedStats(updatedPlayer!),
+          phaseCheck: result,
+        });
+      }
+
+      res.json({
+        ...attachDerivedStats(player),
+        phaseCheck: result,
       });
-      
-      res.json(attachDerivedStats(updatedPlayer!, `Added ${levelsToAdd} levels! Now level ${newLevel}.`));
     } catch (error) {
-      console.error("Add levels error:", error);
-      res.status(500).json({ error: "Failed to add levels" });
+      res.status(500).json({ error: "Failed to check phase" });
     }
   });
 
-  app.post("/api/player/:id/confirm-rank-unlock", async (req, res) => {
+  app.post("/api/player/:id/confirm-phase-unlock", async (req, res) => {
     try {
-      const player = await storage.confirmRankUnlock(req.params.id);
+      const player = await storage.confirmPhaseUnlock(req.params.id);
       if (!player) {
         return res.status(404).json({ error: "Player not found" });
       }
-      res.json(attachDerivedStats(player, `Welcome to Rank ${player.rank}!`));
+      res.json(attachDerivedStats(player, `Welcome to Phase ${player.phase}!`));
     } catch (error) {
-      res.status(500).json({ error: "Failed to confirm rank unlock" });
+      res.status(500).json({ error: "Failed to confirm phase unlock" });
     }
   });
 
@@ -732,7 +546,6 @@ export async function registerRoutes(
     }
   });
 
-  // === ROLES API ===
   app.get("/api/roles/:userId", async (req, res) => {
     try {
       const roles = await storage.getRoles(req.params.userId);
@@ -783,7 +596,6 @@ export async function registerRoutes(
     }
   });
 
-  // === WEEKLY GOALS API ===
   app.get("/api/weekly-goals/:userId", async (req, res) => {
     try {
       const weekStartDate = req.query.week_start_date as string | undefined;
@@ -835,7 +647,6 @@ export async function registerRoutes(
     }
   });
 
-  // === TASKS API ===
   app.get("/api/tasks/:userId", async (req, res) => {
     try {
       const weekStartDate = req.query.week_start_date as string | undefined;
@@ -907,7 +718,6 @@ export async function registerRoutes(
     }
   });
 
-  // === WEEKLY ANALYTICS API ===
   app.get("/api/weekly-analytics/:userId", async (req, res) => {
     try {
       const weekStartDate = (req.query.week_start_date as string) || getWeekStartDate();
@@ -998,7 +808,6 @@ export async function registerRoutes(
     }
   });
 
-  // === TRIALS API ===
   app.get("/api/trials/:userId", async (req, res) => {
     try {
       const trials = await storage.getTrials(req.params.userId);

@@ -2,19 +2,18 @@ import { useGame } from "@/context/GameContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion } from "framer-motion";
 import { Shield, Calendar, Play, User, Trophy } from "lucide-react";
-import { RANK_UNLOCK_DATA, RANK_STAT_CAPS } from "@shared/schema";
+import { PHASE_UNLOCK_DATA, PHASE_STAT_CAPS } from "@shared/schema";
 
-const RANK_COLORS: Record<string, string> = {
-  E: "#6b7280",
-  D: "#22c55e",
-  C: "#3b82f6",
-  B: "#a855f7",
-  A: "#f97316",
-  S: "#ffd700",
+const PHASE_COLORS: Record<number, string> = {
+  1: "#6b7280",
+  2: "#22c55e",
+  3: "#3b82f6",
+  4: "#a855f7",
+  5: "#ffd700",
 };
 
 export default function ProfilePage() {
-  const { player, isLoading, replayRankHistory } = useGame();
+  const { player, isLoading, replayPhaseHistory } = useGame();
 
   if (isLoading || !player) {
     return (
@@ -26,8 +25,9 @@ export default function ProfilePage() {
     );
   }
 
-  const rankHistory = player.rankHistory || [];
-  const unlockedAttributes = player.unlockedAttributes || ["strength", "agility", "sense", "vitality"];
+  const phaseHistory = player.phaseHistory || [];
+  const currentPhase = player.phase || 1;
+  const phaseColor = PHASE_COLORS[currentPhase] || "#6b7280";
 
   return (
     <SystemLayout>
@@ -43,19 +43,20 @@ export default function ProfilePage() {
           <div className="bg-card/30 border border-primary/20 rounded p-3 text-center">
             <User className="w-5 h-5 mx-auto mb-1 text-primary" />
             <div className="text-xs text-muted-foreground">Level</div>
-            <div className="text-xl font-mono font-bold text-primary">{player.level}</div>
+            <div className="text-xl font-mono font-bold text-primary" data-testid="text-player-level">{player.level}</div>
           </div>
           <div className="bg-card/30 border border-primary/20 rounded p-3 text-center">
             <Shield
               className="w-5 h-5 mx-auto mb-1"
-              style={{ color: RANK_COLORS[player.rank] }}
+              style={{ color: phaseColor }}
             />
-            <div className="text-xs text-muted-foreground">TIER</div>
+            <div className="text-xs text-muted-foreground">PHASE</div>
             <div
               className="text-xl font-display font-bold"
-              style={{ color: RANK_COLORS[player.rank] }}
+              style={{ color: phaseColor }}
+              data-testid="text-player-phase"
             >
-              {player.rank}
+              {currentPhase}
             </div>
           </div>
           <div className="bg-card/30 border border-primary/20 rounded p-3 text-center">
@@ -68,68 +69,60 @@ export default function ProfilePage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 bg-primary" />
-            <h2 className="text-sm font-display tracking-widest text-primary">UNLOCKED ATTRIBUTES</h2>
+            <h2 className="text-sm font-display tracking-widest text-primary">STAT CAP</h2>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {unlockedAttributes.map((attr) => (
-              <motion.div
-                key={attr}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-card/30 border border-primary/20 rounded px-3 py-2 text-xs flex items-center gap-2"
-              >
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-muted-foreground uppercase tracking-wider">{attr}</span>
-              </motion.div>
-            ))}
+          <div className="bg-card/30 border border-primary/20 rounded px-4 py-3 text-center">
+            <span className="text-2xl font-mono font-bold" style={{ color: phaseColor }}>
+              {PHASE_STAT_CAPS[currentPhase] || 30}
+            </span>
+            <span className="text-xs text-muted-foreground ml-2">per stat</span>
           </div>
         </div>
 
         <div>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 bg-primary" />
-            <h2 className="text-sm font-display tracking-widest text-primary">RANK HISTORY</h2>
+            <h2 className="text-sm font-display tracking-widest text-primary">PHASE HISTORY</h2>
           </div>
 
-          {rankHistory.length === 0 ? (
+          {phaseHistory.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              No rank advancements yet. Keep training to evolve.
+              No phase advancements yet. Keep training to evolve.
             </div>
           ) : (
             <div className="space-y-3">
-              {rankHistory.map((entry, index) => {
-                const unlockData = RANK_UNLOCK_DATA[entry.rank];
-                const rankColor = RANK_COLORS[entry.rank] || "#00ffff";
+              {phaseHistory.map((entry, index) => {
+                const unlockData = PHASE_UNLOCK_DATA[entry.phase];
+                const entryColor = PHASE_COLORS[entry.phase] || "#00ffff";
 
                 return (
                   <motion.div
-                    key={`${entry.rank}-${index}`}
+                    key={`phase-${entry.phase}-${index}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     className="bg-card/30 border border-primary/20 rounded p-4"
-                    data-testid={`rank-history-${entry.rank}`}
+                    data-testid={`phase-history-${entry.phase}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div
                           className="w-10 h-10 rounded-full border-2 flex items-center justify-center"
-                          style={{ borderColor: rankColor }}
+                          style={{ borderColor: entryColor }}
                         >
-                          <Shield className="w-5 h-5" style={{ color: rankColor }} />
+                          <Shield className="w-5 h-5" style={{ color: entryColor }} />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <span
                               className="font-display font-bold text-lg"
-                              style={{ color: rankColor }}
+                              style={{ color: entryColor }}
                             >
-                              {entry.rank}
+                              Phase {entry.phase}
                             </span>
-                            <span className="text-xs text-muted-foreground">TIER</span>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Unlocked: <span className="text-primary">{entry.unlocked}</span>
+                            Cap: {PHASE_STAT_CAPS[entry.phase]}
                           </div>
                         </div>
                       </div>
@@ -139,14 +132,11 @@ export default function ProfilePage() {
                             <Calendar className="w-3 h-3" />
                             {entry.date}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            Cap: {RANK_STAT_CAPS[entry.rank]}
-                          </div>
                         </div>
                         <button
-                          onClick={() => replayRankHistory(entry)}
+                          onClick={() => replayPhaseHistory(entry)}
                           className="p-2 rounded border border-primary/30 hover:bg-primary/10 transition-colors"
-                          data-testid={`button-replay-rank-${entry.rank}`}
+                          data-testid={`button-replay-phase-${entry.phase}`}
                         >
                           <Play className="w-4 h-4 text-primary" />
                         </button>
@@ -160,12 +150,12 @@ export default function ProfilePage() {
         </div>
 
         <div className="mt-8 text-center text-xs text-muted-foreground">
-          <div className="mb-2">NEXT TIER REQUIREMENTS</div>
-          {player.rank === "E" && <div>Level 11+ → TIER D</div>}
-          {player.rank === "D" && <div>Level 26+ → TIER C</div>}
-          {player.rank === "C" && <div>Level 46+ → TIER B (Unlocks: Social)</div>}
-          {player.rank === "B" && <div>Level 71+ → TIER A (Unlocks: Skill)</div>}
-          {player.rank === "A" && <div>Maximum tier achieved</div>}
+          <div className="mb-2">NEXT PHASE REQUIREMENTS</div>
+          {currentPhase === 1 && <div>Level 5 + Avg Stat 10 + 7-day streak → Phase 2</div>}
+          {currentPhase === 2 && <div>Level 15 + Avg Stat 25 + 14-day streak → Phase 3</div>}
+          {currentPhase === 3 && <div>Level 30 + Avg Stat 50 + 14-day streak → Phase 4</div>}
+          {currentPhase === 4 && <div>Level 50 + Avg Stat 75 + 14-day streak → Phase 5</div>}
+          {currentPhase === 5 && <div>Maximum phase achieved</div>}
         </div>
       </div>
     </SystemLayout>

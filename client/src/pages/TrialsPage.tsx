@@ -8,14 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Lock, Target, CheckCircle, ChevronLeft, Flame } from "lucide-react";
 import type { Trial } from "@shared/schema";
 
-const RANK_ORDER = ["E", "D", "C", "B", "A", "S"];
-const TRIALS_UNLOCK_RANK = "B";
-
-function isRankUnlocked(playerRank: string, requiredRank: string): boolean {
-  const playerIndex = RANK_ORDER.indexOf(playerRank);
-  const requiredIndex = RANK_ORDER.indexOf(requiredRank);
-  return playerIndex >= requiredIndex;
-}
+const TRIALS_UNLOCK_PHASE = 4;
 
 export default function TrialsPage() {
   const [, navigate] = useLocation();
@@ -24,8 +17,8 @@ export default function TrialsPage() {
   const { player } = useGame();
   const queryClient = useQueryClient();
 
-  const playerRank = player?.rank || "E";
-  const canAccessTrials = isRankUnlocked(playerRank, TRIALS_UNLOCK_RANK);
+  const playerPhase = player?.phase || 1;
+  const canAccessTrials = playerPhase >= TRIALS_UNLOCK_PHASE;
 
   const { data: trials = [], isLoading } = useQuery<Trial[]>({
     queryKey: ["trials", player?.id],
@@ -66,7 +59,7 @@ export default function TrialsPage() {
             TRIALS LOCKED
           </h1>
           <p className="text-sm text-center max-w-[280px]" style={{ color: colors.textMuted }}>
-            Reach Rank {TRIALS_UNLOCK_RANK} to unlock Trials and test your focus.
+            Reach Phase {TRIALS_UNLOCK_PHASE} to unlock Trials and test your focus.
           </p>
           <Button
             variant="outline"

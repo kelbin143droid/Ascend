@@ -20,7 +20,6 @@ interface SectographProps {
   size?: number;
   onCenterClick?: () => void;
   onBlockClick?: (block: ScheduleBlock) => void;
-  playerRank?: string;
 }
 
 const DEFAULT_SCHEDULE: ScheduleBlock[] = [
@@ -33,9 +32,7 @@ const DEFAULT_SCHEDULE: ScheduleBlock[] = [
   { id: "evening", name: "Leisure", startHour: 19, endHour: 22, color: "#8b7aa3" },
 ];
 
-export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterClick, onBlockClick, playerRank }: SectographProps) {
-  const isAscension = playerRank === "S";
-  const goldGlow = "#ffd700";
+export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterClick, onBlockClick }: SectographProps) {
   const [time, setTime] = useState(new Date());
   const { clockTheme } = useTheme();
   
@@ -197,8 +194,8 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         {schedule.map((block) => {
           const startAngle = timeToAngle(block.startHour, block.startMinute ?? 0);
           const endAngle = timeToAngle(block.endHour, block.endMinute ?? 0);
-          const systemTaskGlow = isAscension && block.isSystemTask ? goldGlow : colors.ringGlow;
-          const systemTaskStroke = isAscension && block.isSystemTask ? goldGlow : colors.ring;
+          const systemTaskGlow = colors.ringGlow;
+          const systemTaskStroke = colors.ring;
           
           return (
             <g 
