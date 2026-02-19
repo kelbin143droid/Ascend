@@ -179,42 +179,92 @@ function PhaseLadder() {
   );
 }
 
-function TaskExample() {
+function StatTaskExample() {
+  const [revealed, setRevealed] = useState(false);
+
+  const statExamples = [
+    { stat: "STR", color: "#ef4444", task: "Push-ups", desc: "3 sets of 15 reps", duration: "15 min" },
+    { stat: "AGI", color: "#3b82f6", task: "Stretching", desc: "Full body mobility flow", duration: "10 min" },
+    { stat: "VIT", color: "#22c55e", task: "Sleep 8 Hours", desc: "Go to bed by 10 PM", duration: "8 hrs" },
+    { stat: "SEN", color: "#a855f7", task: "Meditation", desc: "Morning mindfulness session", duration: "20 min" },
+  ];
+
+  const active = statExamples[3];
+
   return (
-    <motion.div
-      className="w-full max-w-[260px] rounded-lg border border-white/10 bg-white/5 p-3 space-y-2"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.4, duration: 0.5 }}
-    >
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-purple-400" />
-        <span className="text-xs font-display tracking-wider text-white/80">MEDITATION</span>
-        <span className="text-[9px] ml-auto text-white/40 font-mono">20 min</span>
-      </div>
-      <div className="text-[10px] text-white/50">Morning mindfulness session</div>
-      <div className="flex items-center justify-between pt-1 border-t border-white/5">
-        <div className="flex items-center gap-1">
-          <span className="text-[9px] font-display tracking-widest text-purple-300">SEN</span>
-          <motion.span
-            className="text-[10px] font-mono text-green-400"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.5 }}
+    <div className="w-full max-w-[280px] space-y-2">
+      <div className="text-[10px] text-white/40 text-center font-display tracking-widest mb-1">TAP A STAT TO SEE ITS TASK</div>
+      <div className="flex justify-center gap-2">
+        {statExamples.map((s, i) => (
+          <motion.button
+            key={s.stat}
+            onClick={() => setRevealed(true)}
+            className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg border transition-all"
+            style={{
+              borderColor: revealed && i === 3 ? s.color : "rgba(255,255,255,0.08)",
+              backgroundColor: revealed && i === 3 ? `${s.color}15` : "rgba(255,255,255,0.03)",
+            }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 + i * 0.1, duration: 0.4 }}
+            whileTap={{ scale: 0.95 }}
           >
-            +1
-          </motion.span>
-        </div>
-        <motion.div
-          className="text-[9px] font-mono text-cyan-400"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.5 }}
-        >
-          +10 XP
-        </motion.div>
+            <span className="text-[10px] font-display font-bold tracking-widest" style={{ color: s.color }}>{s.stat}</span>
+          </motion.button>
+        ))}
       </div>
-    </motion.div>
+
+      <AnimatePresence>
+        {revealed && (
+          <motion.div
+            className="rounded-lg border p-3 space-y-2"
+            style={{ borderColor: `${active.color}40`, backgroundColor: `${active.color}08` }}
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: "auto", marginTop: 8 }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: active.color }} />
+              <span className="text-xs font-display tracking-wider text-white/80">{active.task}</span>
+              <span className="text-[9px] ml-auto text-white/40 font-mono">{active.duration}</span>
+            </div>
+            <div className="text-[10px] text-white/50">{active.desc}</div>
+            <div className="flex items-center justify-between pt-1 border-t border-white/5">
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] font-display tracking-widest" style={{ color: active.color }}>{active.stat}</span>
+                <motion.span
+                  className="text-[10px] font-mono text-green-400"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.4 }}
+                >
+                  +1
+                </motion.span>
+              </div>
+              <motion.div
+                className="text-[9px] font-mono text-cyan-400"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+              >
+                +10 XP
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!revealed && (
+        <motion.div
+          className="text-center"
+          animate={{ opacity: [0.3, 0.7, 0.3] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <span className="text-[9px] text-white/30 font-mono">Try tapping SEN above</span>
+        </motion.div>
+      )}
+    </div>
   );
 }
 
@@ -252,13 +302,14 @@ export function OnboardingFlow({ onComplete, onSkip, playerName }: OnboardingFlo
       body: (
         <div className="space-y-4">
           <div className="space-y-2 w-full max-w-[260px]">
-            <StatBar label="STR" sublabel="Physical" value={40} color="#ef4444" delay={0.3} />
-            <StatBar label="AGI" sublabel="Mobility" value={55} color="#3b82f6" delay={0.45} />
-            <StatBar label="VIT" sublabel="Recovery" value={35} color="#22c55e" delay={0.6} />
-            <StatBar label="SEN" sublabel="Clarity" value={60} color="#a855f7" delay={0.75} />
+            <StatBar label="STR" sublabel="Physical training" value={40} color="#ef4444" delay={0.3} />
+            <StatBar label="AGI" sublabel="Mobility & flexibility" value={55} color="#3b82f6" delay={0.45} />
+            <StatBar label="VIT" sublabel="Recovery & sleep" value={35} color="#22c55e" delay={0.6} />
+            <StatBar label="SEN" sublabel="Mental clarity" value={60} color="#a855f7" delay={0.75} />
           </div>
-          <p className="text-white/60 text-xs">Stats increase only when you complete related tasks. There are no shortcuts or manual upgrades.</p>
-          <TaskExample />
+          <p className="text-white/60 text-xs">Tap any stat on the Status screen to see its assigned task. Complete the task to grow that stat.</p>
+          <p className="text-white/50 text-[11px]">There are no shortcuts or manual upgrades.</p>
+          <StatTaskExample />
         </div>
       ),
       subtext: "Consistency builds power.",
