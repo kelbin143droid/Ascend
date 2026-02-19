@@ -247,6 +247,7 @@ export const players = pgTable("players", {
   consecutiveMissedDays: integer("consecutive_missed_days").notNull().default(0),
   stamina: integer("stamina").notNull().default(1),
   lastMVDCheckDate: text("last_mvd_check_date"),
+  onboardingCompleted: integer("onboarding_completed").notNull().default(0),
 });
 
 export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {
