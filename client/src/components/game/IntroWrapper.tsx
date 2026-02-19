@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useGame } from "@/context/GameContext";
 import { IntroScreen } from "./IntroScreen";
 import { PlayerInfoScreen } from "./PlayerInfoScreen";
+import { OnboardingFlow } from "./OnboardingFlow";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -9,7 +10,9 @@ interface IntroWrapperProps {
   children: React.ReactNode;
 }
 
-type IntroStep = "loading" | "intro" | "info" | "transitioning" | "complete";
+type IntroStep = "loading" | "intro" | "info" | "transitioning" | "onboarding" | "complete";
+
+const ONBOARDING_DONE_KEY = "solo_life_onboarding_done";
 
 export function IntroWrapper({ children }: IntroWrapperProps) {
   const { player, isLoading, updatePlayer } = useGame();
@@ -21,8 +24,11 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   useEffect(() => {
     if (!isLoading && player && !initialCheckDone.current) {
       initialCheckDone.current = true;
+      const localOnboardingDone = localStorage.getItem(ONBOARDING_DONE_KEY) === player.id;
       if (!player.name || player.name.trim() === "") {
         setStep("intro");
+      } else if (!player.onboardingCompleted && !localOnboardingDone) {
+        setStep("onboarding");
       } else {
         setStep("complete");
       }
@@ -40,11 +46,22 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     });
     setStep("transitioning");
     setTimeout(() => {
-      setStep("complete");
+      setStep("onboarding");
     }, 2500);
   };
 
-  // Get first name from player name
+  const handleOnboardingComplete = () => {
+    if (player) localStorage.setItem(ONBOARDING_DONE_KEY, player.id);
+    updatePlayer({ onboardingCompleted: 1 });
+    setStep("complete");
+  };
+
+  const handleOnboardingSkip = () => {
+    if (player) localStorage.setItem(ONBOARDING_DONE_KEY, player.id);
+    updatePlayer({ onboardingCompleted: 1 });
+    setStep("complete");
+  };
+
   const getFirstName = () => {
     const name = playerName || player?.name || "";
     return name.split(" ")[0] || name;
@@ -124,6 +141,16 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
           </motion.div>
         </motion.div>
       </motion.div>
+    );
+  }
+
+  if (step === "onboarding") {
+    return (
+      <OnboardingFlow
+        onComplete={handleOnboardingComplete}
+        onSkip={handleOnboardingSkip}
+        playerName={getFirstName()}
+      />
     );
   }
 
