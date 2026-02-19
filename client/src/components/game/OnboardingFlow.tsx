@@ -290,8 +290,8 @@ export function OnboardingFlow({ onComplete, onSkip, playerName }: OnboardingFlo
       body: (
         <div className="space-y-3">
           <p>Your Sectograph displays the day as a circular timeline.</p>
-          <p>Each scheduled task becomes a mission.</p>
-          <p>Complete missions to increase your stats.</p>
+          <p>Tap the <span className="text-cyan-400 font-bold">+</span> button to add a task — choose the activity and set the time.</p>
+          <p>Each scheduled task becomes a mission. Complete missions to increase your stats.</p>
         </div>
       ),
       visual: <MiniSectograph />,
@@ -302,10 +302,7 @@ export function OnboardingFlow({ onComplete, onSkip, playerName }: OnboardingFlo
       body: (
         <div className="space-y-4">
           <div className="space-y-2 w-full max-w-[260px]">
-            <StatBar label="STR" sublabel="Physical training" value={40} color="#ef4444" delay={0.3} />
-            <StatBar label="AGI" sublabel="Mobility & flexibility" value={55} color="#3b82f6" delay={0.45} />
-            <StatBar label="VIT" sublabel="Recovery & sleep" value={35} color="#22c55e" delay={0.6} />
-            <StatBar label="SEN" sublabel="Mental clarity" value={60} color="#a855f7" delay={0.75} />
+            <StatBar label="SEN" sublabel="Mental clarity" value={60} color="#a855f7" delay={0.3} />
           </div>
           <p className="text-white/60 text-xs">Tap any stat on the Status screen to see its assigned task. Complete the task to grow that stat.</p>
           <p className="text-white/50 text-[11px]">There are no shortcuts or manual upgrades.</p>
