@@ -6,6 +6,7 @@ import { useGame } from "@/context/GameContext";
 import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { useRoles } from "@/context/RolesContext";
 import { WeeklyGoalForm } from "@/components/game/WeeklyGoalForm";
+import { OnboardingFlow } from "@/components/game/OnboardingFlow";
 import { BookOpen, Scroll, Trophy, Star, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle, Calendar, ChevronRight } from "lucide-react";
 
 const PLANNING_UNLOCK_PHASE = 3;
@@ -19,6 +20,7 @@ export default function LibraryPage() {
   const { weeklyGoals, deleteWeeklyGoal, updateWeeklyGoal } = useWeeklyGoals();
   const { roles } = useRoles();
   const [showGoalForm, setShowGoalForm] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   
   const playerPhase = player?.phase || 1;
   const canAccessPlanning = playerPhase >= PLANNING_UNLOCK_PHASE;
@@ -321,6 +323,9 @@ export default function LibraryPage() {
                 border: `1px solid ${colors.surfaceBorder}`,
                 opacity: item.unlocked ? 1 : 0.5
               }}
+              onClick={() => {
+                if (item.unlocked && item.id === 1) setShowGuide(true);
+              }}
             >
               <div className="flex items-center gap-4">
                 <div 
@@ -350,7 +355,9 @@ export default function LibraryPage() {
                     {item.type}
                   </p>
                 </div>
-                {!item.unlocked && (
+                {item.unlocked && item.id === 1 ? (
+                  <ChevronRight size={20} style={{ color: colors.primary }} />
+                ) : !item.unlocked ? (
                   <div 
                     className="px-2 py-1 rounded text-xs font-bold"
                     style={{
@@ -360,11 +367,19 @@ export default function LibraryPage() {
                   >
                     LOCKED
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           ))}
         </div>
+
+        {showGuide && (
+          <OnboardingFlow
+            onComplete={() => setShowGuide(false)}
+            onSkip={() => setShowGuide(false)}
+            playerName={player?.name?.split(" ")[0] || ""}
+          />
+        )}
 
         <div 
           className="text-center p-4 rounded-lg mt-4"
