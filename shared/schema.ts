@@ -105,15 +105,16 @@ export const statExerciseSchema = z.object({
 
 export const statGoalsSchema = z.object({
   strength: z.array(statExerciseSchema).default([
-    { id: "pushups", name: "Pushups", targetValue: 10, unit: "reps" },
-    { id: "abs", name: "Abs", targetValue: 10, unit: "reps" },
-    { id: "squats", name: "Squats", targetValue: 10, unit: "reps" },
+    { id: "pushups", name: "Pushups", targetValue: 21, unit: "reps" },
+    { id: "abs", name: "Abs", targetValue: 21, unit: "reps" },
+    { id: "squats", name: "Squats", targetValue: 21, unit: "reps" },
+    { id: "cardio", name: "Cardio", targetValue: 7, unit: "minutes" },
   ]),
   agility: z.array(statExerciseSchema).default([
-    { id: "cardio", name: "Cardio Training", targetValue: 5, unit: "minutes" },
+    { id: "cardio", name: "Cardio Training", targetValue: 7, unit: "minutes" },
   ]),
   sense: z.array(statExerciseSchema).default([
-    { id: "meditation", name: "Meditation", targetValue: 5, unit: "minutes" },
+    { id: "meditation", name: "Meditation", targetValue: 3, unit: "minutes" },
   ]),
   vitality: z.array(statExerciseSchema).default([
     { id: "sleep", name: "Sleep", targetValue: 7, unit: "hours" },

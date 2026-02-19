@@ -23,16 +23,16 @@ interface StatExercise {
 
 const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
   strength: [
-    { id: "pushups", name: "Pushups (3 sets)", targetValue: 30, unit: "reps" },
-    { id: "abs", name: "Abs (3 sets)", targetValue: 30, unit: "reps" },
-    { id: "squats", name: "Squats (3 sets)", targetValue: 30, unit: "reps" },
-    { id: "cardio", name: "Cardio", targetValue: 15, unit: "minutes" },
+    { id: "pushups", name: "Pushups (3 sets)", targetValue: 21, unit: "reps" },
+    { id: "abs", name: "Abs (3 sets)", targetValue: 21, unit: "reps" },
+    { id: "squats", name: "Squats (3 sets)", targetValue: 21, unit: "reps" },
+    { id: "cardio", name: "Cardio", targetValue: 7, unit: "minutes" },
   ],
   agility: [
     { id: "sprint", name: "Sprint Training", targetValue: 5, unit: "minutes" },
   ],
   sense: [
-    { id: "meditation", name: "Meditation", targetValue: 5, unit: "minutes", instructions: "Breathe in for 4 seconds, breathe out for 6 seconds." },
+    { id: "meditation", name: "Meditation", targetValue: 3, unit: "minutes", instructions: "Breathe in for 4 seconds, breathe out for 6 seconds." },
   ],
   vitality: [
     { id: "sleep", name: "Sleep", targetValue: 7, unit: "hours" },

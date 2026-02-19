@@ -7,7 +7,7 @@ import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { useRoles } from "@/context/RolesContext";
 import { WeeklyGoalForm } from "@/components/game/WeeklyGoalForm";
 import { OnboardingFlow } from "@/components/game/OnboardingFlow";
-import { BookOpen, Scroll, Trophy, Star, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle, Calendar, ChevronRight } from "lucide-react";
+import { BookOpen, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle, Calendar, ChevronRight, Swords, Wind, Eye, Heart, Play, ExternalLink } from "lucide-react";
 
 const PLANNING_UNLOCK_PHASE = 3;
 const TRIALS_UNLOCK_PHASE = 4;
@@ -28,9 +28,59 @@ export default function LibraryPage() {
 
   const libraryItems = [
     { id: 1, title: "Ascendant's Guide", type: "Tutorial", icon: BookOpen, unlocked: true },
-    { id: 2, title: "Combat Manual", type: "Skills", icon: Scroll, unlocked: true },
-    { id: 3, title: "Phase Codex", type: "Progression", icon: Trophy, unlocked: true },
-    { id: 4, title: "Secret Techniques", type: "Advanced", icon: Star, unlocked: false },
+  ];
+
+  const [expandedStat, setExpandedStat] = useState<string | null>(null);
+
+  const statVideoSections = [
+    {
+      stat: "strength",
+      label: "STR",
+      fullLabel: "Strength",
+      icon: Swords,
+      color: "#ef4444",
+      videos: [
+        { title: "Perfect Pushup Form", url: "https://www.youtube.com/watch?v=IODxDxX7oi4", duration: "5:23" },
+        { title: "Beginner Bodyweight Squats", url: "https://www.youtube.com/watch?v=aclHkVaku9U", duration: "6:11" },
+        { title: "Core & Abs Workout Guide", url: "https://www.youtube.com/watch?v=AnYl6Nk9GOA", duration: "8:45" },
+      ],
+    },
+    {
+      stat: "agility",
+      label: "AGI",
+      fullLabel: "Agility",
+      icon: Wind,
+      color: "#3b82f6",
+      videos: [
+        { title: "Cardio for Beginners", url: "https://www.youtube.com/watch?v=ml6cT4AZdqI", duration: "10:00" },
+        { title: "Sprint Interval Training", url: "https://www.youtube.com/watch?v=YoPBRlJgDb0", duration: "7:32" },
+        { title: "Flexibility & Mobility Routine", url: "https://www.youtube.com/watch?v=g_tea8ZNk5A", duration: "12:15" },
+      ],
+    },
+    {
+      stat: "sense",
+      label: "SEN",
+      fullLabel: "Sense",
+      icon: Eye,
+      color: "#a855f7",
+      videos: [
+        { title: "Meditation for Beginners", url: "https://www.youtube.com/watch?v=U9YKY7fdwyg", duration: "10:00" },
+        { title: "Deep Focus Techniques", url: "https://www.youtube.com/watch?v=lTxn2BuqyzU", duration: "8:22" },
+        { title: "Breathing for Mental Clarity", url: "https://www.youtube.com/watch?v=tybOi4hjZFQ", duration: "6:40" },
+      ],
+    },
+    {
+      stat: "vitality",
+      label: "VIT",
+      fullLabel: "Vitality",
+      icon: Heart,
+      color: "#22c55e",
+      videos: [
+        { title: "Sleep Optimization Tips", url: "https://www.youtube.com/watch?v=nm1TxQj9IsQ", duration: "11:30" },
+        { title: "Recovery & Rest Days", url: "https://www.youtube.com/watch?v=x0kXMnB1bM0", duration: "7:15" },
+        { title: "Nutrition Basics for Energy", url: "https://www.youtube.com/watch?v=fqhYBTg73fw", duration: "9:50" },
+      ],
+    },
   ];
 
   return (
@@ -381,19 +431,91 @@ export default function LibraryPage() {
           />
         )}
 
-        <div 
-          className="text-center p-4 rounded-lg mt-4"
-          style={{
-            backgroundColor: `${colors.primary}10`,
-            border: `1px solid ${colors.surfaceBorder}`
-          }}
-        >
-          <p 
-            className="text-sm"
-            style={{ color: colors.textMuted }}
-          >
-            More content coming soon...
-          </p>
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Play size={14} style={{ color: colors.primary }} />
+            <h2 className="font-display font-bold text-sm tracking-wider uppercase" style={{ color: colors.text }}>
+              Stat Training Videos
+            </h2>
+          </div>
+          <div className="grid gap-3">
+            {statVideoSections.map((section) => {
+              const isExpanded = expandedStat === section.stat;
+              const StatIcon = section.icon;
+              return (
+                <div
+                  key={section.stat}
+                  className="rounded-lg overflow-hidden transition-all"
+                  style={{
+                    backgroundColor: colors.surface,
+                    border: `1px solid ${isExpanded ? section.color + '40' : colors.surfaceBorder}`
+                  }}
+                  data-testid={`stat-videos-${section.stat}`}
+                >
+                  <button
+                    onClick={() => setExpandedStat(isExpanded ? null : section.stat)}
+                    className="w-full p-3 flex items-center gap-3 transition-colors hover:bg-white/5"
+                    data-testid={`button-toggle-${section.stat}-videos`}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center"
+                      style={{
+                        backgroundColor: `${section.color}20`,
+                        border: `1px solid ${section.color}40`
+                      }}
+                    >
+                      <StatIcon size={18} style={{ color: section.color }} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <h3 className="font-display font-bold text-sm" style={{ color: colors.text }}>
+                        {section.label} — {section.fullLabel}
+                      </h3>
+                      <p className="text-[10px]" style={{ color: colors.textMuted }}>
+                        {section.videos.length} videos
+                      </p>
+                    </div>
+                    {isExpanded ? (
+                      <ChevronUp size={16} style={{ color: section.color }} />
+                    ) : (
+                      <ChevronDown size={16} style={{ color: colors.textMuted }} />
+                    )}
+                  </button>
+
+                  {isExpanded && (
+                    <div className="px-3 pb-3 space-y-2">
+                      {section.videos.map((video, idx) => (
+                        <a
+                          key={idx}
+                          href={video.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-2.5 rounded-lg transition-colors hover:bg-white/5 group"
+                          style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
+                          data-testid={`video-link-${section.stat}-${idx}`}
+                        >
+                          <div
+                            className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: `${section.color}15`, border: `1px solid ${section.color}30` }}
+                          >
+                            <Play size={14} style={{ color: section.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm truncate" style={{ color: colors.text }}>
+                              {video.title}
+                            </div>
+                            <div className="text-[10px]" style={{ color: colors.textMuted }}>
+                              {video.duration}
+                            </div>
+                          </div>
+                          <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: section.color }} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </SystemLayout>
