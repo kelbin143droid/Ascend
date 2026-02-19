@@ -331,9 +331,10 @@ export function Sectograph({ schedule = DEFAULT_SCHEDULE, size = 280, onCenterCl
         </button>
       </div>
 
-      {/* Top time display */}
+      {/* Top time display - above outer ring */}
       <div 
-        className="absolute left-1/2 top-[4%] -translate-x-1/2 flex flex-col items-center pointer-events-none"
+        className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none"
+        style={{ top: "-24px" }}
       >
         <div 
           className="text-sm font-mono font-bold tracking-tighter"
