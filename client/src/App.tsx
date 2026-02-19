@@ -19,6 +19,7 @@ import AnalyticsPage from "@/pages/AnalyticsPage";
 import LibraryPage from "@/pages/LibraryPage";
 import WeeklyPlanningPage from "@/pages/WeeklyPlanningPage";
 import TrialsPage from "@/pages/TrialsPage";
+import CalendarPage from "@/pages/CalendarPage";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
@@ -48,6 +49,7 @@ function Router() {
     <Switch>
       <Route path="/weekly-planning" component={WeeklyPlanningPage} />
       <Route path="/trials" component={TrialsPage} />
+      <Route path="/calendar" component={CalendarPage} />
       <Route path="/" component={StatusPage} />
       <Route path="/arena" component={DungeonPage} />
       <Route path="/library" component={LibraryPage} />

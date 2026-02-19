@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import type { Quadrant, DailyStatProgress } from "@shared/schema";
 
 const COLOR_OPTIONS = [
@@ -47,6 +48,7 @@ interface EditingBlock {
   color: string;
   isSystemTask?: boolean;
   isNew?: boolean;
+  isTemplate?: boolean;
   roleId?: string;
   weeklyGoalId?: string;
   quadrant?: Quadrant;
@@ -78,6 +80,7 @@ export default function StatusPage() {
   const { weeklyGoals, hasGoalsForCurrentWeek, getGoalsByRole } = useWeeklyGoals();
   const { createTask } = useTasks();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
@@ -181,9 +184,8 @@ export default function StatusPage() {
       });
     } else {
       setEditingBlock({
-        id: preset.id === 'custom' ? `custom_${Date.now()}` : `${preset.id}_${selectedDateKey}`,
+        id: preset.id === 'custom' ? `custom_${Date.now()}` : `${preset.id}_${Date.now()}`,
         name: preset.id === 'custom' ? '' : preset.name,
-        date: selectedDateKey,
         startHour: 9,
         startMinute: 0,
         endHour: 10,
@@ -191,6 +193,7 @@ export default function StatusPage() {
         color: preset.color,
         isSystemTask: preset.isSystemTask,
         isNew: true,
+        isTemplate: true,
       });
       if (preset.id === 'custom') {
         setCustomName('');
@@ -247,13 +250,18 @@ export default function StatusPage() {
       }
     }
     
-    let newSchedule: (ScheduleBlock & { date?: string })[];
-    const blockWithDate = { ...blockToSave, date: blockToSave.date || selectedDateKey };
+    let newSchedule: (ScheduleBlock & { date?: string; isTemplate?: boolean })[];
+    const blockFinal = { ...blockToSave };
+    if (blockFinal.isTemplate) {
+      delete blockFinal.date;
+    } else if (!blockFinal.date) {
+      blockFinal.date = selectedDateKey;
+    }
     
     if (editingBlock.isNew) {
-      newSchedule = [...allScheduleBlocks, blockWithDate];
+      newSchedule = [...allScheduleBlocks, blockFinal];
     } else {
-      newSchedule = allScheduleBlocks.map(b => b.id === blockWithDate.id ? blockWithDate : b);
+      newSchedule = allScheduleBlocks.map(b => b.id === blockFinal.id ? blockFinal : b);
     }
     
     updatePlayer({ schedule: newSchedule });
@@ -269,12 +277,13 @@ export default function StatusPage() {
     setEditingBlock(null);
   };
 
-  const handleEditExistingBlock = (block: ScheduleBlock & { description?: string }) => {
+  const handleEditExistingBlock = (block: ScheduleBlock & { description?: string; isTemplate?: boolean }) => {
     setEditingBlock({
       ...block,
       startMinute: block.startMinute ?? 0,
       endMinute: block.endMinute ?? 0,
       isNew: false,
+      isTemplate: block.isTemplate !== false && !block.date,
     });
     if (block.id.startsWith('custom')) {
       setCustomName(block.name);
@@ -406,7 +415,7 @@ export default function StatusPage() {
           </button>
           
           <button
-            onClick={() => setSelectedDate(new Date())}
+            onClick={() => navigate("/calendar")}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/30 border border-primary/20 hover:bg-black/50 transition-colors"
             data-testid="button-date-display"
           >
@@ -726,18 +735,38 @@ export default function StatusPage() {
                 />
               </div>
 
-              <div>
-                <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
-                  Date
-                </label>
+              <div className="flex items-center gap-2">
                 <input
-                  type="date"
-                  value={editingBlock.date || selectedDateKey}
-                  onChange={(e) => setEditingBlock({ ...editingBlock, date: e.target.value })}
-                  className="w-full h-10 px-3 bg-black/50 border border-white/10 rounded text-white/90 font-mono"
-                  data-testid="input-block-date"
+                  type="checkbox"
+                  id="repeatDaily"
+                  checked={editingBlock.isTemplate !== false}
+                  onChange={(e) => setEditingBlock({ 
+                    ...editingBlock, 
+                    isTemplate: e.target.checked,
+                    date: e.target.checked ? undefined : selectedDateKey
+                  })}
+                  className="rounded border-white/20"
+                  data-testid="input-repeat-daily"
                 />
+                <label htmlFor="repeatDaily" className="text-xs text-muted-foreground">
+                  Repeat daily
+                </label>
               </div>
+
+              {!editingBlock.isTemplate && (
+                <div>
+                  <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editingBlock.date || selectedDateKey}
+                    onChange={(e) => setEditingBlock({ ...editingBlock, date: e.target.value })}
+                    className="w-full h-10 px-3 bg-black/50 border border-white/10 rounded text-white/90 font-mono"
+                    data-testid="input-block-date"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="text-[10px] text-muted-foreground/60 uppercase tracking-wider block mb-2">

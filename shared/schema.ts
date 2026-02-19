@@ -348,6 +348,27 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
 
+export const calendarEvents = pgTable("calendar_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  date: date("date").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  color: text("color").notNull().default("#8b5cf6"),
+  type: text("type").notNull().$type<"appointment" | "reminder">().default("appointment"),
+  reminderMinutes: integer("reminder_minutes"),
+  completed: boolean("completed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({ id: true, createdAt: true });
+export const updateCalendarEventSchema = createInsertSchema(calendarEvents).partial().omit({ id: true, createdAt: true });
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type UpdateCalendarEvent = z.infer<typeof updateCalendarEventSchema>;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+
 export const trialStatusEnum = z.enum(["active", "completed"]);
 export type TrialStatus = z.infer<typeof trialStatusEnum>;
 

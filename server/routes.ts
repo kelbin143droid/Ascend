@@ -6,6 +6,7 @@ import {
   insertRoleSchema, updateRoleSchema,
   insertWeeklyGoalSchema, updateWeeklyGoalSchema,
   insertTaskSchema, updateTaskSchema, quadrantEnum,
+  insertCalendarEventSchema, updateCalendarEventSchema,
   type EffortTier
 } from "@shared/schema";
 import { z } from "zod";
@@ -843,6 +844,47 @@ export async function registerRoutes(
       res.json(trial);
     } catch (error) {
       res.status(500).json({ error: "Failed to start trial" });
+    }
+  });
+
+  app.get("/api/calendar-events/:userId", async (req, res) => {
+    try {
+      const month = req.query.month as string | undefined;
+      const events = await storage.getCalendarEvents(req.params.userId, month);
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get calendar events" });
+    }
+  });
+
+  app.post("/api/calendar-events", async (req, res) => {
+    try {
+      const validated = insertCalendarEventSchema.parse(req.body);
+      const event = await storage.createCalendarEvent(validated);
+      res.json(event);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid calendar event data" });
+    }
+  });
+
+  app.patch("/api/calendar-events/:id", async (req, res) => {
+    try {
+      const validated = updateCalendarEventSchema.parse(req.body);
+      const event = await storage.updateCalendarEvent(req.params.id, validated);
+      if (!event) return res.status(404).json({ error: "Event not found" });
+      res.json(event);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid update data" });
+    }
+  });
+
+  app.delete("/api/calendar-events/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteCalendarEvent(req.params.id);
+      if (!success) return res.status(404).json({ error: "Event not found" });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete event" });
     }
   });
 

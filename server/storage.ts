@@ -1,11 +1,12 @@
 import { 
-  players, dailyStatSnapshots, roles, weeklyGoals, tasks, trials,
+  players, dailyStatSnapshots, roles, weeklyGoals, tasks, trials, calendarEvents,
   type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, 
   type FatigueData, type PhaseHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, 
   type Role, type InsertRole, type UpdateRole,
   type WeeklyGoal, type InsertWeeklyGoal, type UpdateWeeklyGoal,
   type Task, type InsertTask, type UpdateTask,
   type Trial, type InsertTrial,
+  type CalendarEvent, type InsertCalendarEvent, type UpdateCalendarEvent,
   PHASE_UNLOCK_DATA 
 } from "@shared/schema";
 import { db } from "./db";
@@ -56,6 +57,12 @@ export interface IStorage {
   getActiveTrial(userId: string, trialType: string): Promise<Trial | undefined>;
   createTrial(trial: InsertTrial): Promise<Trial>;
   updateTrial(id: string, updates: Partial<Trial>): Promise<Trial | undefined>;
+  
+  getCalendarEvents(userId: string, month?: string): Promise<CalendarEvent[]>;
+  getCalendarEvent(id: string): Promise<CalendarEvent | undefined>;
+  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(id: string, updates: UpdateCalendarEvent): Promise<CalendarEvent | undefined>;
+  deleteCalendarEvent(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -363,6 +370,42 @@ export class DatabaseStorage implements IStorage {
   async updateTrial(id: string, updates: Partial<Trial>): Promise<Trial | undefined> {
     const [trial] = await db.update(trials).set(updates).where(eq(trials.id, id)).returning();
     return trial || undefined;
+  }
+
+  async getCalendarEvents(userId: string, month?: string): Promise<CalendarEvent[]> {
+    if (month) {
+      const startDate = `${month}-01`;
+      const [year, m] = month.split('-').map(Number);
+      const endDate = `${year}-${String(m + 1).padStart(2, '0')}-01`;
+      return db.select().from(calendarEvents).where(
+        and(
+          eq(calendarEvents.userId, userId),
+          gte(calendarEvents.date, startDate),
+          sql`${calendarEvents.date} < ${endDate}`
+        )
+      );
+    }
+    return db.select().from(calendarEvents).where(eq(calendarEvents.userId, userId));
+  }
+
+  async getCalendarEvent(id: string): Promise<CalendarEvent | undefined> {
+    const [event] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
+    return event || undefined;
+  }
+
+  async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [newEvent] = await db.insert(calendarEvents).values(event as any).returning();
+    return newEvent;
+  }
+
+  async updateCalendarEvent(id: string, updates: UpdateCalendarEvent): Promise<CalendarEvent | undefined> {
+    const [event] = await db.update(calendarEvents).set(updates as any).where(eq(calendarEvents.id, id)).returning();
+    return event || undefined;
+  }
+
+  async deleteCalendarEvent(id: string): Promise<boolean> {
+    const result = await db.delete(calendarEvents).where(eq(calendarEvents.id, id)).returning();
+    return result.length > 0;
   }
 }
 
