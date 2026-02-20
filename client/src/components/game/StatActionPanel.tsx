@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Plus, Check, Timer, RotateCcw, Pause } from "lucide-react";
+import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Check, RotateCcw, Pause, ChevronRight, RefreshCw, List } from "lucide-react";
 import { getDailyTip, STAT_MULTIPLIERS } from "@/lib/statTips";
+import {
+  generateSession,
+  formatIntervalTime,
+  getSessionSummary,
+  getCompletionMessage,
+  type TrainingSession,
+  type TrainingLevel,
+  type TrainingStat,
+  type IntervalStep,
+} from "@/lib/intervalTraining";
 import type { ScheduleBlock } from "./Sectograph";
 import type { DailyStatProgress } from "@shared/schema";
 
@@ -12,32 +21,6 @@ interface ActiveSession {
   startTime: number;
   scheduledDuration: number;
 }
-
-interface StatExercise {
-  id: string;
-  name: string;
-  targetValue: number;
-  unit: "reps" | "minutes" | "hours";
-  instructions?: string;
-}
-
-const DEFAULT_EXERCISES: Record<string, StatExercise[]> = {
-  strength: [
-    { id: "pushups", name: "Pushups (3 sets)", targetValue: 21, unit: "reps" },
-    { id: "abs", name: "Abs (3 sets)", targetValue: 21, unit: "reps" },
-    { id: "squats", name: "Squats (3 sets)", targetValue: 21, unit: "reps" },
-    { id: "cardio", name: "Cardio", targetValue: 7, unit: "minutes" },
-  ],
-  agility: [
-    { id: "sprint", name: "Sprint Training", targetValue: 5, unit: "minutes" },
-  ],
-  sense: [
-    { id: "meditation", name: "Meditation", targetValue: 3, unit: "minutes", instructions: "Breathe in for 4 seconds, breathe out for 6 seconds." },
-  ],
-  vitality: [
-    { id: "sleep", name: "Sleep", targetValue: 7, unit: "hours" },
-  ],
-};
 
 interface StatActionPanelProps {
   open: boolean;
@@ -50,50 +33,28 @@ interface StatActionPanelProps {
   onCancelSession: () => void;
   dailyProgress?: DailyStatProgress[];
   onUpdateProgress?: (stat: string, exerciseId: string, value: number) => void;
+  playerPhase?: number;
 }
 
-const STAT_CONFIG: Record<string, { icon: typeof Swords; color: string; label: string }> = {
-  strength: { icon: Swords, color: "#ff6b6b", label: "STRENGTH" },
-  agility: { icon: Wind, color: "#4ecdc4", label: "AGILITY" },
-  sense: { icon: Eye, color: "#ffe66d", label: "SENSE" },
-  vitality: { icon: Heart, color: "#a855f7", label: "VITALITY" },
+const STAT_CONFIG: Record<string, { icon: typeof Swords; color: string; label: string; description: string }> = {
+  strength: { icon: Swords, color: "#ff6b6b", label: "STRENGTH", description: "Bodyweight & resistance training" },
+  agility: { icon: Wind, color: "#4ecdc4", label: "FLEXIBILITY", description: "Yoga & mobility exercises" },
+  sense: { icon: Eye, color: "#ffe66d", label: "MEDITATION", description: "Mindfulness & awareness practice" },
+  vitality: { icon: Heart, color: "#a855f7", label: "VITALITY", description: "Recovery & health foundations" },
 };
 
 const STAT_TO_SCHEDULE_MAP: Record<string, string[]> = {
   strength: ["exercise", "training", "workout", "gym"],
-  agility: ["exercise", "training", "sports"],
+  agility: ["exercise", "training", "yoga", "stretch", "flexibility"],
   sense: ["study", "work", "focus", "deep work", "meditation", "reading"],
   vitality: ["sleep", "rest", "recovery", "meal", "walk"],
 };
 
-const TIMER_PRESETS: Record<string, { label: string; seconds: number }[]> = {
-  strength: [
-    { label: "30s", seconds: 30 },
-    { label: "60s", seconds: 60 },
-    { label: "90s", seconds: 90 },
-    { label: "2m", seconds: 120 },
-    { label: "3m", seconds: 180 },
-  ],
-  agility: [
-    { label: "15s", seconds: 15 },
-    { label: "30s", seconds: 30 },
-    { label: "60s", seconds: 60 },
-    { label: "90s", seconds: 90 },
-    { label: "2m", seconds: 120 },
-  ],
-  sense: [
-    { label: "1m", seconds: 60 },
-    { label: "3m", seconds: 180 },
-    { label: "5m", seconds: 300 },
-    { label: "10m", seconds: 600 },
-    { label: "15m", seconds: 900 },
-  ],
-};
-
-const TIMER_LABELS: Record<string, string> = {
-  strength: "Rest / Tension Timer",
-  agility: "Rest / Tension Timer",
-  sense: "Meditation Timer",
+const STAT_XP: Record<string, number> = {
+  strength: 15,
+  sense: 5,
+  agility: 5,
+  vitality: 5,
 };
 
 function playBeep() {
@@ -118,276 +79,44 @@ function playBeep() {
   } catch (e) {}
 }
 
-function createBreathingAudioContext() {
-  return new (window.AudioContext || (window as any).webkitAudioContext)();
+function playTransitionBeep() {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 660;
+    osc.type = "sine";
+    const now = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+    osc.start(now);
+    osc.stop(now + 0.12);
+  } catch (e) {}
 }
 
-function playBreathSound(audioCtx: AudioContext, phase: "inhale" | "exhale") {
-  const duration = phase === "inhale" ? 4 : 6;
-  const baseFreq = phase === "inhale" ? 220 : 165;
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.type = "sine";
-  filter.type = "lowpass";
-  filter.frequency.value = 400;
-
-  const now = audioCtx.currentTime;
-
-  if (phase === "inhale") {
-    osc.frequency.setValueAtTime(baseFreq, now);
-    osc.frequency.linearRampToValueAtTime(baseFreq * 1.2, now + duration);
-    gain.gain.setValueAtTime(0.01, now);
-    gain.gain.linearRampToValueAtTime(0.12, now + duration * 0.6);
-    gain.gain.linearRampToValueAtTime(0.08, now + duration);
-  } else {
-    osc.frequency.setValueAtTime(baseFreq * 1.1, now);
-    osc.frequency.linearRampToValueAtTime(baseFreq, now + duration);
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.linearRampToValueAtTime(0.06, now + duration * 0.7);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
-  }
-
-  osc.start(now);
-  osc.stop(now + duration);
-
-  return { osc, gain };
+interface IntervalPlayerProps {
+  session: TrainingSession;
+  color: string;
+  onComplete: () => void;
+  onCancel: () => void;
 }
 
-function BreathingGuide({ isActive, color }: { isActive: boolean; color: string }) {
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [phase, setPhase] = useState<"idle" | "countdown" | "inhale" | "exhale">("idle");
-  const [phaseTime, setPhaseTime] = useState(0);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const phaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const cleanup = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (phaseTimeoutRef.current) clearTimeout(phaseTimeoutRef.current);
-    intervalRef.current = null;
-    phaseTimeoutRef.current = null;
-    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      audioCtxRef.current.close().catch(() => {});
-    }
-    audioCtxRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    return cleanup;
-  }, [cleanup]);
-
-  const startBreathingCycle = useCallback(() => {
-    const runPhase = (currentPhase: "inhale" | "exhale") => {
-      setPhase(currentPhase);
-      setPhaseTime(0);
-      const duration = currentPhase === "inhale" ? 4 : 6;
-
-      try {
-        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-          audioCtxRef.current = createBreathingAudioContext();
-        }
-        playBreathSound(audioCtxRef.current, currentPhase);
-      } catch (e) {}
-
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      let elapsed = 0;
-      intervalRef.current = setInterval(() => {
-        elapsed++;
-        setPhaseTime(elapsed);
-      }, 1000);
-
-      phaseTimeoutRef.current = setTimeout(() => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        const nextPhase = currentPhase === "inhale" ? "exhale" : "inhale";
-        runPhase(nextPhase as "inhale" | "exhale");
-      }, duration * 1000);
-    };
-
-    runPhase("inhale");
-  }, []);
-
-  const prevActiveRef = useRef(false);
-
-  useEffect(() => {
-    if (isActive && !prevActiveRef.current && phase === "idle") {
-      setPhase("countdown");
-      setCountdown(3);
-
-      try {
-        audioCtxRef.current = createBreathingAudioContext();
-      } catch (e) {}
-
-      let count = 3;
-      const countdownInterval = setInterval(() => {
-        count--;
-        if (count <= 0) {
-          clearInterval(countdownInterval);
-          setCountdown(null);
-          startBreathingCycle();
-        } else {
-          setCountdown(count);
-        }
-      }, 1000);
-      intervalRef.current = countdownInterval;
-    } else if (!isActive && prevActiveRef.current) {
-      cleanup();
-      setPhase("idle");
-      setCountdown(null);
-      setPhaseTime(0);
-    }
-    prevActiveRef.current = isActive;
-  }, [isActive, phase, startBreathingCycle, cleanup]);
-
-  const handleStart = () => {
-    setPhase("countdown");
-    setCountdown(3);
-
-    try {
-      audioCtxRef.current = createBreathingAudioContext();
-    } catch (e) {}
-
-    let count = 3;
-    const countdownInterval = setInterval(() => {
-      count--;
-      if (count <= 0) {
-        clearInterval(countdownInterval);
-        setCountdown(null);
-        startBreathingCycle();
-      } else {
-        setCountdown(count);
-      }
-    }, 1000);
-
-    intervalRef.current = countdownInterval;
-  };
-
-  const handleStop = () => {
-    cleanup();
-    setPhase("idle");
-    setCountdown(null);
-    setPhaseTime(0);
-  };
-
-  const phaseDuration = phase === "inhale" ? 4 : phase === "exhale" ? 6 : 0;
-  const progress = phaseDuration > 0 ? (phaseTime / phaseDuration) * 100 : 0;
-
-  const circleSize = 100;
-  const strokeWidth = 4;
-  const radius = (circleSize - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-
-  return (
-    <div className="space-y-3 p-3 rounded-lg border border-white/10 bg-black/30" data-testid="breathing-guide">
-      <div className="flex items-center gap-2 mb-1">
-        <Eye size={12} style={{ color }} />
-        <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Breathing Guide</span>
-      </div>
-
-      {phase === "idle" && (
-        <div className="text-center">
-          <p className="text-[11px] text-muted-foreground/60 mb-2">
-            Inhale 4s, Exhale 6s
-          </p>
-          <button
-            onClick={handleStart}
-            className="px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-            style={{
-              backgroundColor: `${color}20`,
-              border: `1px solid ${color}40`,
-              color: color,
-            }}
-            data-testid="button-start-breathing"
-          >
-            <Play size={12} className="inline mr-1.5" />
-            Start Breathing
-          </button>
-        </div>
-      )}
-
-      {phase === "countdown" && (
-        <div className="text-center py-4">
-          <div
-            className="text-5xl font-mono font-bold animate-pulse"
-            style={{ color }}
-            data-testid="breathing-countdown"
-          >
-            {countdown}
-          </div>
-          <div className="text-xs text-muted-foreground/60 mt-2">Get ready...</div>
-        </div>
-      )}
-
-      {(phase === "inhale" || phase === "exhale") && (
-        <div className="flex flex-col items-center gap-2">
-          <div className="relative" style={{ width: circleSize, height: circleSize }}>
-            <svg width={circleSize} height={circleSize} className="transform -rotate-90">
-              <circle
-                cx={circleSize / 2}
-                cy={circleSize / 2}
-                r={radius}
-                fill="none"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth={strokeWidth}
-              />
-              <circle
-                cx={circleSize / 2}
-                cy={circleSize / 2}
-                r={radius}
-                fill="none"
-                stroke={phase === "inhale" ? "#60a5fa" : "#34d399"}
-                strokeWidth={strokeWidth}
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                className="transition-all duration-1000"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div
-                className="text-lg font-bold"
-                style={{ color: phase === "inhale" ? "#60a5fa" : "#34d399" }}
-              >
-                {phase === "inhale" ? "INHALE" : "EXHALE"}
-              </div>
-              <div className="text-xs font-mono text-white/50">
-                {phaseTime}s / {phaseDuration}s
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleStop}
-            className="px-3 py-1.5 rounded text-xs border border-white/20 text-white/60 hover:bg-white/10 transition-colors"
-            data-testid="button-stop-breathing"
-          >
-            <Square size={10} className="inline mr-1" />
-            Stop
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CountdownTimer({ stat, color }: { stat: string; color: string }) {
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [remaining, setRemaining] = useState(0);
+function IntervalPlayer({ session, color, onComplete, onCancel }: IntervalPlayerProps) {
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [stepTimeLeft, setStepTimeLeft] = useState(session.steps[0]?.durationSeconds || 0);
   const [isRunning, setIsRunning] = useState(false);
-  const [hasFinished, setHasFinished] = useState(false);
-  const [customInput, setCustomInput] = useState("");
+  const [isPaused, setIsPaused] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasBeepedRef = useRef(false);
 
-  const presets = TIMER_PRESETS[stat] || [];
-  const label = TIMER_LABELS[stat] || "Timer";
+  const totalSteps = session.steps.length;
+  const currentStep = session.steps[currentStepIndex];
+  const totalElapsed = session.steps.slice(0, currentStepIndex).reduce((s, step) => s + step.durationSeconds, 0) + (currentStep ? currentStep.durationSeconds - stepTimeLeft : 0);
+  const overallProgress = (totalElapsed / session.totalDurationSeconds) * 100;
 
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -400,171 +129,231 @@ function CountdownTimer({ stat, color }: { stat: string; color: string }) {
     return clearTimer;
   }, [clearTimer]);
 
+  const startSession = () => {
+    setCountdown(3);
+    let count = 3;
+    intervalRef.current = setInterval(() => {
+      count--;
+      if (count <= 0) {
+        clearTimer();
+        setCountdown(null);
+        setIsRunning(true);
+      } else {
+        setCountdown(count);
+      }
+    }, 1000);
+  };
+
   useEffect(() => {
-    if (isRunning && remaining > 0) {
-      intervalRef.current = setInterval(() => {
-        setRemaining(prev => {
-          if (prev <= 1) {
+    if (!isRunning || isPaused) return;
+
+    intervalRef.current = setInterval(() => {
+      setStepTimeLeft(prev => {
+        if (prev <= 1) {
+          const nextIndex = currentStepIndex + 1;
+          if (nextIndex >= totalSteps) {
+            clearTimer();
             setIsRunning(false);
-            setHasFinished(true);
+            setIsFinished(true);
             if (!hasBeepedRef.current) {
               hasBeepedRef.current = true;
               playBeep();
             }
             return 0;
           }
-          return prev - 1;
-        });
-      }, 1000);
-      return clearTimer;
-    }
-  }, [isRunning, remaining, clearTimer]);
+          playTransitionBeep();
+          setCurrentStepIndex(nextIndex);
+          return session.steps[nextIndex].durationSeconds;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-  const startTimer = (seconds: number) => {
-    clearTimer();
-    hasBeepedRef.current = false;
-    setTimerSeconds(seconds);
-    setRemaining(seconds);
-    setIsRunning(true);
-    setHasFinished(false);
-  };
-
-  const handleCustomStart = () => {
-    const val = parseInt(customInput);
-    if (!isNaN(val) && val > 0) {
-      startTimer(val);
-      setCustomInput("");
-    }
-  };
+    return clearTimer;
+  }, [isRunning, isPaused, currentStepIndex, totalSteps, session.steps, clearTimer]);
 
   const togglePause = () => {
-    if (isRunning) {
+    if (isPaused) {
+      setIsPaused(false);
+    } else {
       clearTimer();
-      setIsRunning(false);
-    } else if (remaining > 0) {
-      setIsRunning(true);
+      setIsPaused(true);
     }
   };
 
-  const resetTimer = () => {
-    clearTimer();
-    setIsRunning(false);
-    setHasFinished(false);
-    setRemaining(0);
-    setTimerSeconds(0);
-    hasBeepedRef.current = false;
-  };
+  const circleSize = 140;
+  const strokeWidth = 6;
+  const radius = (circleSize - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const stepProgress = currentStep ? (stepTimeLeft / currentStep.durationSeconds) : 0;
+  const strokeDashoffset = circumference * stepProgress;
 
-  const formatCountdown = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
+  if (!isRunning && !isPaused && !isFinished && countdown === null) {
+    return (
+      <div className="space-y-4" data-testid="interval-session-ready">
+        <div className="text-center">
+          <div className="text-xs text-muted-foreground/60 mb-3">
+            {getSessionSummary(session)}
+          </div>
 
-  const progress = timerSeconds > 0 ? ((timerSeconds - remaining) / timerSeconds) * 100 : 0;
-
-  return (
-    <div className="space-y-2 p-3 rounded-lg border border-white/10 bg-black/30">
-      <div className="flex items-center gap-2 mb-1">
-        <Timer size={12} style={{ color }} />
-        <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{label}</span>
-      </div>
-
-      {remaining > 0 || hasFinished ? (
-        <div className="space-y-2">
-          <div className="relative">
-            <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
+          <div className="space-y-1 mb-4 max-h-40 overflow-y-auto">
+            {session.steps.filter(s => s.type === "work").map((step, i) => (
               <div
-                className="h-full rounded-full transition-all duration-1000"
-                style={{ width: `${progress}%`, backgroundColor: color }}
-              />
-            </div>
-          </div>
-
-          <div className="text-center">
-            <div
-              className={`text-3xl font-mono font-bold ${hasFinished ? 'animate-pulse' : ''}`}
-              style={{ color: hasFinished ? '#22c55e' : color }}
-              data-testid="timer-display"
-            >
-              {hasFinished ? "00:00" : formatCountdown(remaining)}
-            </div>
-            {hasFinished && (
-              <div className="text-xs text-green-400 mt-1">Time's up!</div>
-            )}
-          </div>
-
-          <div className="flex gap-2 justify-center">
-            {!hasFinished && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-white/20 text-white/60 text-xs"
-                onClick={togglePause}
-                data-testid="button-timer-pause"
+                key={i}
+                className="flex items-center gap-2 px-2 py-1.5 rounded text-[11px] bg-white/5"
+                data-testid={`session-step-${i}`}
               >
-                {isRunning ? <Pause size={12} className="mr-1" /> : <Play size={12} className="mr-1" />}
-                {isRunning ? "Pause" : "Resume"}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-white/20 text-white/60 text-xs"
-              onClick={resetTimer}
-              data-testid="button-timer-reset"
-            >
-              <RotateCcw size={12} className="mr-1" />
-              Reset
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-1.5">
-            {presets.map(preset => (
-              <button
-                key={preset.label}
-                onClick={() => startTimer(preset.seconds)}
-                className="px-2.5 py-1.5 rounded text-xs font-mono transition-colors"
-                style={{
-                  backgroundColor: `${color}15`,
-                  border: `1px solid ${color}30`,
-                  color: color,
-                }}
-                data-testid={`button-timer-${preset.seconds}`}
-              >
-                {preset.label}
-              </button>
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                  style={{ backgroundColor: `${color}30`, color }}>
+                  {i + 1}
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="text-white/80 font-medium">{step.label}</div>
+                  <div className="text-muted-foreground/50 text-[10px]">{step.variant}</div>
+                </div>
+                <div className="text-muted-foreground/40 font-mono text-[10px] shrink-0">
+                  {step.durationSeconds}s
+                </div>
+              </div>
             ))}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <Input
-              type="number"
-              placeholder="sec"
-              value={customInput}
-              onChange={(e) => setCustomInput(e.target.value)}
-              className="w-16 h-7 text-xs bg-black/50 border-white/20 text-center"
-              min="1"
-              data-testid="input-custom-timer"
-              onKeyDown={(e) => e.key === 'Enter' && handleCustomStart()}
-            />
-            <button
-              onClick={handleCustomStart}
-              className="h-7 px-2 rounded text-[10px] transition-colors"
-              style={{
-                backgroundColor: `${color}20`,
-                border: `1px solid ${color}40`,
-                color: color,
-              }}
-              data-testid="button-custom-timer-start"
-            >
-              Start
-            </button>
+          <Button
+            className="w-full"
+            style={{
+              backgroundColor: `${color}20`,
+              border: `1px solid ${color}40`,
+              color,
+            }}
+            onClick={startSession}
+            data-testid="button-begin-interval"
+          >
+            <Play size={16} className="mr-2" />
+            Begin Session
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (countdown !== null) {
+    return (
+      <div className="text-center py-6" data-testid="interval-countdown">
+        <div className="text-6xl font-mono font-bold animate-pulse" style={{ color }}>
+          {countdown}
+        </div>
+        <div className="text-xs text-muted-foreground/60 mt-2">Get ready...</div>
+      </div>
+    );
+  }
+
+  if (isFinished) {
+    const completionMsg = getCompletionMessage(session.stat);
+    return (
+      <div className="text-center py-4 space-y-4" data-testid="interval-complete">
+        <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center"
+          style={{ backgroundColor: `${color}20`, boxShadow: `0 0 30px ${color}40` }}>
+          <Check size={32} style={{ color }} />
+        </div>
+        <div>
+          <div className="text-lg font-display tracking-wider" style={{ color }}>SESSION COMPLETE</div>
+          <div className="text-sm text-muted-foreground/70 mt-1 italic">"{completionMsg}"</div>
+          <div className="text-xs text-muted-foreground/50 mt-2 font-mono">
+            {Math.ceil(session.totalDurationSeconds / 60)} min completed
           </div>
         </div>
-      )}
+        <Button
+          className="w-full"
+          style={{
+            backgroundColor: `${color}20`,
+            border: `1px solid ${color}40`,
+            color,
+          }}
+          onClick={onComplete}
+          data-testid="button-claim-xp"
+        >
+          <Zap size={14} className="mr-2" />
+          Claim +{STAT_XP[session.stat] || 5} XP
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3" data-testid="interval-active">
+      <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-1000"
+          style={{ width: `${overallProgress}%`, backgroundColor: color }}
+        />
+      </div>
+      <div className="flex justify-between items-center text-[9px] text-muted-foreground/40 font-mono">
+        <span>Step {currentStepIndex + 1}/{totalSteps}</span>
+        <span>{formatIntervalTime(totalElapsed)} / {formatIntervalTime(session.totalDurationSeconds)}</span>
+      </div>
+
+      <div className="flex flex-col items-center">
+        <div className="relative" style={{ width: circleSize, height: circleSize }}>
+          <svg width={circleSize} height={circleSize} className="transform -rotate-90">
+            <circle
+              cx={circleSize / 2} cy={circleSize / 2} r={radius}
+              fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={strokeWidth}
+            />
+            <circle
+              cx={circleSize / 2} cy={circleSize / 2} r={radius}
+              fill="none"
+              stroke={currentStep?.type === "work" ? color : "#666"}
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-all duration-1000"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="text-[10px] uppercase tracking-widest font-bold"
+              style={{ color: currentStep?.type === "work" ? color : "#888" }}>
+              {currentStep?.type === "work" ? "WORK" : "REST"}
+            </div>
+            <div className="text-3xl font-mono font-bold text-white/90" data-testid="interval-timer-display">
+              {formatIntervalTime(stepTimeLeft)}
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center mt-3 min-h-[48px]">
+          <div className="text-sm font-medium text-white/90">{currentStep?.label}</div>
+          <div className="text-[11px] text-muted-foreground/60 italic">{currentStep?.variant}</div>
+        </div>
+
+        {currentStepIndex + 1 < totalSteps && (
+          <div className="flex items-center gap-1 text-[9px] text-muted-foreground/30 mt-1">
+            <ChevronRight size={10} />
+            <span>Next: {session.steps[currentStepIndex + 1]?.label}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 justify-center pt-1">
+        <Button
+          variant="outline" size="sm"
+          className="border-white/20 text-white/60 text-xs"
+          onClick={togglePause}
+          data-testid="button-interval-pause"
+        >
+          {isPaused ? <Play size={12} className="mr-1" /> : <Pause size={12} className="mr-1" />}
+          {isPaused ? "Resume" : "Pause"}
+        </Button>
+        <Button
+          variant="outline" size="sm"
+          className="border-white/20 text-white/60 text-xs"
+          onClick={onCancel}
+          data-testid="button-interval-cancel"
+        >
+          <Square size={12} className="mr-1" />
+          End
+        </Button>
+      </div>
     </div>
   );
 }
@@ -580,34 +369,20 @@ export function StatActionPanel({
   onCancelSession,
   dailyProgress = [],
   onUpdateProgress,
+  playerPhase = 1,
 }: StatActionPanelProps) {
-  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const [selectedLevel, setSelectedLevel] = useState<TrainingLevel>("beginner");
+  const [session, setSession] = useState<TrainingSession | null>(null);
+  const [showSessionTable, setShowSessionTable] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  const getTodayKey = () => {
-    const today = new Date();
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  };
-
-  const getTodayProgress = () => {
-    const todayKey = getTodayKey();
-    return dailyProgress.find(p => p.date === todayKey)?.progress || {};
-  };
-
-  const getExerciseProgress = (exerciseId: string): number => {
-    const todayProgress = getTodayProgress();
-    return stat ? (todayProgress[stat]?.[exerciseId] || 0) : 0;
-  };
-
-  const handleAddProgress = (exerciseId: string, exercise: StatExercise) => {
-    if (!stat || !onUpdateProgress) return;
-    const inputVal = inputValues[exerciseId];
-    const addValue = inputVal ? parseFloat(inputVal) : 1;
-    if (isNaN(addValue) || addValue <= 0) return;
-    
-    const currentValue = getExerciseProgress(exerciseId);
-    onUpdateProgress(stat, exerciseId, currentValue + addValue);
-    setInputValues(prev => ({ ...prev, [exerciseId]: '' }));
-  };
+  useEffect(() => {
+    if (!open) {
+      setSession(null);
+      setShowSessionTable(false);
+      setIsPlaying(false);
+    }
+  }, [open]);
 
   if (!stat) return null;
 
@@ -620,14 +395,14 @@ export function StatActionPanel({
 
   const getScheduledBlocks = () => {
     const keywords = STAT_TO_SCHEDULE_MAP[stat] || [];
-    return schedule.filter(block => 
+    return schedule.filter(block =>
       keywords.some(kw => block.name.toLowerCase().includes(kw)) || block.isSystemTask
     );
   };
 
   const scheduledBlocks = getScheduledBlocks();
   const currentHour = new Date().getHours();
-  
+
   const getCurrentBlock = () => {
     return scheduledBlocks.find(block => {
       if (block.endHour < block.startHour) {
@@ -638,34 +413,50 @@ export function StatActionPanel({
   };
 
   const currentBlock = getCurrentBlock();
-  const defaultDuration = currentBlock 
-    ? (currentBlock.endHour > currentBlock.startHour 
-        ? (currentBlock.endHour - currentBlock.startHour) * 60 
+  const defaultDuration = currentBlock
+    ? (currentBlock.endHour > currentBlock.startHour
+        ? (currentBlock.endHour - currentBlock.startHour) * 60
         : (24 - currentBlock.startHour + currentBlock.endHour) * 60)
     : 30;
 
-  const isActiveForThisStat = activeSession?.stat === stat;
-
-  const STAT_XP: Record<string, number> = {
-    strength: 15,
-    sense: 5,
-    agility: 5,
-    vitality: 5,
+  const handleGenerateSession = () => {
+    const newSession = generateSession(stat as TrainingStat, selectedLevel, playerPhase);
+    setSession(newSession);
+    setShowSessionTable(true);
+    setIsPlaying(false);
   };
 
-  const calculateXP = (_duration: number) => {
-    return STAT_XP[stat] || 5;
+  const handleStartPlaying = () => {
+    if (!session) return;
+    setIsPlaying(true);
+    setShowSessionTable(false);
+    onStartSession(stat, Math.ceil(session.totalDurationSeconds / 60));
   };
 
-  const handleStartSession = () => {
-    onStartSession(stat, defaultDuration);
-  };
-
-  const handleCompleteSession = () => {
-    const duration = activeSession?.scheduledDuration || defaultDuration;
-    const xp = calculateXP(duration);
+  const handleSessionComplete = () => {
+    if (!stat) return;
+    const duration = session ? Math.ceil(session.totalDurationSeconds / 60) : defaultDuration;
+    const xp = STAT_XP[stat] || 5;
     onCompleteSession(stat, duration, xp);
+    setIsPlaying(false);
+    setSession(null);
     onOpenChange(false);
+  };
+
+  const handleSessionCancel = () => {
+    setIsPlaying(false);
+    onCancelSession();
+  };
+
+  const buildSessionTableRows = () => {
+    if (!session) return [];
+    let elapsed = 0;
+    return session.steps.map((step, i) => {
+      const start = elapsed;
+      const end = elapsed + step.durationSeconds;
+      elapsed = end;
+      return { ...step, start, end, index: i };
+    });
   };
 
   return (
@@ -673,9 +464,9 @@ export function StatActionPanel({
       <DialogContent className="bg-black/95 border-primary/20 max-w-sm max-h-[85vh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <div 
+            <div
               className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-              style={{ 
+              style={{
                 background: `linear-gradient(135deg, ${config.color}30 0%, transparent 100%)`,
                 boxShadow: `0 0 15px ${config.color}40`
               }}
@@ -687,7 +478,7 @@ export function StatActionPanel({
                 {config.label}
               </span>
               <div className="text-[9px] text-muted-foreground/60 font-mono">
-                {multiplier}x XP
+                {config.description} &bull; {multiplier}x XP
               </div>
             </div>
           </DialogTitle>
@@ -703,80 +494,132 @@ export function StatActionPanel({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">
-              Daily Goals
-            </div>
-            <div className="space-y-2">
-              {(DEFAULT_EXERCISES[stat] || []).map((exercise) => {
-                const current = getExerciseProgress(exercise.id);
-                const isComplete = current >= exercise.targetValue;
-                const unitLabel = exercise.unit === "reps" ? "" : ` ${exercise.unit}`;
-                
-                return (
-                  <div 
-                    key={exercise.id}
-                    className={`flex items-center gap-2 p-2 rounded-lg border ${
-                      isComplete 
-                        ? 'bg-green-500/10 border-green-500/30' 
-                        : 'bg-black/30 border-white/10'
+          {isPlaying && session ? (
+            <IntervalPlayer
+              session={session}
+              color={config.color}
+              onComplete={handleSessionComplete}
+              onCancel={handleSessionCancel}
+            />
+          ) : showSessionTable && session ? (
+            <div className="space-y-3" data-testid="session-table-view">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">
+                  Session Plan
+                </div>
+                <button
+                  onClick={handleGenerateSession}
+                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded transition-colors"
+                  style={{ color: config.color, backgroundColor: `${config.color}15` }}
+                  data-testid="button-regenerate"
+                >
+                  <RefreshCw size={10} />
+                  Shuffle
+                </button>
+              </div>
+
+              <div className="text-[10px] text-muted-foreground/60 text-center">
+                {getSessionSummary(session)}
+              </div>
+
+              <div className="space-y-0.5 max-h-48 overflow-y-auto" data-testid="session-interval-table">
+                {buildSessionTableRows().map((row) => (
+                  <div
+                    key={row.index}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-[11px] ${
+                      row.type === "work" ? "bg-white/5" : "bg-white/[0.02]"
                     }`}
-                    data-testid={`exercise-${exercise.id}`}
+                    data-testid={`interval-row-${row.index}`}
                   >
-                    <div className="flex-1">
-                      <div className="text-xs text-white/80">{exercise.name}</div>
-                      {exercise.instructions && (
-                        <div className="text-[10px] text-muted-foreground/60 italic leading-tight mt-0.5">
-                          {exercise.instructions}
-                        </div>
-                      )}
-                      <div className="text-sm font-mono" style={{ color: isComplete ? '#22c55e' : config.color }}>
-                        {current}/{exercise.targetValue}{unitLabel}
-                      </div>
+                    <div className="w-16 font-mono text-muted-foreground/40 text-[10px] shrink-0">
+                      {formatIntervalTime(row.start)}-{formatIntervalTime(row.end)}
                     </div>
-                    
-                    {isComplete ? (
-                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <Check size={16} className="text-green-500" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          placeholder={exercise.unit === "reps" ? "1" : "1"}
-                          value={inputValues[exercise.id] || ''}
-                          onChange={(e) => setInputValues(prev => ({ ...prev, [exercise.id]: e.target.value }))}
-                          className="w-14 h-8 text-xs bg-black/50 border-white/20 text-center"
-                          min="0"
-                          step={exercise.unit === "hours" ? "0.5" : "1"}
-                          data-testid={`input-${exercise.id}`}
-                        />
-                        <button
-                          onClick={() => handleAddProgress(exercise.id, exercise)}
-                          className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
-                          style={{ 
-                            backgroundColor: `${config.color}20`,
-                            border: `1px solid ${config.color}40`
-                          }}
-                          data-testid={`button-add-${exercise.id}`}
-                        >
-                          <Plus size={16} style={{ color: config.color }} />
-                        </button>
-                      </div>
-                    )}
+                    <div
+                      className="w-1.5 h-4 rounded-full shrink-0"
+                      style={{ backgroundColor: row.type === "work" ? config.color : "#444" }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className={row.type === "work" ? "text-white/80" : "text-muted-foreground/40"}>
+                        {row.label}
+                      </span>
+                      {row.type === "work" && (
+                        <span className="text-muted-foreground/40 text-[10px] ml-1">
+                          ({row.variant})
+                        </span>
+                      )}
+                    </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+
+              <Button
+                className="w-full"
+                style={{
+                  backgroundColor: `${config.color}20`,
+                  border: `1px solid ${config.color}40`,
+                  color: config.color,
+                  boxShadow: `0 0 20px ${config.color}15`,
+                }}
+                onClick={handleStartPlaying}
+                data-testid="button-start-guided-session"
+              >
+                <Play size={16} className="mr-2" />
+                Start Guided Session
+              </Button>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">
+                Training Level
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {(["beginner", "advanced"] as TrainingLevel[]).map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => setSelectedLevel(level)}
+                    className={`px-3 py-2.5 rounded-lg text-xs font-medium transition-all border ${
+                      selectedLevel === level
+                        ? "ring-1"
+                        : "border-white/10 text-muted-foreground/60 hover:border-white/20"
+                    }`}
+                    style={selectedLevel === level ? {
+                      backgroundColor: `${config.color}15`,
+                      borderColor: `${config.color}50`,
+                      color: config.color,
+                      boxShadow: `0 0 10px ${config.color}15`,
+                    } : undefined}
+                    data-testid={`button-level-${level}`}
+                  >
+                    <div className="font-display tracking-wider uppercase text-[11px]">
+                      {level}
+                    </div>
+                    <div className="text-[9px] mt-0.5 opacity-60">
+                      {level === "beginner"
+                        ? stat === "sense" ? "5-10 min" : stat === "vitality" ? "5 min" : "10 min"
+                        : stat === "sense" ? "10-20 min" : stat === "vitality" ? "10 min" : "15-20 min"}
+                    </div>
+                  </button>
+                ))}
+              </div>
 
-          {stat === "sense" ? (
-            <BreathingGuide isActive={isActiveForThisStat} color={config.color} />
-          ) : (stat === "strength" || stat === "agility") ? (
-            <CountdownTimer stat={stat} color={config.color} />
-          ) : null}
+              <Button
+                className="w-full"
+                style={{
+                  backgroundColor: `${config.color}20`,
+                  border: `1px solid ${config.color}40`,
+                  color: config.color,
+                  boxShadow: `0 0 20px ${config.color}15`,
+                }}
+                onClick={handleGenerateSession}
+                data-testid="button-generate-session"
+              >
+                <List size={14} className="mr-2" />
+                Generate Session
+              </Button>
+            </div>
+          )}
 
-          {scheduledBlocks.length > 0 && (
+          {scheduledBlocks.length > 0 && !isPlaying && (
             <div className="space-y-1">
               <div className="text-[9px] text-muted-foreground/50 uppercase tracking-wider flex items-center gap-1">
                 <Clock size={9} />
@@ -784,16 +627,16 @@ export function StatActionPanel({
               </div>
               <div className="space-y-1">
                 {scheduledBlocks.slice(0, 2).map(block => (
-                  <div 
+                  <div
                     key={block.id}
                     className={`flex items-center gap-2 px-2 py-1.5 rounded text-[11px] ${
                       block === currentBlock ? 'ring-1 ring-primary/40' : ''
                     }`}
                     style={{ backgroundColor: `${block.color}20` }}
                   >
-                    <div 
+                    <div
                       className="w-2 h-2 rounded-full shrink-0"
-                      style={{ 
+                      style={{
                         backgroundColor: block.color,
                         boxShadow: block.isSystemTask ? `0 0 6px ${block.color}` : 'none'
                       }}
@@ -811,30 +654,7 @@ export function StatActionPanel({
             </div>
           )}
 
-          <div className="space-y-2 pt-1">
-            {isActiveForThisStat ? (
-              <Button
-                className="w-full bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30"
-                onClick={handleCompleteSession}
-                data-testid="button-complete-session"
-              >
-                <Square size={14} className="mr-2" />
-                Complete Session
-              </Button>
-            ) : (
-              <Button
-                className="w-full bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/30 text-primary hover:border-primary/50"
-                onClick={handleStartSession}
-                style={{ boxShadow: `0 0 20px ${config.color}20` }}
-                data-testid="button-start-session"
-              >
-                <Play size={16} className="mr-2" />
-                Start Session
-              </Button>
-            )}
-          </div>
-
-          {activeSession && activeSession.stat !== stat && (
+          {activeSession && activeSession.stat !== stat && !isPlaying && (
             <div className="text-center text-[10px] text-amber-400/70 py-2">
               Another session ({activeSession.stat}) is currently active
             </div>

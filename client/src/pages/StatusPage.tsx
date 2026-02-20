@@ -921,6 +921,7 @@ export default function StatusPage() {
         onCancelSession={cancelSession}
         dailyProgress={(player.dailyStatProgress as DailyStatProgress[]) || []}
         onUpdateProgress={handleUpdateProgress}
+        playerPhase={player.phase || 1}
       />
 
       {showTestMode && (
