@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Check, RotateCcw, Pause, ChevronRight, RefreshCw, List } from "lucide-react";
 import { ExerciseAnimation, RestAnimationComponent } from "./ExerciseAnimation";
+import { hasAnimation } from "@/lib/animationRegistry";
 import { getDailyTip, STAT_MULTIPLIERS } from "@/lib/statTips";
 import {
   generateSession,
@@ -294,7 +295,7 @@ function IntervalPlayer({ session, color, onComplete, onCancel }: IntervalPlayer
       </div>
 
       <div className="flex flex-col items-center">
-        {session.stat === "strength" && currentStep?.type === "work" && currentStep?.exercise ? (
+        {currentStep?.type === "work" && currentStep?.exercise && hasAnimation(currentStep.exercise.id) ? (
           <div className="relative mb-2">
             <ExerciseAnimation
               exerciseId={currentStep.exercise.id}
