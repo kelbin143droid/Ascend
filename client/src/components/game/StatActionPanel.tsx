@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Check, RotateCcw, Pause, ChevronRight, RefreshCw, List } from "lucide-react";
+import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Check, RotateCcw, Pause, ChevronRight, RefreshCw, List, ExternalLink } from "lucide-react";
 import { getDailyTip, STAT_MULTIPLIERS } from "@/lib/statTips";
 import {
   generateSession,
@@ -211,6 +211,20 @@ function IntervalPlayer({ session, color, onComplete, onCancel }: IntervalPlayer
                   <div className="text-white/80 font-medium">{step.label}</div>
                   <div className="text-muted-foreground/50 text-[10px]">{step.variant}</div>
                 </div>
+                {step.exercise?.videoUrl && (
+                  <a
+                    href={step.exercise.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded transition-colors hover:opacity-80"
+                    style={{ color, backgroundColor: `${color}15` }}
+                    onClick={(e) => e.stopPropagation()}
+                    data-testid={`video-link-ready-${i}`}
+                  >
+                    <ExternalLink size={8} />
+                    Form
+                  </a>
+                )}
                 <div className="text-muted-foreground/40 font-mono text-[10px] shrink-0">
                   {step.durationSeconds}s
                 </div>
@@ -324,6 +338,19 @@ function IntervalPlayer({ session, color, onComplete, onCancel }: IntervalPlayer
         <div className="text-center mt-3 min-h-[48px]">
           <div className="text-sm font-medium text-white/90">{currentStep?.label}</div>
           <div className="text-[11px] text-muted-foreground/60 italic">{currentStep?.variant}</div>
+          {currentStep?.type === "work" && currentStep?.exercise?.videoUrl && (
+            <a
+              href={currentStep.exercise.videoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-1.5 text-[10px] px-2 py-0.5 rounded-full transition-colors hover:opacity-80"
+              style={{ color, backgroundColor: `${color}15`, border: `1px solid ${color}30` }}
+              data-testid="video-link-active"
+            >
+              <ExternalLink size={10} />
+              Watch Form
+            </a>
+          )}
         </div>
 
         {currentStepIndex + 1 < totalSteps && (
@@ -548,6 +575,20 @@ export function StatActionPanel({
                         </span>
                       )}
                     </div>
+                    {row.type === "work" && row.exercise?.videoUrl && (
+                      <a
+                        href={row.exercise.videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded transition-colors hover:opacity-80"
+                        style={{ color: config.color, backgroundColor: `${config.color}15` }}
+                        onClick={(e) => e.stopPropagation()}
+                        data-testid={`video-link-table-${row.index}`}
+                      >
+                        <ExternalLink size={8} />
+                        Form
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>

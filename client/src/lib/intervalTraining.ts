@@ -7,6 +7,7 @@ export interface Exercise {
   beginnerVariant: string;
   advancedVariant: string;
   category: string;
+  videoUrl?: string;
 }
 
 export interface IntervalStep {
@@ -37,18 +38,18 @@ export interface SessionConfig {
 }
 
 const STR_EXERCISES: Exercise[] = [
-  { id: "pushups", name: "Push-ups", beginnerVariant: "Knee push-ups", advancedVariant: "Standard push-ups", category: "upper" },
-  { id: "squats", name: "Squats", beginnerVariant: "Half squats", advancedVariant: "Full depth squats", category: "lower" },
-  { id: "plank", name: "Plank Hold", beginnerVariant: "Knee plank", advancedVariant: "Full plank", category: "core" },
-  { id: "lunges", name: "Lunges", beginnerVariant: "Stationary lunges", advancedVariant: "Walking lunges", category: "lower" },
-  { id: "mountain_climbers", name: "Mountain Climbers", beginnerVariant: "Slow mountain climbers", advancedVariant: "Fast mountain climbers", category: "full" },
-  { id: "tricep_dips", name: "Tricep Dips", beginnerVariant: "Bench dips (bent knees)", advancedVariant: "Bench dips (legs straight)", category: "upper" },
-  { id: "glute_bridges", name: "Glute Bridges", beginnerVariant: "Double leg bridges", advancedVariant: "Single leg bridges", category: "lower" },
-  { id: "superman", name: "Superman Hold", beginnerVariant: "Arms only lift", advancedVariant: "Full superman", category: "core" },
-  { id: "burpees", name: "Burpees", beginnerVariant: "No-jump burpees", advancedVariant: "Full burpees", category: "full" },
-  { id: "wall_sit", name: "Wall Sit", beginnerVariant: "Shallow wall sit", advancedVariant: "90° wall sit", category: "lower" },
-  { id: "crunches", name: "Crunches", beginnerVariant: "Standard crunches", advancedVariant: "Bicycle crunches", category: "core" },
-  { id: "jumping_jacks", name: "Jumping Jacks", beginnerVariant: "Step-out jacks", advancedVariant: "Star jumps", category: "full" },
+  { id: "pushups", name: "Push-ups", beginnerVariant: "Knee push-ups", advancedVariant: "Standard push-ups", category: "upper", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+push+ups+proper+form+tutorial" },
+  { id: "squats", name: "Squats", beginnerVariant: "Half squats", advancedVariant: "Full depth squats", category: "lower", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+bodyweight+squats+proper+form" },
+  { id: "plank", name: "Plank Hold", beginnerVariant: "Knee plank", advancedVariant: "Full plank", category: "core", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+plank+proper+form+tutorial" },
+  { id: "lunges", name: "Lunges", beginnerVariant: "Stationary lunges", advancedVariant: "Walking lunges", category: "lower", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+lunges+proper+form+tutorial" },
+  { id: "mountain_climbers", name: "Mountain Climbers", beginnerVariant: "Slow mountain climbers", advancedVariant: "Fast mountain climbers", category: "full", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+mountain+climbers+exercise+tutorial" },
+  { id: "tricep_dips", name: "Tricep Dips", beginnerVariant: "Bench dips (bent knees)", advancedVariant: "Bench dips (legs straight)", category: "upper", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+tricep+dips+bench+dips+tutorial" },
+  { id: "glute_bridges", name: "Glute Bridges", beginnerVariant: "Double leg bridges", advancedVariant: "Single leg bridges", category: "lower", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+glute+bridges+proper+form" },
+  { id: "superman", name: "Superman Hold", beginnerVariant: "Arms only lift", advancedVariant: "Full superman", category: "core", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+superman+exercise+proper+form" },
+  { id: "burpees", name: "Burpees", beginnerVariant: "No-jump burpees", advancedVariant: "Full burpees", category: "full", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+burpees+proper+form+beginner" },
+  { id: "wall_sit", name: "Wall Sit", beginnerVariant: "Shallow wall sit", advancedVariant: "90° wall sit", category: "lower", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+wall+sit+proper+form+tutorial" },
+  { id: "crunches", name: "Crunches", beginnerVariant: "Standard crunches", advancedVariant: "Bicycle crunches", category: "core", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+crunches+bicycle+crunches+tutorial" },
+  { id: "jumping_jacks", name: "Jumping Jacks", beginnerVariant: "Step-out jacks", advancedVariant: "Star jumps", category: "full", videoUrl: "https://www.youtube.com/results?search_query=how+to+do+jumping+jacks+star+jumps+tutorial" },
 ];
 
 const AGI_EXERCISES: Exercise[] = [
