@@ -387,3 +387,60 @@ export const insertTrialSchema = createInsertSchema(trials, {
 }).omit({ id: true });
 export type InsertTrial = z.infer<typeof insertTrialSchema>;
 export type Trial = typeof trials.$inferSelect;
+
+export const habits = pgTable("habits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  stat: text("stat").notNull().$type<StatName>(),
+  baseDurationMinutes: integer("base_duration_minutes").notNull().default(3),
+  currentDurationMinutes: integer("current_duration_minutes").notNull().default(3),
+  currentStreak: integer("current_streak").notNull().default(0),
+  longestStreak: integer("longest_streak").notNull().default(0),
+  totalCompletions: integer("total_completions").notNull().default(0),
+  lastCompletedDate: text("last_completed_date"),
+  stackAfterHabitId: varchar("stack_after_habit_id"),
+  difficultyLevel: integer("difficulty_level").notNull().default(1),
+  momentum: real("momentum").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertHabitSchema = createInsertSchema(habits).omit({ id: true, createdAt: true });
+export const updateHabitSchema = createInsertSchema(habits).partial().omit({ id: true, createdAt: true });
+export type InsertHabit = z.infer<typeof insertHabitSchema>;
+export type UpdateHabit = z.infer<typeof updateHabitSchema>;
+export type Habit = typeof habits.$inferSelect;
+
+export const habitCompletions = pgTable("habit_completions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  habitId: varchar("habit_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  durationMinutes: integer("duration_minutes").notNull(),
+  xpEarned: integer("xp_earned").notNull().default(0),
+  completedAt: timestamp("completed_at").defaultNow(),
+});
+
+export const insertHabitCompletionSchema = createInsertSchema(habitCompletions).omit({ id: true, completedAt: true });
+export type InsertHabitCompletion = z.infer<typeof insertHabitCompletionSchema>;
+export type HabitCompletion = typeof habitCompletions.$inferSelect;
+
+export const BADGE_TYPES = [
+  "first_habit", "streak_7", "streak_14", "streak_30", "streak_100",
+  "all_stats_trained", "perfect_week", "early_bird", "night_owl",
+  "habit_master", "consistency_king",
+] as const;
+export type BadgeType = typeof BADGE_TYPES[number];
+
+export const badges = pgTable("badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  badgeType: text("badge_type").notNull().$type<BadgeType>(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  earnedAt: timestamp("earned_at").defaultNow(),
+});
+
+export const insertBadgeSchema = createInsertSchema(badges).omit({ id: true, earnedAt: true });
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type Badge = typeof badges.$inferSelect;

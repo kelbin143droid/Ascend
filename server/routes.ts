@@ -7,8 +7,12 @@ import {
   insertWeeklyGoalSchema, updateWeeklyGoalSchema,
   insertTaskSchema, updateTaskSchema, quadrantEnum,
   insertCalendarEventSchema, updateCalendarEventSchema,
+  insertHabitSchema, updateHabitSchema,
   type EffortTier
 } from "@shared/schema";
+import { calculateAdaptiveDuration, getProgressiveIntensity, calculateMomentum, shouldBreakStreak, calculateReducedDuration, suggestHabitStacks } from "./gameLogic/habitProgression";
+import { calculateHabitXP, checkDailyBonus, checkWeeklyBonus, checkBadgeEligibility } from "./gameLogic/rewards";
+import { generateCoachMessages, getDurationSuggestion, getMotivationNudge } from "./gameLogic/aiCoach";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
@@ -885,6 +889,300 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete event" });
+    }
+  });
+
+  app.get("/api/habits/:userId", async (req, res) => {
+    try {
+      const userHabits = await storage.getHabits(req.params.userId);
+      res.json(userHabits);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get habits" });
+    }
+  });
+
+  app.post("/api/habits", async (req, res) => {
+    try {
+      const parsed = insertHabitSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const habit = await storage.createHabit(parsed.data);
+      res.status(201).json(habit);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create habit" });
+    }
+  });
+
+  app.patch("/api/habits/:id", async (req, res) => {
+    try {
+      const parsed = updateHabitSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const habit = await storage.updateHabit(req.params.id, parsed.data);
+      if (!habit) return res.status(404).json({ error: "Habit not found" });
+      res.json(habit);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update habit" });
+    }
+  });
+
+  app.delete("/api/habits/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteHabit(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Habit not found" });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete habit" });
+    }
+  });
+
+  app.post("/api/habits/:id/complete", async (req, res) => {
+    try {
+      const habit = await storage.getHabit(req.params.id);
+      if (!habit) return res.status(404).json({ error: "Habit not found" });
+
+      const player = await storage.getPlayer(habit.userId);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const today = getTodayDateString();
+      const derived = calculateDerivedStats(player.stats);
+
+      const streakCheck = shouldBreakStreak(habit.lastCompletedDate, today, derived.streakForgiveness);
+      let newStreak = habit.currentStreak;
+      let newMomentum = habit.momentum;
+
+      if (streakCheck.broken) {
+        newStreak = 1;
+        newMomentum = calculateMomentum(0, true);
+      } else if (habit.lastCompletedDate === today) {
+        newMomentum = calculateMomentum(habit.momentum, true);
+      } else {
+        newStreak = habit.currentStreak + 1;
+        newMomentum = calculateMomentum(habit.momentum, true);
+      }
+
+      const newLongestStreak = Math.max(habit.longestStreak, newStreak);
+      const newTotalCompletions = habit.totalCompletions + 1;
+      const newDifficulty = getProgressiveIntensity(newStreak, newTotalCompletions);
+      const newDuration = calculateAdaptiveDuration(habit.baseDurationMinutes, newStreak, newDifficulty);
+
+      const xpEarned = calculateHabitXP({
+        ...habit,
+        currentStreak: newStreak,
+        difficultyLevel: newDifficulty,
+      });
+
+      await storage.updateHabit(habit.id, {
+        currentStreak: newStreak,
+        longestStreak: newLongestStreak,
+        totalCompletions: newTotalCompletions,
+        lastCompletedDate: today,
+        difficultyLevel: newDifficulty,
+        currentDurationMinutes: newDuration,
+        momentum: newMomentum,
+      });
+
+      await storage.createHabitCompletion({
+        habitId: habit.id,
+        userId: habit.userId,
+        durationMinutes: habit.currentDurationMinutes,
+        xpEarned,
+      });
+
+      const updatedPlayer = await storage.gainExp(habit.userId, xpEarned);
+
+      const allHabits = await storage.getHabits(habit.userId);
+      const existingBadges = await storage.getBadges(habit.userId);
+      const totalAllCompletions = allHabits.reduce((sum, h) => sum + h.totalCompletions, 0);
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentCompletions = await storage.getHabitCompletions(habit.userId, sevenDaysAgo);
+
+      const completionsByDay: number[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toLocaleDateString("en-CA");
+        completionsByDay.push(
+          recentCompletions.filter(c => new Date(c.completedAt!).toLocaleDateString("en-CA") === dateStr).length
+        );
+      }
+      const weeklyBonus = checkWeeklyBonus(completionsByDay, allHabits.filter(h => h.active).length);
+
+      const todayCompletions = recentCompletions.filter(
+        c => new Date(c.completedAt!).toLocaleDateString("en-CA") === today
+      );
+      const dailyBonus = checkDailyBonus(
+        new Set(todayCompletions.map(c => c.habitId)).size,
+        allHabits.filter(h => h.active).length
+      );
+
+      let bonusXP = 0;
+      if (dailyBonus.earned) bonusXP += dailyBonus.bonusXP;
+      if (weeklyBonus.earned) bonusXP += weeklyBonus.bonusXP;
+      if (bonusXP > 0) {
+        await storage.gainExp(habit.userId, bonusXP);
+      }
+
+      const updatedHabit = await storage.getHabit(habit.id);
+      const newBadges = checkBadgeEligibility(
+        updatedHabit!,
+        allHabits,
+        existingBadges,
+        totalAllCompletions + 1,
+        weeklyBonus.earned
+      );
+
+      const awardedBadges = [];
+      for (const badge of newBadges) {
+        const created = await storage.createBadge({
+          userId: habit.userId,
+          badgeType: badge.type,
+          name: badge.name,
+          description: badge.description,
+        });
+        awardedBadges.push(created);
+      }
+
+      const finalPlayer = await storage.getPlayer(habit.userId);
+
+      res.json({
+        habit: updatedHabit,
+        xpEarned,
+        bonusXP,
+        dailyBonus,
+        weeklyBonus,
+        newBadges: awardedBadges,
+        streakInfo: {
+          current: newStreak,
+          longest: newLongestStreak,
+          momentum: newMomentum,
+          graceDayUsed: streakCheck.graceDayUsed,
+        },
+        player: finalPlayer ? attachDerivedStats(finalPlayer) : null,
+      });
+    } catch (error) {
+      console.error("Failed to complete habit:", error);
+      res.status(500).json({ error: "Failed to complete habit" });
+    }
+  });
+
+  app.post("/api/habits/:id/skip", async (req, res) => {
+    try {
+      const habit = await storage.getHabit(req.params.id);
+      if (!habit) return res.status(404).json({ error: "Habit not found" });
+
+      const newMomentum = calculateMomentum(habit.momentum, false);
+      const reducedDuration = calculateReducedDuration(habit.currentDurationMinutes, habit.baseDurationMinutes);
+
+      const updated = await storage.updateHabit(habit.id, {
+        momentum: newMomentum,
+        currentDurationMinutes: reducedDuration,
+      });
+
+      res.json({ habit: updated, message: "Habit skipped. Duration reduced to help you get back on track." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to skip habit" });
+    }
+  });
+
+  app.get("/api/habits/:userId/stacks", async (req, res) => {
+    try {
+      const userHabits = await storage.getHabits(req.params.userId);
+      const suggestions = suggestHabitStacks(userHabits);
+      res.json(suggestions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get habit stack suggestions" });
+    }
+  });
+
+  app.get("/api/badges/:userId", async (req, res) => {
+    try {
+      const userBadges = await storage.getBadges(req.params.userId);
+      res.json(userBadges);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get badges" });
+    }
+  });
+
+  app.get("/api/player/:id/coach", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const userHabits = await storage.getHabits(req.params.id);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentCompletions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+
+      const messages = generateCoachMessages(player, userHabits, recentCompletions);
+      const nudge = getMotivationNudge(player.streak, player.consecutiveMissedDays);
+
+      const habitSuggestions = userHabits.map(h => ({
+        habitId: h.id,
+        habitName: h.name,
+        ...getDurationSuggestion(h),
+      }));
+
+      res.json({ messages, nudge, habitSuggestions });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get coach data" });
+    }
+  });
+
+  app.get("/api/player/:id/habit-analytics", async (req, res) => {
+    try {
+      const userHabits = await storage.getHabits(req.params.id);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const completions = await storage.getHabitCompletions(req.params.id, thirtyDaysAgo);
+      const userBadges = await storage.getBadges(req.params.id);
+
+      const habitStats = userHabits.map(h => {
+        const habitCompletions = completions.filter(c => c.habitId === h.id);
+        const last7 = habitCompletions.filter(c => {
+          const d = new Date(c.completedAt!);
+          const sevenAgo = new Date();
+          sevenAgo.setDate(sevenAgo.getDate() - 7);
+          return d >= sevenAgo;
+        }).length;
+        const last14 = habitCompletions.filter(c => {
+          const d = new Date(c.completedAt!);
+          const fourteenAgo = new Date();
+          fourteenAgo.setDate(fourteenAgo.getDate() - 14);
+          return d >= fourteenAgo;
+        }).length;
+        const last30 = habitCompletions.length;
+
+        let trend: "improving" | "declining" | "stable" = "stable";
+        const recentRate = last7 / 7;
+        const olderRate = (last14 - last7) / 7;
+        if (recentRate > olderRate + 0.1) trend = "improving";
+        else if (recentRate < olderRate - 0.1) trend = "declining";
+
+        return {
+          habitId: h.id,
+          name: h.name,
+          stat: h.stat,
+          currentStreak: h.currentStreak,
+          longestStreak: h.longestStreak,
+          totalCompletions: h.totalCompletions,
+          momentum: h.momentum,
+          currentDuration: h.currentDurationMinutes,
+          baseDuration: h.baseDurationMinutes,
+          completionsLast7: last7,
+          completionsLast14: last14,
+          completionsLast30: last30,
+          trend,
+        };
+      });
+
+      res.json({ habitStats, badges: userBadges, totalHabits: userHabits.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get habit analytics" });
     }
   });
 

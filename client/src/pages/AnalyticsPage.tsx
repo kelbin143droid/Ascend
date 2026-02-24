@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, Activity, Calendar, Zap } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Activity, Calendar, Zap, Flame, Target, Award, BarChart2 } from "lucide-react";
 
 interface StatSnapshot {
   id: string;
@@ -44,7 +44,29 @@ interface AnalyticsData {
   };
 }
 
-const STAT_COLORS = {
+interface HabitStat {
+  habitId: string;
+  name: string;
+  stat: string;
+  currentStreak: number;
+  longestStreak: number;
+  totalCompletions: number;
+  momentum: number;
+  currentDuration: number;
+  baseDuration: number;
+  completionsLast7: number;
+  completionsLast14: number;
+  completionsLast30: number;
+  trend: "improving" | "declining" | "stable";
+}
+
+interface HabitAnalyticsData {
+  habitStats: HabitStat[];
+  badges: { id: string; badgeType: string; name: string; description: string; earnedAt: string }[];
+  totalHabits: number;
+}
+
+const STAT_COLORS: Record<string, string> = {
   strength: "#ef4444",
   agility: "#22c55e",
   sense: "#3b82f6",
@@ -84,6 +106,16 @@ export default function AnalyticsPage() {
     queryFn: async () => {
       if (!player) throw new Error("No player");
       const res = await fetch(`/api/player/${player.id}/analytics`);
+      return res.json();
+    },
+    enabled: !!player,
+  });
+
+  const { data: habitAnalytics } = useQuery<HabitAnalyticsData>({
+    queryKey: ["/api/player", player?.id, "habit-analytics"],
+    queryFn: async () => {
+      if (!player) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}/habit-analytics`);
       return res.json();
     },
     enabled: !!player,
@@ -308,6 +340,150 @@ export default function AnalyticsPage() {
                 </div>
               )}
             </div>
+
+            {habitAnalytics && habitAnalytics.habitStats.length > 0 && (
+              <>
+                <div className="flex items-center gap-3 mt-8 mb-4">
+                  <Target className="w-5 h-5 text-emerald-400" />
+                  <h2 className="text-lg font-bold text-white font-orbitron tracking-wide">
+                    HABIT ANALYTICS
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="habit-total">
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Active Habits</div>
+                    <div className="text-2xl font-bold text-cyan-400 font-orbitron">
+                      {habitAnalytics.totalHabits}
+                    </div>
+                  </div>
+                  <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="habit-badges">
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                      <Award className="w-3 h-3" /> Badges
+                    </div>
+                    <div className="text-2xl font-bold text-amber-400 font-orbitron">
+                      {habitAnalytics.badges.length}
+                    </div>
+                  </div>
+                  <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="habit-best-streak">
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                      <Flame className="w-3 h-3" /> Best Streak
+                    </div>
+                    <div className="text-2xl font-bold text-orange-400 font-orbitron">
+                      {Math.max(0, ...habitAnalytics.habitStats.map(h => h.longestStreak))}d
+                    </div>
+                  </div>
+                  <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="habit-completions-30">
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                      <BarChart2 className="w-3 h-3" /> 30-Day Total
+                    </div>
+                    <div className="text-2xl font-bold text-emerald-400 font-orbitron">
+                      {habitAnalytics.habitStats.reduce((s, h) => s + h.completionsLast30, 0)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {habitAnalytics.habitStats.map((h) => (
+                    <div
+                      key={h.habitId}
+                      className="bg-gray-900/60 border border-gray-800 rounded-lg p-4"
+                      data-testid={`habit-stat-${h.habitId}`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: STAT_COLORS[h.stat] || "#888" }}
+                          />
+                          <span className="font-semibold text-white text-sm">{h.name}</span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 uppercase">
+                            {h.stat}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {h.trend === "improving" && <TrendingUp className="w-4 h-4 text-emerald-400" />}
+                          {h.trend === "declining" && <TrendingDown className="w-4 h-4 text-red-400" />}
+                          {h.trend === "stable" && <Minus className="w-4 h-4 text-gray-500" />}
+                          <span className={`text-xs ${
+                            h.trend === "improving" ? "text-emerald-400" :
+                            h.trend === "declining" ? "text-red-400" : "text-gray-500"
+                          }`}>
+                            {h.trend}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2 text-center">
+                        <div>
+                          <div className="text-xs text-gray-500">Streak</div>
+                          <div className="text-sm font-bold text-orange-400 flex items-center justify-center gap-1">
+                            {h.currentStreak > 0 && <Flame className="w-3 h-3" />}
+                            {h.currentStreak}d
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">7 Day</div>
+                          <div className="text-sm font-bold text-cyan-400">{h.completionsLast7}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">14 Day</div>
+                          <div className="text-sm font-bold text-blue-400">{h.completionsLast14}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500">30 Day</div>
+                          <div className="text-sm font-bold text-purple-400">{h.completionsLast30}</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                          <span>Momentum</span>
+                          <span>{Math.round(h.momentum * 100)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.round(h.momentum * 100)}%`,
+                              backgroundColor: h.momentum > 0.7 ? "#22c55e" : h.momentum > 0.3 ? "#f59e0b" : "#ef4444",
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                        <span>Duration: {h.currentDuration}min (base: {h.baseDuration}min)</span>
+                        <span>Best: {h.longestStreak}d | Total: {h.totalCompletions}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {habitAnalytics.badges.length > 0 && (
+                  <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4">
+                    <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                      <Award className="w-4 h-4 text-amber-400" /> Earned Badges
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {habitAnalytics.badges.map((b) => (
+                        <div
+                          key={b.id}
+                          className="flex items-center gap-2 p-2 bg-gray-800/50 rounded-lg border border-amber-900/30"
+                          data-testid={`badge-${b.badgeType}`}
+                        >
+                          <Award className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-amber-300 truncate">{b.name}</div>
+                            <div className="text-[10px] text-gray-500 truncate">{b.description}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
       </div>

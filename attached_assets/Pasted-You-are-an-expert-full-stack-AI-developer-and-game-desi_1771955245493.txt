@@ -1,0 +1,40 @@
+You are an expert full-stack AI developer and game designer. I have an anime-themed productivity app that tracks daily tasks like workouts, meditation, yoga, focus sprints, and personal reflection using a sectograph schedule. The app currently tracks streaks, shows XP for completed tasks, and allows users to set custom tasks. I want you to enhance it with the following features:
+
+1. **Habit Formation Principles**
+   - Implement **micro-sessions** for all tasks: very short starting durations (e.g., 2–3 min for meditation, 3–5 min for exercise) that scale gradually based on streaks.
+   - Implement **progressive scaling**: as the user completes consistent streaks, increase task durations and intensity automatically.
+   - Allow **habit stacking**: suggest stacking a new task after an existing routine (e.g., after brushing teeth → 5 push-ups).
+
+2. **Reward System**
+   - Add immediate feedback for completing tasks: XP, streaks, animations, badges.
+   - Add daily and weekly bonuses for consistent streaks.
+   - Make reward points linkable to in-game stats, like energy, mental clarity, or strength.
+   - (Optional) Prepare hooks for future crypto-based rewards.
+
+3. **AI Assistant Integration**
+   - Implement an AI assistant that provides:
+     - Personalized coaching: suggest task duration, stackable habits, and difficulty adjustments.
+     - Motivation nudges and emotional check-ins.
+     - Problem-solving suggestions when the user struggles with a task.
+     - Adaptive reminders and notifications based on streaks, time of day, and skipped habits.
+   - Ensure AI assistant can dynamically adjust tasks without breaking user streaks.
+
+4. **User Flexibility**
+   - Users can modify or skip habits; the app adapts while maintaining momentum.
+   - Track streaks and achievements but avoid penalizing users harshly for missed tasks.
+   - Ensure the system is accessible and usable for all experience levels.
+
+5. **Analytics & Feedback**
+   - Update analytics to include:
+     - Habit streaks over 7, 14, 30 days.
+     - Progression in duration/intensity.
+     - Feedback on consistency trends.
+
+6. **Gamification**
+   - Link tasks and rewards to in-game stats.
+   - Encourage progression in both real-life habits and game character growth.
+   - Use micro-rewards to provide dopamine feedback for small wins.
+
+**Instruction to AI:** Review the current app code, identify where the habit logic, streak tracking, and reward system exist, and refactor/extend them to integrate the above features. Maintain modularity for easy scaling, and ensure the AI assistant system is flexible and responsive to user behavior.
+
+Provide detailed implementation suggestions, code snippets, and architectural updates where needed.

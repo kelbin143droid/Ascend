@@ -20,6 +20,7 @@ import LibraryPage from "@/pages/LibraryPage";
 import WeeklyPlanningPage from "@/pages/WeeklyPlanningPage";
 import TrialsPage from "@/pages/TrialsPage";
 import CalendarPage from "@/pages/CalendarPage";
+import HabitsPage from "@/pages/HabitsPage";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
@@ -59,6 +60,7 @@ function Router() {
       <Route path="/survival" component={SurvivalPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/analytics" component={AnalyticsPage} />
+      <Route path="/habits" component={HabitsPage} />
       <Route component={NotFound} />
     </Switch>
   );

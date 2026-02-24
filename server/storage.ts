@@ -1,5 +1,6 @@
 import { 
   players, dailyStatSnapshots, roles, weeklyGoals, tasks, trials, calendarEvents,
+  habits, habitCompletions, badges,
   type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, 
   type FatigueData, type PhaseHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, 
   type Role, type InsertRole, type UpdateRole,
@@ -7,6 +8,9 @@ import {
   type Task, type InsertTask, type UpdateTask,
   type Trial, type InsertTrial,
   type CalendarEvent, type InsertCalendarEvent, type UpdateCalendarEvent,
+  type Habit, type InsertHabit, type UpdateHabit,
+  type HabitCompletion, type InsertHabitCompletion,
+  type Badge, type InsertBadge,
   PHASE_UNLOCK_DATA 
 } from "@shared/schema";
 import { db } from "./db";
@@ -63,6 +67,18 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEvent(id: string, updates: UpdateCalendarEvent): Promise<CalendarEvent | undefined>;
   deleteCalendarEvent(id: string): Promise<boolean>;
+  
+  getHabits(userId: string): Promise<Habit[]>;
+  getHabit(id: string): Promise<Habit | undefined>;
+  createHabit(habit: InsertHabit): Promise<Habit>;
+  updateHabit(id: string, updates: UpdateHabit): Promise<Habit | undefined>;
+  deleteHabit(id: string): Promise<boolean>;
+  
+  getHabitCompletions(userId: string, since?: Date): Promise<HabitCompletion[]>;
+  createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion>;
+  
+  getBadges(userId: string): Promise<Badge[]>;
+  createBadge(badge: InsertBadge): Promise<Badge>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -406,6 +422,58 @@ export class DatabaseStorage implements IStorage {
   async deleteCalendarEvent(id: string): Promise<boolean> {
     const result = await db.delete(calendarEvents).where(eq(calendarEvents.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getHabits(userId: string): Promise<Habit[]> {
+    return db.select().from(habits).where(eq(habits.userId, userId));
+  }
+
+  async getHabit(id: string): Promise<Habit | undefined> {
+    const [habit] = await db.select().from(habits).where(eq(habits.id, id));
+    return habit || undefined;
+  }
+
+  async createHabit(habit: InsertHabit): Promise<Habit> {
+    const [newHabit] = await db.insert(habits).values(habit as any).returning();
+    return newHabit;
+  }
+
+  async updateHabit(id: string, updates: UpdateHabit): Promise<Habit | undefined> {
+    const [habit] = await db.update(habits).set(updates as any).where(eq(habits.id, id)).returning();
+    return habit || undefined;
+  }
+
+  async deleteHabit(id: string): Promise<boolean> {
+    const result = await db.delete(habits).where(eq(habits.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getHabitCompletions(userId: string, since?: Date): Promise<HabitCompletion[]> {
+    if (since) {
+      return db.select().from(habitCompletions).where(
+        and(
+          eq(habitCompletions.userId, userId),
+          gte(habitCompletions.completedAt, since)
+        )
+      ).orderBy(desc(habitCompletions.completedAt));
+    }
+    return db.select().from(habitCompletions)
+      .where(eq(habitCompletions.userId, userId))
+      .orderBy(desc(habitCompletions.completedAt));
+  }
+
+  async createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion> {
+    const [newCompletion] = await db.insert(habitCompletions).values(completion).returning();
+    return newCompletion;
+  }
+
+  async getBadges(userId: string): Promise<Badge[]> {
+    return db.select().from(badges).where(eq(badges.userId, userId));
+  }
+
+  async createBadge(badge: InsertBadge): Promise<Badge> {
+    const [newBadge] = await db.insert(badges).values(badge as any).returning();
+    return newBadge;
   }
 }
 

@@ -1,9 +1,10 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { Sword, UserCircle, BarChart3, BookOpen, Rocket } from "lucide-react";
+import { Sword, UserCircle, BarChart3, BookOpen, Rocket, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { ThemeSelector } from "./ThemeSelector";
+import { AICoach } from "./AICoach";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 
 export function SystemLayout({ children }: { children: React.ReactNode }) {
@@ -16,8 +17,8 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const rightNavItems = [
+    { icon: Target, label: "HABITS", path: "/habits" },
     { icon: BarChart3, label: "ANALYTICS", path: "/analytics" },
-    { icon: UserCircle, label: "PROFILE", path: "/profile" },
   ];
 
   const colors = backgroundTheme.colors;
@@ -92,6 +93,8 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       <main className="relative z-20 container mx-auto px-4 py-6 pb-24 max-w-md md:max-w-2xl min-h-screen flex flex-col">
         {children}
       </main>
+
+      <AICoach />
 
       <nav 
         className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl"

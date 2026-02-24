@@ -4,6 +4,8 @@
 
 This is a Solo Leveling-themed RPG game interface built as a full-stack web application. The project creates an immersive "Awakened Hunter System" experience with player stats, dungeon exploration, inventory management, skill trees, and a 3D game mode. Players can level up, allocate stat points, fight enemies in dungeons, and manage their character progression through a stylized cyberpunk/gaming UI.
 
+The app features a comprehensive **Habit Formation System** with micro-sessions, progressive scaling, streak tracking with momentum, badge achievements, and an AI coaching assistant.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -17,7 +19,7 @@ Preferred communication style: Simple, everyday language.
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS v4 with custom theme variables, custom fonts (Orbitron, Rajdhani, JetBrains Mono)
 - **3D Rendering**: React Three Fiber with Drei helpers for the 3D game mode
-- **Animations**: Framer Motion for UI transitions
+- **Animations**: Framer Motion for UI transitions, CSS @keyframes for micro-rewards
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express
@@ -36,14 +38,24 @@ Preferred communication style: Simple, everyday language.
 ├── client/           # React frontend
 │   ├── src/
 │   │   ├── components/  # UI components (shadcn + game-specific)
+│   │   │   └── game/    # AICoach, MicroRewards, ExerciseAnimation, etc.
 │   │   ├── context/     # React context providers
 │   │   ├── hooks/       # Custom React hooks
-│   │   ├── lib/         # Utilities and query client
-│   │   └── pages/       # Route page components
+│   │   ├── lib/         # Utilities, intervalTraining, animationRegistry
+│   │   └── pages/       # Route page components (HabitsPage, AnalyticsPage, etc.)
 ├── server/           # Express backend
 │   ├── routes.ts     # API route definitions
-│   ├── storage.ts    # Database operations
-│   └── db.ts         # Database connection
+│   ├── storage.ts    # Database operations (IStorage interface)
+│   ├── db.ts         # Database connection
+│   └── gameLogic/    # Game logic modules
+│       ├── habitProgression.ts  # Micro-sessions, progressive scaling, momentum
+│       ├── rewards.ts           # XP calculation, bonuses, badge eligibility
+│       ├── aiCoach.ts           # Rule-based coaching engine
+│       ├── statProgression.ts   # Stat XP, fatigue, HP/MP updates
+│       ├── xpProgressionSystem.ts # Task completion, MVD, penalties
+│       ├── phaseConfig.ts       # Phase unlock requirements
+│       ├── levelSystem.ts       # Level-up calculations
+│       └── stats.ts             # Derived stats calculation
 ├── shared/           # Shared types and schemas
 │   └── schema.ts     # Drizzle schema + Zod types
 └── migrations/       # Drizzle database migrations
@@ -58,6 +70,24 @@ Preferred communication style: Simple, everyday language.
 3. **Player Persistence**: Player ID is stored in localStorage, with automatic player creation on first visit.
 
 4. **Development vs Production**: Vite middleware is used in development for HMR; static files are served in production from the built `dist/public` directory.
+
+5. **Animation Registry**: `animationRegistry.ts` abstracts exercise animations with a RendererType field to allow swapping SVG silhouettes for Unity 3D avatars per-animation.
+
+6. **Habit System**: Habits use momentum-based tracking instead of pure streaks. Grace days prevent harsh penalties. Progressive scaling auto-adjusts duration and difficulty based on consistency.
+
+7. **AI Coach**: Rule-based coaching engine (no external API) that provides contextual suggestions based on player habits, streaks, time of day, and recent activity.
+
+### Database Tables
+- `players` — Main player data, stats, inventory, schedule, XP, phase
+- `daily_stat_snapshots` — Daily stat snapshots for analytics
+- `roles` — User-defined life roles for weekly planning
+- `weekly_goals` — Eisenhower Matrix goals per role per week
+- `tasks` — Calendar tasks linked to roles and goals
+- `trials` — Multi-day challenge system
+- `calendar_events` — Google Calendar-style events
+- `habits` — Habit definitions with streak, momentum, difficulty, stacking
+- `habit_completions` — Individual habit completion records
+- `badges` — Earned achievement badges
 
 ## External Dependencies
 
