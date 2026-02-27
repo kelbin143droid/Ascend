@@ -90,6 +90,10 @@ export default function StatusPage() {
   const [showTestMode, setShowTestMode] = useState(false);
   const [defaultRoleCreated, setDefaultRoleCreated] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [scheduleUnlockBannerSeen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("ascend_schedule_unlock_seen") === "true";
+  });
 
   const { data: homeData } = useQuery<{ onboardingDay: number }>({
     queryKey: ["home", player?.id],
@@ -376,6 +380,25 @@ export default function StatusPage() {
             </p>
           </div>
         )}
+
+        {!scheduleEditingLocked && !scheduleUnlockBannerSeen && (() => {
+          localStorage.setItem("ascend_schedule_unlock_seen", "true");
+          return (
+            <div
+              data-testid="schedule-unlock-banner"
+              className="rounded-xl px-4 py-3 flex items-center gap-3 mb-4"
+              style={{
+                backgroundColor: "rgba(59,130,246,0.08)",
+                border: "1px solid rgba(59,130,246,0.15)",
+              }}
+            >
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "rgba(59,130,246,0.5)" }} />
+              <p className="text-xs font-medium" style={{ color: "rgba(147,197,253,0.8)" }}>
+                You now control your full system.
+              </p>
+            </div>
+          );
+        })()}
 
         <div className="flex items-center gap-3 mb-1">
           <CalendarDays className="w-5 h-5 text-primary" />

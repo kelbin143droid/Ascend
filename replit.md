@@ -40,6 +40,15 @@ Ascend OS is built around seven interconnected modular systems:
 ### Progressive Access (Soft-Lock System)
 Features and detailed metrics are progressively unlocked based on `onboardingDay` (1-7), ensuring a gradual introduction to the system's complexity. This includes habit creation, detailed analytics, advanced Coach features, and schedule functionalities.
 
+### Day 6: System Awareness Unlock
+-   **Day6RevealModal** (`client/src/components/game/Day6RevealModal.tsx`): One-time modal revealing hidden progress. Title: "Your Progress Was Never Invisible." Stored in `ascend_day6_reveal_seen` localStorage flag.
+-   **Momentum Meter**: First visible system meter, shown on HomePage when `onboardingDay >= 6`. Fades in after modal dismissal. Shows 0-100 bar with "Built through consistency" label. No stability/flow meters shown.
+-   **Coach Unlock**: `DeepCoachView` activates at Day 6 with "System Insight Unlocked" header (one-time, `ascend_deep_coach_seen`) and "Understanding Momentum" explanation section.
+-   **Schedule Unlock**: Editing enabled at Day 6. One-time banner: "You now control your full system." (`ascend_schedule_unlock_seen`).
+-   **Day 6 Completion**: DayCloseOverlay shows "Momentum Activated" / "You showed up again. This is how change compounds." with "Continue to Day 7" button.
+-   **Home subtitle**: "Day 6 · System awareness unlocked." with motivation "Your consistency has been building all along."
+-   **Backend**: `/api/player/:id/home` returns `momentum` (0-100, rounded from avgMomentum * 100).
+
 ## External Dependencies
 
 ### Database

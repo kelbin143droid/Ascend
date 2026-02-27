@@ -1619,6 +1619,7 @@ export async function registerRoutes(
         },
         flow,
         growthState,
+        momentum: Math.round(avgMomentum * 100),
         insight,
         todaysFocus,
         nextAction: nextAction ? {

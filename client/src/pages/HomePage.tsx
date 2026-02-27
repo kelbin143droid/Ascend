@@ -8,6 +8,7 @@ import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy } from "luci
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
+import { Day6RevealModal } from "@/components/game/Day6RevealModal";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 
@@ -16,6 +17,7 @@ interface HomeData {
   stability: { score: number; label: string };
   flow: { value: number; label: string; trending: "rising" | "steady" | "cooling" };
   growthState: string;
+  momentum: number;
   insight: string;
   todaysFocus: string;
   nextAction: { habitId: string; name: string; stat: string; durationMinutes: number } | null;
@@ -49,7 +51,7 @@ const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }
   3: { subtitle: "You're building a routine.", motivation: "Make it yours." },
   4: { subtitle: "Rhythm forming", motivation: "Consistency creates structure naturally." },
   5: { subtitle: "Momentum growing", motivation: "Growth expands naturally." },
-  6: { subtitle: "You understand the rhythm.", motivation: "Your actions shape your system." },
+  6: { subtitle: "System awareness unlocked.", motivation: "Your consistency has been building all along." },
   7: { subtitle: "First growth cycle complete.", motivation: "You've proven consistency." },
 };
 
@@ -67,6 +69,8 @@ export default function HomePage() {
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
   const [showDay4Intro, setShowDay4Intro] = useState(false);
   const [showDay5Intro, setShowDay5Intro] = useState(false);
+  const [showDay6Reveal, setShowDay6Reveal] = useState(false);
+  const [day6MeterVisible, setDay6MeterVisible] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -158,6 +162,22 @@ export default function HomePage() {
       setShowDay5Intro(true);
     }
   }, [homeData, onboardingDay]);
+
+  useEffect(() => {
+    if (!homeData || onboardingDay !== 6) return;
+    const seenKey = "ascend_day6_reveal_seen";
+    if (localStorage.getItem(seenKey) === "true") {
+      setDay6MeterVisible(true);
+      return;
+    }
+    setShowDay6Reveal(true);
+  }, [homeData, onboardingDay]);
+
+  const handleDay6RevealContinue = () => {
+    localStorage.setItem("ascend_day6_reveal_seen", "true");
+    setShowDay6Reveal(false);
+    setTimeout(() => setDay6MeterVisible(true), 300);
+  };
 
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
   const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
@@ -277,6 +297,44 @@ export default function HomePage() {
             {reflection.motivation}
           </p>
         </div>
+
+        {onboardingDay >= 6 && day6MeterVisible && (
+          <div
+            data-testid="momentum-meter"
+            className="rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: `${colors.surface || colors.background}cc`,
+              border: `1px solid ${colors.surfaceBorder}`,
+              animation: "fadeSlideIn 0.8s ease-out",
+            }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.textMuted }}>
+                Momentum
+              </span>
+              <span className="text-[10px] font-mono" style={{ color: colors.primary }}>
+                {homeData?.momentum ?? 0}
+              </span>
+            </div>
+            <div
+              className="relative h-2 rounded-full overflow-hidden"
+              style={{ backgroundColor: `${colors.surfaceBorder}50` }}
+            >
+              <div
+                data-testid="momentum-bar"
+                className="h-full rounded-full transition-all duration-1000"
+                style={{
+                  width: `${Math.min(homeData?.momentum ?? 0, 100)}%`,
+                  background: `linear-gradient(90deg, ${colors.primary}80, ${colors.primary})`,
+                  boxShadow: (homeData?.momentum ?? 0) > 20 ? `0 0 6px ${colors.primary}30` : undefined,
+                }}
+              />
+            </div>
+            <p className="text-[9px] mt-1.5" style={{ color: `${colors.textMuted}88` }}>
+              Built through consistency
+            </p>
+          </div>
+        )}
 
         {showCompletionGlow && (
           <div
@@ -505,6 +563,11 @@ export default function HomePage() {
           setShowReminderPrompt(false);
         }}
         onDismiss={() => setShowReminderPrompt(false)}
+      />
+
+      <Day6RevealModal
+        visible={showDay6Reveal}
+        onContinue={handleDay6RevealContinue}
       />
     </SystemLayout>
   );

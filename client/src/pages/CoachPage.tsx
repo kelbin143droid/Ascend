@@ -271,9 +271,57 @@ function DeepCoachView({
   chatMutation,
 }: DeepCoachViewProps) {
   const sortedMessages = coachData?.messages?.sort((a, b) => b.priority - a.priority) ?? [];
+  const [insightSeen] = useState(() => localStorage.getItem("ascend_deep_coach_seen") === "true");
+
+  if (!insightSeen) {
+    localStorage.setItem("ascend_deep_coach_seen", "true");
+  }
 
   return (
     <div className="space-y-4">
+      {!insightSeen && (
+        <div
+          data-testid="system-insight-header"
+          className="rounded-xl px-4 py-3 flex items-center gap-3"
+          style={{
+            backgroundColor: `${colors.primary}08`,
+            border: `1px solid ${colors.primary}15`,
+          }}
+        >
+          <Sparkles size={16} style={{ color: colors.primary }} />
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary }}>
+              System Insight Unlocked
+            </p>
+            <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
+              You now have access to deeper growth analysis.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div
+        data-testid="momentum-explanation"
+        className="rounded-lg p-4 space-y-3"
+        style={{
+          backgroundColor: `${colors.background}cc`,
+          border: `1px solid ${colors.surfaceBorder}`,
+        }}
+      >
+        <div className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary }}>
+          Understanding Momentum
+        </div>
+        <p className="text-[11px] leading-relaxed" style={{ color: colors.text }}>
+          Momentum builds each day you show up. It reflects your consistency, not perfection.
+        </p>
+        <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
+          Small actions compound. A 3-minute session today adds to the same momentum as a longer one.
+        </p>
+        <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
+          Missing a day reduces momentum slightly, but returning quickly recovers it. The system rewards showing up.
+        </p>
+      </div>
+
       {isLoading && (
         <div
           data-testid="text-coach-loading"
