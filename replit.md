@@ -58,8 +58,14 @@ Preferred communication style: Simple, everyday language.
 - **Stability Wording**: Supportive tier labels — Building, Developing, Solid, Strong, Excellent (no "Fragile"/"Critical")
 
 ### Flow State System
-- `server/gameLogic/flowEngine.ts` — `getFlowState()` returns 0-100 value based on momentum, completions, stacking, and return bonus. `updateFlowAfterCompletion()` recalculates after task completion.
+- `server/gameLogic/flowEngine.ts` — `getFlowState()` returns 0-100 value based on momentum, completions, stacking, and return bonus. `updateFlowAfterCompletion()` returns updated FlowState after task completion. `applyDailyFlowDecay()` reduces flow by 8%/day of inactivity.
+- Flow labels: 0 → "Awaiting Action", 1-29 → "Warming Up", 30-69 → "Building Flow", 70-100 → "In Flow". No negative wording.
 - Drives visual intensity on Home page and AI recommendations.
+- Habit completion returns `flow` in response; HomePage invalidated on completion for real-time feedback.
+
+### Momentum Response & Micro-Feedback
+- Completing a habit triggers: flow bar animation (spring easing), radial glow pulse on Home, haptic vibration (mobile), immediate status text update.
+- AI Coach daily insight is a single dynamic sentence, context-aware (time of day, habit count, stability, completion state).
 
 ### Project Structure
 ```
@@ -97,7 +103,7 @@ Preferred communication style: Simple, everyday language.
 ```
 
 ### Key API Endpoints (New)
-- `GET /api/player/:id/home` — Home screen data: phase, stability, flow state, coach insight, next action
+- `GET /api/player/:id/home` — Home screen data: phase, stability, flow state, coach insight, todaysFocus, next action
 - `GET /api/player/:id/tasks-today` — Today's habits with completion status, phase-adjusted durations, priority ordering
 - `GET /api/player/:id/visuals` — Environment visuals + avatar aura based on phase and stability
 - `GET /api/player/:id/stability/trend?days=7` — Historical stability trend data

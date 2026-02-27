@@ -26,7 +26,7 @@ import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
 import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, calculateXPRequired, type TaskStatType } from "./gameLogic/xpProgressionSystem";
 import { getTotalXPForLevel } from "./gameLogic/levelSystem";
-import { getFlowState } from "./gameLogic/flowEngine";
+import { getFlowState, updateFlowAfterCompletion } from "./gameLogic/flowEngine";
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -1104,6 +1104,12 @@ export async function registerRoutes(
 
       const visuals = getTaskCompletionVisuals(habit.stat, xpEarned, awardedBadges.length);
 
+      const flowCompletions = await storage.getHabitCompletions(habit.userId, sevenDaysAgo);
+      const flowState = getFlowState(finalPlayer || player, allHabits, flowCompletions);
+      const updatedFlow = updateFlowAfterCompletion(flowState, 
+        new Set(flowCompletions.filter(c => new Date(c.completedAt!).toLocaleDateString("en-CA") === today).map(c => c.habitId)).size / Math.max(1, allHabits.filter(h => h.active).length)
+      );
+
       res.json({
         habit: updatedHabit,
         xpEarned,
@@ -1132,6 +1138,7 @@ export async function registerRoutes(
           previousScore: previousStabilityScore,
           tier: stabilityResult.tier,
         },
+        flow: updatedFlow,
         player: finalPlayer ? attachDerivedStats(finalPlayer) : null,
       });
     } catch (error) {
@@ -1458,9 +1465,17 @@ export async function registerRoutes(
       const activeHabits = habits.filter(h => h.active);
       const remaining = activeHabits.filter(h => !completedIds.has(h.id));
 
-      const nextAction = remaining.length > 0
-        ? remaining.sort((a, b) => b.momentum - a.momentum)[0]
-        : null;
+      const sorted = remaining.sort((a, b) => b.momentum - a.momentum);
+      const nextAction = sorted.length > 0 ? sorted[0] : null;
+
+      let todaysFocus: string;
+      if (activeHabits.length === 0) {
+        todaysFocus = "Start your first habit to activate Flow.";
+      } else if (remaining.length === 0) {
+        todaysFocus = "All sessions complete. Recovery time.";
+      } else {
+        todaysFocus = `${nextAction!.name} · ${nextAction!.currentDurationMinutes}m`;
+      }
 
       res.json({
         phase: {
@@ -1473,6 +1488,7 @@ export async function registerRoutes(
         },
         flow,
         insight,
+        todaysFocus,
         nextAction: nextAction ? {
           habitId: nextAction.id,
           name: nextAction.name,

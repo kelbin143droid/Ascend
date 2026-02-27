@@ -279,9 +279,8 @@ export function getHomeInsight(
 ): { title: string; message: string; action?: string } {
   const now = new Date();
   const today = now.toLocaleDateString("en-CA");
+  const hour = now.getHours();
   const stabilityScore = player.stability?.score ?? 50;
-  const stabilityTier = getStabilityTier(stabilityScore);
-  const phaseName = PHASE_NAMES[player.phase] || `Phase ${player.phase}`;
 
   const todayCompletions = recentCompletions.filter(c => {
     const d = new Date(c.completedAt!);
@@ -293,34 +292,59 @@ export function getHomeInsight(
 
   if (activeHabits.length === 0) {
     return {
-      title: "Welcome, Hunter",
-      message: "Create your first habit to begin your journey. Start with just 2-3 minutes — the system scales with you.",
+      title: "Coach",
+      message: "Start your first habit to activate Flow.",
       action: "create_habit",
     };
   }
 
   if (remainingHabits.length === 0) {
+    const doneMessages = [
+      "All sessions complete. Rest builds tomorrow's strength.",
+      "You showed up today. That matters more than you think.",
+      "Recovery is part of the system. You've earned it.",
+    ];
     return {
-      title: "All Complete",
-      message: `Great work today. Your stability is ${stabilityTier.label} (${stabilityScore}/100). Rest and recover, ${phaseName} Hunter.`,
+      title: "Coach",
+      message: doneMessages[todayCompletions.length % doneMessages.length],
     };
   }
 
   if (player.stability?.softRegressionActive) {
-    const easiest = remainingHabits.sort((a, b) => b.momentum - a.momentum)[0];
     return {
-      title: "Recovery Focus",
-      message: `Difficulty has been reduced to help you rebuild. Start with "${easiest.name}" — just ${Math.max(2, Math.round(easiest.baseDurationMinutes * 0.6))} minutes.`,
+      title: "Coach",
+      message: "A short session now will rebuild momentum gently.",
       action: "start_habit",
     };
   }
 
-  const sorted = remainingHabits.sort((a, b) => b.momentum - a.momentum);
-  const next = sorted[0];
+  const next = remainingHabits.sort((a, b) => b.momentum - a.momentum)[0];
+  const completedCount = todayCompletions.length;
 
+  const dayIndex = now.getDate() % 4;
+
+  if (completedCount === 0) {
+    const startMessages = [
+      "Momentum begins with a small action.",
+      `A ${next.currentDurationMinutes}-minute session will shift your state.`,
+      "One action is all it takes to start Flow.",
+      hour < 12 ? "Morning sessions set the tone for the day." : "It's never too late to build momentum.",
+    ];
+    return {
+      title: "Coach",
+      message: startMessages[dayIndex],
+      action: "start_habit",
+    };
+  }
+
+  const flowMessages = [
+    "A short session now will build Flow.",
+    `Keep going — ${remainingHabits.length} session${remainingHabits.length > 1 ? "s" : ""} left today.`,
+    stabilityScore >= 70 ? "Your consistency is paying off." : "Each action strengthens your stability.",
+  ];
   return {
-    title: `${remainingHabits.length} Habit${remainingHabits.length > 1 ? "s" : ""} Today`,
-    message: `Start with "${next.name}" (${next.currentDurationMinutes} min). Stability: ${stabilityTier.label}. ${stabilityScore >= 70 ? "You're on track." : "Consistency builds momentum."}`,
+    title: "Coach",
+    message: flowMessages[completedCount % flowMessages.length],
     action: "start_habit",
   };
 }

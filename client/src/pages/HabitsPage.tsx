@@ -174,6 +174,7 @@ export default function HabitsPage() {
       invalidateAll();
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["visuals"] });
+      queryClient.invalidateQueries({ queryKey: ["home"] });
 
       if (data.visuals) {
         setBurstStat(data.habit?.stat || "strength");

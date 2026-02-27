@@ -6,6 +6,20 @@ export interface FlowState {
   trending: "rising" | "steady" | "cooling";
 }
 
+const FLOW_LABELS: { min: number; label: string }[] = [
+  { min: 70, label: "In Flow" },
+  { min: 30, label: "Building Flow" },
+  { min: 1, label: "Warming Up" },
+  { min: 0, label: "Awaiting Action" },
+];
+
+function getFlowLabel(value: number): string {
+  for (const tier of FLOW_LABELS) {
+    if (value >= tier.min) return tier.label;
+  }
+  return "Awaiting Action";
+}
+
 export function getFlowState(
   player: Player,
   habits: Habit[],
@@ -13,7 +27,7 @@ export function getFlowState(
 ): FlowState {
   const today = new Date().toLocaleDateString("en-CA");
   const activeHabits = habits.filter(h => h.active);
-  if (activeHabits.length === 0) return { value: 0, label: "Inactive", trending: "steady" };
+  if (activeHabits.length === 0) return { value: 0, label: "Awaiting Action", trending: "steady" };
 
   const todayCompletions = recentCompletions.filter(c => {
     const cd = c.completedAt ? new Date(c.completedAt).toLocaleDateString("en-CA") : null;
@@ -38,14 +52,21 @@ export function getFlowState(
     (returnBonus * 10)
   ));
 
-  const value = Math.max(0, Math.min(100, rawFlow));
+  const lastCompletionDate = habits
+    .filter(h => h.lastCompletedDate)
+    .map(h => h.lastCompletedDate!)
+    .sort()
+    .reverse()[0];
 
-  let label: string;
-  if (value >= 80) label = "Deep Flow";
-  else if (value >= 60) label = "In Flow";
-  else if (value >= 40) label = "Building";
-  else if (value >= 20) label = "Warming Up";
-  else label = "Starting";
+  let decayedFlow = rawFlow;
+  if (lastCompletionDate) {
+    const lastDate = new Date(lastCompletionDate + "T23:59:59");
+    const hoursSince = (Date.now() - lastDate.getTime()) / (1000 * 60 * 60);
+    decayedFlow = applyDailyFlowDecay(rawFlow, hoursSince);
+  }
+
+  const value = Math.max(0, Math.min(100, decayedFlow));
+  const label = getFlowLabel(value);
 
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
@@ -99,7 +120,20 @@ function getReturnBonus(player: Player, habits: Habit[]): number {
 export function updateFlowAfterCompletion(
   currentFlow: FlowState,
   completionRatio: number
-): number {
+): FlowState {
   const boost = Math.min(15, Math.round(completionRatio * 20));
-  return Math.min(100, currentFlow.value + boost);
+  const newValue = Math.min(100, currentFlow.value + boost);
+  return {
+    value: newValue,
+    label: getFlowLabel(newValue),
+    trending: "rising",
+  };
+}
+
+export function applyDailyFlowDecay(currentFlowValue: number, hoursSinceLastAction: number): number {
+  if (hoursSinceLastAction < 24) return currentFlowValue;
+  const decayDays = Math.floor(hoursSinceLastAction / 24);
+  const decayRate = 0.08;
+  const decayed = currentFlowValue * Math.pow(1 - decayRate, decayDays);
+  return Math.max(0, Math.round(decayed));
 }
