@@ -48,21 +48,35 @@ Preferred communication style: Simple, everyday language.
 - **Schema Location**: `shared/schema.ts` (shared between client and server)
 - **Validation**: Zod schemas with drizzle-zod integration
 
+### Navigation & UX Structure
+- **Bottom Nav (4 items)**: HOME (`/`), TRAIN (`/train`), HABITS (`/habits`), COACH (`/coach`)
+- **Sidebar Menu** (hamburger icon, top-left): Profile, Analytics, Progress History, Stability Details, Library, Achievements, Weekly Planning, Calendar, Future Game
+- **Home Page**: Phase Card, Flow State meter (0-100), AI Coach insight, "Start Next Action" + "View Schedule" buttons
+- **Train Page**: 4 expandable categories (Strength, Agility, Meditation/Sense, Night Recovery/Vitality) with quick-start sessions
+- **Coach Page**: Full-page AI coach with Insights tab (mood check-in, prioritized messages, nudges) and Chat tab
+- **Schedule Page** (`/schedule`): Sectograph-based daily schedule (previously the root route)
+- **Stability Wording**: Supportive tier labels — Building, Developing, Solid, Strong, Excellent (no "Fragile"/"Critical")
+
+### Flow State System
+- `server/gameLogic/flowEngine.ts` — `getFlowState()` returns 0-100 value based on momentum, completions, stacking, and return bonus. `updateFlowAfterCompletion()` recalculates after task completion.
+- Drives visual intensity on Home page and AI recommendations.
+
 ### Project Structure
 ```
 ├── client/           # React frontend
 │   ├── src/
 │   │   ├── components/  # UI components (shadcn + game-specific)
-│   │   │   └── game/    # AICoach, MicroRewards, PhaseEnvironment, ExerciseAnimation, etc.
+│   │   │   └── game/    # SidebarMenu, MicroRewards, PhaseEnvironment, ExerciseAnimation, etc.
 │   │   ├── context/     # React context providers
 │   │   ├── hooks/       # Custom React hooks
 │   │   ├── lib/         # Utilities, intervalTraining, animationRegistry
-│   │   └── pages/       # Route page components (HabitsPage, AnalyticsPage, etc.)
+│   │   └── pages/       # HomePage, TrainPage, CoachPage, HabitsPage, StatusPage (schedule), etc.
 ├── server/           # Express backend
 │   ├── routes.ts     # API route definitions
 │   ├── storage.ts    # Database operations (IStorage interface, normalizePlayer)
 │   ├── db.ts         # Database connection
-│   └── gameLogic/    # Game logic modules (7 systems)
+│   └── gameLogic/    # Game logic modules (7 systems + flow)
+│       ├── flowEngine.ts        # Flow State (0-100), getFlowState, updateFlowAfterCompletion
 │       ├── phaseEngine.ts       # Phase progression + regression checks
 │       ├── stabilityEngine.ts   # Stability score calculation + regression detection
 │       ├── taskEngine.ts        # Task orchestration: getTasksForToday, completeTask, getPhaseAdjustedDuration
@@ -71,7 +85,7 @@ Preferred communication style: Simple, everyday language.
 │       ├── momentumEngine.ts    # Momentum scoring, streak resilience, recovery protection
 │       ├── difficultyScaler.ts  # Adaptive difficulty within phases, dynamic training durations
 │       ├── rewardEngine.ts      # Momentum-driven XP, bonuses, badge eligibility
-│       ├── aiCoach.ts           # Interactive coaching engine with chat, contextual suggestions
+│       ├── aiCoach.ts           # Interactive coaching engine with chat, contextual suggestions, getHomeInsight
 │       ├── habitProgression.ts  # Habit stacking suggestions
 │       ├── statProgression.ts   # Stat XP, fatigue, HP/MP updates
 │       ├── xpProgressionSystem.ts # Task completion, MVD, penalties
@@ -83,6 +97,7 @@ Preferred communication style: Simple, everyday language.
 ```
 
 ### Key API Endpoints (New)
+- `GET /api/player/:id/home` — Home screen data: phase, stability, flow state, coach insight, next action
 - `GET /api/player/:id/tasks-today` — Today's habits with completion status, phase-adjusted durations, priority ordering
 - `GET /api/player/:id/visuals` — Environment visuals + avatar aura based on phase and stability
 - `GET /api/player/:id/stability/trend?days=7` — Historical stability trend data

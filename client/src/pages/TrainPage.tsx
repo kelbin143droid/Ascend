@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
-import { Dumbbell, Wind, Brain, Moon, Play, Timer, ChevronRight, Zap } from "lucide-react";
+import { Dumbbell, Wind, Brain, Moon, Play, Timer, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TrainingCategory {
@@ -88,13 +88,13 @@ export default function TrainPage() {
     <SystemLayout>
       <div className="p-4 space-y-6 max-w-4xl mx-auto pb-24">
         <div className="flex items-center gap-3 mb-2">
-          <Zap className="w-6 h-6" style={{ color: colors.primary }} />
+          <Dumbbell className="w-5 h-5" style={{ color: colors.primary }} />
           <h1
-            className="text-xl font-bold font-orbitron tracking-wide"
+            className="text-lg font-bold font-orbitron tracking-wide"
             style={{ color: colors.text }}
             data-testid="text-train-title"
           >
-            TRAINING
+            Training
           </h1>
         </div>
 

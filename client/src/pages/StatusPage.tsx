@@ -6,12 +6,9 @@ import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { useTasks } from "@/context/TasksContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
-import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Flame, Zap } from "lucide-react";
-import { StabilityWidget } from "@/components/game/StabilityWidget";
-import { PhaseAuraEffect } from "@/components/game/PhaseEnvironment";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -87,7 +84,6 @@ export default function StatusPage() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-  const [selectedStat, setSelectedStat] = useState<string | null>(null);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customName, setCustomName] = useState("");
   const [customDescription, setCustomDescription] = useState("");
@@ -149,20 +145,6 @@ export default function StatusPage() {
   };
 
 
-  const displayStats = player.displayStats || {
-    strength: Math.floor(player.stats.strength),
-    agility: Math.floor(player.stats.agility),
-    sense: Math.floor(player.stats.sense),
-    vitality: Math.floor(player.stats.vitality),
-    stamina: Math.floor((player.stats as any).stamina || 0),
-  };
-
-  const statIcons = [
-    { key: 'strength', label: 'STR', icon: Swords, color: '#ff6b6b', value: displayStats.strength },
-    { key: 'agility', label: 'AGI', icon: Wind, color: '#4ecdc4', value: displayStats.agility },
-    { key: 'sense', label: 'SEN', icon: Eye, color: '#ffe66d', value: displayStats.sense },
-    { key: 'vitality', label: 'VIT', icon: Heart, color: '#a855f7', value: displayStats.vitality },
-  ];
 
   const allScheduleBlocks: (ScheduleBlock & { date?: string; isTemplate?: boolean })[] = player.schedule?.length 
     ? player.schedule as (ScheduleBlock & { date?: string; isTemplate?: boolean })[] 
@@ -344,7 +326,6 @@ export default function StatusPage() {
 
   return (
     <SystemLayout>
-      <PhaseAuraEffect phase={player.phase} stabilityScore={player.stability?.score ?? 50} />
       <AnimatePresence>
         {systemMessage && (
           <motion.div
@@ -365,6 +346,13 @@ export default function StatusPage() {
       </AnimatePresence>
 
       <div className="space-y-4">
+        <div className="flex items-center gap-3 mb-1">
+          <CalendarDays className="w-5 h-5 text-primary" />
+          <h1 className="text-lg font-bold text-white font-orbitron tracking-wide">
+            Schedule
+          </h1>
+        </div>
+
         <div className="text-center space-y-1">
           {isEditingName ? (
             <div className="flex items-center justify-center gap-2">
@@ -382,29 +370,6 @@ export default function StatusPage() {
             </div>
           ) : null}
         </div>
-
-        <StabilityWidget />
-
-        {isAdvancedMode && (
-          <div className="flex flex-col items-center gap-1 mb-2">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Goal Alignment:</span>
-              <span 
-                className="font-mono font-bold"
-                style={{ 
-                  color: goalLinkedPercentage >= 60 ? '#22c55e' : '#f59e0b' 
-                }}
-              >
-                {goalLinkedPercentage}%
-              </span>
-            </div>
-            {goalLinkedPercentage < 60 && (
-              <p className="text-[10px] text-amber-400/80 text-center max-w-[200px]">
-                Link more tasks to weekly goals for better focus
-              </p>
-            )}
-          </div>
-        )}
 
         <div className="flex justify-center items-center gap-2 mb-2">
           <button
@@ -455,129 +420,6 @@ export default function StatusPage() {
           </div>
         </div>
 
-
-        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground tracking-widest">LVL</span>
-            <span className="text-lg font-mono font-bold text-primary drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
-              {player.level}
-            </span>
-          </div>
-          <div className="w-px h-4 bg-primary/30" />
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground tracking-widest">POWER</span>
-            <span 
-              className="text-xl font-mono font-black"
-              style={{ 
-                color: "#ff6b35",
-                filter: "drop-shadow(0 0 10px rgba(255,107,53,0.6))"
-              }}
-            >
-              {displayStats.strength + displayStats.agility + displayStats.sense + displayStats.vitality}
-            </span>
-          </div>
-          <div className="w-px h-4 bg-primary/30" />
-          <div className="flex items-center gap-1" data-testid="text-streak">
-            <Flame size={12} className="text-orange-400" />
-            <span className="text-[10px] text-muted-foreground tracking-widest">STREAK</span>
-            <span className="text-sm font-mono font-bold text-orange-400">{player.streak || 0}</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-4 gap-2 px-2">
-          {statIcons.map((stat) => {
-            const isActive = activeSession?.stat === stat.key;
-            const hasXpGain = lastXpGain?.stat === stat.key;
-            
-            return (
-              <motion.button
-                key={stat.key}
-                data-testid={`button-stat-${stat.key}`}
-                onClick={() => setSelectedStat(stat.key)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`flex flex-col items-center p-2 rounded-lg bg-gradient-to-b from-black/40 to-black/20 border relative cursor-pointer transition-all ${
-                  isActive ? 'border-primary/50 ring-1 ring-primary/30' : 'border-white/10 hover:border-white/20'
-                }`}
-              >
-                <AnimatePresence>
-                  {hasXpGain && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 0 }}
-                      animate={{ opacity: 1, y: -20 }}
-                      exit={{ opacity: 0, y: -40 }}
-                      className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs font-mono font-bold text-primary"
-                      style={{ textShadow: '0 0 10px rgba(0,255,255,0.8)' }}
-                    >
-                      +{lastXpGain.amount}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                
-                <motion.div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center mb-1"
-                  animate={hasXpGain ? { scale: [1, 1.2, 1] } : {}}
-                  transition={{ duration: 0.3 }}
-                  style={{ 
-                    background: `linear-gradient(135deg, ${stat.color}30 0%, transparent 100%)`,
-                    boxShadow: isActive 
-                      ? `0 0 25px ${stat.color}60, 0 0 10px ${stat.color}40` 
-                      : `0 0 15px ${stat.color}30`
-                  }}
-                >
-                  <stat.icon size={20} style={{ color: stat.color }} />
-                </motion.div>
-                <span className="text-lg font-mono font-bold text-white">{stat.value}</span>
-                <span className="text-[8px] text-muted-foreground tracking-wider uppercase">{stat.label}</span>
-                
-                {isActive && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary animate-pulse" />
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
-
-        <div className="space-y-2 px-2 pt-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-red-400 font-bold tracking-wider w-8">HP</span>
-            <div className="flex-1 h-3 bg-red-950/30 rounded-full border border-red-500/20 overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(player.hp / player.maxHp) * 100}%` }}
-                className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full"
-                style={{ boxShadow: '0 0 10px rgba(239,68,68,0.5)' }}
-              />
-            </div>
-            <span className="text-[10px] font-mono text-red-400 w-16 text-right">{player.hp}/{player.maxHp}</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-blue-400 font-bold tracking-wider w-8">MP</span>
-            <div className="flex-1 h-3 bg-blue-950/30 rounded-full border border-blue-500/20 overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(player.mp / player.maxMp) * 100}%` }}
-                className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full"
-                style={{ boxShadow: '0 0 10px rgba(59,130,246,0.5)' }}
-              />
-            </div>
-            <span className="text-[10px] font-mono text-blue-400 w-16 text-right">{player.mp}/{player.maxMp}</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-primary font-bold tracking-wider w-8">XP</span>
-            <div className="flex-1 h-2 bg-primary/10 rounded-full border border-primary/20 overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${(player.exp / player.maxExp) * 100}%` }}
-                className="h-full bg-gradient-to-r from-cyan-500 to-primary rounded-full"
-                style={{ boxShadow: '0 0 8px rgba(0,255,255,0.4)' }}
-              />
-            </div>
-            <span className="text-[10px] font-mono text-primary w-16 text-right">{player.exp}/{player.maxExp}</span>
-          </div>
-        </div>
 
       </div>
 
@@ -915,19 +757,6 @@ export default function StatusPage() {
         </DialogContent>
       </Dialog>
 
-      <StatActionPanel
-        open={selectedStat !== null}
-        onOpenChange={(open) => !open && setSelectedStat(null)}
-        stat={selectedStat}
-        schedule={currentSchedule}
-        onCompleteSession={completeSession}
-        activeSession={activeSession}
-        onStartSession={startSession}
-        onCancelSession={cancelSession}
-        dailyProgress={(player.dailyStatProgress as DailyStatProgress[]) || []}
-        onUpdateProgress={handleUpdateProgress}
-        playerPhase={player.phase || 1}
-      />
 
       {showTestMode && (
         <motion.div 

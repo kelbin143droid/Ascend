@@ -128,13 +128,13 @@ export default function CoachPage() {
     <SystemLayout>
       <div className="p-4 space-y-4 max-w-4xl mx-auto pb-24">
         <div className="flex items-center gap-3 mb-2">
-          <Brain className="w-6 h-6" style={{ color: colors.primary }} />
+          <Brain className="w-5 h-5" style={{ color: colors.primary }} />
           <h1
-            className="text-xl font-bold font-orbitron tracking-wide"
+            className="text-lg font-bold font-orbitron tracking-wide"
             style={{ color: colors.text }}
             data-testid="text-coach-title"
           >
-            AI COACH
+            Coach
           </h1>
         </div>
 

@@ -22,8 +22,8 @@ const menuItems = [
   { icon: Shield, label: "Stability Details", path: "/survival" },
   { icon: BookOpen, label: "Library", path: "/library" },
   { icon: Trophy, label: "Achievements", path: "/inventory" },
-  { icon: Settings, label: "Settings", path: "/calendar" },
-  { icon: HelpCircle, label: "Help", path: "/weekly-planning" },
+  { icon: Settings, label: "Weekly Planning", path: "/weekly-planning" },
+  { icon: HelpCircle, label: "Calendar", path: "/calendar" },
   { icon: Gamepad2, label: "Future Game", path: "/game3d" },
 ];
 

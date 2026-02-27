@@ -22,7 +22,7 @@ import {
   SkipForward,
   Trophy,
   Link2,
-  Zap,
+  Target,
   Sparkles,
   Award,
   ChevronRight,
@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import type { Habit, Badge } from "@shared/schema";
 import { TaskCompletionBurst, StabilityShift } from "@/components/game/MicroRewards";
-import { PhaseEnvironment } from "@/components/game/PhaseEnvironment";
 
 const STAT_COLORS: Record<string, string> = {
   strength: "#ef4444",
@@ -296,18 +295,11 @@ export default function HabitsPage() {
         onComplete={() => setStabilityShift({ direction: null, amount: 0, visible: false })}
       />
       <div className="p-4 space-y-6 max-w-4xl mx-auto pb-24">
-        <PhaseEnvironment
-          phase={player?.phase ?? 1}
-          stabilityScore={player?.stability?.score ?? 50}
-          compact
-          burstTrigger={burstTriggerCount}
-          burstColor={burstColor}
-        />
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <Zap className="w-6 h-6 text-cyan-400" />
-            <h1 className="text-xl font-bold text-white font-orbitron tracking-wide">
-              HABIT SYSTEM
+            <Target className="w-5 h-5 text-cyan-400" />
+            <h1 className="text-lg font-bold text-white font-orbitron tracking-wide">
+              Habits
             </h1>
           </div>
           <Button
@@ -399,10 +391,7 @@ export default function HabitsPage() {
                             {habit.currentDurationMinutes} min
                           </span>
                           <span>
-                            Done {habit.totalCompletions}x
-                          </span>
-                          <span>
-                            Best: {habit.longestStreak}🔥
+                            {habit.totalCompletions}x done
                           </span>
                         </div>
 
@@ -474,7 +463,7 @@ export default function HabitsPage() {
 
             {habits.length === 0 && (
               <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-8 text-center">
-                <Zap className="w-10 h-10 text-gray-700 mx-auto mb-3" />
+                <Target className="w-10 h-10 text-gray-700 mx-auto mb-3" />
                 <p className="text-gray-500 text-sm">No habits yet. Create your first habit to start building streaks!</p>
               </div>
             )}
