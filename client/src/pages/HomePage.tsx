@@ -101,9 +101,10 @@ export default function HomePage() {
     ? (allDone ? "View Habits" : (nextAction ? `Start ${nextAction.name}` : "Start"))
     : `Start ${selectedHabit.name}`;
 
+  const earlyOnboarding = onboardingDay <= 3;
   const microCommitText = hasHabits
     ? (nextAction ? `Takes only ${nextAction.durationMinutes} minute${nextAction.durationMinutes !== 1 ? "s" : ""}` : null)
-    : `Takes only ${selectedHabit.durationText}`;
+    : earlyOnboarding ? "Complete anytime today." : `Takes only ${selectedHabit.durationText}`;
 
   const handleStart = () => {
     if (!hasHabits) {
@@ -237,11 +238,9 @@ export default function HomePage() {
                   <div className="text-base font-medium" style={{ color: colors.text }}>
                     {selectedHabit.name}
                   </div>
-                  {selectedHabit.duration && (
-                    <div className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                      {selectedHabit.duration}
-                    </div>
-                  )}
+                  <div className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+                    {earlyOnboarding ? "Complete anytime today" : selectedHabit.duration || "Quick check"}
+                  </div>
                 </div>
               </button>
             </div>

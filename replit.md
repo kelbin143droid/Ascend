@@ -64,3 +64,57 @@ The codebase is organized into `client/` (React frontend), `server/` (Express ba
 -   **@replit/vite-plugin-runtime-error-modal**
 -   **@replit/vite-plugin-cartographer**
 -   **@replit/vite-plugin-dev-banner**
+
+## Feature Details
+
+### Navigation & UX Structure
+- **Bottom Nav (4 items)**: HOME (`/`), TRAIN (`/train`), HABITS (`/habits`), COACH (`/coach`)
+- **Sidebar Menu** (hamburger icon, top-left): Profile, Analytics, Progress History, Stability Details, Library, Achievements, Weekly Planning, Calendar, Future Game
+- **Home Page**: Action-first onboarding — greeting text, 4 recommended habits for new users (Calm Breathing, Light Movement, Hydration Check, Quick Reflection), "Start" primary button, "Create custom habit" secondary link. No system terminology (Phase/Stability/Flow hidden from Home). Primary "Start Here" card + "Other Options" section with habit selection. Dynamic button: "Start {SelectedHabitName}". 7-Day Behavioral Reflection system with day-specific subtitles and progressive feature disclosure.
+- **Profile Page** (`/profile`): Identity + progress screen — Phase card, Stability score + label, Flow State meter, stat cap, phase history. All system metrics live here.
+- **Train Page**: 4 expandable categories (Strength, Agility, Meditation/Sense, Night Recovery/Vitality) with quick-start sessions
+- **Coach Page**: Full-page AI coach with Insights tab (mood check-in, prioritized messages, nudges) and Chat tab
+- **Schedule Page** (`/schedule`): Sectograph-based daily schedule (previously the root route)
+- **Stability Wording**: Supportive tier labels — Building, Developing, Solid, Strong, Excellent (no "Fragile"/"Critical")
+
+### Onboarding Flow
+- 3-slide orientation: Slide 1 (Identity: "Your Life Is the System"), Slide 2 (Growth through action), Slide 3 (First Principle: "Real change starts small." with "Begin" button)
+- On Begin: sets `onboardingCompleted = 1`, navigates to Home
+- Old educational slides (stats, phases, sectograph) exported as `LEARN_CONTENT` in `OnboardingFlow.tsx` for future Coach → Learn section
+- No skip button — intentional (minimal flow, 3 slides only)
+
+### 7-Day Behavioral Reflection System
+- `onboardingDay` (1–7): computed server-side from count of distinct days with habit completions, capped at 7. Returned in `/api/player/:id/home`.
+- `hasCompletedHabitToday`: boolean computed from today's completions.
+- `lastCompletionDate`: date of most recent completion (sorted, nullable).
+- Day-specific reflection messages (subtitle + motivation) shown on Home screen.
+- Progressive feature disclosure per day:
+  - Day 1–2: Emphasize recommended habit only, custom habit minimized.
+  - Day 3: "Create custom habit" visually highlighted (bolder text, no "(optional)").
+  - Day 4: Encouragement fade-in animation on Home open.
+  - Day 5: "Add another small habit?" suggestion after completing first habit today.
+  - Day 6: "Learn how growth works" link to Coach page.
+  - Day 7: Milestone banner "First Growth Cycle Complete."
+- Completion feedback: glow overlay + "Action completed. Momentum increased." message on habit completion (auto-clears after 2s).
+
+### Day Close Overlay
+- `client/src/components/game/DayCloseOverlay.tsx` — Full-screen overlay triggered on first habit completion of each day.
+- 2-phase sequence: "Day N complete." (1.5s) → day-specific continuation message + "See you Day N+1" button.
+- Day-specific messages for all 7 onboarding days, encouraging return rather than achievement.
+- Calm animations only (glow, fade-in). No confetti, no XP display, no loud celebrations.
+- Button closes overlay and navigates to `/`.
+- During onboardingDay 1–3: HomePage shows "Complete anytime today" instead of task durations (no scheduling pressure).
+
+### Guided Session System
+- Route: `/guided-session/:sessionId` — fullscreen self-contained sessions, zero setup required.
+- Session types: `calm-breathing` (2min breathing animation with Inhale/Hold/Exhale + 5s countdown), `light-movement` (2.5min sequential prompts), `hydration-check` (instant with Done button), `quick-reflection` (1min timer).
+- Backend: `POST /api/player/:id/complete-guided-session` records `habit_completion` with `guided_` prefix, updates stability (+2) and XP (+5). No permanent habit created.
+- HomePage routes new users (no habits) to guided sessions instead of /habits.
+- On completion: DayCloseOverlay triggers if first completion of the day; otherwise shows "Session complete." with "Return Home" button.
+- `client/src/pages/GuidedSessionPage.tsx` — session page with type-specific UI.
+
+### Flow State System
+- `server/gameLogic/flowEngine.ts` — `getFlowState()` returns 0-100 value based on momentum, completions, stacking, and return bonus. `updateFlowAfterCompletion()` returns updated FlowState after task completion. `applyDailyFlowDecay()` reduces flow by 8%/day of inactivity.
+- Flow labels: 0 → "Awaiting Action", 1-29 → "Warming Up", 30-69 → "Building Flow", 70-100 → "In Flow". No negative wording.
+- Drives visual intensity on Home page and AI recommendations.
+- Habit completion returns `flow` in response; HomePage invalidated on completion for real-time feedback.

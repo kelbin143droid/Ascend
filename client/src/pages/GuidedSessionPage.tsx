@@ -4,7 +4,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { apiRequest } from "@/lib/queryClient";
-import { FirstCompletionOverlay } from "@/components/game/FirstCompletionOverlay";
+import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection";
@@ -224,7 +224,7 @@ export default function GuidedSessionPage() {
   );
   const [countdown, setCountdown] = useState(5);
   const [elapsed, setElapsed] = useState(0);
-  const [showFirstCompletion, setShowFirstCompletion] = useState(false);
+  const [showDayClose, setShowDayClose] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean }>({
@@ -253,9 +253,8 @@ export default function GuidedSessionPage() {
       queryClient.invalidateQueries({ queryKey: ["home"] });
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
 
-      const isFirstMoment = homeData?.onboardingDay === 1 && !homeData?.hasCompletedHabitToday;
-      if (isFirstMoment) {
-        setShowFirstCompletion(true);
+      if (!homeData?.hasCompletedHabitToday) {
+        setShowDayClose(true);
       } else {
         setState("done");
       }
@@ -460,11 +459,11 @@ export default function GuidedSessionPage() {
         </div>
       )}
 
-      <FirstCompletionOverlay
-        visible={showFirstCompletion}
+      <DayCloseOverlay
+        visible={showDayClose}
         onboardingDay={homeData?.onboardingDay ?? 1}
         onClose={() => {
-          setShowFirstCompletion(false);
+          setShowDayClose(false);
           setLocation("/");
         }}
       />

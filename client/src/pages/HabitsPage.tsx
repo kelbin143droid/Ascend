@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import type { Habit, Badge } from "@shared/schema";
 import { TaskCompletionBurst, StabilityShift } from "@/components/game/MicroRewards";
-import { FirstCompletionOverlay } from "@/components/game/FirstCompletionOverlay";
+import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { useLocation } from "wouter";
 
 const STAT_COLORS: Record<string, string> = {
@@ -82,7 +82,7 @@ export default function HabitsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
-  const [showFirstCompletion, setShowFirstCompletion] = useState(false);
+  const [showDayClose, setShowDayClose] = useState(false);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean }>({
     queryKey: ["home", player?.id],
@@ -191,9 +191,8 @@ export default function HabitsPage() {
       queryClient.invalidateQueries({ queryKey: ["visuals"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
 
-      const isFirstCompletionMoment = homeData?.onboardingDay === 1 && !homeData?.hasCompletedHabitToday;
-      if (isFirstCompletionMoment) {
-        setShowFirstCompletion(true);
+      if (!homeData?.hasCompletedHabitToday) {
+        setShowDayClose(true);
         return;
       }
 
@@ -752,11 +751,11 @@ export default function HabitsPage() {
             )}
           </DialogContent>
         </Dialog>
-        <FirstCompletionOverlay
-          visible={showFirstCompletion}
+        <DayCloseOverlay
+          visible={showDayClose}
           onboardingDay={homeData?.onboardingDay ?? 1}
           onClose={() => {
-            setShowFirstCompletion(false);
+            setShowDayClose(false);
             setLocation("/");
           }}
         />
