@@ -58,6 +58,12 @@ Preferred communication style: Simple, everyday language.
 - **Schedule Page** (`/schedule`): Sectograph-based daily schedule (previously the root route)
 - **Stability Wording**: Supportive tier labels — Building, Developing, Solid, Strong, Excellent (no "Fragile"/"Critical")
 
+### Onboarding Flow
+- 3-slide orientation: Slide 1 (Identity: "Your Life Is the System"), Slide 2 (Growth through action), Slide 3 (First Principle: "Real change starts small." with "Begin" button)
+- On Begin: sets `onboardingCompleted = 1`, navigates to Home
+- Old educational slides (stats, phases, sectograph) exported as `LEARN_CONTENT` in `OnboardingFlow.tsx` for future Coach → Learn section
+- No skip button — intentional (minimal flow, 3 slides only)
+
 ### Flow State System
 - `server/gameLogic/flowEngine.ts` — `getFlowState()` returns 0-100 value based on momentum, completions, stacking, and return bonus. `updateFlowAfterCompletion()` returns updated FlowState after task completion. `applyDailyFlowDecay()` reduces flow by 8%/day of inactivity.
 - Flow labels: 0 → "Awaiting Action", 1-29 → "Warming Up", 30-69 → "Building Flow", 70-100 → "In Flow". No negative wording.
