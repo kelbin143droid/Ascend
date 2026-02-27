@@ -92,7 +92,7 @@ The codebase is organized into `client/` (React frontend), `server/` (Express ba
   - Day 1–2: Emphasize recommended habit only, custom habit minimized.
   - Day 3: "Create custom habit" visually highlighted (bolder text, no "(optional)").
   - Day 4: Encouragement fade-in animation on Home open. Day4IntroFlow overlay with pattern insight.
-  - Day 5: "Add another small habit?" suggestion after completing first habit today.
+  - Day 5: Day5IntroFlow reentry overlay + post-completion Day5ExpansionOverlay with optional micro-task.
   - Day 6: "Learn how growth works" link to Coach page.
   - Day 7: Milestone banner "First Growth Cycle Complete."
 - Completion feedback: glow overlay + "Action completed. Momentum increased." message on habit completion (auto-clears after 2s).
@@ -113,6 +113,17 @@ The codebase is organized into `client/` (React frontend), `server/` (Express ba
 - Reminder preference saved to localStorage (`ascend_reminder_preference`) as time window (morning/afternoon/evening). No scheduling UI opened.
 - Day 4 Home greeting: "Day 4 · Rhythm forming" / "Consistency creates structure naturally."
 - Observation-only, no forced scheduling, calm minimal tone.
+
+### Day 5 Controlled Growth
+- `client/src/components/game/Day5IntroFlow.tsx` — Reentry overlay on Day 5 first open.
+- Triggered when: `onboardingDay === 5`, first open today (localStorage `ascend_day5_intro_seen`), previous day completed, not yet completed today.
+- Message: "You're building momentum. Small actions are becoming easier."
+- `client/src/components/game/Day5ExpansionOverlay.tsx` — Post-completion expansion flow in GuidedSessionPage.
+- Triggered after first guided session completion on Day 5 (once per day via `ascend_day5_expansion_shown`).
+- 4-step flow: Ask ("Would you like to add one more small step today?" — "Maybe tomorrow" default-highlighted) → Choose (Drink Water 30s / 1-min Breathing Reset) → Inline mini-session → Complete ("You expanded your momentum today.").
+- Second task recorded via `complete-guided-session` API with `day5-expansion` sessionId. `ascend_multi_action_days` incremented in localStorage.
+- Day 5 Home greeting: "Day 5 · Momentum growing" / "Growth expands naturally."
+- Expansion optional, no pressure language, no stats display, calm tone.
 
 ### Day Close Overlay
 - `client/src/components/game/DayCloseOverlay.tsx` — Full-screen overlay triggered on first habit completion of each day.

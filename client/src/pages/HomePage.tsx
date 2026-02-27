@@ -7,6 +7,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
+import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 
@@ -46,7 +47,7 @@ const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }
   2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
   3: { subtitle: "You're building a routine.", motivation: "Make it yours." },
   4: { subtitle: "Rhythm forming", motivation: "Consistency creates structure naturally." },
-  5: { subtitle: "You're ready for a little more.", motivation: "Growth expands naturally." },
+  5: { subtitle: "Momentum growing", motivation: "Growth expands naturally." },
   6: { subtitle: "You understand the rhythm.", motivation: "Your actions shape your system." },
   7: { subtitle: "First growth cycle complete.", motivation: "You've proven consistency." },
 };
@@ -64,6 +65,7 @@ export default function HomePage() {
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
   const [showDay4Intro, setShowDay4Intro] = useState(false);
+  const [showDay5Intro, setShowDay5Intro] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -140,6 +142,19 @@ export default function HomePage() {
     if (prevCompleted && !homeData.hasCompletedHabitToday) {
       localStorage.setItem(seenKey, today);
       setShowDay4Intro(true);
+    }
+  }, [homeData, onboardingDay]);
+
+  useEffect(() => {
+    if (!homeData || onboardingDay !== 5) return;
+    const today = new Date().toISOString().split("T")[0];
+    const seenKey = "ascend_day5_intro_seen";
+    const alreadySeen = localStorage.getItem(seenKey);
+    if (alreadySeen === today) return;
+    const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
+    if (prevCompleted && !homeData.hasCompletedHabitToday) {
+      localStorage.setItem(seenKey, today);
+      setShowDay5Intro(true);
     }
   }, [homeData, onboardingDay]);
 
@@ -466,6 +481,11 @@ export default function HomePage() {
         onSetReminder={(timeWindow) => {
           localStorage.setItem("ascend_reminder_preference", timeWindow);
         }}
+      />
+
+      <Day5IntroFlow
+        visible={showDay5Intro}
+        onComplete={() => setShowDay5Intro(false)}
       />
 
       <ReminderPrompt

@@ -5,6 +5,7 @@ import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { apiRequest } from "@/lib/queryClient";
 import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
+import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
 import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection";
@@ -225,9 +226,10 @@ export default function GuidedSessionPage() {
   const [countdown, setCountdown] = useState(5);
   const [elapsed, setElapsed] = useState(0);
   const [showDayClose, setShowDayClose] = useState(false);
+  const [showDay5Expansion, setShowDay5Expansion] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean }>({
+  const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean; completedToday: number }>({
     queryKey: ["home", player?.id],
     queryFn: async () => {
       if (!player?.id) throw new Error("No player");
@@ -253,7 +255,14 @@ export default function GuidedSessionPage() {
       queryClient.invalidateQueries({ queryKey: ["home"] });
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
 
-      if (!homeData?.hasCompletedHabitToday) {
+      const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
+      const isDay5 = homeData?.onboardingDay === 5;
+      const alreadyExpanded = localStorage.getItem("ascend_day5_expansion_shown") === new Date().toISOString().split("T")[0];
+
+      if (isFirstCompletionToday && isDay5 && !alreadyExpanded) {
+        localStorage.setItem("ascend_day5_expansion_shown", new Date().toISOString().split("T")[0]);
+        setShowDay5Expansion(true);
+      } else if (isFirstCompletionToday) {
         setShowDayClose(true);
       } else {
         setState("done");
@@ -458,6 +467,32 @@ export default function GuidedSessionPage() {
           </p>
         </div>
       )}
+
+      <Day5ExpansionOverlay
+        visible={showDay5Expansion}
+        onComplete={() => {
+          setShowDay5Expansion(false);
+          setLocation("/");
+        }}
+        onSkip={() => {
+          setShowDay5Expansion(false);
+          setShowDayClose(true);
+        }}
+        onSessionComplete={() => {
+          if (player?.id) {
+            apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
+              sessionId: "day5-expansion",
+              stat: "vitality",
+              durationMinutes: 1,
+            }).then(() => {
+              queryClient.invalidateQueries({ queryKey: ["home"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+              const count = parseInt(localStorage.getItem("ascend_multi_action_days") || "0", 10);
+              localStorage.setItem("ascend_multi_action_days", String(count + 1));
+            });
+          }
+        }}
+      />
 
       <DayCloseOverlay
         visible={showDayClose}
