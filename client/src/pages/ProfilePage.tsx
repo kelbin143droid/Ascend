@@ -1,8 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
+import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion } from "framer-motion";
-import { Shield, Calendar, Play, User, Trophy } from "lucide-react";
-import { PHASE_UNLOCK_DATA, PHASE_STAT_CAPS } from "@shared/schema";
+import { Shield, Calendar, Play, User, Trophy, Zap, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { PHASE_UNLOCK_DATA, PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
 
 const PHASE_COLORS: Record<number, string> = {
   1: "#6b7280",
@@ -12,8 +14,33 @@ const PHASE_COLORS: Record<number, string> = {
   5: "#ffd700",
 };
 
+interface HomeData {
+  phase: { number: number; name: string };
+  stability: { score: number; label: string };
+  flow: { value: number; label: string; trending: "rising" | "steady" | "cooling" };
+  insight: string;
+  todaysFocus: string;
+  nextAction: { habitId: string; name: string; stat: string; durationMinutes: number } | null;
+  completedToday: number;
+  totalActive: number;
+}
+
 export default function ProfilePage() {
   const { player, isLoading, replayPhaseHistory } = useGame();
+  const { backgroundTheme } = useTheme();
+  const colors = backgroundTheme.colors;
+
+  const { data: homeData } = useQuery<HomeData>({
+    queryKey: ["home", player?.id],
+    queryFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}/home`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 30000,
+  });
 
   if (isLoading || !player) {
     return (
@@ -28,6 +55,11 @@ export default function ProfilePage() {
   const phaseHistory = player.phaseHistory || [];
   const currentPhase = player.phase || 1;
   const phaseColor = PHASE_COLORS[currentPhase] || "#6b7280";
+  const phaseName = PHASE_NAMES[currentPhase] || "Stabilization";
+
+  const stability = homeData?.stability || { score: player.stability?.score ?? 50, label: "Developing" };
+  const flow = homeData?.flow || { value: 0, label: "Awaiting Action", trending: "steady" as const };
+  const flowColor = flow.value >= 70 ? "#22c55e" : flow.value >= 30 ? "#f59e0b" : colors.primary;
 
   return (
     <SystemLayout>
@@ -39,23 +71,16 @@ export default function ProfilePage() {
           </h1>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-card/30 border border-primary/20 rounded p-3 text-center">
             <User className="w-5 h-5 mx-auto mb-1 text-primary" />
             <div className="text-xs text-muted-foreground">Level</div>
             <div className="text-xl font-mono font-bold text-primary" data-testid="text-player-level">{player.level}</div>
           </div>
           <div className="bg-card/30 border border-primary/20 rounded p-3 text-center">
-            <Shield
-              className="w-5 h-5 mx-auto mb-1"
-              style={{ color: phaseColor }}
-            />
-            <div className="text-xs text-muted-foreground">PHASE</div>
-            <div
-              className="text-xl font-display font-bold"
-              style={{ color: phaseColor }}
-              data-testid="text-player-phase"
-            >
+            <Shield className="w-5 h-5 mx-auto mb-1" style={{ color: phaseColor }} />
+            <div className="text-xs text-muted-foreground">Phase</div>
+            <div className="text-xl font-display font-bold" style={{ color: phaseColor }} data-testid="text-player-phase">
               {currentPhase}
             </div>
           </div>
@@ -66,7 +91,76 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="mb-8">
+        <div
+          className="rounded-xl px-4 py-3 mb-3"
+          style={{
+            backgroundColor: `${colors.surface || colors.background}cc`,
+            border: `1px solid ${colors.surfaceBorder}`,
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: colors.textMuted }}>
+                Phase {currentPhase}
+              </div>
+              <div className="text-lg font-display font-bold" style={{ color: colors.text }}>
+                {phaseName}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xl font-mono font-bold" style={{ color: colors.primary }} data-testid="text-stability-score">
+                {stability.score}
+              </div>
+              <div className="text-[10px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
+                {stability.label}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="rounded-xl p-4 mb-6"
+          data-testid="flow-meter"
+          style={{
+            backgroundColor: `${colors.surface || colors.background}cc`,
+            border: `1px solid ${colors.surfaceBorder}`,
+          }}
+        >
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <Zap size={14} style={{ color: flowColor }} />
+              <span className="text-xs font-display font-bold uppercase tracking-wider" style={{ color: colors.text }}>
+                Flow State
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {flow.trending === "rising" && <TrendingUp size={12} className="text-green-400" />}
+              {flow.trending === "cooling" && <TrendingDown size={12} className="text-amber-400" />}
+              {flow.trending === "steady" && <Minus size={12} style={{ color: colors.textMuted }} />}
+              <span className="text-[11px] font-medium" style={{ color: flowColor }}>
+                {flow.label}
+              </span>
+            </div>
+          </div>
+          <div className="relative h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: `${colors.surfaceBorder}60` }}>
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${flow.value}%`,
+                background: `linear-gradient(90deg, ${flowColor}80, ${flowColor})`,
+                boxShadow: flow.value > 30 ? `0 0 8px ${flowColor}40` : undefined,
+              }}
+              data-testid="flow-bar"
+            />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[9px] font-mono" style={{ color: colors.textMuted }}>0</span>
+            <span className="text-xs font-mono font-bold" style={{ color: flowColor }}>{flow.value}</span>
+            <span className="text-[9px] font-mono" style={{ color: colors.textMuted }}>100</span>
+          </div>
+        </div>
+
+        <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-4 bg-primary" />
             <h2 className="text-sm font-display tracking-widest text-primary">STAT CAP</h2>
@@ -114,10 +208,7 @@ export default function ProfilePage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span
-                              className="font-display font-bold text-lg"
-                              style={{ color: entryColor }}
-                            >
+                            <span className="font-display font-bold text-lg" style={{ color: entryColor }}>
                               Phase {entry.phase}
                             </span>
                           </div>
@@ -151,10 +242,10 @@ export default function ProfilePage() {
 
         <div className="mt-8 text-center text-xs text-muted-foreground">
           <div className="mb-2">NEXT PHASE REQUIREMENTS</div>
-          {currentPhase === 1 && <div>Level 5 + Avg Stat 10 + 7-day streak → Phase 2</div>}
-          {currentPhase === 2 && <div>Level 15 + Avg Stat 25 + 14-day streak → Phase 3</div>}
-          {currentPhase === 3 && <div>Level 30 + Avg Stat 50 + 14-day streak → Phase 4</div>}
-          {currentPhase === 4 && <div>Level 50 + Avg Stat 75 + 14-day streak → Phase 5</div>}
+          {currentPhase === 1 && <div>Level 5 + Avg Stat 10 + 7-day streak &rarr; Phase 2</div>}
+          {currentPhase === 2 && <div>Level 15 + Avg Stat 25 + 14-day streak &rarr; Phase 3</div>}
+          {currentPhase === 3 && <div>Level 30 + Avg Stat 50 + 14-day streak &rarr; Phase 4</div>}
+          {currentPhase === 4 && <div>Level 50 + Avg Stat 75 + 14-day streak &rarr; Phase 5</div>}
           {currentPhase === 5 && <div>Maximum phase achieved</div>}
         </div>
       </div>
