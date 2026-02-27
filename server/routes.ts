@@ -1439,9 +1439,13 @@ export async function registerRoutes(
       if (!player) return res.status(404).json({ error: "Player not found" });
 
       const habits = await storage.getHabits(req.params.id);
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const completions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+      const recentCompletions = allCompletions.filter(
+        c => c.completedAt && new Date(c.completedAt) >= sevenDaysAgo
+      );
 
       const stabilityScore = player.stability?.score ?? 50;
       let stabilityLabel: string;
@@ -1451,14 +1455,14 @@ export async function registerRoutes(
       else if (stabilityScore >= 40) stabilityLabel = "Developing";
       else stabilityLabel = "Building";
 
-      const flow = getFlowState(player, habits, completions);
+      const flow = getFlowState(player, habits, recentCompletions);
 
-      const homeInsight = getHomeInsight(player, habits, completions);
+      const homeInsight = getHomeInsight(player, habits, recentCompletions);
       const insight = homeInsight.message;
 
       const today = new Date().toLocaleDateString("en-CA");
       const completedIds = new Set(
-        completions
+        allCompletions
           .filter(c => c.completedAt && new Date(c.completedAt).toLocaleDateString("en-CA") === today)
           .map(c => c.habitId)
       );
@@ -1476,6 +1480,20 @@ export async function registerRoutes(
       } else {
         todaysFocus = `${nextAction!.name} · ${nextAction!.currentDurationMinutes}m`;
       }
+
+      const distinctCompletionDays = new Set(
+        allCompletions
+          .filter(c => c.completedAt)
+          .map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
+      );
+      const onboardingDay = Math.min(Math.max(distinctCompletionDays.size, 1), 7);
+      const hasCompletedHabitToday = completedIds.size > 0;
+      const sortedByDate = [...allCompletions]
+        .filter(c => c.completedAt)
+        .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+      const lastCompletionDate = sortedByDate.length > 0
+        ? new Date(sortedByDate[0].completedAt!).toLocaleDateString("en-CA")
+        : null;
 
       res.json({
         phase: {
@@ -1497,6 +1515,9 @@ export async function registerRoutes(
         } : null,
         completedToday: completedIds.size,
         totalActive: activeHabits.length,
+        onboardingDay,
+        hasCompletedHabitToday,
+        lastCompletionDate,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get home data" });

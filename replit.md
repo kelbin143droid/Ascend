@@ -51,7 +51,7 @@ Preferred communication style: Simple, everyday language.
 ### Navigation & UX Structure
 - **Bottom Nav (4 items)**: HOME (`/`), TRAIN (`/train`), HABITS (`/habits`), COACH (`/coach`)
 - **Sidebar Menu** (hamburger icon, top-left): Profile, Analytics, Progress History, Stability Details, Library, Achievements, Weekly Planning, Calendar, Future Game
-- **Home Page**: Action-first onboarding — greeting text, 4 recommended habits for new users (Calm Breathing, Light Movement, Hydration Check, Quick Reflection), "Start" primary button, "Create custom habit" secondary link. No system terminology (Phase/Stability/Flow hidden from Home). Primary "Start Here" card + "Other Options" section with habit selection. Dynamic button: "Start {SelectedHabitName}". Journey day indicator ("Day X · Beginning your journey").
+- **Home Page**: Action-first onboarding — greeting text, 4 recommended habits for new users (Calm Breathing, Light Movement, Hydration Check, Quick Reflection), "Start" primary button, "Create custom habit" secondary link. No system terminology (Phase/Stability/Flow hidden from Home). Primary "Start Here" card + "Other Options" section with habit selection. Dynamic button: "Start {SelectedHabitName}". 7-Day Behavioral Reflection system with day-specific subtitles and progressive feature disclosure.
 - **Profile Page** (`/profile`): Identity + progress screen — Phase card, Stability score + label, Flow State meter, stat cap, phase history. All system metrics live here.
 - **Train Page**: 4 expandable categories (Strength, Agility, Meditation/Sense, Night Recovery/Vitality) with quick-start sessions
 - **Coach Page**: Full-page AI coach with Insights tab (mood check-in, prioritized messages, nudges) and Chat tab
@@ -63,6 +63,20 @@ Preferred communication style: Simple, everyday language.
 - On Begin: sets `onboardingCompleted = 1`, navigates to Home
 - Old educational slides (stats, phases, sectograph) exported as `LEARN_CONTENT` in `OnboardingFlow.tsx` for future Coach → Learn section
 - No skip button — intentional (minimal flow, 3 slides only)
+
+### 7-Day Behavioral Reflection System
+- `onboardingDay` (1–7): computed server-side from count of distinct days with habit completions, capped at 7. Returned in `/api/player/:id/home`.
+- `hasCompletedHabitToday`: boolean computed from today's completions.
+- `lastCompletionDate`: date of most recent completion (sorted, nullable).
+- Day-specific reflection messages (subtitle + motivation) shown on Home screen.
+- Progressive feature disclosure per day:
+  - Day 1–2: Emphasize recommended habit only, custom habit minimized.
+  - Day 3: "Create custom habit" visually highlighted (bolder text, no "(optional)").
+  - Day 4: Encouragement fade-in animation on Home open.
+  - Day 5: "Add another small habit?" suggestion after completing first habit today.
+  - Day 6: "Learn how growth works" link to Coach page.
+  - Day 7: Milestone banner "First Growth Cycle Complete."
+- Completion feedback: glow overlay + "Action completed. Momentum increased." message on habit completion (auto-clears after 2s).
 
 ### Flow State System
 - `server/gameLogic/flowEngine.ts` — `getFlowState()` returns 0-100 value based on momentum, completions, stacking, and return bonus. `updateFlowAfterCompletion()` returns updated FlowState after task completion. `applyDailyFlowDecay()` reduces flow by 8%/day of inactivity.

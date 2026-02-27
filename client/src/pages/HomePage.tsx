@@ -3,8 +3,8 @@ import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
-import { useState, useMemo } from "react";
-import { Play, Wind, Droplets, Brain, Heart } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy } from "lucide-react";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -15,13 +15,16 @@ interface HomeData {
   nextAction: { habitId: string; name: string; stat: string; durationMinutes: number } | null;
   completedToday: number;
   totalActive: number;
+  onboardingDay: number;
+  hasCompletedHabitToday: boolean;
+  lastCompletionDate: string | null;
 }
 
 const RECOMMENDED_HABITS = [
-  { id: "calm-breathing", name: "Calm Breathing", duration: "2 min", icon: Wind, stat: "sense" },
-  { id: "light-movement", name: "Light Movement", duration: "5 min", icon: Heart, stat: "agility" },
-  { id: "hydration-check", name: "Hydration Check", duration: "", icon: Droplets, stat: "vitality" },
-  { id: "quick-reflection", name: "Quick Reflection", duration: "1 min", icon: Brain, stat: "sense" },
+  { id: "calm-breathing", name: "Calm Breathing", duration: "2 min", durationText: "2 minutes", icon: Wind, stat: "sense" },
+  { id: "light-movement", name: "Light Movement", duration: "5 min", durationText: "5 minutes", icon: Heart, stat: "agility" },
+  { id: "hydration-check", name: "Hydration Check", duration: "", durationText: "a moment", icon: Droplets, stat: "vitality" },
+  { id: "quick-reflection", name: "Quick Reflection", duration: "1 min", durationText: "1 minute", icon: Brain, stat: "sense" },
 ];
 
 const STAT_COLORS: Record<string, string> = {
@@ -31,19 +34,15 @@ const STAT_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
-const JOURNEY_START_KEY = "ascend_journey_start";
-
-function getJourneyDay(): number {
-  let start = localStorage.getItem(JOURNEY_START_KEY);
-  if (!start) {
-    start = new Date().toISOString().split("T")[0];
-    localStorage.setItem(JOURNEY_START_KEY, start);
-  }
-  const startDate = new Date(start + "T00:00:00");
-  const now = new Date();
-  const diff = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  return Math.max(1, diff + 1);
-}
+const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }> = {
+  1: { subtitle: "Beginning your journey.", motivation: "Small actions build momentum." },
+  2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
+  3: { subtitle: "You're building a routine.", motivation: "Make it yours." },
+  4: { subtitle: "Stability is forming.", motivation: "Progress comes from showing up." },
+  5: { subtitle: "You're ready for a little more.", motivation: "Growth expands naturally." },
+  6: { subtitle: "You understand the rhythm.", motivation: "Your actions shape your system." },
+  7: { subtitle: "First growth cycle complete.", motivation: "You've proven consistency." },
+};
 
 export default function HomePage() {
   const { player } = useGame();
@@ -51,8 +50,9 @@ export default function HomePage() {
   const colors = backgroundTheme.colors;
   const [, setLocation] = useLocation();
   const [selectedHabitId, setSelectedHabitId] = useState(RECOMMENDED_HABITS[0].id);
-
-  const journeyDay = useMemo(() => getJourneyDay(), []);
+  const [showCompletionGlow, setShowCompletionGlow] = useState(false);
+  const [showEncouragement, setShowEncouragement] = useState(false);
+  const [prevCompletedToday, setPrevCompletedToday] = useState<number | null>(null);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -67,9 +67,31 @@ export default function HomePage() {
     staleTime: 30000,
   });
 
+  const onboardingDay = homeData?.onboardingDay ?? 1;
+  const hasCompletedToday = homeData?.hasCompletedHabitToday ?? false;
   const nextAction = homeData?.nextAction;
   const hasHabits = homeData ? homeData.totalActive > 0 : false;
   const allDone = homeData ? homeData.completedToday >= homeData.totalActive && homeData.totalActive > 0 : false;
+
+  const reflection = DAILY_REFLECTIONS[onboardingDay] || DAILY_REFLECTIONS[7];
+
+  useEffect(() => {
+    if (homeData && prevCompletedToday !== null && homeData.completedToday > prevCompletedToday) {
+      setShowCompletionGlow(true);
+      const timer = setTimeout(() => setShowCompletionGlow(false), 2000);
+      return () => clearTimeout(timer);
+    }
+    if (homeData) {
+      setPrevCompletedToday(homeData.completedToday);
+    }
+  }, [homeData?.completedToday]);
+
+  useEffect(() => {
+    if (onboardingDay >= 4) {
+      const timer = setTimeout(() => setShowEncouragement(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [onboardingDay]);
 
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
   const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
@@ -79,6 +101,10 @@ export default function HomePage() {
     ? (allDone ? "View Habits" : (nextAction ? `Start ${nextAction.name}` : "Start"))
     : `Start ${selectedHabit.name}`;
 
+  const microCommitText = hasHabits
+    ? (nextAction ? `Takes only ${nextAction.durationMinutes} minute${nextAction.durationMinutes !== 1 ? "s" : ""}` : null)
+    : `Takes only ${selectedHabit.durationText}`;
+
   const handleStart = () => {
     setLocation("/habits");
   };
@@ -87,22 +113,98 @@ export default function HomePage() {
     setSelectedHabitId(habitId);
   };
 
+  const showCustomHabitHighlight = onboardingDay >= 3;
+  const showAddHabitSuggestion = onboardingDay >= 5 && hasCompletedToday && hasHabits;
+  const showLearnTooltip = onboardingDay >= 6;
+  const showMilestoneBanner = onboardingDay >= 7;
+
   return (
     <SystemLayout>
+      <style>{`
+        @keyframes subtleGlow {
+          0%, 100% { box-shadow: 0 0 8px var(--glow-color, rgba(59,130,246,0.15)); }
+          50% { box-shadow: 0 0 20px var(--glow-color, rgba(59,130,246,0.3)); }
+        }
+        @keyframes completionPulse {
+          0% { opacity: 0; transform: scale(0.95); }
+          50% { opacity: 1; transform: scale(1.02); }
+          100% { opacity: 0; transform: scale(1); }
+        }
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes encourageFade {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       <div
-        className="flex flex-col gap-5 py-6 px-1 max-w-md mx-auto w-full"
+        className="flex flex-col gap-5 py-6 px-1 max-w-md mx-auto w-full relative"
         data-testid="home-page"
       >
-        <div className="pt-4">
+        {showCompletionGlow && (
+          <div
+            data-testid="completion-glow-overlay"
+            className="absolute inset-0 rounded-2xl pointer-events-none z-10"
+            style={{
+              animation: "completionPulse 2s ease-out forwards",
+              background: `radial-gradient(circle at center, ${colors.primary}15 0%, transparent 70%)`,
+            }}
+          />
+        )}
+
+        {showMilestoneBanner && (
+          <div
+            data-testid="milestone-banner"
+            className="rounded-xl px-4 py-3 flex items-center gap-3"
+            style={{
+              backgroundColor: `${colors.primary}12`,
+              border: `1px solid ${colors.primary}25`,
+              animation: "fadeSlideIn 0.6s ease-out",
+            }}
+          >
+            <Trophy size={18} style={{ color: colors.primary }} />
+            <div>
+              <p className="text-sm font-medium" style={{ color: colors.text }}>
+                First Growth Cycle Complete.
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
+                You've built a foundation of consistency.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="pt-4" style={{ animation: showEncouragement ? "encourageFade 0.5s ease-out" : undefined }}>
           <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
             {allDone ? "Great work today. Rest up." : "Let's start small today."}
           </p>
           <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
             {hasHabits && !allDone
-              ? `Day ${journeyDay} · ${homeData!.completedToday}/${homeData!.totalActive} complete`
-              : `Day ${journeyDay} · Beginning your journey`}
+              ? `Day ${onboardingDay} · ${homeData!.completedToday}/${homeData!.totalActive} complete`
+              : `Day ${onboardingDay} · ${reflection.subtitle}`}
+          </p>
+          <p className="text-[10px] mt-0.5 italic" style={{ color: `${colors.textMuted}aa` }}>
+            {reflection.motivation}
           </p>
         </div>
+
+        {showCompletionGlow && (
+          <div
+            data-testid="completion-feedback"
+            className="rounded-lg px-3 py-2 text-center"
+            style={{
+              backgroundColor: `${colors.primary}10`,
+              animation: "fadeSlideIn 0.4s ease-out",
+            }}
+          >
+            <p className="text-xs font-medium" style={{ color: colors.primary }}>
+              Action completed. Momentum increased.
+            </p>
+          </div>
+        )}
 
         {!hasHabits && (
           <>
@@ -117,6 +219,8 @@ export default function HomePage() {
                 style={{
                   backgroundColor: `${primaryAccent}10`,
                   border: `1px solid ${primaryAccent}30`,
+                  animation: "subtleGlow 3s ease-in-out infinite",
+                  ["--glow-color" as string]: `${primaryAccent}25`,
                 }}
               >
                 <div
@@ -139,10 +243,10 @@ export default function HomePage() {
             </div>
 
             <div data-testid="other-options-section">
-              <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-2" style={{ color: colors.textMuted }}>
+              <p className="text-[10px] uppercase tracking-[0.15em] mb-2" style={{ color: `${colors.textMuted}88` }}>
                 Other Options
               </p>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 {otherHabits.map((habit) => {
                   const accentColor = STAT_COLORS[habit.stat] || colors.primary;
                   return (
@@ -150,25 +254,25 @@ export default function HomePage() {
                       key={habit.id}
                       data-testid={`button-option-${habit.id}`}
                       onClick={() => handleSelectHabit(habit.id)}
-                      className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-left transition-all active:scale-[0.98]"
+                      className="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-left transition-all active:scale-[0.98]"
                       style={{
-                        backgroundColor: `${colors.surface || colors.background}99`,
-                        border: `1px solid ${colors.surfaceBorder}`,
+                        backgroundColor: `${colors.surface || colors.background}60`,
+                        border: `1px solid ${colors.surfaceBorder}50`,
                       }}
                     >
                       <div
-                        className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `${accentColor}12` }}
+                        className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `${accentColor}10` }}
                       >
-                        <habit.icon size={14} style={{ color: accentColor }} />
+                        <habit.icon size={12} style={{ color: `${accentColor}99` }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium" style={{ color: colors.text }}>
+                        <div className="text-[11px]" style={{ color: `${colors.text}cc` }}>
                           {habit.name}
                         </div>
                       </div>
                       {habit.duration && (
-                        <span className="text-[10px]" style={{ color: colors.textMuted }}>
+                        <span className="text-[9px]" style={{ color: `${colors.textMuted}77` }}>
                           {habit.duration}
                         </span>
                       )}
@@ -201,30 +305,85 @@ export default function HomePage() {
           </div>
         )}
 
-        <button
-          data-testid="button-start"
-          onClick={handleStart}
-          className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
-          style={{
-            backgroundColor: colors.primary,
-            color: colors.background,
-            boxShadow: `0 0 24px ${colors.primaryGlow}30`,
-          }}
-        >
-          <span className="flex items-center justify-center gap-2">
-            <Play size={16} />
-            {startLabel}
-          </span>
-        </button>
+        {showAddHabitSuggestion && !allDone && (
+          <div
+            data-testid="add-habit-suggestion"
+            className="rounded-lg px-3 py-2.5 flex items-center gap-2"
+            style={{
+              backgroundColor: `${colors.primary}08`,
+              border: `1px solid ${colors.primary}15`,
+              animation: "fadeSlideIn 0.5s ease-out",
+            }}
+          >
+            <Plus size={14} style={{ color: colors.primary }} />
+            <p className="text-[11px]" style={{ color: colors.textMuted }}>
+              Add another small habit?
+            </p>
+            <button
+              data-testid="button-add-habit-suggestion"
+              onClick={() => setLocation("/habits")}
+              className="ml-auto text-[10px] font-medium px-2 py-0.5 rounded"
+              style={{ color: colors.primary, backgroundColor: `${colors.primary}10` }}
+            >
+              Browse
+            </button>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center gap-1">
+          {microCommitText && !allDone && (
+            <p
+              data-testid="micro-commit-text"
+              className="text-[10px] tracking-wide"
+              style={{ color: `${colors.textMuted}99` }}
+            >
+              {microCommitText}
+            </p>
+          )}
+
+          <button
+            data-testid="button-start"
+            onClick={handleStart}
+            className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
+            style={{
+              backgroundColor: colors.primary,
+              color: colors.background,
+              boxShadow: `0 0 24px ${colors.primaryGlow}30`,
+            }}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Play size={16} />
+              {startLabel}
+            </span>
+          </button>
+        </div>
 
         {!hasHabits && (
           <button
             data-testid="button-create-custom-habit"
             onClick={() => setLocation("/habits")}
             className="w-full py-2 text-xs tracking-wide transition-all"
-            style={{ color: colors.textMuted }}
+            style={{
+              color: showCustomHabitHighlight ? colors.textMuted : `${colors.textMuted}66`,
+              fontWeight: showCustomHabitHighlight ? 500 : 400,
+            }}
           >
-            Create custom habit (optional)
+            {showCustomHabitHighlight ? "Create custom habit" : "Create custom habit (optional)"}
+          </button>
+        )}
+
+        {showLearnTooltip && (
+          <button
+            data-testid="button-learn-growth"
+            onClick={() => setLocation("/coach")}
+            className="flex items-center justify-center gap-1.5 w-full py-2 transition-all"
+            style={{
+              color: `${colors.textMuted}99`,
+              animation: "fadeSlideIn 0.6s ease-out",
+            }}
+          >
+            <BookOpen size={12} />
+            <span className="text-[10px] tracking-wide">Learn how growth works</span>
           </button>
         )}
       </div>
