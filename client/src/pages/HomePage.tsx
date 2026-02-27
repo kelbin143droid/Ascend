@@ -5,6 +5,7 @@ import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useMemo, useEffect } from "react";
 import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy } from "lucide-react";
+import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -53,6 +54,7 @@ export default function HomePage() {
   const [showCompletionGlow, setShowCompletionGlow] = useState(false);
   const [showEncouragement, setShowEncouragement] = useState(false);
   const [prevCompletedToday, setPrevCompletedToday] = useState<number | null>(null);
+  const [showDay3Intro, setShowDay3Intro] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -92,6 +94,19 @@ export default function HomePage() {
       return () => clearTimeout(timer);
     }
   }, [onboardingDay]);
+
+  useEffect(() => {
+    if (!homeData || onboardingDay !== 3) return;
+    const today = new Date().toISOString().split("T")[0];
+    const seenKey = "ascend_day3_intro_seen";
+    const alreadySeen = localStorage.getItem(seenKey);
+    if (alreadySeen === today) return;
+    const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
+    if (prevCompleted && !homeData.hasCompletedHabitToday) {
+      localStorage.setItem(seenKey, today);
+      setShowDay3Intro(true);
+    }
+  }, [homeData, onboardingDay]);
 
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
   const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
@@ -390,6 +405,17 @@ export default function HomePage() {
           </button>
         )}
       </div>
+
+      <Day3IntroFlow
+        visible={showDay3Intro}
+        lastHabitName={selectedHabit.name}
+        onComplete={(choice) => {
+          setShowDay3Intro(false);
+          if (choice === "repeat") {
+            setLocation(`/guided-session/${selectedHabitId}`);
+          }
+        }}
+      />
     </SystemLayout>
   );
 }

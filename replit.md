@@ -97,6 +97,14 @@ The codebase is organized into `client/` (React frontend), `server/` (Express ba
   - Day 7: Milestone banner "First Growth Cycle Complete."
 - Completion feedback: glow overlay + "Action completed. Momentum increased." message on habit completion (auto-clears after 2s).
 
+### Day 3 Turning Point
+- `client/src/components/game/Day3IntroFlow.tsx` — Multi-step overlay for identity formation on Day 3.
+- Triggered when: `onboardingDay === 3`, first open today (localStorage check), previous day completed, not yet completed today.
+- Flow: Reentry message ("You're building consistency.") → Reflection question ("How did yesterday feel?" with 4 options) → Adaptive response (2s) → Choice moment ("Repeat yesterday's habit" recommended or "Try a different micro habit").
+- Reflection responses saved to localStorage (`ascend_reflections`).
+- "Repeat" navigates to guided session; "Different" returns to Home for selection.
+- Calm animations only, no stats or rewards shown.
+
 ### Day Close Overlay
 - `client/src/components/game/DayCloseOverlay.tsx` — Full-screen overlay triggered on first habit completion of each day.
 - 2-phase sequence: "Day N complete." (1.5s) → day-specific continuation message + "See you Day N+1" button.
