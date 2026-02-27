@@ -1539,6 +1539,18 @@ export async function registerRoutes(
         ? new Date(sortedByDate[0].completedAt!).toLocaleDateString("en-CA")
         : null;
 
+      let lastCompletionTime: string | null = null;
+      const yesterdayCompletions = sortedByDate.filter(c => {
+        const d = new Date(c.completedAt!).toLocaleDateString("en-CA");
+        const yd = new Date();
+        yd.setDate(yd.getDate() - 1);
+        return d === yd.toLocaleDateString("en-CA");
+      });
+      if (yesterdayCompletions.length > 0) {
+        const lastYesterday = new Date(yesterdayCompletions[0].completedAt!);
+        lastCompletionTime = lastYesterday.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+      }
+
       let notification: { type: string; message: string } | null = null;
 
       const yesterday = new Date();
@@ -1607,6 +1619,7 @@ export async function registerRoutes(
         lastCompletionDate,
         notification,
         suggestedReminderTime,
+        lastCompletionTime,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get home data" });

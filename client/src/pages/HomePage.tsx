@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { useState, useMemo, useEffect } from "react";
 import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
+import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 
@@ -23,6 +24,7 @@ interface HomeData {
   lastCompletionDate: string | null;
   notification: { type: "momentum" | "recovery" | "milestone"; message: string } | null;
   suggestedReminderTime: string | null;
+  lastCompletionTime: string | null;
 }
 
 const RECOMMENDED_HABITS = [
@@ -43,7 +45,7 @@ const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }
   1: { subtitle: "Beginning your journey.", motivation: "Small actions build momentum." },
   2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
   3: { subtitle: "You're building a routine.", motivation: "Make it yours." },
-  4: { subtitle: "Stability is forming.", motivation: "Progress comes from showing up." },
+  4: { subtitle: "Rhythm forming", motivation: "Consistency creates structure naturally." },
   5: { subtitle: "You're ready for a little more.", motivation: "Growth expands naturally." },
   6: { subtitle: "You understand the rhythm.", motivation: "Your actions shape your system." },
   7: { subtitle: "First growth cycle complete.", motivation: "You've proven consistency." },
@@ -61,6 +63,7 @@ export default function HomePage() {
   const [showDay3Intro, setShowDay3Intro] = useState(false);
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
+  const [showDay4Intro, setShowDay4Intro] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -126,6 +129,19 @@ export default function HomePage() {
       return () => clearTimeout(timer);
     }
   }, [homeData?.hasCompletedHabitToday, onboardingDay]);
+
+  useEffect(() => {
+    if (!homeData || onboardingDay !== 4) return;
+    const today = new Date().toISOString().split("T")[0];
+    const seenKey = "ascend_day4_intro_seen";
+    const alreadySeen = localStorage.getItem(seenKey);
+    if (alreadySeen === today) return;
+    const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
+    if (prevCompleted && !homeData.hasCompletedHabitToday) {
+      localStorage.setItem(seenKey, today);
+      setShowDay4Intro(true);
+    }
+  }, [homeData, onboardingDay]);
 
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
   const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
@@ -440,6 +456,15 @@ export default function HomePage() {
           if (choice === "repeat") {
             setLocation(`/guided-session/${selectedHabitId}`);
           }
+        }}
+      />
+
+      <Day4IntroFlow
+        visible={showDay4Intro}
+        lastCompletionTime={homeData?.lastCompletionTime ?? null}
+        onComplete={() => setShowDay4Intro(false)}
+        onSetReminder={(timeWindow) => {
+          localStorage.setItem("ascend_reminder_preference", timeWindow);
         }}
       />
 

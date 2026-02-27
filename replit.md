@@ -91,7 +91,7 @@ The codebase is organized into `client/` (React frontend), `server/` (Express ba
 - Progressive feature disclosure per day:
   - Day 1–2: Emphasize recommended habit only, custom habit minimized.
   - Day 3: "Create custom habit" visually highlighted (bolder text, no "(optional)").
-  - Day 4: Encouragement fade-in animation on Home open.
+  - Day 4: Encouragement fade-in animation on Home open. Day4IntroFlow overlay with pattern insight.
   - Day 5: "Add another small habit?" suggestion after completing first habit today.
   - Day 6: "Learn how growth works" link to Coach page.
   - Day 7: Milestone banner "First Growth Cycle Complete."
@@ -104,6 +104,15 @@ The codebase is organized into `client/` (React frontend), `server/` (Express ba
 - Reflection responses saved to localStorage (`ascend_reflections`).
 - "Repeat" navigates to guided session; "Different" returns to Home for selection.
 - Calm animations only, no stats or rewards shown.
+
+### Day 4 Structure Awareness
+- `client/src/components/game/Day4IntroFlow.tsx` — 2-step overlay introducing rhythm awareness on Day 4.
+- Triggered when: `onboardingDay === 4`, first open today (localStorage `ascend_day4_intro_seen`), previous day completed, not yet completed today.
+- Flow: Reentry message ("You're building a rhythm. Small actions are becoming familiar.") → Pattern insight card showing yesterday's completion time → Optional "Remind me around this time" button.
+- Backend computes `lastCompletionTime` from yesterday's most recent completion timestamp, formatted as human-readable time (e.g., "8:10 PM").
+- Reminder preference saved to localStorage (`ascend_reminder_preference`) as time window (morning/afternoon/evening). No scheduling UI opened.
+- Day 4 Home greeting: "Day 4 · Rhythm forming" / "Consistency creates structure naturally."
+- Observation-only, no forced scheduling, calm minimal tone.
 
 ### Day Close Overlay
 - `client/src/components/game/DayCloseOverlay.tsx` — Full-screen overlay triggered on first habit completion of each day.
