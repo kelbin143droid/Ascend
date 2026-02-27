@@ -78,6 +78,14 @@ Preferred communication style: Simple, everyday language.
   - Day 7: Milestone banner "First Growth Cycle Complete."
 - Completion feedback: glow overlay + "Action completed. Momentum increased." message on habit completion (auto-clears after 2s).
 
+### First Completion Moment
+- `client/src/components/game/FirstCompletionOverlay.tsx` — Full-screen overlay triggered on Day 1 first habit completion.
+- 3-phase sequence: "Completed." (500ms) → "Momentum started." (1.5s) → "Day 1 complete. Tomorrow becomes easier." + "Return Home" button.
+- Calm animations only (glow, fade-in). No confetti, no XP display, no loud celebrations.
+- "Return Home" button closes overlay and navigates to `/`.
+- Internal progression (flow, stability, XP) still processes via existing completion endpoint.
+- Future-compatible: receives `onboardingDay` prop for day-specific messaging variants.
+
 ### Flow State System
 - `server/gameLogic/flowEngine.ts` — `getFlowState()` returns 0-100 value based on momentum, completions, stacking, and return bonus. `updateFlowAfterCompletion()` returns updated FlowState after task completion. `applyDailyFlowDecay()` reduces flow by 8%/day of inactivity.
 - Flow labels: 0 → "Awaiting Action", 1-29 → "Warming Up", 30-69 → "Building Flow", 70-100 → "In Flow". No negative wording.

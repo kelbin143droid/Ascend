@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import type { Habit, Badge } from "@shared/schema";
 import { TaskCompletionBurst, StabilityShift } from "@/components/game/MicroRewards";
+import { FirstCompletionOverlay } from "@/components/game/FirstCompletionOverlay";
+import { useLocation } from "wouter";
 
 const STAT_COLORS: Record<string, string> = {
   strength: "#ef4444",
@@ -75,10 +77,24 @@ interface StackSuggestion {
 export default function HabitsPage() {
   const { player } = useGame();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
+  const [showFirstCompletion, setShowFirstCompletion] = useState(false);
+
+  const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean }>({
+    queryKey: ["home", player?.id],
+    queryFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}/home`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 30000,
+  });
 
   const [formName, setFormName] = useState("");
   const [formStat, setFormStat] = useState<string>("strength");
@@ -170,11 +186,18 @@ export default function HabitsPage() {
       return res.json() as Promise<CompletionResult>;
     },
     onSuccess: (data) => {
-      setCompletionResult(data);
       invalidateAll();
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["visuals"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
+
+      const isFirstCompletionMoment = homeData?.onboardingDay === 1 && !homeData?.hasCompletedHabitToday;
+      if (isFirstCompletionMoment) {
+        setShowFirstCompletion(true);
+        return;
+      }
+
+      setCompletionResult(data);
 
       if (data.visuals) {
         setBurstStat(data.habit?.stat || "strength");
@@ -729,6 +752,14 @@ export default function HabitsPage() {
             )}
           </DialogContent>
         </Dialog>
+        <FirstCompletionOverlay
+          visible={showFirstCompletion}
+          onboardingDay={homeData?.onboardingDay ?? 1}
+          onClose={() => {
+            setShowFirstCompletion(false);
+            setLocation("/");
+          }}
+        />
       </div>
     </SystemLayout>
   );
