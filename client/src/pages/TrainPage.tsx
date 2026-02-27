@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
-import { Dumbbell, Wind, Brain, Moon, Play, Timer, ChevronRight } from "lucide-react";
+import { Dumbbell, Wind, Brain, Moon, Play, Timer, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TrainingCategory {
@@ -75,6 +76,21 @@ export default function TrainPage() {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const { data: homeData } = useQuery<{ onboardingDay: number; isOnboardingComplete: boolean }>({
+    queryKey: ["home", player?.id],
+    queryFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}/home`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 30000,
+  });
+
+  const isTrainingMode = (homeData?.onboardingDay ?? 1) >= 7 || homeData?.isOnboardingComplete;
 
   const handleQuickStart = (stat: string, duration: number) => {
     startSession(stat, duration);
@@ -96,7 +112,31 @@ export default function TrainPage() {
           >
             Training
           </h1>
+          {isTrainingMode && (
+            <button
+              data-testid="button-train-tooltip"
+              onClick={() => setShowTooltip(!showTooltip)}
+              className="ml-auto"
+            >
+              <Info size={16} style={{ color: colors.textMuted }} />
+            </button>
+          )}
         </div>
+
+        {showTooltip && (
+          <div
+            data-testid="train-tooltip"
+            className="rounded-lg px-4 py-3"
+            style={{
+              backgroundColor: `${colors.primary}08`,
+              border: `1px solid ${colors.primary}15`,
+            }}
+          >
+            <p className="text-xs leading-relaxed" style={{ color: colors.textMuted }}>
+              Train stats through real-world actions. Each category maps to habits you complete in daily life.
+            </p>
+          </div>
+        )}
 
         {activeSession && (
           <div

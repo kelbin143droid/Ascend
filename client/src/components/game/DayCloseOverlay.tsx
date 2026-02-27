@@ -44,8 +44,8 @@ const DAY_MESSAGES: Record<number, { phase1: string; phase2: string; footer: str
     button: "Continue to Day 7",
   },
   7: {
-    phase1: "Cycle complete.",
-    phase2: "You've proven consistency.\nThe foundation is set.",
+    phase1: "Training Day Complete",
+    phase2: "You kept the promise\nto yourself today.",
     footer: "Your journey continues from here.",
     button: "Continue",
   },

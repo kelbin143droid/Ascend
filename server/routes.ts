@@ -1636,6 +1636,8 @@ export async function registerRoutes(
         notification,
         suggestedReminderTime,
         lastCompletionTime,
+        isOnboardingComplete: onboardingDay >= 7 || player.onboardingCompleted === 1,
+        streak: player.streak ?? 0,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get home data" });

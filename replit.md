@@ -49,6 +49,17 @@ Features and detailed metrics are progressively unlocked based on `onboardingDay
 -   **Home subtitle**: "Day 6 · System awareness unlocked." with motivation "Your consistency has been building all along."
 -   **Backend**: `/api/player/:id/home` returns `momentum` (0-100, rounded from avgMomentum * 100).
 
+### Day 7: Identity Transition (Onboarding Completion)
+-   **Day7TransitionModal** (`client/src/components/game/Day7TransitionModal.tsx`): One-time modal marking graduation into training mode. Title: "You Have Begun." Body describes identity shift from starting to training. Button: "Enter Training Mode." Stored in `ascend_day7_transition_seen` localStorage flag.
+-   **Home Screen Transformation**: When `onboardingDay >= 7` or `isOnboardingComplete`, header changes from "Let's start small today." to "Today's Training" with subtext "Consistency builds strength." Beginner prompts and Day N references removed.
+-   **Training Status Card**: Shows on HomePage in training mode with "Training Status: Active" label, current streak count, and momentum meter bar.
+-   **Train Tab**: Fully enabled with info tooltip ("Train stats through real-world actions.") visible in training mode.
+-   **Coach Update**: Shows "Phase 1 Training Guidance" header when in training mode. Coach tone shifts from instructional to advisory.
+-   **Day 7 Task**: Button reads "Complete Today's Training" / "Complete [HabitName]" instead of "Start."
+-   **Day 7 Completion**: DayCloseOverlay shows "Training Day Complete" / "You kept the promise to yourself today." with "Continue" button. Onboarding does not auto-advance past Day 7.
+-   **State**: `isOnboardingComplete` returned by `/api/player/:id/home` (true when `onboardingDay >= 7` or `player.onboardingCompleted === 1`). `streak` also returned.
+-   **Animation Style**: Slow fade transitions, subtle glow on Training Status card. No confetti or gamified rewards.
+
 ## External Dependencies
 
 ### Database

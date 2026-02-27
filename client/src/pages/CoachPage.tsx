@@ -495,6 +495,7 @@ export default function CoachPage() {
 
   const onboardingDay = homeData?.onboardingDay ?? 1;
   const isGuidedMode = onboardingDay < 6;
+  const isTrainingMode = onboardingDay >= 7;
 
   const { data: coachData, isLoading } = useQuery<CoachData>({
     queryKey: ["/api/player", player?.id, "coach"],
@@ -567,6 +568,22 @@ export default function CoachPage() {
             Coach
           </h1>
         </div>
+
+        {isTrainingMode && (
+          <div
+            data-testid="training-guidance-header"
+            className="rounded-lg px-4 py-3 flex items-center gap-2"
+            style={{
+              backgroundColor: `${colors.primary}08`,
+              border: `1px solid ${colors.primary}15`,
+            }}
+          >
+            <Sparkles size={14} style={{ color: colors.primary }} />
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary }}>
+              Phase 1 Training Guidance
+            </span>
+          </div>
+        )}
 
         <div className="flex gap-2 mb-4">
           {(["insights", "chat"] as const).map((tab) => (

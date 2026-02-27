@@ -4,11 +4,12 @@ import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useMemo, useEffect } from "react";
-import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy } from "lucide-react";
+import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy, Activity } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
 import { Day6RevealModal } from "@/components/game/Day6RevealModal";
+import { Day7TransitionModal } from "@/components/game/Day7TransitionModal";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 
@@ -29,6 +30,8 @@ interface HomeData {
   notification: { type: "momentum" | "recovery" | "milestone"; message: string } | null;
   suggestedReminderTime: string | null;
   lastCompletionTime: string | null;
+  isOnboardingComplete: boolean;
+  streak: number;
 }
 
 const RECOMMENDED_HABITS = [
@@ -71,6 +74,7 @@ export default function HomePage() {
   const [showDay5Intro, setShowDay5Intro] = useState(false);
   const [showDay6Reveal, setShowDay6Reveal] = useState(false);
   const [day6MeterVisible, setDay6MeterVisible] = useState(false);
+  const [showDay7Transition, setShowDay7Transition] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -179,13 +183,27 @@ export default function HomePage() {
     setTimeout(() => setDay6MeterVisible(true), 300);
   };
 
+  useEffect(() => {
+    if (!homeData || onboardingDay < 7) return;
+    const seenKey = "ascend_day7_transition_seen";
+    if (localStorage.getItem(seenKey) === "true") return;
+    setShowDay7Transition(true);
+  }, [homeData, onboardingDay]);
+
+  const handleDay7TransitionContinue = () => {
+    localStorage.setItem("ascend_day7_transition_seen", "true");
+    setShowDay7Transition(false);
+  };
+
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
   const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
   const primaryAccent = STAT_COLORS[selectedHabit.stat] || colors.primary;
 
-  const startLabel = hasHabits
-    ? (allDone ? "View Habits" : (nextAction ? `Start ${nextAction.name}` : "Start"))
-    : `Start ${selectedHabit.name}`;
+  const startLabel = isTrainingMode
+    ? (allDone ? "View Habits" : (nextAction ? `Complete ${nextAction.name}` : "Complete Today's Training"))
+    : hasHabits
+      ? (allDone ? "View Habits" : (nextAction ? `Start ${nextAction.name}` : "Start"))
+      : `Start ${selectedHabit.name}`;
 
   const earlyOnboarding = onboardingDay <= 3;
   const microCommitText = hasHabits
@@ -204,10 +222,11 @@ export default function HomePage() {
     setSelectedHabitId(habitId);
   };
 
+  const isTrainingMode = onboardingDay >= 7 || homeData?.isOnboardingComplete;
   const showCustomHabitHighlight = onboardingDay >= 3;
   const showAddHabitSuggestion = onboardingDay >= 5 && hasCompletedToday && hasHabits;
-  const showLearnTooltip = onboardingDay >= 6;
-  const showMilestoneBanner = onboardingDay >= 7;
+  const showLearnTooltip = onboardingDay >= 6 && !isTrainingMode;
+  const showMilestoneBanner = false;
 
   return (
     <SystemLayout>
@@ -277,12 +296,18 @@ export default function HomePage() {
 
         <div className="pt-4" style={{ animation: showEncouragement ? "encourageFade 0.5s ease-out" : undefined }}>
           <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-            {allDone ? "Great work today. Rest up." : "Let's start small today."}
+            {isTrainingMode
+              ? (allDone ? "Great work today. Rest up." : "Today's Training")
+              : (allDone ? "Great work today. Rest up." : "Let's start small today.")}
           </p>
           <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
-            {hasHabits && !allDone
-              ? `Day ${onboardingDay} · ${homeData!.completedToday}/${homeData!.totalActive} complete`
-              : `Day ${onboardingDay} · ${reflection.subtitle}`}
+            {isTrainingMode
+              ? (hasHabits && !allDone
+                ? `${homeData!.completedToday}/${homeData!.totalActive} complete`
+                : "Consistency builds strength.")
+              : (hasHabits && !allDone
+                ? `Day ${onboardingDay} · ${homeData!.completedToday}/${homeData!.totalActive} complete`
+                : `Day ${onboardingDay} · ${reflection.subtitle}`)}
           </p>
           {homeData?.growthState && (
             <p
@@ -293,12 +318,67 @@ export default function HomePage() {
               {homeData.growthState}
             </p>
           )}
-          <p className="text-[10px] mt-0.5 italic" style={{ color: `${colors.textMuted}aa` }}>
-            {reflection.motivation}
-          </p>
+          {!isTrainingMode && (
+            <p className="text-[10px] mt-0.5 italic" style={{ color: `${colors.textMuted}aa` }}>
+              {reflection.motivation}
+            </p>
+          )}
         </div>
 
-        {onboardingDay >= 6 && day6MeterVisible && (
+        {isTrainingMode && (
+          <div
+            data-testid="training-status-card"
+            className="rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: `${colors.surface || colors.background}cc`,
+              border: `1px solid ${colors.surfaceBorder}`,
+              animation: "subtleGlow 4s ease-in-out infinite",
+              ["--glow-color" as string]: `${colors.primary}12`,
+            }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Activity size={14} style={{ color: colors.primary }} />
+              <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
+                Training Status: Active
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <div>
+                <span className="text-lg font-bold font-mono" style={{ color: colors.text }}>
+                  {homeData?.streak ?? 0}
+                </span>
+                <span className="text-[10px] ml-1" style={{ color: colors.textMuted }}>
+                  day streak
+                </span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
+                    Momentum
+                  </span>
+                  <span className="text-[9px] font-mono" style={{ color: colors.primary }}>
+                    {homeData?.momentum ?? 0}
+                  </span>
+                </div>
+                <div
+                  className="h-1.5 rounded-full overflow-hidden"
+                  style={{ backgroundColor: `${colors.surfaceBorder}50` }}
+                >
+                  <div
+                    data-testid="training-momentum-bar"
+                    className="h-full rounded-full transition-all duration-1000"
+                    style={{
+                      width: `${Math.min(homeData?.momentum ?? 0, 100)}%`,
+                      background: `linear-gradient(90deg, ${colors.primary}80, ${colors.primary})`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {onboardingDay >= 6 && !isTrainingMode && day6MeterVisible && (
           <div
             data-testid="momentum-meter"
             className="rounded-xl px-4 py-3"
@@ -568,6 +648,11 @@ export default function HomePage() {
       <Day6RevealModal
         visible={showDay6Reveal}
         onContinue={handleDay6RevealContinue}
+      />
+
+      <Day7TransitionModal
+        visible={showDay7Transition}
+        onContinue={handleDay7TransitionContinue}
       />
     </SystemLayout>
   );
