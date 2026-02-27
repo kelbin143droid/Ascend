@@ -48,12 +48,14 @@ Preferred communication style: Simple, everyday language.
 │   ├── storage.ts    # Database operations (IStorage interface)
 │   ├── db.ts         # Database connection
 │   └── gameLogic/    # Game logic modules
-│       ├── habitProgression.ts  # Micro-sessions, progressive scaling, momentum
-│       ├── rewards.ts           # XP calculation, bonuses, badge eligibility
-│       ├── aiCoach.ts           # Rule-based coaching engine
+│       ├── phaseEngine.ts       # Consistency-based phase progression (replaces phaseConfig)
+│       ├── momentumEngine.ts    # Momentum scoring, streak resilience, recovery protection
+│       ├── difficultyScaler.ts  # Adaptive difficulty within phases, dynamic training durations
+│       ├── rewardEngine.ts      # Momentum-driven XP, bonuses, badge eligibility
+│       ├── aiCoach.ts           # Interactive coaching engine with chat, contextual suggestions
+│       ├── habitProgression.ts  # Habit stacking suggestions
 │       ├── statProgression.ts   # Stat XP, fatigue, HP/MP updates
 │       ├── xpProgressionSystem.ts # Task completion, MVD, penalties
-│       ├── phaseConfig.ts       # Phase unlock requirements
 │       ├── levelSystem.ts       # Level-up calculations
 │       └── stats.ts             # Derived stats calculation
 ├── shared/           # Shared types and schemas

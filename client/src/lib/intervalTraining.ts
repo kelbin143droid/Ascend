@@ -171,6 +171,14 @@ export function getPhaseScaling(phase: number): { durationMultiplier: number; ho
   };
 }
 
+export interface DynamicSessionConfig {
+  workSeconds: number;
+  restSeconds: number;
+  cycles: number;
+  exercisesPerCycle: number;
+  duration: number;
+}
+
 export function generateSession(stat: TrainingStat, level: TrainingLevel, phase?: number): TrainingSession {
   const config = SESSION_CONFIGS[stat][level];
   const pool = getExercisePoolForStat(stat);
@@ -224,6 +232,55 @@ export function generateSession(stat: TrainingStat, level: TrainingLevel, phase?
   };
 }
 
+export function generateDynamicSession(stat: TrainingStat, dynamicConfig: DynamicSessionConfig): TrainingSession {
+  const pool = getExercisePoolForStat(stat);
+  const exercises = selectExercises(pool, dynamicConfig.exercisesPerCycle);
+  const useAdvanced = dynamicConfig.workSeconds >= 35;
+
+  const steps: IntervalStep[] = [];
+
+  for (let cycle = 0; cycle < dynamicConfig.cycles; cycle++) {
+    const cycleExercises = cycle === 0 ? exercises : shuffleArray([...exercises]);
+
+    for (let i = 0; i < cycleExercises.length; i++) {
+      const ex = cycleExercises[i];
+      const variant = useAdvanced ? ex.advancedVariant : ex.beginnerVariant;
+
+      steps.push({
+        type: "work",
+        durationSeconds: dynamicConfig.workSeconds,
+        exercise: ex,
+        label: ex.name,
+        variant,
+      });
+
+      const isLastInSession = cycle === dynamicConfig.cycles - 1 && i === cycleExercises.length - 1;
+      if (!isLastInSession) {
+        steps.push({
+          type: "rest",
+          durationSeconds: dynamicConfig.restSeconds,
+          exercise: undefined,
+          label: "Rest",
+          variant: getRestLabel(stat),
+        });
+      }
+    }
+  }
+
+  const totalDurationSeconds = steps.reduce((sum, s) => sum + s.durationSeconds, 0);
+
+  return {
+    stat,
+    level: useAdvanced ? "advanced" : "beginner",
+    totalDurationSeconds,
+    cycles: dynamicConfig.cycles,
+    exercisesPerCycle: dynamicConfig.exercisesPerCycle,
+    workSeconds: dynamicConfig.workSeconds,
+    restSeconds: dynamicConfig.restSeconds,
+    steps,
+  };
+}
+
 export function getExercisePool(stat: TrainingStat): Exercise[] {
   return getExercisePoolForStat(stat);
 }
@@ -242,9 +299,8 @@ export function getSessionSummary(session: TrainingSession): string {
     vitality: "Vitality",
   };
   const label = statLabels[session.stat];
-  const levelLabel = session.level === "beginner" ? "Beginner" : "Advanced";
   const mins = Math.ceil(session.totalDurationSeconds / 60);
-  return `${label} ${levelLabel} \u2022 ${mins} min \u2022 ${session.cycles} cycle${session.cycles > 1 ? "s" : ""} \u00d7 ${session.exercisesPerCycle} exercises`;
+  return `${label} \u2022 ${mins} min \u2022 ${session.cycles} cycle${session.cycles > 1 ? "s" : ""} \u00d7 ${session.exercisesPerCycle} exercises`;
 }
 
 export const COMPLETION_MESSAGES: Record<TrainingStat, string[]> = {

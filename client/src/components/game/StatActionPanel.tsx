@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useGame } from "@/context/GameContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Check, RotateCcw, Pause, ChevronRight, RefreshCw, List } from "lucide-react";
+import { Swords, Wind, Eye, Heart, Play, Square, Clock, Zap, Check, RotateCcw, Pause, ChevronRight, RefreshCw, List, TrendingUp } from "lucide-react";
 import { ExerciseAnimation, RestAnimationComponent } from "./ExerciseAnimation";
 import { hasAnimation } from "@/lib/animationRegistry";
 import { getDailyTip, STAT_MULTIPLIERS } from "@/lib/statTips";
 import {
   generateSession,
+  generateDynamicSession,
   formatIntervalTime,
   getSessionSummary,
   getCompletionMessage,
@@ -14,6 +17,7 @@ import {
   type TrainingLevel,
   type TrainingStat,
   type IntervalStep,
+  type DynamicSessionConfig,
 } from "@/lib/intervalTraining";
 import type { ScheduleBlock } from "./Sectograph";
 import type { DailyStatProgress } from "@shared/schema";
@@ -399,10 +403,22 @@ export function StatActionPanel({
   onUpdateProgress,
   playerPhase = 1,
 }: StatActionPanelProps) {
-  const [selectedLevel, setSelectedLevel] = useState<TrainingLevel>("beginner");
+  const { player } = useGame();
   const [session, setSession] = useState<TrainingSession | null>(null);
   const [showSessionTable, setShowSessionTable] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const { data: trainingConfig } = useQuery({
+    queryKey: ["training-config", player?.id, stat],
+    queryFn: async () => {
+      if (!player?.id || !stat) return null;
+      const res = await fetch(`/api/player/${player.id}/training-config?stat=${stat}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!player?.id && !!stat && open,
+    staleTime: 60 * 1000,
+  });
 
   useEffect(() => {
     if (!open) {
@@ -448,7 +464,18 @@ export function StatActionPanel({
     : 30;
 
   const handleGenerateSession = () => {
-    const newSession = generateSession(stat as TrainingStat, selectedLevel, playerPhase);
+    let newSession: TrainingSession;
+    if (trainingConfig) {
+      newSession = generateDynamicSession(stat as TrainingStat, {
+        workSeconds: trainingConfig.workSeconds,
+        restSeconds: trainingConfig.restSeconds,
+        cycles: trainingConfig.cycles,
+        exercisesPerCycle: trainingConfig.exercisesPerCycle,
+        duration: trainingConfig.duration,
+      });
+    } else {
+      newSession = generateSession(stat as TrainingStat, "beginner", playerPhase);
+    }
     setSession(newSession);
     setShowSessionTable(true);
     setIsPlaying(false);
@@ -598,37 +625,62 @@ export function StatActionPanel({
           ) : (
             <div className="space-y-3">
               <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">
-                Training Level
+                Adaptive Training
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {(["beginner", "advanced"] as TrainingLevel[]).map((level) => (
-                  <button
-                    key={level}
-                    onClick={() => setSelectedLevel(level)}
-                    className={`px-3 py-2.5 rounded-lg text-xs font-medium transition-all border ${
-                      selectedLevel === level
-                        ? "ring-1"
-                        : "border-white/10 text-muted-foreground/60 hover:border-white/20"
-                    }`}
-                    style={selectedLevel === level ? {
-                      backgroundColor: `${config.color}15`,
-                      borderColor: `${config.color}50`,
-                      color: config.color,
-                      boxShadow: `0 0 10px ${config.color}15`,
-                    } : undefined}
-                    data-testid={`button-level-${level}`}
-                  >
-                    <div className="font-display tracking-wider uppercase text-[11px]">
-                      {level}
+
+              {trainingConfig ? (
+                <div
+                  className="p-3 rounded-lg border"
+                  style={{
+                    backgroundColor: `${config.color}08`,
+                    borderColor: `${config.color}25`,
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={14} style={{ color: config.color }} />
+                      <span className="text-xs font-bold" style={{ color: config.color }}>
+                        {trainingConfig.momentumTier?.label || "Building"}
+                      </span>
                     </div>
-                    <div className="text-[9px] mt-0.5 opacity-60">
-                      {level === "beginner"
-                        ? stat === "sense" ? "5-10 min" : stat === "vitality" ? "5 min" : "10 min"
-                        : stat === "sense" ? "10-20 min" : stat === "vitality" ? "10 min" : "15-20 min"}
+                    <span className="text-[10px] text-muted-foreground/60">
+                      Phase {trainingConfig.phase}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <div className="text-sm font-bold text-white">{trainingConfig.duration} min</div>
+                      <div className="text-[9px] text-muted-foreground/50">Duration</div>
                     </div>
-                  </button>
-                ))}
-              </div>
+                    <div>
+                      <div className="text-sm font-bold text-white">{trainingConfig.workSeconds}s</div>
+                      <div className="text-[9px] text-muted-foreground/50">Work</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white">{trainingConfig.cycles}x{trainingConfig.exercisesPerCycle}</div>
+                      <div className="text-[9px] text-muted-foreground/50">Cycles</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 h-1.5 bg-black/30 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.round((trainingConfig.momentum || 0) * 100)}%`,
+                        backgroundColor: config.color,
+                      }}
+                    />
+                  </div>
+                  <div className="text-[9px] text-muted-foreground/40 mt-1 text-center">
+                    Momentum: {Math.round((trainingConfig.momentum || 0) * 100)}% — difficulty scales with your consistency
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-center">
+                  <div className="text-xs text-muted-foreground/60">
+                    Loading adaptive config...
+                  </div>
+                </div>
+              )}
 
               <Button
                 className="w-full"

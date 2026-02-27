@@ -10,15 +10,17 @@ import {
   insertHabitSchema, updateHabitSchema,
   type EffortTier
 } from "@shared/schema";
-import { calculateAdaptiveDuration, getProgressiveIntensity, calculateMomentum, shouldBreakStreak, calculateReducedDuration, suggestHabitStacks } from "./gameLogic/habitProgression";
-import { calculateHabitXP, checkDailyBonus, checkWeeklyBonus, checkBadgeEligibility } from "./gameLogic/rewards";
-import { generateCoachMessages, getDurationSuggestion, getMotivationNudge } from "./gameLogic/aiCoach";
+import { suggestHabitStacks } from "./gameLogic/habitProgression";
+import { calculateHabitXP, checkDailyBonus, checkWeeklyBonus, checkBadgeEligibility } from "./gameLogic/rewardEngine";
+import { generateCoachMessages, getDurationSuggestion, getMotivationNudge, handleCoachChat } from "./gameLogic/aiCoach";
+import { calculateMomentumUpdate, getMomentumTier, shouldTriggerRecovery } from "./gameLogic/momentumEngine";
+import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "./gameLogic/difficultyScaler";
+import { checkPhaseEligibility, getStatCapForPhase, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
 import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, calculateXPRequired, type TaskStatType } from "./gameLogic/xpProgressionSystem";
 import { getTotalXPForLevel } from "./gameLogic/levelSystem";
-import { checkPhaseEligibility, getStatCapForPhase } from "./gameLogic/phaseConfig";
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -401,13 +403,13 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Player not found" });
       }
 
-      const displayStats = getDisplayStats(player.stats);
-      const result = checkPhaseEligibility(
-        player.phase,
-        player.level,
-        displayStats,
-        player.streak
-      );
+      const habits = await storage.getHabits(req.params.id);
+      const windowDays = 45;
+      const windowStart = new Date();
+      windowStart.setDate(windowStart.getDate() - windowDays);
+      const completions = await storage.getHabitCompletions(req.params.id, windowStart);
+
+      const result = checkPhaseEligibility(player, habits, completions);
 
       if (!result) {
         return res.json({
@@ -949,38 +951,38 @@ export async function registerRoutes(
       const today = getTodayDateString();
       const derived = calculateDerivedStats(player.stats);
 
-      const streakCheck = shouldBreakStreak(habit.lastCompletedDate, today, derived.streakForgiveness);
-      let newStreak = habit.currentStreak;
-      let newMomentum = habit.momentum;
+      const momentumResult = calculateMomentumUpdate(habit, today, true, derived.streakForgiveness);
 
-      if (streakCheck.broken) {
-        newStreak = 1;
-        newMomentum = calculateMomentum(0, true);
-      } else if (habit.lastCompletedDate === today) {
-        newMomentum = calculateMomentum(habit.momentum, true);
-      } else {
-        newStreak = habit.currentStreak + 1;
-        newMomentum = calculateMomentum(habit.momentum, true);
-      }
-
+      const newStreak = momentumResult.newStreak;
+      const newMomentum = momentumResult.momentum;
       const newLongestStreak = Math.max(habit.longestStreak, newStreak);
       const newTotalCompletions = habit.totalCompletions + 1;
-      const newDifficulty = getProgressiveIntensity(newStreak, newTotalCompletions);
-      const newDuration = calculateAdaptiveDuration(habit.baseDurationMinutes, newStreak, newDifficulty);
 
-      const xpEarned = calculateHabitXP({
-        ...habit,
-        currentStreak: newStreak,
-        difficultyLevel: newDifficulty,
-      });
+      const recentWindow = new Date();
+      recentWindow.setDate(recentWindow.getDate() - 14);
+      const recentCompletionsForHabit = (await storage.getHabitCompletions(habit.userId, recentWindow))
+        .filter(c => c.habitId === habit.id);
+      const consecutiveCompletions = recentCompletionsForHabit.length;
+
+      const scaled = scaleDifficulty(
+        { ...habit, momentum: newMomentum, currentStreak: newStreak, totalCompletions: newTotalCompletions },
+        consecutiveCompletions,
+        player.phase
+      );
+
+      const xpEarned = calculateHabitXP(
+        { ...habit, currentStreak: newStreak, difficultyLevel: scaled.difficultyLevel },
+        newMomentum,
+        newStreak
+      );
 
       await storage.updateHabit(habit.id, {
         currentStreak: newStreak,
         longestStreak: newLongestStreak,
         totalCompletions: newTotalCompletions,
         lastCompletedDate: today,
-        difficultyLevel: newDifficulty,
-        currentDurationMinutes: newDuration,
+        difficultyLevel: scaled.difficultyLevel,
+        currentDurationMinutes: scaled.duration,
         momentum: newMomentum,
       });
 
@@ -1060,7 +1062,16 @@ export async function registerRoutes(
           current: newStreak,
           longest: newLongestStreak,
           momentum: newMomentum,
-          graceDayUsed: streakCheck.graceDayUsed,
+          graceDayUsed: momentumResult.graceDayUsed,
+          recoveryMode: momentumResult.recoveryMode,
+          xpMultiplier: momentumResult.xpMultiplier,
+        },
+        difficultyInfo: {
+          level: scaled.difficultyLevel,
+          label: getDifficultyLabel(scaled.difficultyLevel),
+          duration: scaled.duration,
+          reason: scaled.reason,
+          isAutoAdjusted: scaled.isAutoAdjusted,
         },
         player: finalPlayer ? attachDerivedStats(finalPlayer) : null,
       });
@@ -1075,15 +1086,28 @@ export async function registerRoutes(
       const habit = await storage.getHabit(req.params.id);
       if (!habit) return res.status(404).json({ error: "Habit not found" });
 
-      const newMomentum = calculateMomentum(habit.momentum, false);
-      const reducedDuration = calculateReducedDuration(habit.currentDurationMinutes, habit.baseDurationMinutes);
+      const player = await storage.getPlayer(habit.userId);
+      const today = getTodayDateString();
+      const momentumResult = calculateMomentumUpdate(habit, today, false);
+
+      const scaled = scaleDifficulty(
+        { ...habit, momentum: momentumResult.momentum },
+        0,
+        player?.phase || 1
+      );
 
       const updated = await storage.updateHabit(habit.id, {
-        momentum: newMomentum,
-        currentDurationMinutes: reducedDuration,
+        momentum: momentumResult.momentum,
+        currentDurationMinutes: scaled.duration,
+        difficultyLevel: scaled.difficultyLevel,
       });
 
-      res.json({ habit: updated, message: "Habit skipped. Duration reduced to help you get back on track." });
+      res.json({
+        habit: updated,
+        message: "Habit skipped. Difficulty adjusted to help you get back on track.",
+        momentum: momentumResult.momentum,
+        recoveryMode: momentumResult.recoveryMode,
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to skip habit" });
     }
@@ -1119,17 +1143,82 @@ export async function registerRoutes(
       const recentCompletions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
 
       const messages = generateCoachMessages(player, userHabits, recentCompletions);
-      const nudge = getMotivationNudge(player.streak, player.consecutiveMissedDays);
+
+      const avgMomentum = userHabits.length > 0
+        ? userHabits.reduce((sum, h) => sum + h.momentum, 0) / userHabits.length
+        : 0;
+      const nudge = getMotivationNudge(avgMomentum, player.streak, player.consecutiveMissedDays);
 
       const habitSuggestions = userHabits.map(h => ({
         habitId: h.id,
         habitName: h.name,
-        ...getDurationSuggestion(h),
+        ...getDurationSuggestion(h, player.phase),
+        momentum: h.momentum,
+        momentumTier: getMomentumTier(h.momentum),
       }));
 
       res.json({ messages, nudge, habitSuggestions });
     } catch (error) {
       res.status(500).json({ error: "Failed to get coach data" });
+    }
+  });
+
+  app.post("/api/player/:id/coach/chat", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const { message } = req.body;
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const userHabits = await storage.getHabits(req.params.id);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentCompletions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+
+      const response = handleCoachChat(message, player, userHabits, recentCompletions);
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process coach chat" });
+    }
+  });
+
+  app.get("/api/player/:id/training-config", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const stat = req.query.stat as string;
+      if (!stat || !["strength", "agility", "sense", "vitality"].includes(stat)) {
+        return res.status(400).json({ error: "Valid stat required" });
+      }
+
+      const habits = await storage.getHabits(req.params.id);
+      const statHabits = habits.filter(h => h.stat === stat);
+      const avgMomentum = statHabits.length > 0
+        ? statHabits.reduce((sum, h) => sum + h.momentum, 0) / statHabits.length
+        : 0.3;
+
+      const recentWindow = new Date();
+      recentWindow.setDate(recentWindow.getDate() - 14);
+      const completions = await storage.getHabitCompletions(req.params.id, recentWindow);
+      const statCompletions = completions.filter(c => {
+        const habit = habits.find(h => h.id === c.habitId);
+        return habit?.stat === stat;
+      });
+
+      const config = calculateTrainingDuration(player.phase, avgMomentum, statCompletions.length, stat);
+
+      res.json({
+        ...config,
+        momentum: avgMomentum,
+        momentumTier: getMomentumTier(avgMomentum),
+        phase: player.phase,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get training config" });
     }
   });
 

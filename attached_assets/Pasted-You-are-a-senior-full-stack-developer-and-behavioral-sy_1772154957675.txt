@@ -1,0 +1,113 @@
+You are a senior full-stack developer and behavioral systems designer.
+
+I have an anime-themed productivity app with a 5-phase progression system.
+Currently:
+- Phase 2 unlocks around 22–30 days of consistency.
+- Each phase increases difficulty.
+- Phase 5 is the final mastery stage.
+- Progression appears mostly time-based.
+
+We are NOT removing the 5-phase system.
+We are REFACTORING the progression logic to make it adaptive, psychologically optimized, and retention-safe.
+
+----------------------------------------
+PART 1 — REFACTOR PHASE PROGRESSION LOGIC
+----------------------------------------
+
+Replace purely time-based progression with a weighted consistency model.
+
+Create a PhaseEngine that calculates progression using:
+
+- Completion Rate (last 14–30 days)
+- Streak Resilience (recovery after missed day)
+- Mood trend (if tracked)
+- Session completion quality (if partial completions exist)
+
+Example progression logic:
+
+Phase 1 → Phase 2:
+- At least 4 completions within 7 days
+- OR 70% weekly completion rate
+
+Phase 2 → Phase 3:
+- 70–80% consistency over 14 days
+
+Phase 3 → Phase 4:
+- 75%+ over 21–30 days
+
+Phase 4 → Phase 5:
+- Sustained long-term consistency (45+ days weighted)
+
+Progression must NOT rely solely on “days passed”.
+
+----------------------------------------
+PART 2 — ADD RECOVERY PROTECTION
+----------------------------------------
+
+Implement streak resilience rules:
+
+- Missing 1 day does NOT reset streak.
+- Missing 2–3 days reduces momentum score slightly.
+- Missing >5 days triggers:
+    → Auto phase difficulty reduction (temporary)
+    → AI Coach recovery message
+    → Suggest micro-session mode
+
+Add a “Momentum Score” separate from streak count.
+
+Momentum Score:
+- Increases with consistency.
+- Decreases gradually with inactivity.
+- Drives XP multiplier instead of raw streak count.
+
+----------------------------------------
+PART 3 — ADD ADAPTIVE DIFFICULTY INSIDE EACH PHASE
+----------------------------------------
+
+Instead of fixed durations per phase, implement dynamic scaling.
+
+Example inside Phase 2:
+- Base duration: 5 min
+- If user completes 5 sessions consecutively → +1 min increase
+- If user struggles → revert to micro-duration automatically
+
+Difficulty should float within a range, not jump in large steps.
+
+----------------------------------------
+PART 4 — PRESERVE GAME ARC
+----------------------------------------
+
+Keep:
+- 5 phase identity structure
+- Phase names and visuals
+- Phase-based stat multipliers
+- Long-term mastery arc
+
+But:
+- Make progression intelligent and performance-based.
+
+----------------------------------------
+PART 5 — ARCHITECTURE UPDATE
+----------------------------------------
+
+Refactor into modular logic:
+
+PhaseEngine
+MomentumEngine
+DifficultyScaler
+RewardEngine
+
+Ensure:
+- Backward compatibility with current user data
+- No breaking of saved streaks
+- Clean state transitions
+
+----------------------------------------
+RETURN:
+----------------------------------------
+
+1. Updated progression algorithm
+2. Updated streak logic
+3. Pseudocode or implementation snippets
+4. Data model updates (if required)
+5. Migration strategy for current users

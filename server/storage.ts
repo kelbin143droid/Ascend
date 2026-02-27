@@ -16,7 +16,6 @@ import {
 import { db } from "./db";
 import { eq, and, gte, desc, sql } from "drizzle-orm";
 import { processSession, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
-import { checkPhaseEligibility } from "./gameLogic/phaseConfig";
 import { updateStamina } from "./gameLogic/xpProgressionSystem";
 
 export interface CompleteSessionInput {

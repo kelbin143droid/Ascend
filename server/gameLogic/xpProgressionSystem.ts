@@ -1,7 +1,7 @@
 import type { StatName, StatXP, EffortTier } from "@shared/schema";
 import { EFFORT_TIER_XP } from "@shared/schema";
 import { getTotalXPForLevel, getXPForNextLevel } from "./levelSystem";
-import { getStatCapForPhase } from "./phaseConfig";
+import { getStatCapForPhase } from "./phaseEngine";
 
 export type TaskStatType = "strength" | "sense" | "agility" | "vitality";
 

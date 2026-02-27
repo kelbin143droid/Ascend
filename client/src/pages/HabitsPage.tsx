@@ -44,7 +44,7 @@ const STAT_LABELS: Record<string, string> = {
   vitality: "VIT",
 };
 
-const DIFFICULTY_LABELS = ["", "Easy", "Normal", "Hard", "Expert", "Master"];
+const DIFFICULTY_LABELS = ["", "Micro", "Light", "Standard", "Intense", "Master"];
 
 interface CompletionResult {
   habit: Habit;
@@ -533,16 +533,20 @@ export default function HabitsPage() {
 
               <div>
                 <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                  Base Duration (minutes)
+                  Starting Duration (minutes)
                 </label>
                 <Input
                   type="number"
                   min="1"
+                  max="10"
                   value={formDuration}
                   onChange={(e) => setFormDuration(e.target.value)}
                   className="h-9 bg-black/50 border-gray-700 text-sm text-white"
                   data-testid="input-habit-duration"
                 />
+                <div className="text-[9px] text-gray-600 mt-1">
+                  Duration scales automatically with your consistency
+                </div>
               </div>
 
               <div>
