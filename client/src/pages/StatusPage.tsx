@@ -90,6 +90,19 @@ export default function StatusPage() {
   const [showTestMode, setShowTestMode] = useState(false);
   const [defaultRoleCreated, setDefaultRoleCreated] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const { data: homeData } = useQuery<{ onboardingDay: number }>({
+    queryKey: ["home", player?.id],
+    queryFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}/home`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 30000,
+  });
+  const scheduleEditingLocked = (homeData?.onboardingDay ?? 1) < 6;
   
   const formatDateKey = (date: Date) => {
     return date.toISOString().split('T')[0];
@@ -345,7 +358,25 @@ export default function StatusPage() {
         )}
       </AnimatePresence>
 
-      <div className="space-y-4">
+      <div className="space-y-4 relative">
+        {scheduleEditingLocked && (
+          <div
+            data-testid="soft-lock-schedule"
+            className="rounded-xl px-5 py-4 text-center mb-4"
+            style={{
+              backgroundColor: "rgba(147,197,253,0.04)",
+              border: "1px solid rgba(147,197,253,0.08)",
+            }}
+          >
+            <p className="text-sm leading-relaxed" style={{ color: "rgba(147,197,253,0.7)" }}>
+              Structure appears naturally as your rhythm forms.
+            </p>
+            <p className="text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Schedule editing opens on Day 6.
+            </p>
+          </div>
+        )}
+
         <div className="flex items-center gap-3 mb-1">
           <CalendarDays className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-bold text-white font-orbitron tracking-wide">
@@ -414,8 +445,8 @@ export default function StatusPage() {
             <Sectograph 
               schedule={currentSchedule}
               size={280}
-              onCenterClick={() => setIsScheduleOpen(true)}
-              onBlockClick={(block) => handleEditExistingBlock(block)}
+              onCenterClick={() => !scheduleEditingLocked && setIsScheduleOpen(true)}
+              onBlockClick={(block) => !scheduleEditingLocked && handleEditExistingBlock(block)}
             />
           </div>
         </div>

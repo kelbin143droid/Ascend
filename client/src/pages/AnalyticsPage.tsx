@@ -101,6 +101,19 @@ function GrowthIndicator({ value, suffix = "%" }: { value: number; suffix?: stri
 export default function AnalyticsPage() {
   const { player } = useGame();
 
+  const { data: homeData } = useQuery<{ onboardingDay: number; completedToday: number; totalActive: number }>({
+    queryKey: ["home", player?.id],
+    queryFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}/home`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 30000,
+  });
+  const analyticsLocked = (homeData?.onboardingDay ?? 1) < 6;
+
   const { data: analytics, isLoading } = useQuery<AnalyticsData>({
     queryKey: ["/api/player", player?.id, "analytics"],
     queryFn: async () => {
@@ -141,7 +154,41 @@ export default function AnalyticsPage() {
           </h1>
         </div>
 
-        {isLoading ? (
+        {analyticsLocked ? (
+          <div className="space-y-4">
+            <div
+              data-testid="soft-lock-analytics"
+              className="rounded-xl px-5 py-6 text-center"
+              style={{
+                backgroundColor: "rgba(147,197,253,0.04)",
+                border: "1px solid rgba(147,197,253,0.08)",
+              }}
+            >
+              <Activity className="w-8 h-8 mx-auto mb-3" style={{ color: "rgba(147,197,253,0.3)" }} />
+              <p className="text-sm leading-relaxed" style={{ color: "rgba(147,197,253,0.7)" }}>
+                Your patterns are still forming.
+              </p>
+              <p className="text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                Full analytics appear as your data grows.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4 text-center">
+                <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Days Active</div>
+                <div className="text-2xl font-bold text-cyan-400 font-orbitron">
+                  {homeData?.onboardingDay ?? 1}
+                </div>
+              </div>
+              <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4 text-center">
+                <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Level</div>
+                <div className="text-2xl font-bold text-amber-400 font-orbitron">
+                  {player?.level ?? 1}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-gray-500">Loading analytics...</div>
           </div>

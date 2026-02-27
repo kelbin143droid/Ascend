@@ -96,6 +96,9 @@ export default function HabitsPage() {
     staleTime: 30000,
   });
 
+  const onboardingDay = homeData?.onboardingDay ?? 1;
+  const habitCreationLocked = onboardingDay < 3;
+
   const [formName, setFormName] = useState("");
   const [formStat, setFormStat] = useState<string>("strength");
   const [formDuration, setFormDuration] = useState("3");
@@ -327,8 +330,9 @@ export default function HabitsPage() {
           </div>
           <Button
             size="sm"
-            onClick={openAddForm}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            onClick={habitCreationLocked ? undefined : openAddForm}
+            className={habitCreationLocked ? "bg-gray-700 text-gray-400 cursor-default" : "bg-cyan-600 hover:bg-cyan-700 text-white"}
+            disabled={habitCreationLocked}
             data-testid="button-add-habit"
           >
             <Plus className="w-4 h-4 mr-1" />
@@ -484,7 +488,25 @@ export default function HabitsPage() {
               </div>
             ))}
 
-            {habits.length === 0 && (
+            {habitCreationLocked && (
+              <div
+                data-testid="soft-lock-habits"
+                className="rounded-xl px-5 py-4 text-center"
+                style={{
+                  backgroundColor: "rgba(147,197,253,0.04)",
+                  border: "1px solid rgba(147,197,253,0.08)",
+                }}
+              >
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(147,197,253,0.7)" }}>
+                  Custom habits unlock as your routine develops.
+                </p>
+                <p className="text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  Complete guided sessions from Home to build your foundation.
+                </p>
+              </div>
+            )}
+
+            {habits.length === 0 && !habitCreationLocked && (
               <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-8 text-center">
                 <Target className="w-10 h-10 text-gray-700 mx-auto mb-3" />
                 <p className="text-gray-500 text-sm">No habits yet. Create your first habit to start building streaks!</p>
