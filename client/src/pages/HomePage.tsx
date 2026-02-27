@@ -106,7 +106,11 @@ export default function HomePage() {
     : `Takes only ${selectedHabit.durationText}`;
 
   const handleStart = () => {
-    setLocation("/habits");
+    if (!hasHabits) {
+      setLocation(`/guided-session/${selectedHabitId}`);
+    } else {
+      setLocation("/habits");
+    }
   };
 
   const handleSelectHabit = (habitId: string) => {

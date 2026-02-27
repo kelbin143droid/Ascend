@@ -237,6 +237,50 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/complete-guided-session", async (req, res) => {
+    try {
+      const schema = z.object({
+        sessionId: z.string(),
+        stat: z.enum(["strength", "agility", "sense", "vitality"]),
+        durationMinutes: z.number().min(1),
+      });
+
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid guided session data" });
+      }
+
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      await storage.createHabitCompletion({
+        habitId: `guided_${parsed.data.sessionId}`,
+        userId: req.params.id,
+        durationMinutes: parsed.data.durationMinutes,
+        xpEarned: 5,
+      });
+
+      const stabilityData = player.stability || {
+        score: 50, habitCompletionPct: 0, sleepConsistency: 50,
+        energyCompliance: 50, emotionalStability: 50,
+        taskTimingAdherence: 50, consecutiveLowDays: 0,
+        softRegressionActive: false,
+      };
+      const newScore = Math.min(100, stabilityData.score + 2);
+      const updatedStability = { ...stabilityData, score: newScore };
+
+      await storage.updatePlayer(req.params.id, {
+        stability: updatedStability,
+        exp: (player.exp || 0) + 5,
+        totalExp: (player.totalExp || 0) + 5,
+      });
+
+      res.json({ success: true, xpEarned: 5, stabilityScore: newScore });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete guided session" });
+    }
+  });
+
   app.post("/api/player/:id/complete-session", async (req, res) => {
     try {
       const sessionSchema = z.object({
