@@ -51,7 +51,7 @@ Preferred communication style: Simple, everyday language.
 ### Navigation & UX Structure
 - **Bottom Nav (4 items)**: HOME (`/`), TRAIN (`/train`), HABITS (`/habits`), COACH (`/coach`)
 - **Sidebar Menu** (hamburger icon, top-left): Profile, Analytics, Progress History, Stability Details, Library, Achievements, Weekly Planning, Calendar, Future Game
-- **Home Page**: Action-first onboarding — greeting text, 4 recommended habits for new users (Calm Breathing, Light Movement, Hydration Check, Quick Reflection), "Start" primary button, "Create custom habit" secondary link. No system terminology (Phase/Stability/Flow hidden from Home).
+- **Home Page**: Action-first onboarding — greeting text, 4 recommended habits for new users (Calm Breathing, Light Movement, Hydration Check, Quick Reflection), "Start" primary button, "Create custom habit" secondary link. No system terminology (Phase/Stability/Flow hidden from Home). Primary "Start Here" card + "Other Options" section with habit selection. Dynamic button: "Start {SelectedHabitName}". Journey day indicator ("Day X · Beginning your journey").
 - **Profile Page** (`/profile`): Identity + progress screen — Phase card, Stability score + label, Flow State meter, stat cap, phase history. All system metrics live here.
 - **Train Page**: 4 expandable categories (Strength, Agility, Meditation/Sense, Night Recovery/Vitality) with quick-start sessions
 - **Coach Page**: Full-page AI coach with Insights tab (mood check-in, prioritized messages, nudges) and Chat tab
