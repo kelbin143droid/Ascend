@@ -3,6 +3,7 @@ import { useGame } from "@/context/GameContext";
 import { IntroScreen } from "./IntroScreen";
 import { PlayerInfoScreen } from "./PlayerInfoScreen";
 import { OnboardingFlow } from "./OnboardingFlow";
+import { FirstPrincipleScreen } from "./FirstPrincipleScreen";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -10,9 +11,10 @@ interface IntroWrapperProps {
   children: React.ReactNode;
 }
 
-type IntroStep = "loading" | "intro" | "info" | "transitioning" | "onboarding" | "complete";
+type IntroStep = "loading" | "intro" | "info" | "transitioning" | "firstPrinciple" | "onboarding" | "complete";
 
 const ONBOARDING_DONE_KEY = "solo_life_onboarding_done";
+const FIRST_LAUNCH_KEY = "ascend_first_launch_done";
 
 export function IntroWrapper({ children }: IntroWrapperProps) {
   const { player, isLoading, updatePlayer } = useGame();
@@ -46,7 +48,8 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     });
     setStep("transitioning");
     setTimeout(() => {
-      setStep("onboarding");
+      const firstLaunchDone = localStorage.getItem(FIRST_LAUNCH_KEY) === "true";
+      setStep(firstLaunchDone ? "onboarding" : "firstPrinciple");
     }, 2500);
   };
 
