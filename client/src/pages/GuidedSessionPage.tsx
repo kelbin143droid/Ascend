@@ -219,7 +219,10 @@ export default function GuidedSessionPage() {
   const sessionId = (params?.sessionId || "calm-breathing") as SessionId;
   const session = SESSIONS[sessionId];
 
-  const [state, setState] = useState<"active" | "completing" | "done">("active");
+  const [state, setState] = useState<"countdown" | "active" | "completing" | "done">(
+    session?.type === "breathing" ? "countdown" : "active"
+  );
+  const [countdown, setCountdown] = useState(5);
   const [elapsed, setElapsed] = useState(0);
   const [showFirstCompletion, setShowFirstCompletion] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -258,6 +261,23 @@ export default function GuidedSessionPage() {
       }
     },
   });
+
+  useEffect(() => {
+    if (state !== "countdown") return;
+
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setState("active");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [state]);
 
   useEffect(() => {
     if (state !== "active" || session.type === "instant") return;
@@ -360,6 +380,24 @@ export default function GuidedSessionPage() {
       )}
 
       <div className="flex-1 flex items-center justify-center" style={{ animation: "gsFadeIn 0.5s ease-out" }}>
+        {state === "countdown" && (
+          <div className="flex flex-col items-center gap-6">
+            <p className="text-sm tracking-wide" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Get comfortable. Session starts in...
+            </p>
+            <p
+              data-testid="countdown-number"
+              className="text-6xl font-display font-light"
+              style={{
+                color: `${accentColor}bb`,
+                animation: "gsFadeIn 0.3s ease-out",
+              }}
+              key={countdown}
+            >
+              {countdown}
+            </p>
+          </div>
+        )}
         {state === "active" && session.type === "breathing" && (
           <BreathingSession elapsed={elapsed} accentColor={accentColor} />
         )}
