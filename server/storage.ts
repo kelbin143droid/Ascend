@@ -112,7 +112,7 @@ export class DatabaseStorage implements IStorage {
       .insert(players)
       .values(insertPlayer)
       .returning();
-    return player;
+    return this.normalizePlayer(player);
   }
 
   async updatePlayer(id: string, updates: UpdatePlayer): Promise<Player | undefined> {
@@ -121,7 +121,7 @@ export class DatabaseStorage implements IStorage {
       .set(updates)
       .where(eq(players.id, id))
       .returning();
-    return player || undefined;
+    return player ? this.normalizePlayer(player) : undefined;
   }
 
   async gainExp(id: string, amount: number): Promise<Player | undefined> {
@@ -308,8 +308,13 @@ export class DatabaseStorage implements IStorage {
     const existingRoles = await this.getRoles(userId);
     const generalRole = existingRoles.find(r => r.name === "General");
     if (generalRole) return generalRole;
-    
-    return this.createRole({ userId, name: "General", weeklyPriority: 0 });
+
+    try {
+      return await this.createRole({ userId, name: "General", weeklyPriority: 0 });
+    } catch {
+      const rolesAfterRetry = await this.getRoles(userId);
+      return rolesAfterRetry.find(r => r.name === "General")!;
+    }
   }
 
   async getWeeklyGoals(userId: string, weekStartDate?: string): Promise<WeeklyGoal[]> {

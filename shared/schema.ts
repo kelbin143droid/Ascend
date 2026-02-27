@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb, real, date, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, real, date, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -333,7 +333,9 @@ export const roles = pgTable("roles", {
   userId: varchar("user_id").notNull(),
   name: text("name").notNull(),
   weeklyPriority: integer("weekly_priority").default(0),
-});
+}, (table) => [
+  uniqueIndex("roles_user_name_idx").on(table.userId, table.name),
+]);
 
 export const insertRoleSchema = createInsertSchema(roles).omit({ id: true });
 export const updateRoleSchema = createInsertSchema(roles).partial().omit({ id: true });

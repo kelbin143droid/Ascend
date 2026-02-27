@@ -78,7 +78,7 @@ export default function StatusPage() {
     gainExp,
     addLevels
   } = useGame();
-  const { roles, getDefaultRole, createRole } = useRoles();
+  const { roles, isLoading: rolesLoading, getDefaultRole, createRole } = useRoles();
   const { weeklyGoals, hasGoalsForCurrentWeek, getGoalsByRole } = useWeeklyGoals();
   const { createTask } = useTasks();
   const { toast } = useToast();
@@ -119,11 +119,11 @@ export default function StatusPage() {
   const goalLinkedPercentage = weeklyAnalytics?.goalLinkedPercentage ?? 100;
   
   useEffect(() => {
-    if (player && roles.length === 0 && !defaultRoleCreated) {
+    if (player && !rolesLoading && roles.length === 0 && !defaultRoleCreated) {
       setDefaultRoleCreated(true);
       createRole({ name: "General", weeklyPriority: 0 });
     }
-  }, [player, roles.length, defaultRoleCreated, createRole]);
+  }, [player, rolesLoading, roles.length, defaultRoleCreated, createRole]);
 
   if (isLoading || !player) {
     return (

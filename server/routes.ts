@@ -434,10 +434,8 @@ export async function registerRoutes(
         });
       }
 
-      if (regression.type === "soft") {
-        const updatedStability = buildUpdatedStabilityData(stabilityCalc, regression);
-        await storage.updatePlayer(req.params.id, { stability: updatedStability });
-      }
+      const updatedStability = buildUpdatedStabilityData(stabilityCalc, regression);
+      await storage.updatePlayer(req.params.id, { stability: updatedStability });
 
       const result = checkPhaseEligibility(player, habits, completions);
 
@@ -599,6 +597,12 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors });
       }
+
+      if (parsed.data.name === "General" && parsed.data.userId) {
+        const existing = await storage.getOrCreateDefaultRole(parsed.data.userId);
+        return res.status(201).json(existing);
+      }
+
       const role = await storage.createRole(parsed.data);
       res.status(201).json(role);
     } catch (error) {
@@ -1294,10 +1298,20 @@ export async function registerRoutes(
 
   app.post("/api/player/:id/stability/update", async (req, res) => {
     try {
+      const stabilityUpdateSchema = z.object({
+        sleepConsistency: z.number().min(0).max(100).optional(),
+        energyCompliance: z.number().min(0).max(100).optional(),
+        emotionalStability: z.number().min(0).max(100).optional(),
+      });
+      const parsed = stabilityUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
-      const { sleepConsistency, energyCompliance, emotionalStability } = req.body;
+      const { sleepConsistency, energyCompliance, emotionalStability } = parsed.data;
 
       const habits = await storage.getHabits(req.params.id);
       const sevenDaysAgo = new Date();
