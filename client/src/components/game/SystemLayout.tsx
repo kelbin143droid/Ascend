@@ -1,26 +1,22 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { Sword, UserCircle, BarChart3, BookOpen, Rocket, Target } from "lucide-react";
+import { Home, Dumbbell, Target, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { ThemeSelector } from "./ThemeSelector";
-import { AICoach } from "./AICoach";
+import { SidebarMenu } from "./SidebarMenu";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
+
+const navItems = [
+  { icon: Home, label: "HOME", path: "/" },
+  { icon: Dumbbell, label: "TRAIN", path: "/train" },
+  { icon: Target, label: "HABITS", path: "/habits" },
+  { icon: Brain, label: "COACH", path: "/coach" },
+];
 
 export function SystemLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { backgroundTheme } = useTheme();
-
-  const leftNavItems = [
-    { icon: BookOpen, label: "LIBRARY", path: "/library" },
-    { icon: Sword, label: "ARENA", path: "/arena" },
-  ];
-
-  const rightNavItems = [
-    { icon: Target, label: "HABITS", path: "/habits" },
-    { icon: BarChart3, label: "ANALYTICS", path: "/analytics" },
-  ];
-
   const colors = backgroundTheme.colors;
 
   return (
@@ -90,11 +86,11 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
       {location === "/" && <ThemeSelector />}
 
-      <main className="relative z-20 container mx-auto px-4 py-6 pb-24 max-w-md md:max-w-2xl min-h-screen flex flex-col">
+      <SidebarMenu />
+
+      <main className="relative z-20 container mx-auto px-4 py-6 pt-14 pb-24 max-w-md md:max-w-2xl min-h-screen flex flex-col">
         {children}
       </main>
-
-      <AICoach />
 
       <nav 
         className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl"
@@ -102,65 +98,10 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           backgroundColor: `${colors.background}99`,
           borderTop: `1px solid ${colors.surfaceBorder}`
         }}
+        data-testid="bottom-nav"
       >
-        <div className="flex justify-center items-end h-16 w-full mx-auto pb-2 relative gap-4">
-          {leftNavItems.map((item) => {
-            const isActive = location === item.path;
-            return (
-              <Link key={item.path} href={item.path}>
-                <button
-                  data-testid={`nav-${item.label.toLowerCase()}`}
-                  className={cn(
-                    "flex flex-col items-center justify-center transition-all duration-300 group min-w-[60px]"
-                  )}
-                  style={{
-                    color: isActive ? colors.primary : colors.textMuted,
-                    transform: isActive ? 'scale(1.1)' : 'scale(1)'
-                  }}
-                >
-                  <div 
-                    className="relative p-1.5 rounded-sm transition-all duration-500"
-                    style={isActive ? {
-                      backgroundColor: `${colors.primary}33`,
-                      boxShadow: `0 0 25px ${colors.primaryGlow}`,
-                      border: `1px solid ${colors.surfaceBorder}`
-                    } : {}}
-                  >
-                    <item.icon size={22} className={cn("transition-transform", isActive && "animate-pulse")} />
-                  </div>
-                  <span 
-                    className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase transition-all"
-                    style={{ opacity: isActive ? 1 : 0.6 }}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              </Link>
-            );
-          })}
-
-          <Link href="/">
-            <button
-              data-testid="nav-status"
-              className="relative -mt-6 flex items-center justify-center transition-all duration-300 group min-w-[60px]"
-              style={{
-                transform: location === "/" ? 'scale(1.1)' : 'scale(1)'
-              }}
-            >
-              <div 
-                className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-500 rotate-45"
-                style={{
-                  backgroundColor: colors.primary,
-                  boxShadow: `0 0 30px ${colors.primaryGlow}, 0 0 60px ${colors.primaryGlow}40`,
-                  border: `2px solid ${colors.surfaceBorder}`
-                }}
-              >
-                <Rocket size={26} className="-rotate-45" style={{ color: colors.background }} />
-              </div>
-            </button>
-          </Link>
-
-          {rightNavItems.map((item) => {
+        <div className="flex justify-around items-end h-16 w-full mx-auto pb-2 max-w-md">
+          {navItems.map((item) => {
             const isActive = location === item.path;
             return (
               <Link key={item.path} href={item.path}>

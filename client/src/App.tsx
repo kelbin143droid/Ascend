@@ -8,7 +8,10 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { RolesProvider } from "@/context/RolesContext";
 import { WeeklyGoalsProvider, useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { TasksProvider } from "@/context/TasksContext";
+import HomePage from "@/pages/HomePage";
 import StatusPage from "@/pages/StatusPage";
+import TrainPage from "@/pages/TrainPage";
+import CoachPage from "@/pages/CoachPage";
 import DungeonPage from "@/pages/DungeonPage";
 import InventoryPage from "@/pages/InventoryPage";
 import Game3DPage from "@/pages/Game3DPage";
@@ -51,7 +54,10 @@ function Router() {
       <Route path="/weekly-planning" component={WeeklyPlanningPage} />
       <Route path="/trials" component={TrialsPage} />
       <Route path="/calendar" component={CalendarPage} />
-      <Route path="/" component={StatusPage} />
+      <Route path="/" component={HomePage} />
+      <Route path="/schedule" component={StatusPage} />
+      <Route path="/train" component={TrainPage} />
+      <Route path="/coach" component={CoachPage} />
       <Route path="/arena" component={DungeonPage} />
       <Route path="/library" component={LibraryPage} />
       <Route path="/inventory" component={InventoryPage} />

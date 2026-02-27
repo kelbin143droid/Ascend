@@ -12,7 +12,7 @@ import {
 } from "@shared/schema";
 import { suggestHabitStacks } from "./gameLogic/habitProgression";
 import { calculateHabitXP, checkDailyBonus, checkWeeklyBonus, checkBadgeEligibility } from "./gameLogic/rewardEngine";
-import { generateCoachMessages, getDurationSuggestion, getMotivationNudge, handleCoachChat } from "./gameLogic/aiCoach";
+import { generateCoachMessages, getDurationSuggestion, getMotivationNudge, handleCoachChat, getHomeInsight } from "./gameLogic/aiCoach";
 import { calculateMomentumUpdate, getMomentumTier, shouldTriggerRecovery } from "./gameLogic/momentumEngine";
 import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "./gameLogic/difficultyScaler";
 import { checkPhaseEligibility, getStatCapForPhase, getPhaseVisualConfig, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
@@ -26,6 +26,7 @@ import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
 import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, calculateXPRequired, type TaskStatType } from "./gameLogic/xpProgressionSystem";
 import { getTotalXPForLevel } from "./gameLogic/levelSystem";
+import { getFlowState } from "./gameLogic/flowEngine";
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -1422,6 +1423,67 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get phase info" });
+    }
+  });
+
+  app.get("/api/player/:id/home", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const habits = await storage.getHabits(req.params.id);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const completions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+
+      const stabilityScore = player.stability?.score ?? 50;
+      let stabilityLabel: string;
+      if (stabilityScore >= 85) stabilityLabel = "Excellent";
+      else if (stabilityScore >= 70) stabilityLabel = "Strong";
+      else if (stabilityScore >= 55) stabilityLabel = "Solid";
+      else if (stabilityScore >= 40) stabilityLabel = "Developing";
+      else stabilityLabel = "Building";
+
+      const flow = getFlowState(player, habits, completions);
+
+      const homeInsight = getHomeInsight(player, habits, completions);
+      const insight = homeInsight.message;
+
+      const today = new Date().toLocaleDateString("en-CA");
+      const completedIds = new Set(
+        completions
+          .filter(c => c.completedAt && new Date(c.completedAt).toLocaleDateString("en-CA") === today)
+          .map(c => c.habitId)
+      );
+      const activeHabits = habits.filter(h => h.active);
+      const remaining = activeHabits.filter(h => !completedIds.has(h.id));
+
+      const nextAction = remaining.length > 0
+        ? remaining.sort((a, b) => b.momentum - a.momentum)[0]
+        : null;
+
+      res.json({
+        phase: {
+          number: player.phase,
+          name: PHASE_NAMES[player.phase] || "Unknown",
+        },
+        stability: {
+          score: stabilityScore,
+          label: stabilityLabel,
+        },
+        flow,
+        insight,
+        nextAction: nextAction ? {
+          habitId: nextAction.id,
+          name: nextAction.name,
+          stat: nextAction.stat,
+          durationMinutes: nextAction.currentDurationMinutes,
+        } : null,
+        completedToday: completedIds.size,
+        totalActive: activeHabits.length,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get home data" });
     }
   });
 

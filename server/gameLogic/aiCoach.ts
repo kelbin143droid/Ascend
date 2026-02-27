@@ -211,7 +211,11 @@ export function generateCoachMessages(
     });
   }
 
-  return messages.sort((a, b) => b.priority - a.priority);
+  return messages.sort((a, b) => {
+    if (a.actionable && !b.actionable) return -1;
+    if (!a.actionable && b.actionable) return 1;
+    return b.priority - a.priority;
+  });
 }
 
 export function getDurationSuggestion(habit: Habit, playerPhase: number): { suggested: number; reason: string } {
@@ -266,6 +270,59 @@ export function getMotivationNudge(momentum: number, streak: number, missedDays:
     return "Three days in a row. Momentum is building. Don't stop now.";
   }
   return "Every journey starts with a single step. Complete one habit today and watch your momentum grow.";
+}
+
+export function getHomeInsight(
+  player: Player,
+  habits: Habit[],
+  recentCompletions: HabitCompletion[]
+): { title: string; message: string; action?: string } {
+  const now = new Date();
+  const today = now.toLocaleDateString("en-CA");
+  const stabilityScore = player.stability?.score ?? 50;
+  const stabilityTier = getStabilityTier(stabilityScore);
+  const phaseName = PHASE_NAMES[player.phase] || `Phase ${player.phase}`;
+
+  const todayCompletions = recentCompletions.filter(c => {
+    const d = new Date(c.completedAt!);
+    return d.toLocaleDateString("en-CA") === today;
+  });
+  const completedHabitIds = new Set(todayCompletions.map(c => c.habitId));
+  const activeHabits = habits.filter(h => h.active);
+  const remainingHabits = activeHabits.filter(h => !completedHabitIds.has(h.id));
+
+  if (activeHabits.length === 0) {
+    return {
+      title: "Welcome, Hunter",
+      message: "Create your first habit to begin your journey. Start with just 2-3 minutes — the system scales with you.",
+      action: "create_habit",
+    };
+  }
+
+  if (remainingHabits.length === 0) {
+    return {
+      title: "All Complete",
+      message: `Great work today. Your stability is ${stabilityTier.label} (${stabilityScore}/100). Rest and recover, ${phaseName} Hunter.`,
+    };
+  }
+
+  if (player.stability?.softRegressionActive) {
+    const easiest = remainingHabits.sort((a, b) => b.momentum - a.momentum)[0];
+    return {
+      title: "Recovery Focus",
+      message: `Difficulty has been reduced to help you rebuild. Start with "${easiest.name}" — just ${Math.max(2, Math.round(easiest.baseDurationMinutes * 0.6))} minutes.`,
+      action: "start_habit",
+    };
+  }
+
+  const sorted = remainingHabits.sort((a, b) => b.momentum - a.momentum);
+  const next = sorted[0];
+
+  return {
+    title: `${remainingHabits.length} Habit${remainingHabits.length > 1 ? "s" : ""} Today`,
+    message: `Start with "${next.name}" (${next.currentDurationMinutes} min). Stability: ${stabilityTier.label}. ${stabilityScore >= 70 ? "You're on track." : "Consistency builds momentum."}`,
+    action: "start_habit",
+  };
 }
 
 export function handleCoachChat(

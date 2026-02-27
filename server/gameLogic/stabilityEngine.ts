@@ -209,7 +209,7 @@ export function getStabilityTier(score: number): {
 } {
   if (score >= 85) return { tier: "excellent", label: "Excellent", color: "#22c55e" };
   if (score >= 70) return { tier: "strong", label: "Strong", color: "#3b82f6" };
-  if (score >= 55) return { tier: "steady", label: "Steady", color: "#f59e0b" };
-  if (score >= 40) return { tier: "fragile", label: "Fragile", color: "#ef4444" };
-  return { tier: "critical", label: "Critical", color: "#dc2626" };
+  if (score >= 55) return { tier: "solid", label: "Solid", color: "#f59e0b" };
+  if (score >= 40) return { tier: "developing", label: "Developing", color: "#f97316" };
+  return { tier: "building", label: "Building", color: "#a855f7" };
 }
