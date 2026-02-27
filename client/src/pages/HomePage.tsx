@@ -15,6 +15,7 @@ interface HomeData {
   phase: { number: number; name: string };
   stability: { score: number; label: string };
   flow: { value: number; label: string; trending: "rising" | "steady" | "cooling" };
+  growthState: string;
   insight: string;
   todaysFocus: string;
   nextAction: { habitId: string; name: string; stat: string; durationMinutes: number } | null;
@@ -263,6 +264,15 @@ export default function HomePage() {
               ? `Day ${onboardingDay} · ${homeData!.completedToday}/${homeData!.totalActive} complete`
               : `Day ${onboardingDay} · ${reflection.subtitle}`}
           </p>
+          {homeData?.growthState && (
+            <p
+              data-testid="text-growth-state"
+              className="text-[11px] mt-1 font-medium"
+              style={{ color: colors.primary }}
+            >
+              {homeData.growthState}
+            </p>
+          )}
           <p className="text-[10px] mt-0.5 italic" style={{ color: `${colors.textMuted}aa` }}>
             {reflection.motivation}
           </p>

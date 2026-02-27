@@ -1501,6 +1501,20 @@ export async function registerRoutes(
 
       const flow = getFlowState(player, habits, recentCompletions);
 
+      const avgMomentum = habits.length > 0
+        ? habits.reduce((sum, h) => sum + (h.momentum ?? 0), 0) / habits.length
+        : 0;
+      const growthScore = Math.round(
+        (stabilityScore * 0.4) + (flow.value * 0.35) + (avgMomentum * 100 * 0.25)
+      );
+      const clampedGrowth = Math.min(100, Math.max(0, growthScore));
+      let growthState: string;
+      if (clampedGrowth >= 81) growthState = "Thriving rhythm";
+      else if (clampedGrowth >= 61) growthState = "Strong momentum";
+      else if (clampedGrowth >= 41) growthState = "Growth strengthening";
+      else if (clampedGrowth >= 21) growthState = "Growth forming";
+      else growthState = "Beginning";
+
       const homeInsight = getHomeInsight(player, habits, recentCompletions);
       const insight = homeInsight.message;
 
@@ -1604,6 +1618,7 @@ export async function registerRoutes(
           label: stabilityLabel,
         },
         flow,
+        growthState,
         insight,
         todaysFocus,
         nextAction: nextAction ? {
