@@ -81,14 +81,30 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private normalizePlayer(player: Player): Player {
+    if (!player.stability) {
+      player.stability = {
+        score: 50,
+        habitCompletionPct: 0,
+        sleepConsistency: 50,
+        energyCompliance: 50,
+        emotionalStability: 50,
+        taskTimingAdherence: 50,
+        consecutiveLowDays: 0,
+        softRegressionActive: false,
+      };
+    }
+    return player;
+  }
+
   async getPlayer(id: string): Promise<Player | undefined> {
     const [player] = await db.select().from(players).where(eq(players.id, id));
-    return player || undefined;
+    return player ? this.normalizePlayer(player) : undefined;
   }
 
   async getPlayerByName(name: string): Promise<Player | undefined> {
     const [player] = await db.select().from(players).where(eq(players.name, name));
-    return player || undefined;
+    return player ? this.normalizePlayer(player) : undefined;
   }
 
   async createPlayer(insertPlayer: InsertPlayer): Promise<Player> {

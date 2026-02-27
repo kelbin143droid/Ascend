@@ -16,18 +16,27 @@ export interface ScaledDifficulty {
 export function scaleDifficulty(
   habit: Habit,
   consecutiveCompletions: number,
-  playerPhase: number
+  playerPhase: number,
+  stabilityScore?: number
 ): ScaledDifficulty {
   const baseDuration = habit.baseDurationMinutes;
   let targetDuration = habit.currentDurationMinutes;
   let difficultyLevel = habit.difficultyLevel;
   let reason = "Maintaining current difficulty";
   let isAutoAdjusted = false;
+  const stability = stabilityScore ?? 50;
 
   const phaseFloor = getPhaseMinDuration(playerPhase);
   const phaseCeiling = getPhaseMaxDuration(playerPhase);
 
-  if (consecutiveCompletions >= CONSECUTIVE_SUCCESS_THRESHOLD) {
+  if (stability < 40) {
+    targetDuration = Math.max(MIN_DURATION, Math.round(baseDuration * 0.5));
+    if (difficultyLevel > 1) {
+      difficultyLevel = Math.max(1, difficultyLevel - 1);
+    }
+    reason = "Stability-adjusted — reduced to support recovery";
+    isAutoAdjusted = true;
+  } else if (consecutiveCompletions >= CONSECUTIVE_SUCCESS_THRESHOLD && stability >= 55) {
     const increase = DURATION_INCREASE_STEP;
     targetDuration = Math.min(phaseCeiling, targetDuration + increase);
     reason = `+${increase} min after ${consecutiveCompletions} consecutive completions`;
@@ -41,7 +50,7 @@ export function scaleDifficulty(
     }
   }
 
-  if (habit.momentum < 0.2 && habit.totalCompletions > 3) {
+  if (habit.momentum < 0.2 && habit.totalCompletions > 3 && stability >= 40) {
     targetDuration = Math.max(
       MIN_DURATION,
       Math.round(baseDuration * DURATION_DECREASE_FACTOR)

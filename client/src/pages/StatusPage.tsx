@@ -10,6 +10,8 @@ import { StatActionPanel } from "@/components/game/StatActionPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Flame, Zap } from "lucide-react";
+import { StabilityWidget } from "@/components/game/StabilityWidget";
+import { PhaseAuraEffect } from "@/components/game/PhaseEnvironment";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -342,6 +344,7 @@ export default function StatusPage() {
 
   return (
     <SystemLayout>
+      <PhaseAuraEffect phase={player.phase} stabilityScore={player.stability?.score ?? 50} />
       <AnimatePresence>
         {systemMessage && (
           <motion.div
@@ -379,6 +382,8 @@ export default function StatusPage() {
             </div>
           ) : null}
         </div>
+
+        <StabilityWidget />
 
         {isAdvancedMode && (
           <div className="flex flex-col items-center gap-1 mb-2">

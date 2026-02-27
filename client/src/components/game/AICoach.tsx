@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 
 interface CoachMessage {
-  type: "celebration" | "warning" | "suggestion" | "motivation" | "check_in" | "recovery" | "insight";
+  type: "celebration" | "warning" | "suggestion" | "motivation" | "check_in" | "recovery" | "insight" | "regression" | "stability";
   title: string;
   message: string;
   priority: number;
@@ -44,6 +44,8 @@ const typeColors: Record<string, string> = {
   check_in: "#6b7280",
   recovery: "#ef4444",
   insight: "#06b6d4",
+  regression: "#dc2626",
+  stability: "#06b6d4",
 };
 
 const moodEmojis = [

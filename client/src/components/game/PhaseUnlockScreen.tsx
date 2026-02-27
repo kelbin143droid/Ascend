@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, CheckCircle } from "lucide-react";
-import { PHASE_STAT_CAPS } from "@shared/schema";
+import { PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
 
 interface PhaseUnlockScreenProps {
   newPhase: number;
@@ -21,11 +21,11 @@ const PHASE_COLORS: Record<number, string> = {
 };
 
 const PHASE_SUBTITLES: Record<number, string> = {
-  1: "Your journey begins.",
-  2: "Consistency builds momentum.",
-  3: "Deeper practice emerges.",
-  4: "Sustained growth takes shape.",
-  5: "Long-term mastery achieved.",
+  1: "Stabilization — your journey begins.",
+  2: "Foundation — consistency builds momentum.",
+  3: "Expansion — deeper practice emerges.",
+  4: "Optimization — sustained growth takes shape.",
+  5: "Sovereignty — long-term mastery achieved.",
 };
 
 export function PhaseUnlockScreen({
@@ -161,7 +161,7 @@ export function PhaseUnlockScreen({
                   style={{ color: phaseColor }}
                   data-testid="text-new-phase"
                 >
-                  PHASE {newPhase}
+                  {PHASE_NAMES[newPhase]?.toUpperCase() || `PHASE ${newPhase}`}
                 </motion.div>
 
                 <div className="text-sm text-muted-foreground italic">

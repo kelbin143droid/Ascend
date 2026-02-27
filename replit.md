@@ -75,9 +75,15 @@ Preferred communication style: Simple, everyday language.
 
 5. **Animation Registry**: `animationRegistry.ts` abstracts exercise animations with a RendererType field to allow swapping SVG silhouettes for Unity 3D avatars per-animation.
 
-6. **Habit System**: Habits use momentum-based tracking instead of pure streaks. Grace days prevent harsh penalties. Progressive scaling auto-adjusts duration and difficulty based on consistency.
+6. **Habit System**: Habits use momentum-based tracking instead of pure streaks. Grace days prevent harsh penalties. Progressive scaling auto-adjusts duration and difficulty based on consistency and stability score.
 
-7. **AI Coach**: Rule-based coaching engine (no external API) that provides contextual suggestions based on player habits, streaks, time of day, and recent activity.
+7. **AI Coach**: Rule-based coaching engine (no external API) that provides contextual suggestions based on player habits, streaks, stability score, time of day, and recent activity. Handles regression messaging strategically.
+
+8. **Stability Score System**: Composite score (0-100) combining habit completion (35%), sleep consistency (20%), energy compliance (15%), emotional stability (15%), and task timing adherence (15%). Drives phase progression, regression, difficulty adjustments, and visual evolution.
+
+9. **Phase Regression**: Soft regression (stability < 40 for 2+ days) auto-reduces difficulty. Hard regression (stability < 50 for 5+ consecutive days) drops player one phase. Both are explained strategically by AI Coach.
+
+10. **Phase Visual Evolution**: Each phase has distinct visual theming — colors, particle effects, aura layers, and environment tier. Phase 1 (Stabilization) is minimal, Phase 5 (Sovereignty) is epic. Visual intensity scales with stability score.
 
 ### Database Tables
 - `players` — Main player data, stats, inventory, schedule, XP, phase

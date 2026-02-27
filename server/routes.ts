@@ -15,7 +15,9 @@ import { calculateHabitXP, checkDailyBonus, checkWeeklyBonus, checkBadgeEligibil
 import { generateCoachMessages, getDurationSuggestion, getMotivationNudge, handleCoachChat } from "./gameLogic/aiCoach";
 import { calculateMomentumUpdate, getMomentumTier, shouldTriggerRecovery } from "./gameLogic/momentumEngine";
 import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "./gameLogic/difficultyScaler";
-import { checkPhaseEligibility, getStatCapForPhase, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
+import { checkPhaseEligibility, getStatCapForPhase, getPhaseVisualConfig, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
+import { calculateStabilityScore, checkRegression, buildUpdatedStabilityData, getStabilityTier } from "./gameLogic/stabilityEngine";
+import { PHASE_NAMES, PHASE_DESCRIPTIONS } from "@shared/schema";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
@@ -409,6 +411,34 @@ export async function registerRoutes(
       windowStart.setDate(windowStart.getDate() - windowDays);
       const completions = await storage.getHabitCompletions(req.params.id, windowStart);
 
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentCompletions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+      const stabilityCalc = calculateStabilityScore(player, habits, recentCompletions);
+      const regression = checkRegression(player, stabilityCalc.score);
+
+      if (regression.type === "hard") {
+        const updatedStability = buildUpdatedStabilityData(stabilityCalc, regression);
+        const regressed = await storage.updatePlayer(req.params.id, {
+          stability: updatedStability,
+          phase: regression.newPhase,
+          phaseHistory: [
+            ...(player.phaseHistory || []),
+            { phase: regression.newPhase, date: new Date().toLocaleDateString("en-CA"), direction: "down" as const },
+          ],
+        });
+        return res.json({
+          ...attachDerivedStats(regressed!),
+          phaseCheck: { eligible: false, message: regression.message },
+          regression: { type: "hard", message: regression.message, newPhase: regression.newPhase },
+        });
+      }
+
+      if (regression.type === "soft") {
+        const updatedStability = buildUpdatedStabilityData(stabilityCalc, regression);
+        await storage.updatePlayer(req.params.id, { stability: updatedStability });
+      }
+
       const result = checkPhaseEligibility(player, habits, completions);
 
       if (!result) {
@@ -431,6 +461,7 @@ export async function registerRoutes(
       res.json({
         ...attachDerivedStats(player),
         phaseCheck: result,
+        regression: regression.type !== "none" ? { type: regression.type, message: regression.message } : undefined,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to check phase" });
@@ -967,7 +998,8 @@ export async function registerRoutes(
       const scaled = scaleDifficulty(
         { ...habit, momentum: newMomentum, currentStreak: newStreak, totalCompletions: newTotalCompletions },
         consecutiveCompletions,
-        player.phase
+        player.phase,
+        player.stability?.score
       );
 
       const xpEarned = calculateHabitXP(
@@ -1219,6 +1251,141 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get training config" });
+    }
+  });
+
+  app.get("/api/player/:id/stability", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const habits = await storage.getHabits(req.params.id);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const completions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+
+      const calc = calculateStabilityScore(player, habits, completions);
+      const regression = checkRegression(player, calc.score);
+      const tier = getStabilityTier(calc.score);
+      const phaseVisual = getPhaseVisualConfig(player.phase);
+
+      res.json({
+        ...calc,
+        tier,
+        regression: {
+          type: regression.type,
+          message: regression.message,
+        },
+        phase: {
+          current: player.phase,
+          name: PHASE_NAMES[player.phase],
+          description: PHASE_DESCRIPTIONS[player.phase],
+          visual: phaseVisual,
+          nextPhase: player.phase < 5 ? {
+            name: PHASE_NAMES[player.phase + 1],
+            description: PHASE_DESCRIPTIONS[player.phase + 1],
+          } : null,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get stability data" });
+    }
+  });
+
+  app.post("/api/player/:id/stability/update", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const { sleepConsistency, energyCompliance, emotionalStability } = req.body;
+
+      const habits = await storage.getHabits(req.params.id);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const completions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+
+      const calc = calculateStabilityScore(player, habits, completions, {
+        sleepConsistency: sleepConsistency ?? player.stability?.sleepConsistency,
+        energyCompliance: energyCompliance ?? player.stability?.energyCompliance,
+        emotionalStability: emotionalStability ?? player.stability?.emotionalStability,
+      });
+
+      const regression = checkRegression(player, calc.score);
+      const updatedStability = buildUpdatedStabilityData(calc, regression);
+
+      let updatedPlayer: Player;
+      if (regression.type === "hard") {
+        updatedPlayer = (await storage.updatePlayer(req.params.id, {
+          stability: updatedStability,
+          phase: regression.newPhase,
+          phaseHistory: [
+            ...(player.phaseHistory || []),
+            { phase: regression.newPhase, date: new Date().toLocaleDateString("en-CA"), direction: "down" as const },
+          ],
+        }))!;
+      } else {
+        updatedPlayer = (await storage.updatePlayer(req.params.id, {
+          stability: updatedStability,
+        }))!;
+      }
+
+      res.json({
+        ...attachDerivedStats(updatedPlayer),
+        stabilityUpdate: {
+          score: calc.score,
+          trend: calc.trend,
+          regression: {
+            type: regression.type,
+            message: regression.message,
+          },
+          tier: getStabilityTier(calc.score),
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update stability" });
+    }
+  });
+
+  app.get("/api/player/:id/phase-info", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const visual = getPhaseVisualConfig(player.phase);
+      const stabilityScore = player.stability?.score ?? 50;
+
+      const habits = await storage.getHabits(req.params.id);
+      const windowStart = new Date();
+      windowStart.setDate(windowStart.getDate() - 45);
+      const completions = await storage.getHabitCompletions(req.params.id, windowStart);
+
+      const phaseCheck = player.phase < 5 ? checkPhaseEligibility(player, habits, completions) : null;
+
+      res.json({
+        current: {
+          phase: player.phase,
+          name: PHASE_NAMES[player.phase],
+          description: PHASE_DESCRIPTIONS[player.phase],
+          visual,
+        },
+        next: phaseCheck ? {
+          phase: phaseCheck.nextPhase,
+          name: phaseCheck.nextPhaseName,
+          requirements: phaseCheck.requirements,
+          progress: phaseCheck.progress,
+          missing: phaseCheck.missing,
+          eligible: phaseCheck.eligible,
+        } : null,
+        stability: {
+          score: stabilityScore,
+          tier: getStabilityTier(stabilityScore),
+          softRegressionActive: player.stability?.softRegressionActive ?? false,
+          consecutiveLowDays: player.stability?.consecutiveLowDays ?? 0,
+        },
+        history: player.phaseHistory || [],
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get phase info" });
     }
   });
 

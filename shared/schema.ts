@@ -173,6 +173,7 @@ export type HousingData = z.infer<typeof housingDataSchema>;
 export const phaseHistoryEntrySchema = z.object({
   phase: z.number(),
   date: z.string(),
+  direction: z.enum(["up", "down"]).optional(),
 });
 
 export type PhaseHistoryEntry = z.infer<typeof phaseHistoryEntrySchema>;
@@ -183,11 +184,41 @@ export const pendingPhaseUnlockSchema = z.object({
 
 export type PendingPhaseUnlock = z.infer<typeof pendingPhaseUnlockSchema>;
 
+export const stabilityDataSchema = z.object({
+  score: z.number().default(50),
+  habitCompletionPct: z.number().default(0),
+  sleepConsistency: z.number().default(50),
+  energyCompliance: z.number().default(50),
+  emotionalStability: z.number().default(50),
+  taskTimingAdherence: z.number().default(50),
+  lastCalculated: z.string().optional(),
+  consecutiveLowDays: z.number().default(0),
+  softRegressionActive: z.boolean().default(false),
+});
+
+export type StabilityData = z.infer<typeof stabilityDataSchema>;
+
+export const PHASE_NAMES: Record<number, string> = {
+  1: "Stabilization",
+  2: "Foundation",
+  3: "Expansion",
+  4: "Optimization",
+  5: "Sovereignty",
+};
+
+export const PHASE_DESCRIPTIONS: Record<number, string> = {
+  1: "Building baseline consistency. Micro-sessions. Gentle environment.",
+  2: "Establishing routines. Moderate sessions. Growing world.",
+  3: "Expanding capabilities. Flexible training. Dynamic environment.",
+  4: "Optimizing performance. Optional intensity. Advanced environment.",
+  5: "Sustained mastery. Consistency focus. Epic environment.",
+};
+
 export const PHASE_UNLOCK_DATA: Record<number, { title: string; description: string; highlights: string[] }> = {
-  2: { title: "Phase 2", description: "Building consistency.", highlights: ["Stat cap raised to 60", "Extended session bonuses"] },
-  3: { title: "Phase 3", description: "Deepening practice.", highlights: ["Stat cap raised to 80", "Advanced weekly planning unlocked"] },
-  4: { title: "Phase 4", description: "Sustained growth.", highlights: ["Stat cap raised to 100", "Trials system unlocked"] },
-  5: { title: "Phase 5", description: "Long-term mastery.", highlights: ["Stat cap raised to 120", "All features unlocked"] },
+  2: { title: "Foundation", description: "Establishing routines and consistency.", highlights: ["Stat cap raised to 60", "Environment upgrades unlocked", "Moderate sessions available"] },
+  3: { title: "Expansion", description: "Expanding capabilities and flexibility.", highlights: ["Stat cap raised to 80", "Advanced weekly planning unlocked", "Dynamic environment"] },
+  4: { title: "Optimization", description: "Optimizing performance and mastery.", highlights: ["Stat cap raised to 100", "Trials system unlocked", "Advanced aura effects"] },
+  5: { title: "Sovereignty", description: "Sustained mastery and self-governance.", highlights: ["Stat cap raised to 120", "All features unlocked", "Epic environment achieved"] },
 };
 
 export const players = pgTable("players", {
@@ -249,6 +280,16 @@ export const players = pgTable("players", {
   stamina: integer("stamina").notNull().default(1),
   lastMVDCheckDate: text("last_mvd_check_date"),
   onboardingCompleted: integer("onboarding_completed").notNull().default(0),
+  stability: jsonb("stability").$type<StabilityData>().notNull().default({
+    score: 50,
+    habitCompletionPct: 0,
+    sleepConsistency: 50,
+    energyCompliance: 50,
+    emotionalStability: 50,
+    taskTimingAdherence: 50,
+    consecutiveLowDays: 0,
+    softRegressionActive: false,
+  }),
 });
 
 export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {
