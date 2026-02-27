@@ -30,8 +30,6 @@ export default function HomePage() {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-
   const [glowPulse, setGlowPulse] = useState(false);
   const [flowAnimating, setFlowAnimating] = useState(false);
   const [prevFlowValue, setPrevFlowValue] = useState<number | null>(null);
