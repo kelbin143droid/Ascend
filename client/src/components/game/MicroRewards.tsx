@@ -317,3 +317,119 @@ export function StatGlow({ stat, visible }: StatGlowProps) {
     />
   );
 }
+
+const STAT_BURST_COLORS: Record<string, string> = {
+  strength: "#ef4444",
+  agility: "#22c55e",
+  sense: "#3b82f6",
+  vitality: "#f59e0b",
+};
+
+interface TaskCompletionBurstProps {
+  stat: string;
+  xpEarned: number;
+  celebrationLevel: "minimal" | "moderate" | "epic";
+  visible: boolean;
+  onComplete: () => void;
+}
+
+export function TaskCompletionBurst({ stat, xpEarned, celebrationLevel, visible, onComplete }: TaskCompletionBurstProps) {
+  useEffect(() => {
+    if (visible) {
+      const duration = celebrationLevel === "epic" ? 2000 : celebrationLevel === "moderate" ? 1500 : 1000;
+      const timer = setTimeout(onComplete, duration);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, celebrationLevel, onComplete]);
+
+  if (!visible) return null;
+
+  const color = STAT_BURST_COLORS[stat] || "#ffffff";
+  const ringCount = celebrationLevel === "epic" ? 3 : celebrationLevel === "moderate" ? 2 : 1;
+  const glowSize = celebrationLevel === "epic" ? "120px" : celebrationLevel === "moderate" ? "80px" : "50px";
+
+  return (
+    <div
+      data-testid="task-completion-burst"
+      className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center"
+    >
+      {Array.from({ length: ringCount }).map((_, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            width: glowSize,
+            height: glowSize,
+            border: `2px solid ${color}`,
+            opacity: 0,
+            animation: `statGlowPulse ${0.8 + i * 0.3}s ease-out forwards`,
+            animationDelay: `${i * 0.15}s`,
+            boxShadow: `0 0 20px ${color}40, 0 0 40px ${color}20`,
+            "--glow-color": color,
+          } as React.CSSProperties}
+        />
+      ))}
+      <div
+        className="absolute"
+        style={{
+          fontFamily: "'Orbitron', sans-serif",
+          color,
+          fontSize: celebrationLevel === "epic" ? "1.5rem" : "1.1rem",
+          fontWeight: 900,
+          textShadow: `0 0 12px ${color}80`,
+          animation: "xpFloat 1.2s ease-out forwards",
+          animationDelay: "0.2s",
+          opacity: 0,
+        }}
+      >
+        +{xpEarned} XP
+      </div>
+    </div>
+  );
+}
+
+interface StabilityShiftProps {
+  direction: "up" | "down" | null;
+  amount: number;
+  visible: boolean;
+  onComplete: () => void;
+}
+
+export function StabilityShift({ direction, amount, visible, onComplete }: StabilityShiftProps) {
+  useEffect(() => {
+    if (visible) {
+      const timer = setTimeout(onComplete, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, onComplete]);
+
+  if (!visible || !direction) return null;
+
+  const isUp = direction === "up";
+  const color = isUp ? "rgba(34, 197, 94, 0.12)" : "rgba(239, 68, 68, 0.12)";
+  const textColor = isUp ? "#22c55e" : "#ef4444";
+  const symbol = isUp ? "+" : "";
+
+  return (
+    <div
+      data-testid="stability-shift"
+      className="fixed inset-0 z-[95] pointer-events-none"
+      style={{
+        backgroundColor: color,
+        animation: "badgeOverlayFadeIn 0.3s ease-out forwards",
+      }}
+    >
+      <div
+        className="absolute bottom-24 left-1/2 -translate-x-1/2"
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "0.75rem",
+          color: textColor,
+          animation: "xpFloat 1.5s ease-out forwards",
+        }}
+      >
+        <span data-testid="stability-shift-value">Stability {symbol}{amount}</span>
+      </div>
+    </div>
+  );
+}

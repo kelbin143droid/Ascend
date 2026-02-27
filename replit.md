@@ -2,15 +2,29 @@
 
 ## Overview
 
-This is a Solo Leveling-themed RPG game interface built as a full-stack web application. The project creates an immersive "Awakened Hunter System" experience with player stats, dungeon exploration, inventory management, skill trees, and a 3D game mode. Players can level up, allocate stat points, fight enemies in dungeons, and manage their character progression through a stylized cyberpunk/gaming UI.
-
-The app features a comprehensive **Habit Formation System** with micro-sessions, progressive scaling, streak tracking with momentum, badge achievements, and an AI coaching assistant.
+**Ascend OS** — a full-stack self-growth RPG where real-life habits drive game world progression. Built as an immersive "Awakened Hunter System" with 7 modular systems: Phase, Stability Score, Task Engine, AI Coach, Visual Evolution, Notifications, and Rewards. Stats increase ONLY through task completion. Players progress through 5 phases (Stabilization → Sovereignty) driven by stability score and consistency.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
+
+### The 7 Modular Systems
+
+1. **Phase System** (`phaseEngine.ts`) — 5 phases: Stabilization, Foundation, Expansion, Optimization, Sovereignty. Progression driven by stability score, streak, and habit count. Regression is strategic recalibration, not punishment.
+
+2. **Stability Score** (`stabilityEngine.ts`) — Composite 0-100 score: habit completion (35%), sleep consistency (20%), energy compliance (15%), emotional stability (15%), task timing adherence (15%). Drives phase progression, regression, difficulty adjustments, and visual evolution.
+
+3. **Task Engine** (`taskEngine.ts`) — Orchestrates habit completion: `getTasksForToday()` returns prioritized habits with phase-adjusted durations, `completeTask()` handles momentum/XP/badge calculation, `getPhaseAdjustedDuration()` returns stability-aware duration.
+
+4. **AI Coach** (`aiCoach.ts`) — Rule-based coaching engine (no external API). Calm strategist tone. Contextual suggestions based on habits, streaks, stability, time of day. Handles regression messaging strategically.
+
+5. **Visual Evolution** (`visualEngine.ts`) — Phase+Stability-driven visuals: `getEnvironmentVisuals()` (stability-based dimming when <40, particle intensity modifier), `getAvatarAura()` (momentum-weighted glow), `getTaskCompletionVisuals()` (stat-colored micro-feedback).
+
+6. **Notifications** (`notificationEngine.ts`) — Positive-framing only: `checkNotificationEligibility()` detects phase_up/phase_down/stability_warning/missed_habits/milestone, `buildNotification()` generates encouraging text. Regression = "Strategic Recalibration".
+
+7. **Rewards** (`rewardEngine.ts`) — Behavior-tied only: momentum-driven XP, streak bonuses, badge eligibility checks. No arbitrary rewards.
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
@@ -20,6 +34,7 @@ Preferred communication style: Simple, everyday language.
 - **Styling**: Tailwind CSS v4 with custom theme variables, custom fonts (Orbitron, Rajdhani, JetBrains Mono)
 - **3D Rendering**: React Three Fiber with Drei helpers for the 3D game mode
 - **Animations**: Framer Motion for UI transitions, CSS @keyframes for micro-rewards
+- **Visual Feedback Components**: TaskCompletionBurst (stat-colored aura pulse), StabilityShift (green/red tint overlay), PhaseEnvironment (dimming when stability <40, burst on completion)
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express
@@ -38,17 +53,21 @@ Preferred communication style: Simple, everyday language.
 ├── client/           # React frontend
 │   ├── src/
 │   │   ├── components/  # UI components (shadcn + game-specific)
-│   │   │   └── game/    # AICoach, MicroRewards, ExerciseAnimation, etc.
+│   │   │   └── game/    # AICoach, MicroRewards, PhaseEnvironment, ExerciseAnimation, etc.
 │   │   ├── context/     # React context providers
 │   │   ├── hooks/       # Custom React hooks
 │   │   ├── lib/         # Utilities, intervalTraining, animationRegistry
 │   │   └── pages/       # Route page components (HabitsPage, AnalyticsPage, etc.)
 ├── server/           # Express backend
 │   ├── routes.ts     # API route definitions
-│   ├── storage.ts    # Database operations (IStorage interface)
+│   ├── storage.ts    # Database operations (IStorage interface, normalizePlayer)
 │   ├── db.ts         # Database connection
-│   └── gameLogic/    # Game logic modules
-│       ├── phaseEngine.ts       # Consistency-based phase progression (replaces phaseConfig)
+│   └── gameLogic/    # Game logic modules (7 systems)
+│       ├── phaseEngine.ts       # Phase progression + regression checks
+│       ├── stabilityEngine.ts   # Stability score calculation + regression detection
+│       ├── taskEngine.ts        # Task orchestration: getTasksForToday, completeTask, getPhaseAdjustedDuration
+│       ├── visualEngine.ts      # Visual evolution: getEnvironmentVisuals, getAvatarAura, getTaskCompletionVisuals
+│       ├── notificationEngine.ts # Positive-only notifications: checkNotificationEligibility, buildNotification
 │       ├── momentumEngine.ts    # Momentum scoring, streak resilience, recovery protection
 │       ├── difficultyScaler.ts  # Adaptive difficulty within phases, dynamic training durations
 │       ├── rewardEngine.ts      # Momentum-driven XP, bonuses, badge eligibility
@@ -63,32 +82,35 @@ Preferred communication style: Simple, everyday language.
 └── migrations/       # Drizzle database migrations
 ```
 
+### Key API Endpoints (New)
+- `GET /api/player/:id/tasks-today` — Today's habits with completion status, phase-adjusted durations, priority ordering
+- `GET /api/player/:id/visuals` — Environment visuals + avatar aura based on phase and stability
+- `GET /api/player/:id/stability/trend?days=7` — Historical stability trend data
+- `GET /api/player/:id/notifications` — Current notification eligibility
+- `POST /api/player/:id/complete-task-unified` — Unified task completion: habit + stability update + visual response + notifications
+
 ### Key Design Decisions
 
-1. **Shared Schema**: Types and validation schemas are defined once in `shared/schema.ts` and used by both frontend and backend, ensuring type safety across the stack.
+1. **Shared Schema**: Types and validation schemas are defined once in `shared/schema.ts` and used by both frontend and backend.
 
-2. **Storage Pattern**: Database operations are abstracted through an `IStorage` interface in `storage.ts`, making it easy to swap implementations.
+2. **Storage Pattern**: Database operations abstracted through `IStorage` interface. `normalizePlayer()` defaults stability fields for legacy null rows.
 
-3. **Player Persistence**: Player ID is stored in localStorage, with automatic player creation on first visit.
+3. **Player Persistence**: Player ID stored in localStorage, with automatic player creation on first visit.
 
-4. **Development vs Production**: Vite middleware is used in development for HMR; static files are served in production from the built `dist/public` directory.
+4. **Unique Role Constraint**: `roles_user_name_idx` unique constraint on (userId, name) prevents duplicate "General" roles. Client uses try/catch for race conditions.
 
-5. **Animation Registry**: `animationRegistry.ts` abstracts exercise animations with a RendererType field to allow swapping SVG silhouettes for Unity 3D avatars per-animation.
+5. **Stats ONLY Through Tasks**: Stats increase exclusively through task completion — no free stat points.
 
-6. **Habit System**: Habits use momentum-based tracking instead of pure streaks. Grace days prevent harsh penalties. Progressive scaling auto-adjusts duration and difficulty based on consistency and stability score.
+6. **Phase Visual Evolution**: P1 (minimal/gray) → P5 (epic/gold layered aura). Stability < 40 triggers visual dimming (reduced particle opacity + slower animation). Task completion → stat-colored aura pulse micro-feedback.
 
-7. **AI Coach**: Rule-based coaching engine (no external API) that provides contextual suggestions based on player habits, streaks, stability score, time of day, and recent activity. Handles regression messaging strategically.
+7. **Stability-Driven Progression**: Stability score drives phase progression AND regression. Soft regression (stability < 40 for 2+ days) auto-reduces difficulty. Hard regression (stability < 50 for 5+ days) drops one phase.
 
-8. **Stability Score System**: Composite score (0-100) combining habit completion (35%), sleep consistency (20%), energy compliance (15%), emotional stability (15%), and task timing adherence (15%). Drives phase progression, regression, difficulty adjustments, and visual evolution.
-
-9. **Phase Regression**: Soft regression (stability < 40 for 2+ days) auto-reduces difficulty. Hard regression (stability < 50 for 5+ consecutive days) drops player one phase. Both are explained strategically by AI Coach.
-
-10. **Phase Visual Evolution**: Each phase has distinct visual theming — colors, particle effects, aura layers, and environment tier. Phase 1 (Stabilization) is minimal, Phase 5 (Sovereignty) is epic. Visual intensity scales with stability score.
+8. **Positive-Only Notifications**: All notifications use encouraging framing. Phase regression = "Strategic Recalibration". Missed habits = "Ready When You Are".
 
 ### Database Tables
-- `players` — Main player data, stats, inventory, schedule, XP, phase
+- `players` — Main player data, stats, inventory, schedule, XP, phase, stability
 - `daily_stat_snapshots` — Daily stat snapshots for analytics
-- `roles` — User-defined life roles for weekly planning
+- `roles` — User-defined life roles (unique constraint on userId+name)
 - `weekly_goals` — Eisenhower Matrix goals per role per week
 - `tasks` — Calendar tasks linked to roles and goals
 - `trials` — Multi-day challenge system

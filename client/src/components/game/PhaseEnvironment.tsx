@@ -1,11 +1,13 @@
-import React, { useMemo } from "react";
-import { motion } from "framer-motion";
+import React, { useMemo, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Sparkles, Flame, Crown, Star, Zap } from "lucide-react";
 
 interface PhaseEnvironmentProps {
   phase: number;
   stabilityScore: number;
   compact?: boolean;
+  burstTrigger?: number;
+  burstColor?: string;
 }
 
 const PHASE_CONFIGS = {
@@ -70,10 +72,20 @@ function getConfig(phase: number) {
   return PHASE_CONFIGS[phase as keyof typeof PHASE_CONFIGS] || PHASE_CONFIGS[1];
 }
 
-export function PhaseEnvironment({ phase, stabilityScore, compact = false }: PhaseEnvironmentProps) {
+export function PhaseEnvironment({ phase, stabilityScore, compact = false, burstTrigger, burstColor }: PhaseEnvironmentProps) {
   const config = getConfig(phase);
   const Icon = config.icon;
   const stabilityFactor = Math.max(0.3, stabilityScore / 100);
+  const isDimmed = stabilityScore < 40;
+  const [showBurst, setShowBurst] = useState(false);
+
+  useEffect(() => {
+    if (burstTrigger && burstTrigger > 0) {
+      setShowBurst(true);
+      const t = setTimeout(() => setShowBurst(false), 800);
+      return () => clearTimeout(t);
+    }
+  }, [burstTrigger]);
 
   const particles = useMemo(() => {
     return Array.from({ length: config.particleCount }, (_, i) => ({
@@ -205,6 +217,30 @@ export function PhaseEnvironment({ phase, stabilityScore, compact = false }: Pha
         />
       ))}
 
+      {isDimmed && (
+        <div
+          data-testid="phase-dimming-overlay"
+          className="absolute inset-0 rounded-xl pointer-events-none z-[1]"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.25)" }}
+        />
+      )}
+
+      <AnimatePresence>
+        {showBurst && burstColor && (
+          <motion.div
+            data-testid="phase-burst"
+            className="absolute inset-0 rounded-xl pointer-events-none z-[2]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            style={{
+              background: `radial-gradient(circle at center, ${burstColor}20 0%, transparent 70%)`,
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       <div className="relative z-10 flex items-center gap-4">
         <motion.div
           className="relative"
@@ -215,7 +251,7 @@ export function PhaseEnvironment({ phase, stabilityScore, compact = false }: Pha
               `0 0 ${10 * stabilityFactor}px ${config.glowColor}30`,
             ],
           }}
-          transition={{ duration: 3, repeat: Infinity }}
+          transition={{ duration: isDimmed ? 6 : 3, repeat: Infinity }}
           style={{
             width: 56,
             height: 56,
@@ -227,7 +263,7 @@ export function PhaseEnvironment({ phase, stabilityScore, compact = false }: Pha
             border: `2px solid ${config.borderColor}`,
           }}
         >
-          <Icon size={24} style={{ color: config.glowColor }} />
+          <Icon size={24} style={{ color: config.glowColor, opacity: isDimmed ? 0.6 : 1 }} />
         </motion.div>
 
         <div className="flex-1">

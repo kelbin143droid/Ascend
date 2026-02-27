@@ -17,6 +17,9 @@ import { calculateMomentumUpdate, getMomentumTier, shouldTriggerRecovery } from 
 import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "./gameLogic/difficultyScaler";
 import { checkPhaseEligibility, getStatCapForPhase, getPhaseVisualConfig, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
 import { calculateStabilityScore, checkRegression, buildUpdatedStabilityData, getStabilityTier } from "./gameLogic/stabilityEngine";
+import { getTasksForToday, completeTask as taskEngineComplete, getPhaseAdjustedDuration } from "./gameLogic/taskEngine";
+import { getEnvironmentVisuals, getAvatarAura, getTaskCompletionVisuals } from "./gameLogic/visualEngine";
+import { checkNotificationEligibility, buildNotification, type PreviousState } from "./gameLogic/notificationEngine";
 import { PHASE_NAMES, PHASE_DESCRIPTIONS } from "@shared/schema";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
@@ -1087,6 +1090,19 @@ export async function registerRoutes(
 
       const finalPlayer = await storage.getPlayer(habit.userId);
 
+      const previousStabilityScore = player.stability?.score ?? 50;
+      let stabilityResult = { score: previousStabilityScore, tier: getStabilityTier(previousStabilityScore) };
+      if (finalPlayer) {
+        const allCompletionsForStability = await storage.getHabitCompletions(habit.userId, sevenDaysAgo);
+        const stabCalc = calculateStabilityScore(finalPlayer, allHabits, allCompletionsForStability);
+        const reg = checkRegression(finalPlayer, stabCalc.score);
+        const stabData = buildUpdatedStabilityData(stabCalc, reg);
+        await storage.updatePlayer(habit.userId, { stability: stabData });
+        stabilityResult = { score: stabCalc.score, tier: getStabilityTier(stabCalc.score) };
+      }
+
+      const visuals = getTaskCompletionVisuals(habit.stat, xpEarned, awardedBadges.length);
+
       res.json({
         habit: updatedHabit,
         xpEarned,
@@ -1108,6 +1124,12 @@ export async function registerRoutes(
           duration: scaled.duration,
           reason: scaled.reason,
           isAutoAdjusted: scaled.isAutoAdjusted,
+        },
+        visuals,
+        stability: {
+          score: stabilityResult.score,
+          previousScore: previousStabilityScore,
+          tier: stabilityResult.tier,
         },
         player: finalPlayer ? attachDerivedStats(finalPlayer) : null,
       });
@@ -1400,6 +1422,252 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get phase info" });
+    }
+  });
+
+  app.get("/api/player/:id/tasks-today", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const habits = await storage.getHabits(req.params.id);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const completions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+
+      const tasks = getTasksForToday(player, habits, completions);
+      res.json({ tasks, phase: player.phase, stabilityScore: player.stability?.score ?? 50 });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get tasks for today" });
+    }
+  });
+
+  app.get("/api/player/:id/visuals", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const habits = await storage.getHabits(req.params.id);
+      const avgMomentum = habits.length > 0
+        ? habits.reduce((sum, h) => sum + h.momentum, 0) / habits.length
+        : 0;
+
+      const stabilityScore = player.stability?.score ?? 50;
+      const environment = getEnvironmentVisuals(player.phase, stabilityScore);
+      const aura = getAvatarAura(player.phase, stabilityScore, avgMomentum);
+
+      res.json({ environment, aura });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get visuals" });
+    }
+  });
+
+  app.get("/api/player/:id/stability/trend", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const days = Math.min(30, Math.max(1, parseInt(req.query.days as string) || 7));
+      const habits = await storage.getHabits(req.params.id);
+      const windowStart = new Date();
+      windowStart.setDate(windowStart.getDate() - days);
+      const completions = await storage.getHabitCompletions(req.params.id, windowStart);
+
+      const trend: Array<{ date: string; score: number; habitCompletionPct: number }> = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toLocaleDateString("en-CA");
+        const dayCompletions = completions.filter(c => {
+          const cd = c.completedAt ? new Date(c.completedAt).toLocaleDateString("en-CA") : null;
+          return cd === dateStr;
+        });
+        const activeHabits = habits.filter(h => h.active);
+        const pct = activeHabits.length > 0
+          ? Math.min(100, (dayCompletions.length / activeHabits.length) * 100)
+          : 50;
+        const dayScore = Math.round(
+          pct * 0.35 +
+          (player.stability?.sleepConsistency ?? 50) * 0.20 +
+          (player.stability?.energyCompliance ?? 50) * 0.15 +
+          (player.stability?.emotionalStability ?? 50) * 0.15 +
+          (player.stability?.taskTimingAdherence ?? 50) * 0.15
+        );
+        trend.push({ date: dateStr, score: Math.max(0, Math.min(100, dayScore)), habitCompletionPct: Math.round(pct) });
+      }
+
+      const currentScore = player.stability?.score ?? 50;
+      const avgScore = trend.length > 0 ? Math.round(trend.reduce((s, t) => s + t.score, 0) / trend.length) : currentScore;
+      const direction: "improving" | "stable" | "declining" =
+        currentScore > avgScore + 3 ? "improving" : currentScore < avgScore - 3 ? "declining" : "stable";
+
+      res.json({
+        trend,
+        current: currentScore,
+        average: avgScore,
+        direction,
+        tier: getStabilityTier(currentScore),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get stability trend" });
+    }
+  });
+
+  app.get("/api/player/:id/notifications", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const habits = await storage.getHabits(req.params.id);
+      const today = new Date().toLocaleDateString("en-CA");
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const completions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+
+      const todayCompletions = completions.filter(c => {
+        const cd = c.completedAt ? new Date(c.completedAt).toLocaleDateString("en-CA") : null;
+        return cd === today;
+      });
+
+      const previousState: PreviousState = {
+        phase: player.phase,
+        stabilityScore: player.stability?.score ?? 50,
+        level: player.level,
+        streak: player.streak,
+        completedHabitsToday: todayCompletions.length,
+        totalActiveHabits: habits.filter(h => h.active).length,
+      };
+
+      const eligible = checkNotificationEligibility(player, previousState);
+      const notifications = eligible.map(n => buildNotification(n.type, n.data));
+
+      res.json({ notifications });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get notifications" });
+    }
+  });
+
+  app.post("/api/player/:id/complete-task-unified", async (req, res) => {
+    try {
+      const schema = z.object({
+        habitId: z.string(),
+        durationMinutes: z.number().min(1).max(120).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const habit = await storage.getHabit(parsed.data.habitId);
+      if (!habit) return res.status(404).json({ error: "Habit not found" });
+
+      const allHabits = await storage.getHabits(req.params.id);
+      const badges = await storage.getBadges(req.params.id);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const completions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+
+      const previousState: PreviousState = {
+        phase: player.phase,
+        stabilityScore: player.stability?.score ?? 50,
+        level: player.level,
+        streak: player.streak,
+        completedHabitsToday: completions.filter(c => {
+          const cd = c.completedAt ? new Date(c.completedAt).toLocaleDateString("en-CA") : null;
+          return cd === new Date().toLocaleDateString("en-CA");
+        }).length,
+        totalActiveHabits: allHabits.filter(h => h.active).length,
+      };
+
+      const duration = parsed.data.durationMinutes || habit.currentDurationMinutes;
+      const taskResult = taskEngineComplete(player, habit, duration, allHabits, badges, completions);
+
+      await storage.createHabitCompletion({
+        habitId: habit.id,
+        userId: req.params.id,
+        durationMinutes: duration,
+        xpEarned: taskResult.xpEarned,
+      });
+
+      await storage.updateHabit(habit.id, {
+        currentStreak: taskResult.streakUpdate.newStreak,
+        longestStreak: Math.max(habit.longestStreak, taskResult.streakUpdate.newStreak),
+        totalCompletions: habit.totalCompletions + 1,
+        lastCompletedDate: new Date().toLocaleDateString("en-CA"),
+        momentum: taskResult.newMomentum.momentum,
+        currentDurationMinutes: getPhaseAdjustedDuration(
+          { ...habit, currentStreak: taskResult.streakUpdate.newStreak, momentum: taskResult.newMomentum.momentum },
+          player.phase,
+          player.stability?.score ?? 50
+        ).duration,
+      });
+
+      for (const badge of taskResult.badges) {
+        await storage.createBadge({
+          userId: req.params.id,
+          badgeType: badge.type,
+          name: badge.name,
+          description: badge.description,
+        });
+      }
+
+      const updatedPlayer = await storage.gainExp(req.params.id, taskResult.xpEarned);
+      if (!updatedPlayer) return res.status(500).json({ error: "Failed to update player" });
+
+      const recentCompletions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
+      const stabilityCalc = calculateStabilityScore(updatedPlayer, allHabits, recentCompletions);
+      const regression = checkRegression(updatedPlayer, stabilityCalc.score);
+      const stabilityData = buildUpdatedStabilityData(stabilityCalc, regression);
+      await storage.updatePlayer(req.params.id, { stability: stabilityData });
+
+      const visuals = getTaskCompletionVisuals(habit.stat, taskResult.xpEarned, taskResult.badges.length);
+      const notificationChecks = checkNotificationEligibility(updatedPlayer, previousState);
+      const notifications = notificationChecks.map(n => buildNotification(n.type, n.data));
+
+      const updatedHabit = await storage.getHabit(habit.id);
+
+      const newBadges = [];
+      for (const badge of taskResult.badges) {
+        const allBadgesNow = await storage.getBadges(req.params.id);
+        const found = allBadgesNow.find(b => b.name === badge.name);
+        if (found) newBadges.push(found);
+      }
+
+      res.json({
+        ...attachDerivedStats(updatedPlayer),
+        habit: updatedHabit || habit,
+        xpEarned: taskResult.xpEarned,
+        bonusXP: 0,
+        dailyBonus: 0,
+        weeklyBonus: 0,
+        newBadges,
+        streakInfo: {
+          current: taskResult.streakUpdate.newStreak,
+          longest: Math.max(habit.longestStreak, taskResult.streakUpdate.newStreak),
+        },
+        taskResult: {
+          xpEarned: taskResult.xpEarned,
+          statGain: taskResult.statGain,
+          streakUpdate: taskResult.streakUpdate,
+          recoveryMode: taskResult.recoveryMode,
+          badges: taskResult.badges,
+          momentum: {
+            value: taskResult.newMomentum.momentum,
+            tier: getMomentumTier(taskResult.newMomentum.momentum),
+          },
+        },
+        visuals,
+        stability: {
+          score: stabilityCalc.score,
+          previousScore: previousState.stabilityScore,
+          trend: stabilityCalc.trend,
+          tier: getStabilityTier(stabilityCalc.score),
+        },
+        notifications,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete task" });
     }
   });
 

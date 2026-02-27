@@ -29,12 +29,14 @@ import {
   X,
 } from "lucide-react";
 import type { Habit, Badge } from "@shared/schema";
+import { TaskCompletionBurst, StabilityShift } from "@/components/game/MicroRewards";
+import { PhaseEnvironment } from "@/components/game/PhaseEnvironment";
 
 const STAT_COLORS: Record<string, string> = {
   strength: "#ef4444",
   agility: "#22c55e",
   sense: "#3b82f6",
-  vitality: "#a855f7",
+  vitality: "#f59e0b",
 };
 
 const STAT_LABELS: Record<string, string> = {
@@ -54,6 +56,16 @@ interface CompletionResult {
   weeklyBonus: number;
   newBadges: Badge[];
   streakInfo: { current: number; longest: number };
+  visuals?: {
+    particleType: string;
+    auraPulseColor: string;
+    celebrationLevel: "minimal" | "moderate" | "epic";
+  };
+  stability?: {
+    score: number;
+    previousScore?: number;
+    tier: string;
+  };
 }
 
 interface StackSuggestion {
@@ -73,6 +85,14 @@ export default function HabitsPage() {
   const [formStat, setFormStat] = useState<string>("strength");
   const [formDuration, setFormDuration] = useState("3");
   const [formStackAfter, setFormStackAfter] = useState<string>("");
+
+  const [burstVisible, setBurstVisible] = useState(false);
+  const [burstStat, setBurstStat] = useState("strength");
+  const [burstXP, setBurstXP] = useState(0);
+  const [burstLevel, setBurstLevel] = useState<"minimal" | "moderate" | "epic">("minimal");
+  const [stabilityShift, setStabilityShift] = useState<{ direction: "up" | "down" | null; amount: number; visible: boolean }>({ direction: null, amount: 0, visible: false });
+  const [burstTriggerCount, setBurstTriggerCount] = useState(0);
+  const [burstColor, setBurstColor] = useState("#ffffff");
 
   const { data: habits = [], isLoading } = useQuery<Habit[]>({
     queryKey: ["habits", player?.id],
@@ -154,6 +174,27 @@ export default function HabitsPage() {
       setCompletionResult(data);
       invalidateAll();
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+      queryClient.invalidateQueries({ queryKey: ["visuals"] });
+
+      if (data.visuals) {
+        setBurstStat(data.habit?.stat || "strength");
+        setBurstXP(data.xpEarned);
+        setBurstLevel(data.visuals.celebrationLevel);
+        setBurstColor(data.visuals.auraPulseColor);
+        setBurstVisible(true);
+        setBurstTriggerCount(c => c + 1);
+      }
+
+      if (data.stability?.previousScore !== undefined) {
+        const diff = data.stability.score - data.stability.previousScore;
+        if (diff !== 0) {
+          setStabilityShift({
+            direction: diff > 0 ? "up" : "down",
+            amount: Math.abs(Math.round(diff)),
+            visible: true,
+          });
+        }
+      }
     },
   });
 
@@ -241,7 +282,27 @@ export default function HabitsPage() {
 
   return (
     <SystemLayout>
+      <TaskCompletionBurst
+        stat={burstStat}
+        xpEarned={burstXP}
+        celebrationLevel={burstLevel}
+        visible={burstVisible}
+        onComplete={() => setBurstVisible(false)}
+      />
+      <StabilityShift
+        direction={stabilityShift.direction}
+        amount={stabilityShift.amount}
+        visible={stabilityShift.visible}
+        onComplete={() => setStabilityShift({ direction: null, amount: 0, visible: false })}
+      />
       <div className="p-4 space-y-6 max-w-4xl mx-auto pb-24">
+        <PhaseEnvironment
+          phase={player?.phase ?? 1}
+          stabilityScore={player?.stability?.score ?? 50}
+          compact
+          burstTrigger={burstTriggerCount}
+          burstColor={burstColor}
+        />
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <Zap className="w-6 h-6 text-cyan-400" />
