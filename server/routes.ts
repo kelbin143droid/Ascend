@@ -1539,6 +1539,49 @@ export async function registerRoutes(
         ? new Date(sortedByDate[0].completedAt!).toLocaleDateString("en-CA")
         : null;
 
+      let notification: { type: string; message: string } | null = null;
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toLocaleDateString("en-CA");
+      const hadCompletionYesterday = distinctCompletionDays.has(yesterdayStr);
+
+      if (onboardingDay >= 7) {
+        notification = { type: "milestone", message: "First growth cycle complete. The foundation is set." };
+      } else if (onboardingDay >= 3 && distinctCompletionDays.size >= 3) {
+        notification = { type: "milestone", message: "Three days of action. A pattern is forming." };
+      }
+
+      if (!notification && lastCompletionDate && lastCompletionDate !== today && !hadCompletionYesterday && distinctCompletionDays.size > 0) {
+        notification = { type: "recovery", message: "Progress resumes anytime. Today is a fresh start." };
+      }
+
+      if (!notification && onboardingDay <= 2 && !hasCompletedHabitToday) {
+        const hour = new Date().getHours();
+        if (hour >= 17) {
+          notification = { type: "momentum", message: "A small action still counts today." };
+        }
+      }
+
+      const completionHours = allCompletions
+        .filter(c => c.completedAt)
+        .map(c => new Date(c.completedAt!).getHours());
+      let suggestedReminderTime: string | null = null;
+      if (completionHours.length >= 2) {
+        const hourCounts: Record<number, number> = {};
+        completionHours.forEach(h => {
+          const bucket = Math.floor(h / 2) * 2;
+          hourCounts[bucket] = (hourCounts[bucket] || 0) + 1;
+        });
+        const best = Object.entries(hourCounts).sort((a, b) => b[1] - a[1])[0];
+        if (best && parseInt(best[1] as any) >= 2) {
+          const bucketHour = parseInt(best[0]);
+          if (bucketHour < 12) suggestedReminderTime = "morning";
+          else if (bucketHour < 17) suggestedReminderTime = "afternoon";
+          else suggestedReminderTime = "evening";
+        }
+      }
+
       res.json({
         phase: {
           number: player.phase,
@@ -1562,6 +1605,8 @@ export async function registerRoutes(
         onboardingDay,
         hasCompletedHabitToday,
         lastCompletionDate,
+        notification,
+        suggestedReminderTime,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get home data" });

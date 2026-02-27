@@ -6,6 +6,8 @@ import { useLocation } from "wouter";
 import { useState, useMemo, useEffect } from "react";
 import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
+import { NotificationBanner } from "@/components/game/NotificationBanner";
+import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -19,6 +21,8 @@ interface HomeData {
   onboardingDay: number;
   hasCompletedHabitToday: boolean;
   lastCompletionDate: string | null;
+  notification: { type: "momentum" | "recovery" | "milestone"; message: string } | null;
+  suggestedReminderTime: string | null;
 }
 
 const RECOMMENDED_HABITS = [
@@ -55,6 +59,8 @@ export default function HomePage() {
   const [showEncouragement, setShowEncouragement] = useState(false);
   const [prevCompletedToday, setPrevCompletedToday] = useState<number | null>(null);
   const [showDay3Intro, setShowDay3Intro] = useState(false);
+  const [dismissedNotification, setDismissedNotification] = useState(false);
+  const [showReminderPrompt, setShowReminderPrompt] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -107,6 +113,19 @@ export default function HomePage() {
       setShowDay3Intro(true);
     }
   }, [homeData, onboardingDay]);
+
+  useEffect(() => {
+    if (!homeData || onboardingDay !== 3 || !homeData.hasCompletedHabitToday) return;
+    const reminderPref = localStorage.getItem("ascend_reminder_preference");
+    const promptShown = localStorage.getItem("ascend_reminder_prompt_shown");
+    if (!reminderPref && !promptShown) {
+      const timer = setTimeout(() => {
+        localStorage.setItem("ascend_reminder_prompt_shown", "true");
+        setShowReminderPrompt(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [homeData?.hasCompletedHabitToday, onboardingDay]);
 
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
   const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
@@ -195,6 +214,13 @@ export default function HomePage() {
               </p>
             </div>
           </div>
+        )}
+
+        {!dismissedNotification && homeData?.notification && (
+          <NotificationBanner
+            notification={homeData.notification}
+            onDismiss={() => setDismissedNotification(true)}
+          />
         )}
 
         <div className="pt-4" style={{ animation: showEncouragement ? "encourageFade 0.5s ease-out" : undefined }}>
@@ -415,6 +441,15 @@ export default function HomePage() {
             setLocation(`/guided-session/${selectedHabitId}`);
           }
         }}
+      />
+
+      <ReminderPrompt
+        visible={showReminderPrompt}
+        onSelect={(preference) => {
+          localStorage.setItem("ascend_reminder_preference", preference);
+          setShowReminderPrompt(false);
+        }}
+        onDismiss={() => setShowReminderPrompt(false)}
       />
     </SystemLayout>
   );
