@@ -75,9 +75,30 @@ const STAT_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
+function createPadOscillator(
+  ctx: AudioContext,
+  freq: number,
+  detuneCents: number,
+  gainValue: number,
+  destination: AudioNode
+) {
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+  osc.detune.setValueAtTime(detuneCents, ctx.currentTime);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(gainValue, ctx.currentTime);
+
+  osc.connect(gain).connect(destination);
+  osc.start();
+  return osc;
+}
+
 function useBreathingAudio(active: boolean) {
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const nodesRef = useRef<{ gainNode: GainNode; osc1: OscillatorNode; osc2: OscillatorNode; osc3: OscillatorNode } | null>(null);
+  const oscillatorsRef = useRef<OscillatorNode[]>([]);
+  const lfoRef = useRef<OscillatorNode | null>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -88,67 +109,89 @@ function useBreathingAudio(active: boolean) {
 
       const masterGain = ctx.createGain();
       masterGain.gain.setValueAtTime(0, ctx.currentTime);
-      masterGain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 2);
-      masterGain.connect(ctx.destination);
+      masterGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 3);
 
-      const osc1 = ctx.createOscillator();
-      osc1.type = "sine";
-      osc1.frequency.setValueAtTime(174, ctx.currentTime);
-      const g1 = ctx.createGain();
-      g1.gain.setValueAtTime(0.5, ctx.currentTime);
-      osc1.connect(g1).connect(masterGain);
+      const lpFilter = ctx.createBiquadFilter();
+      lpFilter.type = "lowpass";
+      lpFilter.frequency.setValueAtTime(600, ctx.currentTime);
+      lpFilter.Q.setValueAtTime(0.7, ctx.currentTime);
 
-      const osc2 = ctx.createOscillator();
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(261, ctx.currentTime);
-      const g2 = ctx.createGain();
-      g2.gain.setValueAtTime(0.3, ctx.currentTime);
-      osc2.connect(g2).connect(masterGain);
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.setValueAtTime(0.03, ctx.currentTime);
 
-      const osc3 = ctx.createOscillator();
-      osc3.type = "sine";
-      osc3.frequency.setValueAtTime(349, ctx.currentTime);
-      const g3 = ctx.createGain();
-      g3.gain.setValueAtTime(0.15, ctx.currentTime);
-      osc3.connect(g3).connect(masterGain);
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.setValueAtTime(0.15, ctx.currentTime);
+      lfo.connect(lfoGain).connect(masterGain.gain);
+      lfo.start();
+      lfoRef.current = lfo;
 
-      osc1.start();
-      osc2.start();
-      osc3.start();
+      lpFilter.connect(masterGain).connect(ctx.destination);
 
-      nodesRef.current = { gainNode: masterGain, osc1, osc2, osc3 };
+      const oscs: OscillatorNode[] = [];
+
+      oscs.push(createPadOscillator(ctx, 130.81, -4, 0.35, lpFilter));
+      oscs.push(createPadOscillator(ctx, 130.81, 4, 0.35, lpFilter));
+
+      oscs.push(createPadOscillator(ctx, 196.00, -3, 0.2, lpFilter));
+      oscs.push(createPadOscillator(ctx, 196.00, 3, 0.2, lpFilter));
+
+      oscs.push(createPadOscillator(ctx, 261.63, -5, 0.12, lpFilter));
+      oscs.push(createPadOscillator(ctx, 261.63, 5, 0.12, lpFilter));
+
+      oscs.push(createPadOscillator(ctx, 329.63, 0, 0.06, lpFilter));
+
+      oscillatorsRef.current = oscs;
     } catch {}
 
     return () => {
       try {
-        const nodes = nodesRef.current;
-        if (nodes) {
-          nodes.osc1.stop();
-          nodes.osc2.stop();
-          nodes.osc3.stop();
-        }
+        oscillatorsRef.current.forEach(o => { try { o.stop(); } catch {} });
+        if (lfoRef.current) try { lfoRef.current.stop(); } catch {}
         audioCtxRef.current?.close();
       } catch {}
-      nodesRef.current = null;
+      oscillatorsRef.current = [];
+      lfoRef.current = null;
       audioCtxRef.current = null;
     };
   }, [active]);
+}
+
+let cachedVoice: SpeechSynthesisVoice | null = null;
+
+function getVoice(): SpeechSynthesisVoice | null {
+  if (cachedVoice) return cachedVoice;
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+  cachedVoice =
+    voices.find(v => v.lang.startsWith("en") && /samantha|karen|female|fiona|moira|tessa/i.test(v.name)) ||
+    voices.find(v => v.lang.startsWith("en-") && !v.localService) ||
+    voices.find(v => v.lang.startsWith("en")) ||
+    voices[0];
+  return cachedVoice;
 }
 
 function speakPhase(label: string) {
   try {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(label);
-    utterance.rate = 0.7;
-    utterance.pitch = 0.9;
-    utterance.volume = 0.5;
+
+    const speak = () => {
+      const utterance = new SpeechSynthesisUtterance(label);
+      utterance.rate = 0.65;
+      utterance.pitch = 0.85;
+      utterance.volume = 0.6;
+      const voice = getVoice();
+      if (voice) utterance.voice = voice;
+      window.speechSynthesis.speak(utterance);
+    };
+
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
-      || voices.find(v => v.lang.startsWith("en"))
-      || voices[0];
-    if (preferredVoice) utterance.voice = preferredVoice;
-    window.speechSynthesis.speak(utterance);
+    if (voices.length === 0) {
+      window.speechSynthesis.addEventListener("voiceschanged", () => speak(), { once: true });
+    } else {
+      speak();
+    }
   } catch {}
 }
 
