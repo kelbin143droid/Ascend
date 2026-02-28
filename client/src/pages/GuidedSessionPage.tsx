@@ -75,9 +75,89 @@ const STAT_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
+function useBreathingAudio(active: boolean) {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const nodesRef = useRef<{ gainNode: GainNode; osc1: OscillatorNode; osc2: OscillatorNode; osc3: OscillatorNode } | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+
+    try {
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0, ctx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 2);
+      masterGain.connect(ctx.destination);
+
+      const osc1 = ctx.createOscillator();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(174, ctx.currentTime);
+      const g1 = ctx.createGain();
+      g1.gain.setValueAtTime(0.5, ctx.currentTime);
+      osc1.connect(g1).connect(masterGain);
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(261, ctx.currentTime);
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0.3, ctx.currentTime);
+      osc2.connect(g2).connect(masterGain);
+
+      const osc3 = ctx.createOscillator();
+      osc3.type = "sine";
+      osc3.frequency.setValueAtTime(349, ctx.currentTime);
+      const g3 = ctx.createGain();
+      g3.gain.setValueAtTime(0.15, ctx.currentTime);
+      osc3.connect(g3).connect(masterGain);
+
+      osc1.start();
+      osc2.start();
+      osc3.start();
+
+      nodesRef.current = { gainNode: masterGain, osc1, osc2, osc3 };
+    } catch {}
+
+    return () => {
+      try {
+        const nodes = nodesRef.current;
+        if (nodes) {
+          nodes.osc1.stop();
+          nodes.osc2.stop();
+          nodes.osc3.stop();
+        }
+        audioCtxRef.current?.close();
+      } catch {}
+      nodesRef.current = null;
+      audioCtxRef.current = null;
+    };
+  }, [active]);
+}
+
+function speakPhase(label: string) {
+  try {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(label);
+    utterance.rate = 0.7;
+    utterance.pitch = 0.9;
+    utterance.volume = 0.5;
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
+      || voices.find(v => v.lang.startsWith("en"))
+      || voices[0];
+    if (preferredVoice) utterance.voice = preferredVoice;
+    window.speechSynthesis.speak(utterance);
+  } catch {}
+}
+
 function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentColor: string }) {
   const cycleLength = BREATHING_PHASES.reduce((s, p) => s + p.duration, 0);
   const posInCycle = (elapsed * 1000) % cycleLength;
+  const lastSpokenRef = useRef<string>("");
+
+  useBreathingAudio(true);
 
   let cumulative = 0;
   let currentPhase = BREATHING_PHASES[0];
@@ -91,6 +171,19 @@ function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentCol
     }
     cumulative += phase.duration;
   }
+
+  useEffect(() => {
+    if (currentPhase.label !== lastSpokenRef.current) {
+      lastSpokenRef.current = currentPhase.label;
+      speakPhase(currentPhase.label);
+    }
+  }, [currentPhase.label]);
+
+  useEffect(() => {
+    return () => {
+      try { window.speechSynthesis?.cancel(); } catch {}
+    };
+  }, []);
 
   const scale = currentPhase.label === "Inhale"
     ? 0.6 + 0.4 * phaseProgress
@@ -115,6 +208,9 @@ function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentCol
         style={{ color: `${accentColor}cc` }}
       >
         {currentPhase.label}
+      </p>
+      <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.25)" }}>
+        Voice guided · Ambient audio
       </p>
     </div>
   );

@@ -431,6 +431,54 @@ export default function HomePage() {
           </div>
         )}
 
+        {homeData && (
+          <div
+            data-testid="phase-card"
+            className="rounded-xl px-4 py-3 flex items-center justify-between"
+            style={{
+              backgroundColor: `${colors.surface || colors.background}88`,
+              border: `1px solid ${colors.surfaceBorder}`,
+            }}
+          >
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: colors.textMuted }}>
+                {homeData.phase.name}
+              </p>
+              <p className="text-[10px] mt-0.5" style={{ color: `${colors.textMuted}99` }}>
+                Stability: {homeData.stability.label}
+              </p>
+            </div>
+            {homeData.flow && (
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: colors.textMuted }}>
+                  Flow
+                </p>
+                <p className="text-xs font-mono font-medium" style={{ color: colors.primary }}>
+                  {homeData.flow.label}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {homeData?.insight && (
+          <div
+            data-testid="coach-insight-card"
+            className="rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: `${colors.primary}08`,
+              border: `1px solid ${colors.primary}15`,
+            }}
+          >
+            <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1" style={{ color: `${colors.primary}99` }}>
+              Coach
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
+              {homeData.insight}
+            </p>
+          </div>
+        )}
+
         {!hasHabits && (
           <>
             <div data-testid="start-here-section">
@@ -580,6 +628,21 @@ export default function HomePage() {
             </span>
           </button>
         </div>
+
+        {hasHabits && !allDone && (
+          <button
+            data-testid="button-view-schedule"
+            onClick={() => setLocation("/schedule")}
+            className="w-full py-2.5 rounded-xl text-xs tracking-[0.1em] uppercase transition-all active:scale-[0.98]"
+            style={{
+              color: colors.textMuted,
+              backgroundColor: `${colors.surface || colors.background}60`,
+              border: `1px solid ${colors.surfaceBorder}`,
+            }}
+          >
+            View Schedule
+          </button>
+        )}
 
         {!hasHabits && (
           <button

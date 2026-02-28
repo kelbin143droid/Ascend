@@ -11,12 +11,13 @@ Preferred communication style: Simple, everyday language.
 ### Core Systems
 Ascend OS is built around seven interconnected modular systems:
 -   **Phase System**: Manages user progression through 5 distinct phases based on stability, streaks, and habit count.
--   **Stability Score**: A dynamic composite score (0-100) reflecting habit completion, sleep, energy, emotional state, and task timing, influencing progression and visual changes.
+-   **Stability Score**: A dynamic composite score (0-100) reflecting habit completion, sleep, energy, emotional state, and task timing, influencing progression and visual changes. Supportive tier labels: Building, Developing, Solid, Strong, Excellent.
 -   **Task Engine**: Handles habit management, prioritizing tasks, processing completions (XP, badges), and adjusting durations based on stability.
--   **AI Coach**: A rule-based, internal coaching engine that provides contextual, calm, and strategic suggestions, particularly during setbacks.
+-   **AI Coach**: A rule-based, internal coaching engine that provides contextual, calm, and strategic suggestions, particularly during setbacks. Actionable steps are prioritized first. `getHomeInsight()` provides a short coach insight for the home screen.
 -   **Visual Evolution**: Adapts in-game visuals (environment, avatar auras, feedback) in real-time according to the user's phase and stability.
 -   **Notifications**: Delivers positively framed alerts for milestones, phase changes, stability warnings, and missed habits, avoiding negative language.
 -   **Rewards**: Implements behavior-tied rewards like momentum-driven XP, streak bonuses, and badges, focused on intrinsic motivation.
+-   **Flow State System**: Tracks engagement (0-100) based on momentum, today's completion ratio, stacking bonuses, and return bonuses. Labels: "In Flow" (≥70), "Building Flow" (≥30), "Warming Up" (≥1), "Awaiting Action" (0). Located in `server/gameLogic/flowEngine.ts`.
 
 ### Technical Implementation
 -   **Frontend**: React 18, TypeScript, Wouter for routing, TanStack React Query for server state, React Context for game state. UI uses shadcn/ui (Radix UI) and Tailwind CSS v4. 3D rendering is powered by React Three Fiber and Drei, with animations by Framer Motion.
@@ -30,11 +31,22 @@ Ascend OS is built around seven interconnected modular systems:
     -   **Gradual Onboarding**: Concise initial onboarding with progressive feature disclosure over 7 days.
     -   **Guided Sessions**: Pre-configured sessions for immediate user engagement.
 
+### Navigation
+-   **Bottom Nav (4 items)**: HOME (`/`), TRAIN (`/train`), HABITS (`/habits`), COACH (`/coach`)
+-   **Sidebar Menu**: Hamburger icon trigger, slide-out overlay. Items: Profile, Analytics, Progress History, Library, Achievements, Weekly Planning, Calendar, Future Game (3D at `/game3d`).
+
+### Key Pages
+-   **HomePage** (`client/src/pages/HomePage.tsx`): Default landing. Shows Phase Card (phase name + stability label), Flow State label, AI Coach insight card, Growth State indicator, "Start Next Action" primary button, "View Schedule" secondary button. Adapts based on onboarding day and training mode.
+-   **TrainPage** (`client/src/pages/TrainPage.tsx`): 4 categories: Strength, Agility, Meditation (Sense), Night Recovery Routine (Vitality). Quick-start buttons per category.
+-   **CoachPage** (`client/src/pages/CoachPage.tsx`): Full AI Coach with insights, chat interface, and contextual suggestions. Deep Coach mode unlocks at Day 6.
+-   **HabitsPage** (`client/src/pages/HabitsPage.tsx`): Habit management, creation, completion. Custom habits unlock at Day 3.
+-   **StatusPage** (`client/src/pages/StatusPage.tsx`): Schedule view, accessible via "View Schedule" button on home.
+
 ### Key Features
 -   **7-Day Behavioral Reflection System**: Progressively introduces features and provides contextual feedback based on user engagement.
 -   **Flow State System (Internal)**: Tracks engagement and momentum (0-100) to influence AI recommendations and visuals.
 -   **Momentum Response & Micro-Feedback**: Immediate visual, haptic, and textual feedback upon habit completion.
--   **Guided Session System**: Provides immediate, zero-setup activities like "calm breathing" or "light movement," recording completions without creating permanent habits.
+-   **Guided Session System**: Provides immediate, zero-setup activities like "calm breathing" or "light movement," recording completions without creating permanent habits. Calm Breathing includes ambient background music (Web Audio API sine-wave pad at 174/261/349 Hz) and voice-guided phase cues (SpeechSynthesis API for "Inhale", "Hold", "Exhale").
 -   **Growth State System (Unified Progress Indicator)**: A single visible progress concept for the user interface, synthesizing stability, flow, and momentum into qualitative states (e.g., "Beginning," "Thriving rhythm").
 
 ### Progressive Access (Soft-Lock System)
