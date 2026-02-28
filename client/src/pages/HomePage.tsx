@@ -199,6 +199,12 @@ export default function HomePage() {
   const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
   const primaryAccent = STAT_COLORS[selectedHabit.stat] || colors.primary;
 
+  const isTrainingMode = onboardingDay >= 7 || homeData?.isOnboardingComplete;
+  const showCustomHabitHighlight = onboardingDay >= 3;
+  const showAddHabitSuggestion = onboardingDay >= 5 && hasCompletedToday && hasHabits;
+  const showLearnTooltip = onboardingDay >= 6 && !isTrainingMode;
+  const showMilestoneBanner = false;
+
   const startLabel = isTrainingMode
     ? (allDone ? "View Habits" : (nextAction ? `Complete ${nextAction.name}` : "Complete Today's Training"))
     : hasHabits
@@ -221,12 +227,6 @@ export default function HomePage() {
   const handleSelectHabit = (habitId: string) => {
     setSelectedHabitId(habitId);
   };
-
-  const isTrainingMode = onboardingDay >= 7 || homeData?.isOnboardingComplete;
-  const showCustomHabitHighlight = onboardingDay >= 3;
-  const showAddHabitSuggestion = onboardingDay >= 5 && hasCompletedToday && hasHabits;
-  const showLearnTooltip = onboardingDay >= 6 && !isTrainingMode;
-  const showMilestoneBanner = false;
 
   return (
     <SystemLayout>
