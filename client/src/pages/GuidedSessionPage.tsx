@@ -195,6 +195,80 @@ function speakPhase(label: string) {
   } catch {}
 }
 
+function useBreathNoise(phase: string, progress: number) {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const filterRef = useRef<BiquadFilterNode | null>(null);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      const ctx = new AudioContext();
+      ctxRef.current = ctx;
+
+      const bufferSize = ctx.sampleRate * 2;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.5;
+      }
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(800, ctx.currentTime);
+      filter.Q.setValueAtTime(0.8, ctx.currentTime);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+
+      source.connect(filter).connect(gain).connect(ctx.destination);
+      source.start();
+
+      sourceRef.current = source;
+      gainRef.current = gain;
+      filterRef.current = filter;
+      startedRef.current = true;
+    } catch {}
+
+    return () => {
+      try {
+        if (sourceRef.current) sourceRef.current.stop();
+        ctxRef.current?.close();
+      } catch {}
+      ctxRef.current = null;
+      sourceRef.current = null;
+      gainRef.current = null;
+      filterRef.current = null;
+      startedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!startedRef.current || !gainRef.current || !filterRef.current || !ctxRef.current) return;
+    const ctx = ctxRef.current;
+    const gain = gainRef.current;
+    const filter = filterRef.current;
+    const now = ctx.currentTime;
+
+    if (phase === "Inhale") {
+      filter.frequency.setTargetAtTime(900, now, 0.3);
+      const vol = 0.04 + progress * 0.06;
+      gain.gain.setTargetAtTime(vol, now, 0.15);
+    } else if (phase === "Exhale") {
+      filter.frequency.setTargetAtTime(600, now, 0.3);
+      const vol = 0.08 - progress * 0.06;
+      gain.gain.setTargetAtTime(Math.max(0.01, vol), now, 0.15);
+    } else {
+      gain.gain.setTargetAtTime(0, now, 0.3);
+    }
+  }, [phase, Math.round(progress * 10)]);
+}
+
 function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentColor: string }) {
   const cycleLength = BREATHING_PHASES.reduce((s, p) => s + p.duration, 0);
   const posInCycle = (elapsed * 1000) % cycleLength;
@@ -214,6 +288,8 @@ function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentCol
     }
     cumulative += phase.duration;
   }
+
+  useBreathNoise(currentPhase.label, phaseProgress);
 
   useEffect(() => {
     if (currentPhase.label !== lastSpokenRef.current) {
