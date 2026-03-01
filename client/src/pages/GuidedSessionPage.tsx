@@ -195,78 +195,152 @@ function speakPhase(label: string) {
   } catch {}
 }
 
+interface BreathChannel {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+}
+
+function createBrownNoise(ctx: AudioContext, seconds: number): AudioBuffer {
+  const len = ctx.sampleRate * seconds;
+  const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.02 * white) / 1.02;
+    data[i] = last * 3.5;
+  }
+  return buffer;
+}
+
+function buildInhaleChannel(ctx: AudioContext, noise: AudioBuffer, dest: AudioNode): BreathChannel {
+  const source = ctx.createBufferSource();
+  source.buffer = noise;
+  source.loop = true;
+
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.setValueAtTime(300, ctx.currentTime);
+  hp.Q.setValueAtTime(0.5, ctx.currentTime);
+
+  const formant1 = ctx.createBiquadFilter();
+  formant1.type = "peaking";
+  formant1.frequency.setValueAtTime(900, ctx.currentTime);
+  formant1.Q.setValueAtTime(2.5, ctx.currentTime);
+  formant1.gain.setValueAtTime(8, ctx.currentTime);
+
+  const formant2 = ctx.createBiquadFilter();
+  formant2.type = "peaking";
+  formant2.frequency.setValueAtTime(2200, ctx.currentTime);
+  formant2.Q.setValueAtTime(3, ctx.currentTime);
+  formant2.gain.setValueAtTime(5, ctx.currentTime);
+
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.setValueAtTime(3500, ctx.currentTime);
+  lp.Q.setValueAtTime(0.4, ctx.currentTime);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+
+  source.connect(hp).connect(formant1).connect(formant2).connect(lp).connect(gain).connect(dest);
+  source.start();
+  return { source, gain };
+}
+
+function buildExhaleChannel(ctx: AudioContext, noise: AudioBuffer, dest: AudioNode): BreathChannel {
+  const source = ctx.createBufferSource();
+  source.buffer = noise;
+  source.loop = true;
+
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.setValueAtTime(100, ctx.currentTime);
+  hp.Q.setValueAtTime(0.3, ctx.currentTime);
+
+  const formant1 = ctx.createBiquadFilter();
+  formant1.type = "peaking";
+  formant1.frequency.setValueAtTime(500, ctx.currentTime);
+  formant1.Q.setValueAtTime(1.8, ctx.currentTime);
+  formant1.gain.setValueAtTime(10, ctx.currentTime);
+
+  const formant2 = ctx.createBiquadFilter();
+  formant2.type = "peaking";
+  formant2.frequency.setValueAtTime(1400, ctx.currentTime);
+  formant2.Q.setValueAtTime(2, ctx.currentTime);
+  formant2.gain.setValueAtTime(4, ctx.currentTime);
+
+  const formant3 = ctx.createBiquadFilter();
+  formant3.type = "peaking";
+  formant3.frequency.setValueAtTime(2800, ctx.currentTime);
+  formant3.Q.setValueAtTime(3, ctx.currentTime);
+  formant3.gain.setValueAtTime(2, ctx.currentTime);
+
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.setValueAtTime(2500, ctx.currentTime);
+  lp.Q.setValueAtTime(0.3, ctx.currentTime);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+
+  source.connect(hp).connect(formant1).connect(formant2).connect(formant3).connect(lp).connect(gain).connect(dest);
+  source.start();
+  return { source, gain };
+}
+
 function useBreathNoise(phase: string, progress: number) {
   const ctxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
-  const filterRef = useRef<BiquadFilterNode | null>(null);
-  const startedRef = useRef(false);
+  const inhaleRef = useRef<BreathChannel | null>(null);
+  const exhaleRef = useRef<BreathChannel | null>(null);
+  const readyRef = useRef(false);
 
   useEffect(() => {
     try {
       const ctx = new AudioContext();
       ctxRef.current = ctx;
 
-      const bufferSize = ctx.sampleRate * 2;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * 0.5;
-      }
+      const noise = createBrownNoise(ctx, 4);
 
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(800, ctx.currentTime);
-      filter.Q.setValueAtTime(0.8, ctx.currentTime);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-
-      source.connect(filter).connect(gain).connect(ctx.destination);
-      source.start();
-
-      sourceRef.current = source;
-      gainRef.current = gain;
-      filterRef.current = filter;
-      startedRef.current = true;
+      inhaleRef.current = buildInhaleChannel(ctx, noise, ctx.destination);
+      exhaleRef.current = buildExhaleChannel(ctx, noise, ctx.destination);
+      readyRef.current = true;
     } catch {}
 
     return () => {
       try {
-        if (sourceRef.current) sourceRef.current.stop();
+        if (inhaleRef.current) inhaleRef.current.source.stop();
+        if (exhaleRef.current) exhaleRef.current.source.stop();
         ctxRef.current?.close();
       } catch {}
       ctxRef.current = null;
-      sourceRef.current = null;
-      gainRef.current = null;
-      filterRef.current = null;
-      startedRef.current = false;
+      inhaleRef.current = null;
+      exhaleRef.current = null;
+      readyRef.current = false;
     };
   }, []);
 
   useEffect(() => {
-    if (!startedRef.current || !gainRef.current || !filterRef.current || !ctxRef.current) return;
-    const ctx = ctxRef.current;
-    const gain = gainRef.current;
-    const filter = filterRef.current;
-    const now = ctx.currentTime;
+    if (!readyRef.current || !inhaleRef.current || !exhaleRef.current || !ctxRef.current) return;
+    const now = ctxRef.current.currentTime;
+    const inhGain = inhaleRef.current.gain.gain;
+    const exhGain = exhaleRef.current.gain.gain;
 
     if (phase === "Inhale") {
-      filter.frequency.setTargetAtTime(900, now, 0.3);
-      const vol = 0.04 + progress * 0.06;
-      gain.gain.setTargetAtTime(vol, now, 0.15);
+      const env = Math.sin(progress * Math.PI * 0.5);
+      const vol = 0.12 * env;
+      inhGain.setTargetAtTime(vol, now, 0.08);
+      exhGain.setTargetAtTime(0, now, 0.15);
     } else if (phase === "Exhale") {
-      filter.frequency.setTargetAtTime(600, now, 0.3);
-      const vol = 0.08 - progress * 0.06;
-      gain.gain.setTargetAtTime(Math.max(0.01, vol), now, 0.15);
+      const env = Math.cos(progress * Math.PI * 0.5);
+      const vol = 0.15 * env;
+      exhGain.setTargetAtTime(vol, now, 0.08);
+      inhGain.setTargetAtTime(0, now, 0.15);
     } else {
-      gain.gain.setTargetAtTime(0, now, 0.3);
+      inhGain.setTargetAtTime(0, now, 0.2);
+      exhGain.setTargetAtTime(0, now, 0.2);
     }
-  }, [phase, Math.round(progress * 10)]);
+  }, [phase, Math.round(progress * 20)]);
 }
 
 function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentColor: string }) {
