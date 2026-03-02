@@ -56,7 +56,7 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
 
 const BREATHING_PHASES = [
   { label: "Inhale", duration: 4000 },
-  { label: "Hold", duration: 4000 },
+  { label: "Hold", duration: 3000 },
   { label: "Exhale", duration: 6000 },
 ];
 
@@ -75,84 +75,23 @@ const STAT_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
-function createPadOscillator(
-  ctx: AudioContext,
-  freq: number,
-  detuneCents: number,
-  gainValue: number,
-  destination: AudioNode
-) {
-  const osc = ctx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(freq, ctx.currentTime);
-  osc.detune.setValueAtTime(detuneCents, ctx.currentTime);
-
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(gainValue, ctx.currentTime);
-
-  osc.connect(gain).connect(destination);
-  osc.start();
-  return osc;
-}
-
 function useBreathingAudio(active: boolean) {
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const oscillatorsRef = useRef<OscillatorNode[]>([]);
-  const lfoRef = useRef<OscillatorNode | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (!active) return;
 
-    try {
-      const ctx = new AudioContext();
-      audioCtxRef.current = ctx;
+    const audio = new Audio("/assets/breathing.mp3");
+    audio.loop = true;
+    audio.volume = 1.0;
+    audioRef.current = audio;
 
-      const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0, ctx.currentTime);
-      masterGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 3);
-
-      const lpFilter = ctx.createBiquadFilter();
-      lpFilter.type = "lowpass";
-      lpFilter.frequency.setValueAtTime(600, ctx.currentTime);
-      lpFilter.Q.setValueAtTime(0.7, ctx.currentTime);
-
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.setValueAtTime(0.03, ctx.currentTime);
-
-      const lfo = ctx.createOscillator();
-      lfo.type = "sine";
-      lfo.frequency.setValueAtTime(0.15, ctx.currentTime);
-      lfo.connect(lfoGain).connect(masterGain.gain);
-      lfo.start();
-      lfoRef.current = lfo;
-
-      lpFilter.connect(masterGain).connect(ctx.destination);
-
-      const oscs: OscillatorNode[] = [];
-
-      oscs.push(createPadOscillator(ctx, 130.81, -4, 0.35, lpFilter));
-      oscs.push(createPadOscillator(ctx, 130.81, 4, 0.35, lpFilter));
-
-      oscs.push(createPadOscillator(ctx, 196.00, -3, 0.2, lpFilter));
-      oscs.push(createPadOscillator(ctx, 196.00, 3, 0.2, lpFilter));
-
-      oscs.push(createPadOscillator(ctx, 261.63, -5, 0.12, lpFilter));
-      oscs.push(createPadOscillator(ctx, 261.63, 5, 0.12, lpFilter));
-
-      oscs.push(createPadOscillator(ctx, 329.63, 0, 0.06, lpFilter));
-
-      oscillatorsRef.current = oscs;
-    } catch {}
+    const playPromise = audio.play().catch(() => {});
 
     return () => {
-      try {
-        oscillatorsRef.current.forEach(o => { try { o.stop(); } catch {} });
-        if (lfoRef.current) try { lfoRef.current.stop(); } catch {}
-        audioCtxRef.current?.close();
-      } catch {}
-      oscillatorsRef.current = [];
-      lfoRef.current = null;
-      audioCtxRef.current = null;
+      audio.pause();
+      audio.src = "";
+      audioRef.current = null;
     };
   }, [active]);
 }
