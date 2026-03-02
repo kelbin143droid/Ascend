@@ -183,7 +183,7 @@ function speakPhase(label: string) {
 
     const speak = () => {
       const utterance = new SpeechSynthesisUtterance(label);
-      utterance.rate = 0.65;
+      utterance.rate = 1.2;
       utterance.pitch = 0.85;
       utterance.volume = 0.6;
       const voice = getVoice();
