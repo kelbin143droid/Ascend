@@ -56,7 +56,7 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
 
 const BREATHING_PHASES = [
   { label: "Inhale", duration: 4000 },
-  { label: "Hold", duration: 3000 },
+  { label: "Hold", duration: 4000 },
   { label: "Exhale", duration: 6000 },
 ];
 
@@ -75,25 +75,7 @@ const STAT_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
-function useBreathingAudio(active: boolean) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    if (!active) return;
-
-    const audio = new Audio("/assets/breathing.mp3");
-    audio.loop = true;
-    audio.volume = 1.0;
-    audioRef.current = audio;
-
-    const playPromise = audio.play().catch(() => {});
-
-    return () => {
-      audio.pause();
-      audio.src = "";
-      audioRef.current = null;
-    };
-  }, [active]);
+function useBreathingAudio(_active: boolean) {
 }
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
