@@ -257,37 +257,13 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div data-testid="start-here-section">
-            <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3" style={{ color: colors.textMuted }}>
-              Start Here
-            </p>
-            <button
-              data-testid="button-primary-habit-calm-breathing"
-              onClick={() => setLocation("/guided-session/calm-breathing")}
-              className="flex items-center gap-4 w-full rounded-xl px-5 py-4 text-left transition-all active:scale-[0.98]"
-              style={{
-                backgroundColor: `${primaryAccent}10`,
-                border: `1px solid ${primaryAccent}30`,
-                animation: "subtleGlow 3s ease-in-out infinite",
-                ["--glow-color" as string]: `${primaryAccent}25`,
-              }}
-            >
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: `${primaryAccent}20` }}
-              >
-                <Wind size={24} style={{ color: primaryAccent }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-base font-medium" style={{ color: colors.text }}>
-                  Calm Breathing
-                </div>
-                <div className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                  Complete anytime today
-                </div>
-              </div>
-            </button>
-          </div>
+          <p
+            data-testid="micro-commit-text"
+            className="text-xs text-center tracking-wide"
+            style={{ color: `${colors.textMuted}99` }}
+          >
+            Takes only 2 minutes.
+          </p>
 
           <div className="flex flex-col items-center gap-1">
             <button
