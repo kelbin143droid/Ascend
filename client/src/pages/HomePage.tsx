@@ -200,21 +200,7 @@ export default function HomePage() {
   const primaryAccent = STAT_COLORS[selectedHabit.stat] || colors.primary;
 
   const isTrainingMode = onboardingDay >= 7 || homeData?.isOnboardingComplete;
-  const showCustomHabitHighlight = onboardingDay >= 3;
-  const showAddHabitSuggestion = onboardingDay >= 5 && hasCompletedToday && hasHabits;
-  const showLearnTooltip = onboardingDay >= 6 && !isTrainingMode;
-  const showMilestoneBanner = false;
-
-  const startLabel = isTrainingMode
-    ? (allDone ? "View Habits" : (nextAction ? `Complete ${nextAction.name}` : "Complete Today's Training"))
-    : hasHabits
-      ? (allDone ? "View Habits" : (nextAction ? `Start ${nextAction.name}` : "Start"))
-      : `Start ${selectedHabit.name}`;
-
-  const earlyOnboarding = onboardingDay <= 3;
-  const microCommitText = hasHabits
-    ? (nextAction ? `Takes only ${nextAction.durationMinutes} minute${nextAction.durationMinutes !== 1 ? "s" : ""}` : null)
-    : earlyOnboarding ? "Complete anytime today." : `Takes only ${selectedHabit.durationText}`;
+  const isOnboarding = !isTrainingMode;
 
   const handleStart = () => {
     if (!hasHabits) {
@@ -227,6 +213,155 @@ export default function HomePage() {
   const handleSelectHabit = (habitId: string) => {
     setSelectedHabitId(habitId);
   };
+
+  if (isOnboarding) {
+    return (
+      <SystemLayout>
+        <style>{`
+          @keyframes subtleGlow {
+            0%, 100% { box-shadow: 0 0 8px var(--glow-color, rgba(59,130,246,0.15)); }
+            50% { box-shadow: 0 0 20px var(--glow-color, rgba(59,130,246,0.3)); }
+          }
+          @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+
+        <div
+          className="flex flex-col gap-6 py-8 px-1 max-w-md mx-auto w-full"
+          data-testid="home-page"
+        >
+          <div className="pt-2">
+            <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
+              Today's Training
+            </p>
+            <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
+              Consistency builds strength.
+            </p>
+          </div>
+
+          <div
+            data-testid="coach-insight-card"
+            className="rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: `${colors.primary}08`,
+              border: `1px solid ${colors.primary}15`,
+            }}
+          >
+            <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1" style={{ color: `${colors.primary}99` }}>
+              Coach
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
+              Begin with one small action.
+            </p>
+          </div>
+
+          <div data-testid="start-here-section">
+            <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3" style={{ color: colors.textMuted }}>
+              Start Here
+            </p>
+            <button
+              data-testid="button-primary-habit-calm-breathing"
+              onClick={() => setLocation("/guided-session/calm-breathing")}
+              className="flex items-center gap-4 w-full rounded-xl px-5 py-4 text-left transition-all active:scale-[0.98]"
+              style={{
+                backgroundColor: `${primaryAccent}10`,
+                border: `1px solid ${primaryAccent}30`,
+                animation: "subtleGlow 3s ease-in-out infinite",
+                ["--glow-color" as string]: `${primaryAccent}25`,
+              }}
+            >
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${primaryAccent}20` }}
+              >
+                <Wind size={24} style={{ color: primaryAccent }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-base font-medium" style={{ color: colors.text }}>
+                  Calm Breathing
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+                  Complete anytime today
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center gap-1">
+            <button
+              data-testid="button-start"
+              onClick={() => setLocation("/guided-session/calm-breathing")}
+              className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
+              style={{
+                backgroundColor: colors.primary,
+                color: colors.background,
+                boxShadow: `0 0 24px ${colors.primaryGlow}30`,
+              }}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Play size={16} />
+                Complete Today's Training
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <Day3IntroFlow
+          visible={showDay3Intro}
+          lastHabitName={selectedHabit.name}
+          onComplete={(choice) => {
+            setShowDay3Intro(false);
+            if (choice === "repeat") {
+              setLocation(`/guided-session/${selectedHabitId}`);
+            }
+          }}
+        />
+
+        <Day4IntroFlow
+          visible={showDay4Intro}
+          lastCompletionTime={homeData?.lastCompletionTime ?? null}
+          onComplete={() => setShowDay4Intro(false)}
+          onSetReminder={(timeWindow) => {
+            localStorage.setItem("ascend_reminder_preference", timeWindow);
+          }}
+        />
+
+        <Day5IntroFlow
+          visible={showDay5Intro}
+          onComplete={() => setShowDay5Intro(false)}
+        />
+
+        <ReminderPrompt
+          visible={showReminderPrompt}
+          onSelect={(preference) => {
+            localStorage.setItem("ascend_reminder_preference", preference);
+            setShowReminderPrompt(false);
+          }}
+          onDismiss={() => setShowReminderPrompt(false)}
+        />
+
+        <Day6RevealModal
+          visible={showDay6Reveal}
+          onContinue={handleDay6RevealContinue}
+        />
+
+        <Day7TransitionModal
+          visible={showDay7Transition}
+          onContinue={handleDay7TransitionContinue}
+        />
+      </SystemLayout>
+    );
+  }
+
+  const startLabel = allDone
+    ? "View Habits"
+    : (nextAction ? `Complete ${nextAction.name}` : "Complete Today's Training");
+
+  const microCommitText = hasHabits
+    ? (nextAction ? `Takes only ${nextAction.durationMinutes} minute${nextAction.durationMinutes !== 1 ? "s" : ""}` : null)
+    : `Takes only ${selectedHabit.durationText}`;
 
   return (
     <SystemLayout>
@@ -265,28 +400,6 @@ export default function HomePage() {
           />
         )}
 
-        {showMilestoneBanner && (
-          <div
-            data-testid="milestone-banner"
-            className="rounded-xl px-4 py-3 flex items-center gap-3"
-            style={{
-              backgroundColor: `${colors.primary}12`,
-              border: `1px solid ${colors.primary}25`,
-              animation: "fadeSlideIn 0.6s ease-out",
-            }}
-          >
-            <Trophy size={18} style={{ color: colors.primary }} />
-            <div>
-              <p className="text-sm font-medium" style={{ color: colors.text }}>
-                First Growth Cycle Complete.
-              </p>
-              <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
-                You've built a foundation of consistency.
-              </p>
-            </div>
-          </div>
-        )}
-
         {!dismissedNotification && homeData?.notification && (
           <NotificationBanner
             notification={homeData.notification}
@@ -294,127 +407,67 @@ export default function HomePage() {
           />
         )}
 
-        <div className="pt-4" style={{ animation: showEncouragement ? "encourageFade 0.5s ease-out" : undefined }}>
+        <div className="pt-4">
           <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-            {isTrainingMode
-              ? (allDone ? "Great work today. Rest up." : "Today's Training")
-              : (allDone ? "Great work today. Rest up." : "Let's start small today.")}
+            {allDone ? "Great work today. Rest up." : "Today's Training"}
           </p>
           <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
-            {isTrainingMode
-              ? (hasHabits && !allDone
-                ? `${homeData!.completedToday}/${homeData!.totalActive} complete`
-                : "Consistency builds strength.")
-              : (hasHabits && !allDone
-                ? `Day ${onboardingDay} · ${homeData!.completedToday}/${homeData!.totalActive} complete`
-                : `Day ${onboardingDay} · ${reflection.subtitle}`)}
+            {hasHabits && !allDone
+              ? `${homeData!.completedToday}/${homeData!.totalActive} complete`
+              : "Consistency builds strength."}
           </p>
-          {homeData?.growthState && (
-            <p
-              data-testid="text-growth-state"
-              className="text-[11px] mt-1 font-medium"
-              style={{ color: colors.primary }}
-            >
-              {homeData.growthState}
-            </p>
-          )}
-          {!isTrainingMode && (
-            <p className="text-[10px] mt-0.5 italic" style={{ color: `${colors.textMuted}aa` }}>
-              {reflection.motivation}
-            </p>
-          )}
         </div>
 
-        {isTrainingMode && (
-          <div
-            data-testid="training-status-card"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: `${colors.surface || colors.background}cc`,
-              border: `1px solid ${colors.surfaceBorder}`,
-              animation: "subtleGlow 4s ease-in-out infinite",
-              ["--glow-color" as string]: `${colors.primary}12`,
-            }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Activity size={14} style={{ color: colors.primary }} />
-              <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
-                Training Status: Active
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div>
-                <span className="text-lg font-bold font-mono" style={{ color: colors.text }}>
-                  {homeData?.streak ?? 0}
-                </span>
-                <span className="text-[10px] ml-1" style={{ color: colors.textMuted }}>
-                  day streak
-                </span>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[9px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
-                    Momentum
-                  </span>
-                  <span className="text-[9px] font-mono" style={{ color: colors.primary }}>
-                    {homeData?.momentum ?? 0}
-                  </span>
-                </div>
-                <div
-                  className="h-1.5 rounded-full overflow-hidden"
-                  style={{ backgroundColor: `${colors.surfaceBorder}50` }}
-                >
-                  <div
-                    data-testid="training-momentum-bar"
-                    className="h-full rounded-full transition-all duration-1000"
-                    style={{
-                      width: `${Math.min(homeData?.momentum ?? 0, 100)}%`,
-                      background: `linear-gradient(90deg, ${colors.primary}80, ${colors.primary})`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+        <div
+          data-testid="training-status-card"
+          className="rounded-xl px-4 py-3"
+          style={{
+            backgroundColor: `${colors.surface || colors.background}cc`,
+            border: `1px solid ${colors.surfaceBorder}`,
+            animation: "subtleGlow 4s ease-in-out infinite",
+            ["--glow-color" as string]: `${colors.primary}12`,
+          }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Activity size={14} style={{ color: colors.primary }} />
+            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
+              Training Status: Active
+            </span>
           </div>
-        )}
-
-        {onboardingDay >= 6 && !isTrainingMode && day6MeterVisible && (
-          <div
-            data-testid="momentum-meter"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: `${colors.surface || colors.background}cc`,
-              border: `1px solid ${colors.surfaceBorder}`,
-              animation: "fadeSlideIn 0.8s ease-out",
-            }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.textMuted }}>
-                Momentum
+          <div className="flex items-center gap-4">
+            <div>
+              <span className="text-lg font-bold font-mono" style={{ color: colors.text }}>
+                {homeData?.streak ?? 0}
               </span>
-              <span className="text-[10px] font-mono" style={{ color: colors.primary }}>
-                {homeData?.momentum ?? 0}
+              <span className="text-[10px] ml-1" style={{ color: colors.textMuted }}>
+                day streak
               </span>
             </div>
-            <div
-              className="relative h-2 rounded-full overflow-hidden"
-              style={{ backgroundColor: `${colors.surfaceBorder}50` }}
-            >
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
+                  Momentum
+                </span>
+                <span className="text-[9px] font-mono" style={{ color: colors.primary }}>
+                  {homeData?.momentum ?? 0}
+                </span>
+              </div>
               <div
-                data-testid="momentum-bar"
-                className="h-full rounded-full transition-all duration-1000"
-                style={{
-                  width: `${Math.min(homeData?.momentum ?? 0, 100)}%`,
-                  background: `linear-gradient(90deg, ${colors.primary}80, ${colors.primary})`,
-                  boxShadow: (homeData?.momentum ?? 0) > 20 ? `0 0 6px ${colors.primary}30` : undefined,
-                }}
-              />
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ backgroundColor: `${colors.surfaceBorder}50` }}
+              >
+                <div
+                  data-testid="training-momentum-bar"
+                  className="h-full rounded-full transition-all duration-1000"
+                  style={{
+                    width: `${Math.min(homeData?.momentum ?? 0, 100)}%`,
+                    background: `linear-gradient(90deg, ${colors.primary}80, ${colors.primary})`,
+                  }}
+                />
+              </div>
             </div>
-            <p className="text-[9px] mt-1.5" style={{ color: `${colors.textMuted}88` }}>
-              Built through consistency
-            </p>
           </div>
-        )}
+        </div>
 
         {showCompletionGlow && (
           <div
@@ -479,82 +532,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {!hasHabits && (
-          <>
-            <div data-testid="start-here-section">
-              <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3" style={{ color: colors.textMuted }}>
-                Start Here
-              </p>
-              <button
-                data-testid={`button-primary-habit-${selectedHabit.id}`}
-                onClick={handleStart}
-                className="flex items-center gap-4 w-full rounded-xl px-5 py-4 text-left transition-all active:scale-[0.98]"
-                style={{
-                  backgroundColor: `${primaryAccent}10`,
-                  border: `1px solid ${primaryAccent}30`,
-                  animation: "subtleGlow 3s ease-in-out infinite",
-                  ["--glow-color" as string]: `${primaryAccent}25`,
-                }}
-              >
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${primaryAccent}20` }}
-                >
-                  <selectedHabit.icon size={24} style={{ color: primaryAccent }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-base font-medium" style={{ color: colors.text }}>
-                    {selectedHabit.name}
-                  </div>
-                  <div className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                    {earlyOnboarding ? "Complete anytime today" : selectedHabit.duration || "Quick check"}
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            <div data-testid="other-options-section">
-              <p className="text-[10px] uppercase tracking-[0.15em] mb-2" style={{ color: `${colors.textMuted}88` }}>
-                Other Options
-              </p>
-              <div className="flex flex-col gap-1">
-                {otherHabits.map((habit) => {
-                  const accentColor = STAT_COLORS[habit.stat] || colors.primary;
-                  return (
-                    <button
-                      key={habit.id}
-                      data-testid={`button-option-${habit.id}`}
-                      onClick={() => handleSelectHabit(habit.id)}
-                      className="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-left transition-all active:scale-[0.98]"
-                      style={{
-                        backgroundColor: `${colors.surface || colors.background}60`,
-                        border: `1px solid ${colors.surfaceBorder}50`,
-                      }}
-                    >
-                      <div
-                        className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `${accentColor}10` }}
-                      >
-                        <habit.icon size={12} style={{ color: `${accentColor}99` }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px]" style={{ color: `${colors.text}cc` }}>
-                          {habit.name}
-                        </div>
-                      </div>
-                      {habit.duration && (
-                        <span className="text-[9px]" style={{ color: `${colors.textMuted}77` }}>
-                          {habit.duration}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        )}
-
         {hasHabits && !allDone && nextAction && (
           <div
             data-testid="next-action-card"
@@ -573,31 +550,6 @@ export default function HomePage() {
                 {nextAction.durationMinutes}m
               </span>
             </p>
-          </div>
-        )}
-
-        {showAddHabitSuggestion && !allDone && (
-          <div
-            data-testid="add-habit-suggestion"
-            className="rounded-lg px-3 py-2.5 flex items-center gap-2"
-            style={{
-              backgroundColor: `${colors.primary}08`,
-              border: `1px solid ${colors.primary}15`,
-              animation: "fadeSlideIn 0.5s ease-out",
-            }}
-          >
-            <Plus size={14} style={{ color: colors.primary }} />
-            <p className="text-[11px]" style={{ color: colors.textMuted }}>
-              Add another small habit?
-            </p>
-            <button
-              data-testid="button-add-habit-suggestion"
-              onClick={() => setLocation("/habits")}
-              className="ml-auto text-[10px] font-medium px-2 py-0.5 rounded"
-              style={{ color: colors.primary, backgroundColor: `${colors.primary}10` }}
-            >
-              Browse
-            </button>
           </div>
         )}
 
@@ -643,80 +595,7 @@ export default function HomePage() {
             View Schedule
           </button>
         )}
-
-        {!hasHabits && (
-          <button
-            data-testid="button-create-custom-habit"
-            onClick={() => setLocation("/habits")}
-            className="w-full py-2 text-xs tracking-wide transition-all"
-            style={{
-              color: showCustomHabitHighlight ? colors.textMuted : `${colors.textMuted}66`,
-              fontWeight: showCustomHabitHighlight ? 500 : 400,
-            }}
-          >
-            {showCustomHabitHighlight ? "Create custom habit" : "Create custom habit (optional)"}
-          </button>
-        )}
-
-        {showLearnTooltip && (
-          <button
-            data-testid="button-learn-growth"
-            onClick={() => setLocation("/coach")}
-            className="flex items-center justify-center gap-1.5 w-full py-2 transition-all"
-            style={{
-              color: `${colors.textMuted}99`,
-              animation: "fadeSlideIn 0.6s ease-out",
-            }}
-          >
-            <BookOpen size={12} />
-            <span className="text-[10px] tracking-wide">Learn how growth works</span>
-          </button>
-        )}
       </div>
-
-      <Day3IntroFlow
-        visible={showDay3Intro}
-        lastHabitName={selectedHabit.name}
-        onComplete={(choice) => {
-          setShowDay3Intro(false);
-          if (choice === "repeat") {
-            setLocation(`/guided-session/${selectedHabitId}`);
-          }
-        }}
-      />
-
-      <Day4IntroFlow
-        visible={showDay4Intro}
-        lastCompletionTime={homeData?.lastCompletionTime ?? null}
-        onComplete={() => setShowDay4Intro(false)}
-        onSetReminder={(timeWindow) => {
-          localStorage.setItem("ascend_reminder_preference", timeWindow);
-        }}
-      />
-
-      <Day5IntroFlow
-        visible={showDay5Intro}
-        onComplete={() => setShowDay5Intro(false)}
-      />
-
-      <ReminderPrompt
-        visible={showReminderPrompt}
-        onSelect={(preference) => {
-          localStorage.setItem("ascend_reminder_preference", preference);
-          setShowReminderPrompt(false);
-        }}
-        onDismiss={() => setShowReminderPrompt(false)}
-      />
-
-      <Day6RevealModal
-        visible={showDay6Reveal}
-        onContinue={handleDay6RevealContinue}
-      />
-
-      <Day7TransitionModal
-        visible={showDay7Transition}
-        onContinue={handleDay7TransitionContinue}
-      />
     </SystemLayout>
   );
 }
