@@ -127,7 +127,7 @@ const STAT_COLORS: Record<string, string> = {
 const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }> = {
   1: { subtitle: "Beginning your journey.", motivation: "Small actions build momentum." },
   2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
-  3: { subtitle: "You're building a hunter path.", motivation: "Make it yours." },
+  3: { subtitle: "You're building a practice.", motivation: "Make it yours." },
   4: { subtitle: "Rhythm forming", motivation: "Consistency creates structure naturally." },
   5: { subtitle: "Momentum growing", motivation: "Growth expands naturally." },
   6: { subtitle: "System awareness unlocked.", motivation: "Your consistency has been building all along." },
