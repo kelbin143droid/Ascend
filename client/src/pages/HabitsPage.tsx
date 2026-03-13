@@ -325,7 +325,7 @@ export default function HabitsPage() {
           <div className="flex items-center gap-3">
             <Target className="w-5 h-5 text-cyan-400" />
             <h1 className="text-lg font-bold text-white font-orbitron tracking-wide">
-              Habits
+              Daily Rituals
             </h1>
           </div>
           <Button
@@ -336,13 +336,13 @@ export default function HabitsPage() {
             data-testid="button-add-habit"
           >
             <Plus className="w-4 h-4 mr-1" />
-            Add Habit
+            Add Ritual
           </Button>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="text-gray-500">Loading habits...</div>
+            <div className="text-gray-500">Loading rituals...</div>
           </div>
         ) : (
           <>
@@ -498,7 +498,7 @@ export default function HabitsPage() {
                 }}
               >
                 <p className="text-sm leading-relaxed" style={{ color: "rgba(147,197,253,0.7)" }}>
-                  Custom habits unlock as your routine develops.
+                  Custom daily rituals unlock as your hunter path develops.
                 </p>
                 <p className="text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
                   Complete guided sessions from Home to build your foundation.
@@ -589,7 +589,7 @@ export default function HabitsPage() {
           <DialogContent className="bg-gray-950 border-gray-800 max-w-sm">
             <DialogHeader>
               <DialogTitle className="font-orbitron text-sm text-white">
-                {editingHabit ? "Edit Habit" : "New Habit"}
+                {editingHabit ? "Edit Ritual" : "New Daily Ritual"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3">

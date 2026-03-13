@@ -127,7 +127,7 @@ const STAT_COLORS: Record<string, string> = {
 const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }> = {
   1: { subtitle: "Beginning your journey.", motivation: "Small actions build momentum." },
   2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
-  3: { subtitle: "You're building a routine.", motivation: "Make it yours." },
+  3: { subtitle: "You're building a hunter path.", motivation: "Make it yours." },
   4: { subtitle: "Rhythm forming", motivation: "Consistency creates structure naturally." },
   5: { subtitle: "Momentum growing", motivation: "Growth expands naturally." },
   6: { subtitle: "System awareness unlocked.", motivation: "Your consistency has been building all along." },
@@ -443,8 +443,8 @@ export default function HomePage() {
   }
 
   const startLabel = allDone
-    ? "View Habits"
-    : (nextAction ? `Complete ${nextAction.name}` : "Complete Today's Training");
+    ? "View Rituals"
+    : (nextAction ? `Complete ${nextAction.name}` : "Complete Today's Power Growth");
 
   const microCommitText = hasHabits
     ? (nextAction ? `Takes only ${nextAction.durationMinutes} minute${nextAction.durationMinutes !== 1 ? "s" : ""}` : null)
@@ -496,7 +496,7 @@ export default function HomePage() {
 
         <div className="pt-4">
           <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-            {allDone ? "Great work today. Rest up." : "Today's Training"}
+            {allDone ? "Great work today. Rest up." : "Today's Power Growth"}
           </p>
           <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
             {hasHabits && !allDone
@@ -518,7 +518,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2 mb-2">
             <Activity size={14} style={{ color: colors.primary }} />
             <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
-              Training Status: Active
+              Power Growth: Active
             </span>
           </div>
           <div className="flex items-center gap-4">

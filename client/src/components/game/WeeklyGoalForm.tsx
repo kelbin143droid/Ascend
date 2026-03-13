@@ -70,7 +70,7 @@ export function WeeklyGoalForm({ onSuccess, compact = false }: WeeklyGoalFormPro
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Goal title..."
+            placeholder="Mission title..."
             className="h-8 flex-1 bg-black/50 border-white/10 text-xs"
             data-testid="input-goal-title"
           />
@@ -184,7 +184,7 @@ export function WeeklyGoalForm({ onSuccess, compact = false }: WeeklyGoalFormPro
         className="w-full h-10 bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 font-display tracking-wider"
         data-testid="button-create-goal"
       >
-        {isSubmitting ? "Creating..." : "Create Goal"}
+        {isSubmitting ? "Creating..." : "Create Mission"}
       </Button>
     </form>
   );

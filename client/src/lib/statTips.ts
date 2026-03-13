@@ -1,7 +1,7 @@
 export const STAT_TIPS: Record<string, string[]> = {
   strength: [
     "Sleep 7-9 hours for muscle recovery.",
-    "Hydrate before and after training.",
+    "Hydrate before and after power growth.",
     "Increase volume gradually to avoid injury.",
     "Protein intake within 2 hours post-workout aids recovery.",
     "Compound movements build functional strength faster.",

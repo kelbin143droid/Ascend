@@ -43,7 +43,7 @@ interface StatActionPanelProps {
 }
 
 const STAT_CONFIG: Record<string, { icon: typeof Swords; color: string; label: string; description: string }> = {
-  strength: { icon: Swords, color: "#ff6b6b", label: "STRENGTH", description: "Bodyweight & resistance training" },
+  strength: { icon: Swords, color: "#ff6b6b", label: "STRENGTH", description: "Bodyweight & resistance power growth" },
   agility: { icon: Wind, color: "#4ecdc4", label: "FLEXIBILITY", description: "Yoga & mobility exercises" },
   sense: { icon: Eye, color: "#ffe66d", label: "MEDITATION", description: "Mindfulness & awareness practice" },
   vitality: { icon: Heart, color: "#a855f7", label: "VITALITY", description: "Recovery & health foundations" },

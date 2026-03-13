@@ -393,13 +393,13 @@ export default function AnalyticsPage() {
                 <div className="flex items-center gap-3 mt-8 mb-4">
                   <Target className="w-5 h-5 text-emerald-400" />
                   <h2 className="text-lg font-bold text-white font-orbitron tracking-wide">
-                    HABIT ANALYTICS
+                    RITUAL ANALYTICS
                   </h2>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="habit-total">
-                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Active Habits</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Active Rituals</div>
                     <div className="text-2xl font-bold text-cyan-400 font-orbitron">
                       {habitAnalytics.totalHabits}
                     </div>

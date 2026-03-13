@@ -24,11 +24,11 @@ interface SectographProps {
 
 const DEFAULT_SCHEDULE: ScheduleBlock[] = [
   { id: "sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#3b4d6b" },
-  { id: "morning", name: "Morning Routine", startHour: 6, endHour: 7, color: "#6b8cae" },
+  { id: "morning", name: "Morning Hunter Path", startHour: 6, endHour: 7, color: "#6b8cae" },
   { id: "work1", name: "Focus Work", startHour: 9, endHour: 12, color: "#4a6fa5", isSystemTask: true },
   { id: "lunch", name: "Lunch", startHour: 12, endHour: 13, color: "#7d9d6a" },
   { id: "work2", name: "Deep Work", startHour: 14, endHour: 17, color: "#4a6fa5", isSystemTask: true },
-  { id: "training", name: "Training", startHour: 17, endHour: 18, color: "#c97b63", isSystemTask: true },
+  { id: "training", name: "Power Growth", startHour: 17, endHour: 18, color: "#c97b63", isSystemTask: true },
   { id: "evening", name: "Leisure", startHour: 19, endHour: 22, color: "#8b7aa3" },
 ];
 

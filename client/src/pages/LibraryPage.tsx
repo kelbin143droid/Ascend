@@ -54,7 +54,7 @@ export default function LibraryPage() {
       videos: [
         { title: "Cardio for Beginners", url: "https://www.youtube.com/watch?v=ml6cT4AZdqI", duration: "10:00" },
         { title: "Sprint Interval Training", url: "https://www.youtube.com/watch?v=YoPBRlJgDb0", duration: "7:32" },
-        { title: "Flexibility & Mobility Routine", url: "https://www.youtube.com/watch?v=g_tea8ZNk5A", duration: "12:15" },
+        { title: "Flexibility & Mobility Hunter Path", url: "https://www.youtube.com/watch?v=g_tea8ZNk5A", duration: "12:15" },
       ],
     },
     {
@@ -133,7 +133,7 @@ export default function LibraryPage() {
               </h3>
               <p className="text-xs" style={{ color: colors.textMuted }}>
                 {canAccessPlanning 
-                  ? "Set goals and priorities for the week" 
+                  ? "Set missions and priorities for the week" 
                   : `Unlock at Phase ${PLANNING_UNLOCK_PHASE}`
                 }
               </p>
@@ -166,8 +166,8 @@ export default function LibraryPage() {
                 </h3>
                 <p className="text-xs" style={{ color: colors.textMuted }}>
                   {player?.planningMode === "advanced" 
-                    ? "Requires weekly goals for tasks" 
-                    : "Tasks can be created freely"
+                    ? "Requires weekly missions for quests" 
+                    : "Quests can be created freely"
                   }
                 </p>
               </div>

@@ -22,18 +22,18 @@ export interface CoachChatResponse {
 
 const APP_KNOWLEDGE: Record<string, string> = {
   phases: "There are 5 phases: Stabilization, Foundation, Expansion, Optimization, and Sovereignty. Progression is driven by your Stability Score (0-100), not just time or streaks. You only see your current phase and the next unlock requirement. Stability Score must meet the threshold along with completion rate, level, and average stats.",
-  stability: "Your Stability Score (0-100) combines: habit completion rate (35%), sleep consistency (20%), energy/recovery compliance (15%), emotional stability (15%), and task timing adherence (15%). It drives phase progression, regression, difficulty adjustments, and visual environment changes.",
+  stability: "Your Stability Score (0-100) combines: daily ritual completion rate (35%), sleep consistency (20%), energy/recovery compliance (15%), emotional stability (15%), and quest timing adherence (15%). It drives phase progression, regression, difficulty adjustments, and visual environment changes.",
   regression: "Regression is a recalibration tool, not a punishment. Soft regression: if stability drops below 40 for 2-3 days, difficulty auto-adjusts downward. Hard regression: if stability stays below 50 for 5 consecutive days, you drop one phase. The system explains this strategically — isolated failures don't cause regression.",
-  stats: "There are 4 stats: Strength (STR) for physical exercise, Agility (AGI) for flexibility/yoga, Sense (SEN) for meditation/focus, and Vitality (VIT) for recovery/health. Stats increase only through task completion — never by allocating points.",
-  momentum: "Momentum is a score from 0 to 1 that reflects your real consistency. It increases with each completion and decreases gradually with inactivity. Unlike streaks, momentum doesn't reset to zero from one miss. It drives your XP multiplier — higher momentum = more XP per habit.",
+  stats: "There are 4 stats: Strength (STR) for physical exercise, Agility (AGI) for flexibility/yoga, Sense (SEN) for meditation/focus, and Vitality (VIT) for recovery/health. Stats increase only through quest completion — never by allocating points.",
+  momentum: "Momentum is a score from 0 to 1 that reflects your real consistency. It increases with each completion and decreases gradually with inactivity. Unlike streaks, momentum doesn't reset to zero from one miss. It drives your XP multiplier — higher momentum = more XP per daily ritual.",
   streaks: "Streaks count consecutive days. Missing 1 day uses a grace day (streak preserved). Missing 2-3 days slightly reduces momentum. Missing 5+ days triggers recovery mode with micro-sessions. The system is forgiving — it's designed to help you bounce back.",
-  habits: "Create habits linked to a stat. Durations are controlled automatically — they start short and grow as you build consistency. The system adjusts everything based on your performance and phase. No need to set difficulty manually.",
+  habits: "Create daily rituals linked to a stat. Durations are controlled automatically — they start short and grow as you build consistency. The system adjusts everything based on your performance and phase. No need to set difficulty manually.",
   difficulty: "Difficulty scales automatically based on your phase and stability. Phase 1: micro-sessions (2-5 min). Phase 2: moderate. Phase 3: flexible expansion. Phase 4: optional optimization. Phase 5: focus on consistency, not time. If stability drops, difficulty reduces to help recovery.",
-  badges: "Earn badges at milestones: first completion, 7/14/30/100-day streaks, training all 4 stats, perfect weeks, reaching high momentum, and completing 100 total sessions.",
+  badges: "Earn badges at milestones: first completion, 7/14/30/100-day streaks, growing all 4 stats, perfect weeks, reaching high momentum, and completing 100 total focus sessions.",
   recovery: "If you miss several days, don't worry. The system enters recovery mode: shorter sessions, gentler difficulty, and a focus on rebuilding momentum. Even 2-3 minutes counts. Consistency matters more than duration.",
-  xp: "XP is earned by completing habits. Your XP multiplier is driven by momentum (not raw streak count). Higher momentum = higher multiplier (up to 3x). Daily and weekly bonuses add extra XP for completing all habits.",
-  meditation: "Sense (meditation) tasks focus on mindfulness and focus. They can include guided visual cues and breathing patterns. Duration scales with your phase — start with 2-3 minute sessions in Phase 1.",
-  vitality: "Vitality tasks focus on recovery, sleep, and health. The system recommends scheduling these in the evening or pre-bedtime when possible. Good vitality habits directly boost your sleep consistency score.",
+  xp: "XP is earned by completing daily rituals. Your XP multiplier is driven by momentum (not raw streak count). Higher momentum = higher multiplier (up to 3x). Daily and weekly bonuses add extra XP for completing all rituals.",
+  meditation: "Sense (meditation) quests focus on mindfulness and focus. They can include guided visual cues and breathing patterns. Duration scales with your phase — start with 2-3 minute focus sessions in Phase 1.",
+  vitality: "Vitality quests focus on recovery, sleep, and health. The system recommends scheduling these in the evening or pre-bedtime when possible. Good vitality rituals directly boost your sleep consistency score.",
   calendar: "The Sectograph shows your daily schedule as a circular clock. Blocks repeat daily by default. You can also use the full calendar for specific events.",
   trials: "Trials are multi-day challenges unlocked at Phase 4 (Optimization). They test your consistency and reward you with bonus XP and badges.",
   visuals: "The game world evolves with your phase. Phase 1: soft pastels, minimal environment. Phase 2: richer colors, minor upgrades. Phase 3: dynamic environment, medium aura. Phase 4: advanced, strong aura. Phase 5: epic, multi-layered aura. Visual changes also respond to your stability score.",
@@ -56,7 +56,7 @@ export function generateCoachMessages(
     messages.push({
       type: "suggestion",
       title: "Get Started",
-      message: "Create your first habit to begin building your daily routine. Start small — even 2-3 minutes counts. The system will automatically scale up as you build consistency.",
+      message: "Create your first daily ritual to begin building your hunter path. Start small — even 2-3 minutes counts. The system will automatically scale up as you build consistency.",
       priority: 10,
       actionable: true,
       action: "create_habit",
@@ -102,7 +102,7 @@ export function generateCoachMessages(
     messages.push({
       type: "celebration",
       title: "All Done",
-      message: `All habits completed for today. Your stats are growing and stability is being reinforced. Rest well, ${phaseName} Hunter.`,
+      message: `All daily rituals completed for today. Your stats are growing and stability is being reinforced. Rest well, ${phaseName} Hunter.`,
       priority: 9,
     });
   } else if (remainingHabits.length > 0) {
@@ -133,23 +133,23 @@ export function generateCoachMessages(
       messages.push({
         type: "motivation",
         title: "Morning Strategy",
-        message: `${remainingHabits.length} habit${remainingHabits.length > 1 ? "s" : ""} today. Start with "${bestFirst.name}" — highest momentum, easiest to maintain.`,
+        message: `${remainingHabits.length} ritual${remainingHabits.length > 1 ? "s" : ""} today. Start with "${bestFirst.name}" — highest momentum, easiest to maintain.`,
         priority: 7,
       });
     } else if (hour >= 12 && hour < 18) {
       messages.push({
         type: "suggestion",
         title: "Midday Check-in",
-        message: `${remainingHabits.length} habit${remainingHabits.length > 1 ? "s" : ""} remaining. A quick session now keeps your stability on track.`,
+        message: `${remainingHabits.length} ritual${remainingHabits.length > 1 ? "s" : ""} remaining. A quick focus session now keeps your stability on track.`,
         priority: 6,
       });
     } else if (hour >= 18) {
       const hasVitality = remainingHabits.some(h => h.stat === "vitality");
-      const vitalityNote = hasVitality ? " Consider starting with your Vitality habit — evening is ideal for recovery tasks." : "";
+      const vitalityNote = hasVitality ? " Consider starting with your Vitality ritual — evening is ideal for recovery quests." : "";
       messages.push({
         type: "warning",
         title: "Evening Strategy",
-        message: `${remainingHabits.length} habit${remainingHabits.length > 1 ? "s" : ""} remaining.${vitalityNote} Even a micro-session preserves your momentum.`,
+        message: `${remainingHabits.length} ritual${remainingHabits.length > 1 ? "s" : ""} remaining.${vitalityNote} Even a micro-session preserves your momentum.`,
         priority: 8,
         actionable: true,
         action: "quick_complete",
@@ -193,8 +193,8 @@ export function generateCoachMessages(
     };
     messages.push({
       type: "insight",
-      title: "Balance Training",
-      message: `${statLabels[missingStats[0]]} hasn't been trained yet. Adding a micro-habit rounds out your growth and improves stability score.`,
+      title: "Balance Growth",
+      message: `${statLabels[missingStats[0]]} hasn't been activated yet. Adding a micro-ritual rounds out your power growth and improves stability score.`,
       priority: 4,
     });
   }
@@ -206,7 +206,7 @@ export function generateCoachMessages(
       title: "Rest Protocol",
       message: hasVitalityHabit
         ? "Good sleep directly improves your Vitality stat and sleep consistency score. Both feed into your overall stability."
-        : "Recovery is part of growth. Consider adding a Vitality habit focused on sleep or evening wind-down.",
+        : "Recovery is part of growth. Consider adding a Vitality ritual focused on sleep or evening wind-down.",
       priority: 2,
     });
   }

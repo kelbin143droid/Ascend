@@ -10,7 +10,7 @@ import bgImage from "@assets/generated_images/dark_cinematic_digital_void_backgr
 const navItems = [
   { icon: Home, label: "HOME", path: "/" },
   { icon: Dumbbell, label: "TRAIN", path: "/train" },
-  { icon: Target, label: "HABITS", path: "/habits" },
+  { icon: Target, label: "RITUALS", path: "/habits" },
   { icon: Brain, label: "COACH", path: "/coach" },
 ];
 

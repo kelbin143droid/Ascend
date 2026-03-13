@@ -46,7 +46,7 @@ export function getMotivationalPhrase(level: number): string {
         "Your discipline is exceptional.",
         "The path rewards the persistent.",
         "You have outpaced the masses.",
-        "Excellence is becoming habit.",
+        "Excellence is becoming ritual.",
       ],
     },
     {

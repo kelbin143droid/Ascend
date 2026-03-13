@@ -159,7 +159,7 @@ export function Day3IntroFlow({ visible, onComplete, lastHabitName }: Day3IntroF
                   color: "rgba(147,197,253,0.9)",
                 }}
               >
-                {lastHabitName ? `Repeat ${lastHabitName}` : "Repeat yesterday's habit"}
+                {lastHabitName ? `Repeat ${lastHabitName}` : "Repeat yesterday's ritual"}
                 <span
                   className="block text-[10px] mt-0.5 tracking-wider"
                   style={{ color: "rgba(147,197,253,0.5)" }}

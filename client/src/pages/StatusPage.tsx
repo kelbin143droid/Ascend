@@ -207,7 +207,7 @@ export default function StatusPage() {
     
     const blockToSave = {
       ...editingBlock,
-      name: editingBlock.id.startsWith('custom') ? customName || 'Custom Task' : editingBlock.name,
+      name: editingBlock.id.startsWith('custom') ? customName || 'Custom Quest' : editingBlock.name,
       description: editingBlock.id.startsWith('custom') ? customDescription : editingBlock.description,
     };
     delete (blockToSave as any).isNew;
@@ -216,8 +216,8 @@ export default function StatusPage() {
     
     if (isAdvancedMode && !blockToSave.weeklyGoalId) {
       toast({
-        title: "Not linked to weekly goal",
-        description: "Consider linking tasks to goals for better alignment tracking.",
+        title: "Not linked to weekly mission",
+        description: "Consider linking quests to missions for better alignment tracking.",
       });
     }
     
@@ -584,7 +584,7 @@ export default function StatusPage() {
                     <Input
                       value={customName}
                       onChange={(e) => setCustomName(e.target.value)}
-                      placeholder="Enter task name"
+                      placeholder="Enter quest name"
                       className="h-8 bg-black/50 border-white/10 text-sm"
                       data-testid="input-custom-name"
                     />
@@ -596,7 +596,7 @@ export default function StatusPage() {
                     <textarea
                       value={customDescription}
                       onChange={(e) => setCustomDescription(e.target.value)}
-                      placeholder="What is this task about?"
+                      placeholder="What is this quest about?"
                       className="w-full h-20 px-3 py-2 bg-black/50 border border-white/10 rounded text-sm text-white/90 resize-none"
                       data-testid="input-custom-description"
                     />
@@ -732,7 +732,7 @@ export default function StatusPage() {
                         onValueChange={(v) => setEditingBlock({ ...editingBlock, weeklyGoalId: v })}
                       >
                         <SelectTrigger className="h-7 bg-black/50 border-white/10 text-xs">
-                          <SelectValue placeholder="Select goal..." />
+                          <SelectValue placeholder="Select mission..." />
                         </SelectTrigger>
                         <SelectContent className="bg-black/95 border-white/10">
                           {getGoalsByRole(editingBlock.roleId).map((goal) => (

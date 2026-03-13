@@ -65,7 +65,7 @@ const CATEGORIES: TrainingCategory[] = [
     color: "#f59e0b",
     quickActions: [
       { label: "Wind Down", duration: 5 },
-      { label: "Routine", duration: 15 },
+      { label: "Hunter Path", duration: 15 },
       { label: "Full Recovery", duration: 30 },
     ],
   },
@@ -110,7 +110,7 @@ export default function TrainPage() {
             style={{ color: colors.text }}
             data-testid="text-train-title"
           >
-            Training
+            Power Growth
           </h1>
           {isTrainingMode && (
             <button
@@ -133,7 +133,7 @@ export default function TrainPage() {
             }}
           >
             <p className="text-xs leading-relaxed" style={{ color: colors.textMuted }}>
-              Train stats through real-world actions. Each category maps to habits you complete in daily life.
+              Grow stats through real-world actions. Each category maps to daily rituals you complete in real life.
             </p>
           </div>
         )}

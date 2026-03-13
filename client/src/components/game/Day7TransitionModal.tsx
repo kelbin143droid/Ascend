@@ -89,7 +89,7 @@ export function Day7TransitionModal({ visible, onContinue }: Day7TransitionModal
               className="text-sm leading-[1.8] mb-8 font-medium whitespace-pre-line"
               style={{ color: "rgba(147,197,253,0.85)" }}
             >
-              You are no longer starting —{"\n"}you are now training.
+              You are no longer starting —{"\n"}you are now growing.
             </p>
 
             <button
@@ -102,7 +102,7 @@ export function Day7TransitionModal({ visible, onContinue }: Day7TransitionModal
                 border: "1px solid rgba(59,130,246,0.25)",
               }}
             >
-              Enter Training Mode
+              Enter Power Growth
             </button>
           </div>
         )}

@@ -1,21 +1,30 @@
 # Ascend OS
 
 ## Overview
-Ascend OS is a full-stack self-growth RPG designed as an "Awakened Hunter System." It gamifies real-life habits to motivate personal development. The system progresses users through 5 phases (Stabilization to Sovereignty) based on a stability score and task completion. It aims to transform daily routines into in-game achievements, fostering continuous self-improvement within an immersive experience.
+Ascend OS is a full-stack self-growth RPG designed as an "Awakened Hunter System." It gamifies real-life daily rituals to motivate personal development. The system progresses users through 5 phases (Stabilization to Sovereignty) based on a stability score and quest completion. It aims to transform daily hunter paths into in-game achievements, fostering continuous self-improvement within an immersive experience.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+
+## Terminology
+The app uses RPG-themed language throughout:
+- **Quest** (replaces "Task"): Individual actions or activities to complete
+- **Daily Ritual** (replaces "Habit"): Recurring daily activities linked to stats
+- **Power Growth** (replaces "Training"): The active growth/training mode and process
+- **Focus Session** (replaces "Work Session"): Timed concentration blocks
+- **Hunter Path** (replaces "Routine"): Daily structured sequences of rituals
+- **Mission** (replaces "Goal"): Weekly objectives and targets
 
 ## System Architecture
 
 ### Core Systems
 Ascend OS is built around seven interconnected modular systems:
--   **Phase System**: Manages user progression through 5 distinct phases based on stability, streaks, and habit count.
--   **Stability Score**: A dynamic composite score (0-100) reflecting habit completion, sleep, energy, emotional state, and task timing, influencing progression and visual changes. Supportive tier labels: Building, Developing, Solid, Strong, Excellent.
--   **Task Engine**: Handles habit management, prioritizing tasks, processing completions (XP, badges), and adjusting durations based on stability.
+-   **Phase System**: Manages user progression through 5 distinct phases based on stability, streaks, and daily ritual count.
+-   **Stability Score**: A dynamic composite score (0-100) reflecting daily ritual completion, sleep, energy, emotional state, and quest timing, influencing progression and visual changes. Supportive tier labels: Building, Developing, Solid, Strong, Excellent.
+-   **Quest Engine**: Handles daily ritual management, prioritizing quests, processing completions (XP, badges), and adjusting durations based on stability.
 -   **AI Coach**: A rule-based, internal coaching engine that provides contextual, calm, and strategic suggestions, particularly during setbacks. Actionable steps are prioritized first. `getHomeInsight()` provides a short coach insight for the home screen.
 -   **Visual Evolution**: Adapts in-game visuals (environment, avatar auras, feedback) in real-time according to the user's phase and stability.
--   **Notifications**: Delivers positively framed alerts for milestones, phase changes, stability warnings, and missed habits, avoiding negative language.
+-   **Notifications**: Delivers positively framed alerts for milestones, phase changes, stability warnings, and missed rituals, avoiding negative language.
 -   **Rewards**: Implements behavior-tied rewards like momentum-driven XP, streak bonuses, and badges, focused on intrinsic motivation.
 -   **Flow State System**: Tracks engagement (0-100) based on momentum, today's completion ratio, stacking bonuses, and return bonuses. Labels: "In Flow" (≥70), "Building Flow" (≥30), "Warming Up" (≥1), "Awaiting Action" (0). Located in `server/gameLogic/flowEngine.ts`.
 
@@ -25,32 +34,44 @@ Ascend OS is built around seven interconnected modular systems:
 -   **Data Layer**: PostgreSQL database managed with Drizzle ORM. Zod schemas ensure shared validation between client and server.
 -   **Core Design Principles**:
     -   **Shared Schema**: A single source of truth for types and validation.
-    -   **Stats from Tasks Only**: All progression and stats are derived solely from task completion.
+    -   **Stats from Quests Only**: All progression and stats are derived solely from quest completion.
     -   **Stability-Driven Dynamics**: The stability score is central to progression, regression, and difficulty.
     -   **Positive Reinforcement**: All system feedback is framed positively, even for setbacks.
     -   **Gradual Onboarding**: Concise initial onboarding with progressive feature disclosure over 7 days.
-    -   **Guided Sessions**: Pre-configured sessions for immediate user engagement.
+    -   **Guided Sessions**: Pre-configured focus sessions for immediate user engagement.
 
 ### Navigation
--   **Bottom Nav (4 items)**: HOME (`/`), TRAIN (`/train`), HABITS (`/habits`), COACH (`/coach`)
+-   **Bottom Nav (4 items)**: HOME (`/`), TRAIN (`/train`), RITUALS (`/habits`), COACH (`/coach`)
 -   **Sidebar Menu**: Hamburger icon trigger, slide-out overlay. Items: Profile, Analytics, Progress History, Library, Achievements, Weekly Planning, Calendar, Future Game (3D at `/game3d`).
 
 ### Key Pages
--   **HomePage** (`client/src/pages/HomePage.tsx`): Default landing. Shows Phase Card (phase name + stability label), Flow State label, AI Coach insight card, Growth State indicator, "Start Next Action" primary button, "View Schedule" secondary button. Adapts based on onboarding day and training mode.
--   **TrainPage** (`client/src/pages/TrainPage.tsx`): 4 categories: Strength, Agility, Meditation (Sense), Night Recovery Routine (Vitality). Quick-start buttons per category.
+-   **HomePage** (`client/src/pages/HomePage.tsx`): Default landing. Shows Phase Card (phase name + stability label), Flow State label, AI Coach insight card, Growth State indicator, primary action button, "View Schedule" secondary button. Adapts based on onboarding day and power growth mode.
+-   **TrainPage** (`client/src/pages/TrainPage.tsx`): "Power Growth" header. 4 categories: Strength, Agility, Meditation (Sense), Night Recovery Hunter Path (Vitality). Quick-start buttons per category.
 -   **CoachPage** (`client/src/pages/CoachPage.tsx`): Full AI Coach with insights, chat interface, and contextual suggestions. Deep Coach mode unlocks at Day 6.
--   **HabitsPage** (`client/src/pages/HabitsPage.tsx`): Habit management, creation, completion. Custom habits unlock at Day 3.
+-   **HabitsPage** (`client/src/pages/HabitsPage.tsx`): "Daily Rituals" header. Ritual management, creation, completion. Custom rituals unlock at Day 3.
 -   **StatusPage** (`client/src/pages/StatusPage.tsx`): Schedule view, accessible via "View Schedule" button on home.
+
+### 7-Day Onboarding Progression
+Each day has a unique guided step:
+- **Day 1**: 2-Minute Reset (calm breathing, 120s)
+- **Day 2**: Light Movement (prompts, 150s)
+- **Day 3**: Hydration Check (instant)
+- **Day 4**: Quick Reflection (timer, 60s)
+- **Day 5**: Focus Block (timer, 180s)
+- **Day 6**: Plan Tomorrow (instant)
+- **Day 7**: Weekly Reflection (instant)
+
+Button labels use "Begin" language during onboarding (e.g., "Begin Today's Reset", "Begin Today's Practice").
 
 ### Key Features
 -   **7-Day Behavioral Reflection System**: Progressively introduces features and provides contextual feedback based on user engagement.
 -   **Flow State System (Internal)**: Tracks engagement and momentum (0-100) to influence AI recommendations and visuals.
--   **Momentum Response & Micro-Feedback**: Immediate visual, haptic, and textual feedback upon habit completion.
--   **Guided Session System**: Provides immediate, zero-setup activities like "calm breathing" or "light movement," recording completions without creating permanent habits. Calm Breathing includes ambient background music (Web Audio API sine-wave pad at 174/261/349 Hz) and voice-guided phase cues (SpeechSynthesis API for "Inhale", "Hold", "Exhale").
+-   **Momentum Response & Micro-Feedback**: Immediate visual, haptic, and textual feedback upon daily ritual completion.
+-   **Guided Session System**: Provides immediate, zero-setup activities like "2-Minute Reset" or "Light Movement," recording completions without creating permanent rituals. Calm Breathing includes ambient background music (Web Audio API sine-wave pad at 174/261/349 Hz) and voice-guided phase cues (SpeechSynthesis API for "Inhale", "Hold", "Exhale").
 -   **Growth State System (Unified Progress Indicator)**: A single visible progress concept for the user interface, synthesizing stability, flow, and momentum into qualitative states (e.g., "Beginning," "Thriving rhythm").
 
 ### Progressive Access (Soft-Lock System)
-Features and detailed metrics are progressively unlocked based on `onboardingDay` (1-7), ensuring a gradual introduction to the system's complexity. This includes habit creation, detailed analytics, advanced Coach features, and schedule functionalities.
+Features and detailed metrics are progressively unlocked based on `onboardingDay` (1-7), ensuring a gradual introduction to the system's complexity. This includes ritual creation, detailed analytics, advanced Coach features, and schedule functionalities.
 
 ### Day 6: System Awareness Unlock
 -   **Day6RevealModal** (`client/src/components/game/Day6RevealModal.tsx`): One-time modal revealing hidden progress. Title: "Your Progress Was Never Invisible." Stored in `ascend_day6_reveal_seen` localStorage flag.
@@ -58,19 +79,16 @@ Features and detailed metrics are progressively unlocked based on `onboardingDay
 -   **Coach Unlock**: `DeepCoachView` activates at Day 6 with "System Insight Unlocked" header (one-time, `ascend_deep_coach_seen`) and "Understanding Momentum" explanation section.
 -   **Schedule Unlock**: Editing enabled at Day 6. One-time banner: "You now control your full system." (`ascend_schedule_unlock_seen`).
 -   **Day 6 Completion**: DayCloseOverlay shows "Momentum Activated" / "You showed up again. This is how change compounds." with "Continue to Day 7" button.
--   **Home subtitle**: "Day 6 · System awareness unlocked." with motivation "Your consistency has been building all along."
--   **Backend**: `/api/player/:id/home` returns `momentum` (0-100, rounded from avgMomentum * 100).
 
 ### Day 7: Identity Transition (Onboarding Completion)
--   **Day7TransitionModal** (`client/src/components/game/Day7TransitionModal.tsx`): One-time modal marking graduation into training mode. Title: "You Have Begun." Body describes identity shift from starting to training. Button: "Enter Training Mode." Stored in `ascend_day7_transition_seen` localStorage flag.
--   **Home Screen Transformation**: When `onboardingDay >= 7` or `isOnboardingComplete`, header changes from "Let's start small today." to "Today's Training" with subtext "Consistency builds strength." Beginner prompts and Day N references removed.
--   **Training Status Card**: Shows on HomePage in training mode with "Training Status: Active" label, current streak count, and momentum meter bar.
--   **Train Tab**: Fully enabled with info tooltip ("Train stats through real-world actions.") visible in training mode.
--   **Coach Update**: Shows "Phase 1 Training Guidance" header when in training mode. Coach tone shifts from instructional to advisory.
--   **Day 7 Task**: Button reads "Complete Today's Training" / "Complete [HabitName]" instead of "Start."
--   **Day 7 Completion**: DayCloseOverlay shows "Training Day Complete" / "You kept the promise to yourself today." with "Continue" button. Onboarding does not auto-advance past Day 7.
+-   **Day7TransitionModal** (`client/src/components/game/Day7TransitionModal.tsx`): One-time modal marking graduation into power growth mode. Title: "You Have Begun." Body describes identity shift from starting to growing. Button: "Enter Power Growth." Stored in `ascend_day7_transition_seen` localStorage flag.
+-   **Home Screen Transformation**: When `onboardingDay >= 7` or `isOnboardingComplete`, header changes to "Today's Power Growth" with subtext "Consistency builds strength." Beginner prompts and Day N references removed.
+-   **Power Growth Status Card**: Shows on HomePage in power growth mode with "Power Growth: Active" label, current streak count, and momentum meter bar.
+-   **Train Tab**: Fully enabled with info tooltip ("Grow stats through real-world actions.") visible in power growth mode.
+-   **Coach Update**: Shows "Phase 1 Power Growth Guidance" header when in power growth mode. Coach tone shifts from instructional to advisory.
+-   **Day 7 Completion**: DayCloseOverlay shows "Power Growth Day Complete" / "You kept the promise to yourself today." with "Continue" button. Onboarding does not auto-advance past Day 7.
 -   **State**: `isOnboardingComplete` returned by `/api/player/:id/home` (true when `onboardingDay >= 7` or `player.onboardingCompleted === 1`). `streak` also returned.
--   **Animation Style**: Slow fade transitions, subtle glow on Training Status card. No confetti or gamified rewards.
+-   **Animation Style**: Slow fade transitions, subtle glow on Power Growth Status card. No confetti or gamified rewards.
 
 ## External Dependencies
 

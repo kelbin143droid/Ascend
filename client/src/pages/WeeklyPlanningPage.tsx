@@ -57,7 +57,7 @@ export default function WeeklyPlanningPage() {
     const goalsToCreate = goalInputs.filter(g => g.title.trim());
     
     if (goalsToCreate.length === 0) {
-      setError("Please enter at least one goal to continue.");
+      setError("Please enter at least one mission to continue.");
       return;
     }
 
@@ -74,7 +74,7 @@ export default function WeeklyPlanningPage() {
       }
       navigate("/");
     } catch (err) {
-      setError("Failed to save goals. Please try again.");
+      setError("Failed to save missions. Please try again.");
       console.error("Failed to create goals:", err);
     } finally {
       setIsSubmitting(false);
@@ -160,7 +160,7 @@ export default function WeeklyPlanningPage() {
                   <Input
                     value={input.title}
                     onChange={(e) => updateGoalInput(input.roleId, "title", e.target.value)}
-                    placeholder="What's your main goal this week?"
+                    placeholder="What's your main mission this week?"
                     className="bg-black/50 border-white/10"
                     data-testid={`input-goal-${input.roleId}`}
                   />
