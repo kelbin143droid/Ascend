@@ -4,7 +4,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useMemo, useEffect } from "react";
-import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy, Activity } from "lucide-react";
+import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy, Activity, Clock, Calendar, BarChart3 } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
@@ -40,6 +40,82 @@ const RECOMMENDED_HABITS = [
   { id: "hydration-check", name: "Hydration Check", duration: "", durationText: "a moment", icon: Droplets, stat: "vitality" },
   { id: "quick-reflection", name: "Quick Reflection", duration: "1 min", durationText: "1 minute", icon: Brain, stat: "sense" },
 ];
+
+interface OnboardingStep {
+  sessionId: string;
+  name: string;
+  description: string;
+  coachMessage: string;
+  duration: string;
+  icon: typeof Wind;
+  buttonLabel: string;
+}
+
+const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
+  1: {
+    sessionId: "calm-breathing",
+    name: "2-Minute Reset",
+    description: "Slow breathing to reset your system.",
+    coachMessage: "Begin with one small action.",
+    duration: "2 minutes",
+    icon: Wind,
+    buttonLabel: "Begin Today's Reset",
+  },
+  2: {
+    sessionId: "light-movement",
+    name: "Light Movement",
+    description: "Move your body for 3–5 minutes.",
+    coachMessage: "Small movement wakes the system.",
+    duration: "3–5 minutes",
+    icon: Heart,
+    buttonLabel: "Begin Today's Moment",
+  },
+  3: {
+    sessionId: "hydration-check",
+    name: "Hydration Check",
+    description: "Drink water and check in with your body.",
+    coachMessage: "Small signals matter.",
+    duration: "1 minute",
+    icon: Droplets,
+    buttonLabel: "Begin Today's Moment",
+  },
+  4: {
+    sessionId: "quick-reflection",
+    name: "Quick Reflection",
+    description: "Answer a short reflection question.",
+    coachMessage: "What helped you show up today?",
+    duration: "1 minute",
+    icon: Brain,
+    buttonLabel: "Begin Today's Practice",
+  },
+  5: {
+    sessionId: "focus-block",
+    name: "Focus Block",
+    description: "Spend 3 minutes in uninterrupted focus.",
+    coachMessage: "Focus builds momentum.",
+    duration: "3 minutes",
+    icon: Clock,
+    buttonLabel: "Begin Today's Practice",
+  },
+  6: {
+    sessionId: "plan-tomorrow",
+    name: "Plan Tomorrow",
+    description: "Choose a time for tomorrow's practice.",
+    coachMessage: "Structure protects consistency.",
+    duration: "1 minute",
+    icon: Calendar,
+    buttonLabel: "Begin Today's Step",
+  },
+  7: {
+    sessionId: "weekly-reflection",
+    name: "Weekly Reflection",
+    description: "Review your first week.",
+    coachMessage: "You showed up for 7 days. Consistency builds strength.",
+    duration: "2 minutes",
+    icon: BarChart3,
+    buttonLabel: "Begin Reflection",
+  },
+};
 
 const STAT_COLORS: Record<string, string> = {
   strength: "#ef4444",
@@ -199,8 +275,8 @@ export default function HomePage() {
   const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
   const primaryAccent = STAT_COLORS[selectedHabit.stat] || colors.primary;
 
-  const isTrainingMode = onboardingDay >= 7 || homeData?.isOnboardingComplete;
-  const isEarlyOnboarding = onboardingDay <= 3 && !hasHabits;
+  const isTrainingMode = (onboardingDay >= 7 && homeData?.isOnboardingComplete) || (homeData?.isOnboardingComplete && hasHabits);
+  const isOnboardingFlow = onboardingDay <= 7 && !isTrainingMode;
   const isOnboarding = !isTrainingMode;
 
   const handleStart = () => {
@@ -215,7 +291,11 @@ export default function HomePage() {
     setSelectedHabitId(habitId);
   };
 
-  if (isEarlyOnboarding) {
+  if (isOnboardingFlow) {
+    const step = ONBOARDING_STEPS[onboardingDay] || ONBOARDING_STEPS[1];
+    const StepIcon = step.icon;
+    const reflection = DAILY_REFLECTIONS[onboardingDay] || DAILY_REFLECTIONS[1];
+
     return (
       <SystemLayout>
         <style>{`
@@ -235,10 +315,40 @@ export default function HomePage() {
         >
           <div className="pt-2">
             <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-              Today's Training
+              Day {onboardingDay}
             </p>
             <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
-              Consistency builds strength.
+              {reflection.subtitle}
+            </p>
+          </div>
+
+          <div
+            data-testid="onboarding-step-card"
+            className="rounded-xl px-5 py-4"
+            style={{
+              backgroundColor: `${colors.primary}06`,
+              border: `1px solid ${colors.primary}12`,
+              animation: "fadeSlideIn 0.4s ease-out",
+            }}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: `${colors.primary}12` }}
+              >
+                <StepIcon size={16} style={{ color: colors.primary }} />
+              </div>
+              <div>
+                <p className="text-sm font-display font-medium" style={{ color: colors.text }}>
+                  {step.name}
+                </p>
+                <p className="text-[10px]" style={{ color: colors.textMuted }}>
+                  {step.duration}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}aa` }}>
+              {step.description}
             </p>
           </div>
 
@@ -254,7 +364,7 @@ export default function HomePage() {
               Coach
             </p>
             <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
-              Begin with one small action.
+              {step.coachMessage}
             </p>
           </div>
 
@@ -263,13 +373,13 @@ export default function HomePage() {
             className="text-xs text-center tracking-wide"
             style={{ color: `${colors.textMuted}99` }}
           >
-            Takes only 2 minutes.
+            {reflection.motivation}
           </p>
 
           <div className="flex flex-col items-center gap-1">
             <button
               data-testid="button-start"
-              onClick={() => setLocation("/guided-session/calm-breathing")}
+              onClick={() => setLocation(`/guided-session/${step.sessionId}`)}
               className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
               style={{
                 backgroundColor: colors.primary,
@@ -279,7 +389,7 @@ export default function HomePage() {
             >
               <span className="flex items-center justify-center gap-2">
                 <Play size={16} />
-                Complete Today's Training
+                {step.buttonLabel}
               </span>
             </button>
           </div>

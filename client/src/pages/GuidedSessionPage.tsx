@@ -8,7 +8,7 @@ import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
 import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
 
-type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection";
+type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow" | "weekly-reflection";
 
 interface SessionConfig {
   id: SessionId;
@@ -22,7 +22,7 @@ interface SessionConfig {
 const SESSIONS: Record<SessionId, SessionConfig> = {
   "calm-breathing": {
     id: "calm-breathing",
-    title: "Calm Breathing",
+    title: "2-Minute Reset",
     stat: "sense",
     durationSeconds: 120,
     icon: Wind,
@@ -51,6 +51,30 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
     durationSeconds: 60,
     icon: Brain,
     type: "timer",
+  },
+  "focus-block": {
+    id: "focus-block",
+    title: "Focus Block",
+    stat: "sense",
+    durationSeconds: 180,
+    icon: Brain,
+    type: "timer",
+  },
+  "plan-tomorrow": {
+    id: "plan-tomorrow",
+    title: "Plan Tomorrow",
+    stat: "vitality",
+    durationSeconds: 0,
+    icon: Brain,
+    type: "instant",
+  },
+  "weekly-reflection": {
+    id: "weekly-reflection",
+    title: "Weekly Reflection",
+    stat: "sense",
+    durationSeconds: 0,
+    icon: Brain,
+    type: "instant",
   },
 };
 
@@ -279,25 +303,49 @@ function PromptSession({ elapsed, accentColor }: { elapsed: number; accentColor:
   );
 }
 
-function InstantSession({ accentColor, onDone }: { accentColor: string; onDone: () => void }) {
+const INSTANT_CONTENT: Record<string, { icon: typeof Wind; heading: string; body: string; button: string }> = {
+  "hydration-check": {
+    icon: Droplets,
+    heading: "Drink a full glass of water.",
+    body: "Take your time. Hydration supports everything.",
+    button: "Done",
+  },
+  "plan-tomorrow": {
+    icon: Brain,
+    heading: "Choose a time for tomorrow's practice.",
+    body: "Structure protects consistency. Pick a moment that works for you.",
+    button: "I've chosen a time",
+  },
+  "weekly-reflection": {
+    icon: Brain,
+    heading: "Review your first week.",
+    body: "You showed up for 7 days. Consistency builds strength.",
+    button: "Complete reflection",
+  },
+};
+
+function InstantSession({ sessionId, accentColor, onDone }: { sessionId: string; accentColor: string; onDone: () => void }) {
+  const content = INSTANT_CONTENT[sessionId] || INSTANT_CONTENT["hydration-check"];
+  const Icon = content.icon;
+
   return (
     <div className="flex flex-col items-center gap-8 px-4">
       <div
         className="w-16 h-16 rounded-full flex items-center justify-center"
         style={{ backgroundColor: `${accentColor}15` }}
       >
-        <Droplets size={28} style={{ color: accentColor }} />
+        <Icon size={28} style={{ color: accentColor }} />
       </div>
       <div className="text-center space-y-3">
         <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.85)" }}>
-          Drink a full glass of water.
+          {content.heading}
         </p>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
-          Take your time. Hydration supports everything.
+          {content.body}
         </p>
       </div>
       <button
-        data-testid="button-hydration-done"
+        data-testid="button-instant-done"
         onClick={onDone}
         className="mt-4 px-10 py-3 rounded-xl font-display text-sm uppercase tracking-[0.12em] transition-all active:scale-[0.97]"
         style={{
@@ -306,16 +354,28 @@ function InstantSession({ accentColor, onDone }: { accentColor: string; onDone: 
           color: `${accentColor}dd`,
         }}
       >
-        Done
+        {content.button}
       </button>
     </div>
   );
 }
 
-function TimerSession({ elapsed, total, accentColor }: { elapsed: number; total: number; accentColor: string }) {
+const TIMER_CONTENT: Record<string, { heading: string; body: string }> = {
+  "quick-reflection": {
+    heading: "Close your eyes. Reflect on one thing you're grateful for.",
+    body: "Let thoughts settle. No need to force anything.",
+  },
+  "focus-block": {
+    heading: "Focus on one thing. Let everything else go.",
+    body: "3 minutes of uninterrupted attention. No switching.",
+  },
+};
+
+function TimerSession({ sessionId, elapsed, total, accentColor }: { sessionId: string; elapsed: number; total: number; accentColor: string }) {
   const remaining = Math.max(0, total - elapsed);
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
+  const content = TIMER_CONTENT[sessionId] || TIMER_CONTENT["quick-reflection"];
 
   return (
     <div className="flex flex-col items-center gap-8 px-4">
@@ -327,10 +387,10 @@ function TimerSession({ elapsed, total, accentColor }: { elapsed: number; total:
       </div>
       <div className="text-center space-y-3">
         <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.85)" }}>
-          Close your eyes. Reflect on one thing you're grateful for.
+          {content.heading}
         </p>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
-          Let thoughts settle. No need to force anything.
+          {content.body}
         </p>
       </div>
       <p
@@ -525,7 +585,7 @@ export default function GuidedSessionPage() {
         {state === "countdown" && (
           <div className="flex flex-col items-center gap-6">
             <p className="text-sm tracking-wide" style={{ color: "rgba(255,255,255,0.5)" }}>
-              Get comfortable. Session starts in...
+              Get comfortable. Starting in...
             </p>
             <p
               data-testid="countdown-number"
@@ -547,10 +607,10 @@ export default function GuidedSessionPage() {
           <PromptSession elapsed={elapsed} accentColor={accentColor} />
         )}
         {state === "active" && session.type === "instant" && (
-          <InstantSession accentColor={accentColor} onDone={handleInstantDone} />
+          <InstantSession sessionId={session.id} accentColor={accentColor} onDone={handleInstantDone} />
         )}
         {state === "active" && session.type === "timer" && (
-          <TimerSession elapsed={elapsed} total={session.durationSeconds} accentColor={accentColor} />
+          <TimerSession sessionId={session.id} elapsed={elapsed} total={session.durationSeconds} accentColor={accentColor} />
         )}
         {state === "completing" && (
           <div className="flex flex-col items-center gap-4" style={{ animation: "gsDoneGlow 0.5s ease-out" }}>
@@ -562,7 +622,7 @@ export default function GuidedSessionPage() {
               }}
             />
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
-              Recording progress...
+              Saving your progress...
             </p>
           </div>
         )}
@@ -573,10 +633,10 @@ export default function GuidedSessionPage() {
               style={{ background: `radial-gradient(circle, ${accentColor}20 0%, transparent 70%)` }}
             />
             <p className="text-lg font-display font-medium" style={{ color: "rgba(255,255,255,0.9)" }}>
-              Session complete.
+              Step complete.
             </p>
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-              Action completed. Momentum increased.
+              You showed up. Momentum begins.
             </p>
             <button
               data-testid="button-return-home"
