@@ -200,6 +200,7 @@ export default function HomePage() {
   const primaryAccent = STAT_COLORS[selectedHabit.stat] || colors.primary;
 
   const isTrainingMode = onboardingDay >= 7 || homeData?.isOnboardingComplete;
+  const isEarlyOnboarding = onboardingDay <= 3 && !hasHabits;
   const isOnboarding = !isTrainingMode;
 
   const handleStart = () => {
@@ -214,7 +215,7 @@ export default function HomePage() {
     setSelectedHabitId(habitId);
   };
 
-  if (isOnboarding) {
+  if (isEarlyOnboarding) {
     return (
       <SystemLayout>
         <style>{`
