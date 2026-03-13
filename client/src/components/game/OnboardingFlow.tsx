@@ -30,7 +30,7 @@ export const LEARN_CONTENT = [
     title: "Stats Reflect Reality",
     lines: [
       "Every stat is tied to a real action.",
-      "Strength grows from physical practice, Sense from mindfulness, Agility from movement, Vitality from recovery.",
+      "Strength grows from physical power growth, Sense from mindfulness, Agility from movement, Vitality from recovery.",
       "There are no shortcuts or manual upgrades. Consistency builds power.",
     ],
   },
@@ -47,8 +47,8 @@ export const LEARN_CONTENT = [
     title: "Design Your Day",
     lines: [
       "The Sectograph displays your day as a circular timeline.",
-      "Add steps, set times, and begin your practice to grow your stats.",
-      "Each completed step feeds into your Flow State.",
+      "Add quests, set times, and complete missions to grow your stats.",
+      "Each completed quest feeds into your Flow State.",
     ],
   },
 ];

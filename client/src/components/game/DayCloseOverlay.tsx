@@ -21,7 +21,7 @@ const DAY_MESSAGES: Record<number, { phase1: string; phase2: string; footer: str
   },
   3: {
     phase1: "Day 3 complete.",
-    phase2: "A practice is forming.\nThis is becoming yours.",
+    phase2: "A hunter path is forming.\nThis is becoming yours.",
     footer: "Tomorrow brings new possibilities.",
     button: "See you Day 4",
   },
@@ -44,7 +44,7 @@ const DAY_MESSAGES: Record<number, { phase1: string; phase2: string; footer: str
     button: "Continue to Day 7",
   },
   7: {
-    phase1: "Day 7 complete.",
+    phase1: "Power Growth Day Complete",
     phase2: "You kept the promise\nto yourself today.",
     footer: "Your journey continues from here.",
     button: "Continue",
