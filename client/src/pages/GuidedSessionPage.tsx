@@ -97,8 +97,6 @@ function useBreathingAudio(active: boolean) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const oscillatorsRef = useRef<OscillatorNode[]>([]);
   const lfoRef = useRef<OscillatorNode | null>(null);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
-
   useEffect(() => {
     if (!active) return;
 
@@ -137,12 +135,6 @@ function useBreathingAudio(active: boolean) {
       oscillatorsRef.current = oscs;
     } catch {}
 
-    const audio = new Audio("/assets/breathing.mp3");
-    audio.loop = true;
-    audio.volume = 0.85;
-    audioElRef.current = audio;
-    audio.play().catch(() => {});
-
     return () => {
       try {
         oscillatorsRef.current.forEach(o => { try { o.stop(); } catch {} });
@@ -152,12 +144,6 @@ function useBreathingAudio(active: boolean) {
       oscillatorsRef.current = [];
       lfoRef.current = null;
       audioCtxRef.current = null;
-
-      if (audioElRef.current) {
-        audioElRef.current.pause();
-        audioElRef.current.src = "";
-        audioElRef.current = null;
-      }
     };
   }, [active]);
 }
@@ -169,7 +155,10 @@ function getVoice(): SpeechSynthesisVoice | null {
   const voices = window.speechSynthesis.getVoices();
   if (voices.length === 0) return null;
   cachedVoice =
-    voices.find(v => v.lang.startsWith("en") && /samantha|karen|female|fiona|moira|tessa/i.test(v.name)) ||
+    voices.find(v => v.lang.startsWith("en") && /samantha/i.test(v.name)) ||
+    voices.find(v => v.lang.startsWith("en") && /fiona|moira|tessa|karen|victoria|zoe|serena/i.test(v.name)) ||
+    voices.find(v => v.lang.startsWith("en") && /female|woman/i.test(v.name)) ||
+    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("google") && /us|uk/i.test(v.name)) ||
     voices.find(v => v.lang.startsWith("en-") && !v.localService) ||
     voices.find(v => v.lang.startsWith("en")) ||
     voices[0];
@@ -183,9 +172,9 @@ function speakPhase(label: string) {
 
     const speak = () => {
       const utterance = new SpeechSynthesisUtterance(label);
-      utterance.rate = 1.2;
-      utterance.pitch = 0.85;
-      utterance.volume = 0.6;
+      utterance.rate = 0.9;
+      utterance.pitch = 0.95;
+      utterance.volume = 0.55;
       const voice = getVoice();
       if (voice) utterance.voice = voice;
       window.speechSynthesis.speak(utterance);
