@@ -36,63 +36,60 @@ export const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export function buildPhase1Activities(dayNumber: number): ActivityDefinition[] {
-  const pushupReps = 5 + Math.floor((dayNumber - 1) / 2);
-  const plankSeconds = 15 + Math.floor((dayNumber - 1) / 2) * 5;
-  const isEvenDay = dayNumber % 2 === 0;
+  const pushupReps = 5 + Math.floor((dayNumber - 1) / 3);
+  const cardioSeconds = 30 + Math.floor((dayNumber - 1) / 3) * 5;
+  const crunchReps = 10 + Math.floor((dayNumber - 1) / 3) * 2;
 
   return [
     {
       id: "phase1_strength",
-      activityName: "Strength",
+      activityName: "Strength Micro Circuit",
       category: "strength",
       stat: "strength",
-      duration: 90,
+      duration: 120,
       xpReward: 0,
       color: CATEGORY_COLORS.strength,
       steps: [
         {
+          id: "intro",
+          type: "instruction",
+          label: "Get Ready",
+          instruction: "Quick body activation. Follow the steps.",
+        },
+        {
           id: "pushups",
           type: "rep",
           label: "Push-ups",
-          instruction: `Do ${pushupReps} push-ups at your own pace. Knee push-ups are fine.`,
+          instruction: `Do ${pushupReps} push-ups at your own pace. Knee push-ups are perfectly fine.`,
           repCount: pushupReps,
           repLabel: "push-ups",
         },
-        isEvenDay
-          ? {
-              id: "plank",
-              type: "timer",
-              label: "Plank Hold",
-              instruction: `Hold a plank for ${plankSeconds} seconds. Drop to knees if needed.`,
-              durationSeconds: plankSeconds,
-            }
-          : {
-              id: "crunches",
-              type: "rep",
-              label: "Core Work",
-              instruction: "Do 10 slow crunches. Focus on control, not speed.",
-              repCount: 10,
-              repLabel: "slow crunches",
-            },
-        isEvenDay
-          ? {
-              id: "jog",
-              type: "timer",
-              label: "Cardio",
-              instruction: "Jog in place for 30 seconds. Keep it light.",
-              durationSeconds: 30,
-            }
-          : {
-              id: "walk",
-              type: "timer",
-              label: "Cardio",
-              instruction: "Take a 1-minute brisk walk around your space.",
-              durationSeconds: 60,
-            },
+        {
+          id: "cardio",
+          type: "timer",
+          label: "Cardio",
+          instruction: `Jog in place. Keep it light and steady.`,
+          durationSeconds: cardioSeconds,
+        },
+        {
+          id: "abs",
+          type: "rep",
+          label: "Abs",
+          instruction: `Do ${crunchReps} crunches. Slow and controlled.`,
+          repCount: crunchReps,
+          repLabel: "crunches",
+        },
+        {
+          id: "rest",
+          type: "timer",
+          label: "Rest",
+          instruction: "Catch your breath. Shake out your arms and legs.",
+          durationSeconds: 20,
+        },
         {
           id: "strength_done",
           type: "completion",
-          label: "Strength Complete",
+          label: "Circuit Complete",
           instruction: "Activity complete.\nSmall actions build momentum.",
         },
       ],
