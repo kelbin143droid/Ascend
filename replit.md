@@ -34,6 +34,14 @@ Ascend OS is built around seven interconnected modular systems:
 -   **All tabs unlocked**: No day-gating on navigation; all 4 bottom tabs available from start.
 -   **Implementation**: `server/gameLogic/levelSystem.ts` contains all formulas. `storage.ts` gainExp uses scaled HP/MP + rank. Routes derive stats from per-stat XP levels.
 
+### Guided Activity Engine
+Reusable engine that runs any training activity through a common step-based system. New activities are created by defining steps in `ActivityDefinition` objects — no new code needed per activity.
+-   **Step Types**: `instruction` (text display), `timer` (countdown), `rep` (repetition counter with count/label), `breath` (animated breathing circle with configurable inhale/hold/exhale timing), `completion` (final screen with XP claim).
+-   **Activity Flow**: Load definition → run steps sequentially → show progress bar → complete → grant XP via `complete-guided-session` → record to Sectograph timeline via `record-activity`.
+-   **Phase 1 Activities**: Strength (push-ups + core + cardio), Agility (neck rolls + shoulder rolls + forward bend), Calm Breathing (4-2-6 pattern, 2 min), Vitality Check (hydration + sleep). Micro-progression: push-ups +1 every 2 days, plank +5s every 2 days.
+-   **Files**: Engine component at `client/src/components/game/GuidedActivityEngine.tsx`, activity definitions at `client/src/lib/activityEngine.ts`, TrainPage at `client/src/pages/TrainPage.tsx`.
+-   **API**: `POST /api/player/:id/record-activity` adds a schedule entry to the player's Sectograph timeline with timestamp, stat color, category, and XP earned.
+
 ### Language Evolution System
 The application features a 4-stage Language Evolution System that gradually introduces RPG terminology as the user progresses:
 -   **Stage 1 (Onboarding)**: Simple, non-RPG language.

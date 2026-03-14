@@ -328,6 +328,59 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/record-activity", async (req, res) => {
+    try {
+      const schema = z.object({
+        activityId: z.string(),
+        activityName: z.string(),
+        category: z.string(),
+        stat: z.string(),
+        durationMinutes: z.number().min(1),
+        xpEarned: z.number().min(0),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid activity data" });
+      }
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const now = new Date();
+      const startHour = now.getHours();
+      const startMinute = now.getMinutes();
+      const endMinutes = startHour * 60 + startMinute + parsed.data.durationMinutes;
+      const endHour = Math.floor(endMinutes / 60) % 24;
+      const endMinute = endMinutes % 60;
+
+      const statColors: Record<string, string> = {
+        strength: "#ef4444",
+        agility: "#22c55e",
+        sense: "#3b82f6",
+        vitality: "#f59e0b",
+      };
+
+      const scheduleEntry = {
+        id: `activity_${parsed.data.activityId}_${Date.now()}`,
+        name: parsed.data.activityName,
+        description: `${parsed.data.category} training · +${parsed.data.xpEarned} XP`,
+        date: now.toISOString().split("T")[0],
+        startHour,
+        startMinute,
+        endHour,
+        endMinute,
+        color: statColors[parsed.data.stat] || "#8b5cf6",
+        isSystemTask: true,
+      };
+
+      const schedule = [...(player.schedule || []), scheduleEntry];
+      await storage.updatePlayer(req.params.id, { schedule });
+
+      res.json({ success: true, entry: scheduleEntry });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to record activity" });
+    }
+  });
+
   app.post("/api/player/:id/complete-session", async (req, res) => {
     try {
       const sessionSchema = z.object({
