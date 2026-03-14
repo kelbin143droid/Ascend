@@ -14,6 +14,7 @@ import { suggestHabitStacks } from "./gameLogic/habitProgression";
 import { calculateHabitXP, checkDailyBonus, checkWeeklyBonus, checkBadgeEligibility } from "./gameLogic/rewardEngine";
 import { generateCoachMessages, getDurationSuggestion, getMotivationNudge, handleCoachChat, getHomeInsight } from "./gameLogic/aiCoach";
 import { extractActionEvents, detectRhythmWindows, generateRhythmInsights, suggestFocusInFreeWindows, getCoachRhythmComment, type RhythmWindow, type RhythmInsight } from "./gameLogic/rhythmEngine";
+import { generatePlacementSuggestions, getCoachPlacementComment, type PlacementSuggestion, type FreeTimeWindow } from "./gameLogic/habitPlacement";
 import { calculateMomentumUpdate, getMomentumTier, shouldTriggerRecovery } from "./gameLogic/momentumEngine";
 import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "./gameLogic/difficultyScaler";
 import { checkPhaseEligibility, getStatCapForPhase, getPhaseVisualConfig, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
@@ -2026,6 +2027,70 @@ export async function registerRoutes(
       res.json({ windows, insights, totalEvents: events.length });
     } catch (error) {
       res.status(500).json({ error: "Failed to detect rhythm" });
+    }
+  });
+
+  app.get("/api/player/:id/habit-placement-suggestions", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const stat = req.query.stat as string | undefined;
+      const duration = parseInt(req.query.duration as string) || 3;
+
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+      const events = extractActionEvents(allCompletions);
+      const rhythmWindows = detectRhythmWindows(events);
+
+      const schedule = [
+        { startHour: 22, endHour: 6 },
+        { startHour: 9, endHour: 12 },
+        { startHour: 13, endHour: 17 },
+      ];
+
+      const freeWindows: FreeTimeWindow[] = [];
+      const occupied = schedule.map(s => ({
+        start: s.startHour * 60,
+        end: s.endHour * 60 + (s.endHour < s.startHour ? 1440 : 0),
+      }));
+
+      const checkpoints = [0, ...schedule.flatMap(s => [s.startHour * 60, s.endHour * 60]), 1440]
+        .sort((a, b) => a - b)
+        .filter((v, i, arr) => arr.indexOf(v) === i);
+
+      for (let i = 0; i < checkpoints.length - 1; i++) {
+        const gapStart = checkpoints[i];
+        const gapEnd = checkpoints[i + 1];
+        const gapDuration = gapEnd - gapStart;
+
+        if (gapDuration < 30) continue;
+
+        const isOccupied = occupied.some(o => {
+          const occStart = o.start;
+          const occEnd = o.end > 1440 ? o.end - 1440 : o.end;
+          if (o.end > 1440) {
+            return gapStart < occEnd || gapEnd > occStart;
+          }
+          return gapStart >= occStart && gapEnd <= occEnd;
+        });
+
+        if (!isOccupied) {
+          freeWindows.push({
+            startHour: Math.floor(gapStart / 60) % 24,
+            startMinute: gapStart % 60,
+            endHour: Math.floor(gapEnd / 60) % 24,
+            endMinute: gapEnd % 60,
+            durationMinutes: gapDuration,
+          });
+        }
+      }
+
+      const suggestions = generatePlacementSuggestions(rhythmWindows, freeWindows, stat, duration);
+      const coachComment = getCoachPlacementComment(suggestions);
+
+      res.json({ suggestions, coachComment });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate placement suggestions" });
     }
   });
 

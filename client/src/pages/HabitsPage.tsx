@@ -28,6 +28,8 @@ import {
   Award,
   ChevronRight,
   X,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import type { Habit, Badge } from "@shared/schema";
 import { TaskCompletionBurst, StabilityShift } from "@/components/game/MicroRewards";
@@ -49,6 +51,17 @@ const STAT_LABELS: Record<string, string> = {
 };
 
 const DIFFICULTY_LABELS = ["", "Micro", "Light", "Standard", "Intense", "Master"];
+
+interface PlacementSuggestionData {
+  id: string;
+  suggestedHour: number;
+  suggestedMinute: number;
+  durationMinutes: number;
+  rhythmActionType: string;
+  confidenceScore: number;
+  reason: string;
+  rhythmLabel: string;
+}
 
 interface CompletionResult {
   habit: Habit;
@@ -105,6 +118,8 @@ export default function HabitsPage() {
   const [formStat, setFormStat] = useState<string>("strength");
   const [formDuration, setFormDuration] = useState("3");
   const [formStackAfter, setFormStackAfter] = useState<string>("");
+  const [acceptedSuggestion, setAcceptedSuggestion] = useState<PlacementSuggestionData | null>(null);
+  const [showSuggestionBanner, setShowSuggestionBanner] = useState(false);
 
   const [burstVisible, setBurstVisible] = useState(false);
   const [burstStat, setBurstStat] = useState("strength");
@@ -146,6 +161,21 @@ export default function HabitsPage() {
     },
     enabled: !!player?.id,
   });
+
+  const { data: placementData } = useQuery<{ suggestions: PlacementSuggestionData[]; coachComment: string | null }>({
+    queryKey: ["habit-placement", player?.id, formStat, formDuration],
+    queryFn: async () => {
+      if (!player?.id) return { suggestions: [], coachComment: null };
+      const res = await fetch(`/api/player/${player.id}/habit-placement-suggestions?stat=${formStat}&duration=${parseInt(formDuration) || 3}`);
+      if (!res.ok) return { suggestions: [], coachComment: null };
+      return res.json();
+    },
+    enabled: !!player?.id && showAddForm && !editingHabit,
+    staleTime: 30000,
+  });
+
+  const placementSuggestions = placementData?.suggestions ?? [];
+  const placementCoachComment = placementData?.coachComment ?? null;
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["habits"] });
@@ -238,12 +268,15 @@ export default function HabitsPage() {
     setFormStat("strength");
     setFormDuration("3");
     setFormStackAfter("");
+    setAcceptedSuggestion(null);
+    setShowSuggestionBanner(false);
   };
 
   const openAddForm = () => {
     resetForm();
     setEditingHabit(null);
     setShowAddForm(true);
+    setShowSuggestionBanner(true);
   };
 
   const openEditForm = (habit: Habit) => {
@@ -669,6 +702,97 @@ export default function HabitsPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {!editingHabit && showSuggestionBanner && placementSuggestions.length > 0 && (
+                <div
+                  className="rounded-lg overflow-hidden"
+                  style={{ border: "1px solid rgba(34,211,238,0.2)", backgroundColor: "rgba(34,211,238,0.04)" }}
+                  data-testid="placement-suggestions"
+                >
+                  <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(34,211,238,0.1)" }}>
+                    <MapPin size={11} style={{ color: "rgba(34,211,238,0.7)" }} />
+                    <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: "rgba(34,211,238,0.7)" }}>
+                      Suggested Times
+                    </span>
+                    <button
+                      onClick={() => setShowSuggestionBanner(false)}
+                      className="ml-auto"
+                      data-testid="button-dismiss-suggestions"
+                    >
+                      <X size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
+                    </button>
+                  </div>
+                  <div className="p-2 space-y-1.5">
+                    {placementSuggestions.map((s) => {
+                      const h = s.suggestedHour % 12 || 12;
+                      const ampm = s.suggestedHour < 12 ? "AM" : "PM";
+                      const timeStr = `${h}:${String(s.suggestedMinute).padStart(2, "0")} ${ampm}`;
+                      const isAccepted = acceptedSuggestion?.id === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            if (isAccepted) {
+                              setAcceptedSuggestion(null);
+                            } else {
+                              setAcceptedSuggestion(s);
+                            }
+                          }}
+                          className="w-full text-left rounded-md px-3 py-2.5 transition-all"
+                          style={{
+                            backgroundColor: isAccepted ? "rgba(34,211,238,0.12)" : "rgba(255,255,255,0.02)",
+                            border: isAccepted ? "1px solid rgba(34,211,238,0.35)" : "1px solid transparent",
+                          }}
+                          data-testid={`button-accept-suggestion-${s.id}`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <Clock size={10} style={{ color: "rgba(34,211,238,0.6)" }} />
+                              <span className="text-xs font-mono font-bold" style={{ color: "rgba(34,211,238,0.9)" }}>
+                                {timeStr}
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(34,211,238,0.1)", color: "rgba(34,211,238,0.6)" }}>
+                                {s.rhythmLabel}
+                              </span>
+                            </div>
+                            {isAccepted && (
+                              <Check size={12} style={{ color: "rgba(34,211,238,0.8)" }} />
+                            )}
+                          </div>
+                          <p className="text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                            {s.reason}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className="h-1 rounded-full flex-1" style={{ backgroundColor: "rgba(34,211,238,0.1)" }}>
+                              <div className="h-full rounded-full" style={{ width: `${Math.round(s.confidenceScore * 100)}%`, backgroundColor: "rgba(34,211,238,0.4)" }} />
+                            </div>
+                            <span className="text-[8px] font-mono" style={{ color: "rgba(255,255,255,0.3)" }}>
+                              {Math.round(s.confidenceScore * 100)}% match
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {placementCoachComment && (
+                    <div className="px-3 pb-2.5">
+                      <div className="flex items-start gap-2 px-2.5 py-2 rounded-md" style={{ backgroundColor: "rgba(34,211,238,0.03)" }}>
+                        <Sparkles size={10} className="flex-shrink-0 mt-0.5" style={{ color: "rgba(34,211,238,0.5)" }} />
+                        <p className="text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+                          {placementCoachComment}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {acceptedSuggestion && (
+                    <div className="px-3 pb-2.5">
+                      <p className="text-[9px] text-center" style={{ color: "rgba(34,211,238,0.5)" }}>
+                        Placement accepted — this habit will be linked to your rhythm.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-2 pt-2">
                 <Button

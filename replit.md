@@ -18,7 +18,8 @@ Ascend OS is built around seven interconnected modular systems:
 -   **Notifications**: Delivers positively framed alerts for milestones, phase changes, and warnings.
 -   **Rewards**: Implements behavior-tied rewards like momentum-driven XP, streak bonuses, and badges for intrinsic motivation.
 -   **Flow State System**: Tracks user engagement (0-100) based on momentum, completion ratio, and bonuses.
--   **Rhythm Detection Engine**: Analyzes completion history to detect recurring behavioral windows and provides natural language insights.
+-   **Rhythm Detection Engine**: Analyzes completion history to detect recurring behavioral windows using 60-minute bucketing with recency weighting. Outputs `RhythmWindow` and `RhythmInsight`. Integrates with Sectograph (glow arcs), SectographPage (insight cards), and AI Coach chat. Located in `server/gameLogic/rhythmEngine.ts`. API: `GET /api/player/:id/rhythm`.
+-   **Adaptive Habit Placement System (AHPS)**: Suggests optimal times for new habits by cross-referencing RhythmWindows with Sectograph free time windows. Generates up to 3 `PlacementSuggestion` entries filtered by stat and duration. Visual: semi-transparent cyan blocks with glow on Sectograph. HabitsPage creation dialog shows "Suggested Times" panel with accept/adjust/ignore options. Coach integration via `getCoachPlacementComment()`. Located in `server/gameLogic/habitPlacement.ts`. API: `GET /api/player/:id/habit-placement-suggestions?stat=&duration=`.
 
 ### Language Evolution System
 The application features a 4-stage Language Evolution System that gradually introduces RPG terminology as the user progresses:

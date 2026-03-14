@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SystemLayout } from "@/components/game/SystemLayout";
-import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow, type BehavioralAnchor, type ActiveFocusBlock, type RhythmWindowVisual } from "@/components/game/Sectograph";
+import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow, type BehavioralAnchor, type ActiveFocusBlock, type RhythmWindowVisual, type SuggestedPlacement } from "@/components/game/Sectograph";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
 import { apiRequest } from "@/lib/queryClient";
@@ -208,6 +208,20 @@ export default function SectographPage() {
 
   const rhythmWindows = rhythmData?.windows ?? [];
   const rhythmInsights = rhythmData?.insights ?? [];
+
+  const { data: placementData } = useQuery<{ suggestions: SuggestedPlacement[]; coachComment: string | null }>({
+    queryKey: ["habit-placement-sectograph", player?.id],
+    queryFn: async () => {
+      if (!player?.id) return { suggestions: [], coachComment: null };
+      const res = await fetch(`/api/player/${player.id}/habit-placement-suggestions`);
+      if (!res.ok) return { suggestions: [], coachComment: null };
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 60000,
+  });
+
+  const placementSuggestions = placementData?.suggestions ?? [];
 
   const focusMutation = useMutation({
     mutationFn: async (data: { durationMinutes: number; label?: string }) => {
@@ -514,10 +528,14 @@ export default function SectographPage() {
                 anchors={behavioralAnchors}
                 focusBlock={activeFocus?.block ?? null}
                 rhythmWindows={rhythmWindows}
+                suggestedPlacements={placementSuggestions}
                 onCenterClick={() => navigate("/schedule")}
                 onFreeWindowClick={(w) => {
                   setFocusDuration(Math.min(w.durationMinutes, 30));
                   setShowFocusSetup(true);
+                }}
+                onSuggestedPlacementClick={(sp) => {
+                  navigate("/habits");
                 }}
               />
             </div>

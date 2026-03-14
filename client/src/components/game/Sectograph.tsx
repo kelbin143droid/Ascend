@@ -47,6 +47,15 @@ export interface RhythmWindowVisual {
   confidenceScore: number;
 }
 
+export interface SuggestedPlacement {
+  id: string;
+  suggestedHour: number;
+  suggestedMinute: number;
+  durationMinutes: number;
+  confidenceScore: number;
+  reason: string;
+}
+
 export const DEFAULT_SEGMENTS: ScheduleBlock[] = [
   { id: "seg-sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#2d3a4f", segment: "sleep" },
   { id: "seg-morning", name: "Morning", startHour: 6, endHour: 9, color: "#4a6272", segment: "personal" },
@@ -104,9 +113,11 @@ interface SectographProps {
   anchors?: BehavioralAnchor[];
   focusBlock?: ActiveFocusBlock | null;
   rhythmWindows?: RhythmWindowVisual[];
+  suggestedPlacements?: SuggestedPlacement[];
   onCenterClick?: () => void;
   onBlockClick?: (block: ScheduleBlock) => void;
   onFreeWindowClick?: (window: FreeWindow) => void;
+  onSuggestedPlacementClick?: (placement: SuggestedPlacement) => void;
 }
 
 export function Sectograph({
@@ -116,9 +127,11 @@ export function Sectograph({
   anchors = [],
   focusBlock = null,
   rhythmWindows = [],
+  suggestedPlacements = [],
   onCenterClick,
   onBlockClick,
   onFreeWindowClick,
+  onSuggestedPlacementClick,
 }: SectographProps) {
   const [time, setTime] = useState(new Date());
   const { clockTheme } = useTheme();
@@ -275,6 +288,31 @@ export function Sectograph({
           return (
             <g key={`free-${i}`} onClick={() => onFreeWindowClick?.(gap)} style={{ cursor: onFreeWindowClick ? "pointer" : "default" }} data-testid={`sectograph-free-${i}`}>
               <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="rgba(34,197,94,0.08)" stroke="rgba(34,197,94,0.25)" strokeWidth="1" strokeDasharray="4 3" />
+            </g>
+          );
+        })}
+
+        {suggestedPlacements.map((sp, i) => {
+          const startMin = sp.suggestedHour * 60 + sp.suggestedMinute;
+          const endMin = startMin + sp.durationMinutes;
+          const startAngle = timeToAngle(sp.suggestedHour, sp.suggestedMinute);
+          const endAngle = timeToAngle(Math.floor(endMin / 60) % 24, endMin % 60);
+          const midAngle = (startAngle + endAngle) / 2 + (endAngle < startAngle ? 180 : 0);
+          const labelPos = polarToCartesian(midAngle, (scheduleOuterRadius + scheduleInnerRadius) / 2);
+          return (
+            <g
+              key={`suggestion-${i}`}
+              onClick={() => onSuggestedPlacementClick?.(sp)}
+              style={{ cursor: onSuggestedPlacementClick ? "pointer" : "default" }}
+              data-testid={`sectograph-suggestion-${i}`}
+            >
+              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="rgba(34,211,238,0.12)" stroke="rgba(34,211,238,0.4)" strokeWidth="1" strokeDasharray="3 2" />
+              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="none" stroke="rgba(34,211,238,0.2)" strokeWidth="5" style={{ filter: "blur(5px)", pointerEvents: "none" }}>
+                <animate attributeName="opacity" values="0.2;0.08;0.2" dur="3s" repeatCount="indefinite" />
+              </path>
+              <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" fill="rgba(34,211,238,0.7)" style={{ fontSize: "6px", fontFamily: "var(--font-mono)", fontWeight: "bold", letterSpacing: "0.05em", pointerEvents: "none" }}>
+                Suggested
+              </text>
             </g>
           );
         })}
