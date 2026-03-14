@@ -19,6 +19,7 @@ import { calculateMomentumUpdate, getMomentumTier, shouldTriggerRecovery } from 
 import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "./gameLogic/difficultyScaler";
 import { checkPhaseEligibility, getStatCapForPhase, getPhaseVisualConfig, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
 import { calculateStabilityScore, checkRegression, buildUpdatedStabilityData, getStabilityTier, detectDisruption, getSystemState, getStabilityStateInfo, getRecoveryCoachMessage } from "./gameLogic/stabilityEngine";
+import { getReturnProtocol, calculateDaysSinceLastActivity, getReturnCoachComment, getSimplifiedHabitLimit, getSimplifiedFocusDuration } from "./gameLogic/returnProtocol";
 import { getTasksForToday, completeTask as taskEngineComplete, getPhaseAdjustedDuration } from "./gameLogic/taskEngine";
 import { getEnvironmentVisuals, getAvatarAura, getTaskCompletionVisuals } from "./gameLogic/visualEngine";
 import { checkNotificationEligibility, buildNotification, type PreviousState } from "./gameLogic/notificationEngine";
@@ -1341,19 +1342,28 @@ export async function registerRoutes(
       const disruptionChat = detectDisruption(player, recentCompletions, previousRateChat);
       const systemStateChat = getSystemState(stabilityCalcChat, player, disruptionChat);
 
-      if (disruptionChat.detected && response.response) {
+      const returnProtocolChat = getReturnProtocol(player, allCompletions);
+      if (returnProtocolChat.active && response.response) {
+        const returnComment = getReturnCoachComment(returnProtocolChat.tier, returnProtocolChat.daysSinceLastActivity);
+        if (returnComment) {
+          response.response = returnComment + " " + response.response;
+        }
+      } else if (disruptionChat.detected && response.response) {
         const recoveryMsg = getRecoveryCoachMessage(disruptionChat, systemStateChat.state);
         response.response = recoveryMsg + " " + response.response;
       }
 
-      if (systemStateChat.coachToneModifier === "gentle" && response.response) {
+      if ((systemStateChat.coachToneModifier === "gentle" || returnProtocolChat.tier === "long") && response.response) {
         response.response = response.response
           .replace(/You must/g, "You could")
           .replace(/You need to/g, "You might try")
-          .replace(/You should/g, "You could");
+          .replace(/You should/g, "You could")
+          .replace(/You missed/gi, "Rhythm paused")
+          .replace(/You failed/gi, "Things shifted")
+          .replace(/Your streak ended/gi, "Returning restores momentum");
       }
 
-      res.json({ ...response, coachTone: systemStateChat.coachToneModifier, stabilityState: systemStateChat.state });
+      res.json({ ...response, coachTone: systemStateChat.coachToneModifier, stabilityState: systemStateChat.state, returnTier: returnProtocolChat.tier });
     } catch (error) {
       res.status(500).json({ error: "Failed to process coach chat" });
     }
@@ -1706,6 +1716,12 @@ export async function registerRoutes(
         recoveryMessage = getRecoveryCoachMessage(disruptionHome, systemState.state);
       }
 
+      const returnProtocol = getReturnProtocol(player, allCompletions);
+
+      if (returnProtocol.active && returnProtocol.simplifyMode) {
+        systemState.habitLimit = getSimplifiedHabitLimit(systemState.habitLimit, returnProtocol.simplifyMode);
+      }
+
       res.json({
         phase: {
           number: player.phase,
@@ -1748,6 +1764,7 @@ export async function registerRoutes(
         streak,
         userLanguageStage,
         recoveryMessage,
+        returnProtocol: returnProtocol.active ? returnProtocol : null,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get home data" });

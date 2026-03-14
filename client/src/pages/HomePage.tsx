@@ -13,6 +13,7 @@ import { Day6RevealModal } from "@/components/game/Day6RevealModal";
 import { Day7TransitionModal } from "@/components/game/Day7TransitionModal";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
+import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -47,6 +48,25 @@ interface HomeData {
   isOnboardingComplete: boolean;
   streak: number;
   recoveryMessage: string | null;
+  returnProtocol: {
+    active: boolean;
+    tier: "short" | "extended" | "long";
+    daysSinceLastActivity: number;
+    coachMessage: string | null;
+    resetRitual: {
+      steps: { id: string; type: "breathing" | "reflection" | "affirmation"; title: string; instruction: string; durationSeconds: number }[];
+      totalDurationSeconds: number;
+    } | null;
+    simplifyMode: {
+      habitLoadReduction: number;
+      focusDurationMultiplier: number;
+      hideAnalytics: boolean;
+      hideWeeklyPlanning: boolean;
+      durationDays: number;
+    } | null;
+    softRestart: boolean;
+    hideProgress: boolean;
+  } | null;
 }
 
 const RECOMMENDED_HABITS = [
@@ -167,6 +187,7 @@ export default function HomePage() {
   const [showDay6Reveal, setShowDay6Reveal] = useState(false);
   const [day6MeterVisible, setDay6MeterVisible] = useState(false);
   const [showDay7Transition, setShowDay7Transition] = useState(false);
+  const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -465,6 +486,15 @@ export default function HomePage() {
   const microCommitText = hasHabits
     ? (nextAction ? `Takes only ${nextAction.durationMinutes} minute${nextAction.durationMinutes !== 1 ? "s" : ""}` : null)
     : `Takes only ${selectedHabit.durationText}`;
+
+  if (homeData?.returnProtocol && !returnProtocolDismissed) {
+    return (
+      <ReturnProtocolScreen
+        data={homeData.returnProtocol}
+        onComplete={() => setReturnProtocolDismissed(true)}
+      />
+    );
+  }
 
   return (
     <SystemLayout>
