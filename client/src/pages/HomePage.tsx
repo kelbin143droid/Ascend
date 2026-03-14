@@ -4,8 +4,8 @@ import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
-import { useState, useMemo, useEffect } from "react";
-import { Play, Wind, Droplets, Brain, Heart, Plus, BookOpen, Trophy, Activity, Clock, Calendar, BarChart3 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, CheckCircle2, Eye, Zap } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
@@ -14,6 +14,9 @@ import { Day7TransitionModal } from "@/components/game/Day7TransitionModal";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
+import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
+import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
+import { AnimatePresence } from "framer-motion";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -172,6 +175,20 @@ const STAT_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
+const STAT_ICONS: Record<string, typeof Dumbbell> = {
+  strength: Dumbbell,
+  agility: Wind,
+  sense: Brain,
+  vitality: Heart,
+};
+
+const STAT_LABELS: Record<string, string> = {
+  strength: "Strength",
+  agility: "Agility",
+  sense: "Focus",
+  vitality: "Vitality",
+};
+
 const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }> = {
   1: { subtitle: "Beginning your journey.", motivation: "Small actions build momentum." },
   2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
@@ -182,6 +199,13 @@ const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }
   7: { subtitle: "First growth cycle complete.", motivation: "You've proven consistency." },
 };
 
+const FLOW_ACTIVITIES = [
+  { label: "Calm Breathing", icon: Brain, color: "#3b82f6" },
+  { label: "Strength Circuit", icon: Dumbbell, color: "#ef4444" },
+  { label: "Mobility Flow", icon: Wind, color: "#22c55e" },
+  { label: "Vitality Check", icon: Heart, color: "#f59e0b" },
+];
+
 export default function HomePage() {
   const { player } = useGame();
   const { backgroundTheme } = useTheme();
@@ -189,9 +213,6 @@ export default function HomePage() {
   const colors = backgroundTheme.colors;
   const [, setLocation] = useLocation();
   const [selectedHabitId, setSelectedHabitId] = useState(RECOMMENDED_HABITS[0].id);
-  const [showCompletionGlow, setShowCompletionGlow] = useState(false);
-  const [showEncouragement, setShowEncouragement] = useState(false);
-  const [prevCompletedToday, setPrevCompletedToday] = useState<number | null>(null);
   const [showDay3Intro, setShowDay3Intro] = useState(false);
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
@@ -201,6 +222,8 @@ export default function HomePage() {
   const [day6MeterVisible, setDay6MeterVisible] = useState(false);
   const [showDay7Transition, setShowDay7Transition] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
+  const [flowActive, setFlowActive] = useState(false);
+  const [flowCompletedToday, setFlowCompletedToday] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -215,38 +238,41 @@ export default function HomePage() {
     staleTime: 30000,
   });
 
+  const { data: scalingData } = useQuery<{ trainingScaling: Record<string, { tier: number; completionStreak: number; missedDays: number; sessionsCompleted: number }> }>({
+    queryKey: ["training-scaling", player?.id],
+    queryFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}/training-scaling`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 10000,
+  });
+
+  const { data: playerData } = useQuery<any>({
+    queryKey: ["/api/player", player?.id],
+    queryFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 30000,
+  });
+
   const onboardingDay = homeData?.onboardingDay ?? 1;
-  const hasCompletedToday = homeData?.hasCompletedHabitToday ?? false;
-  const nextAction = homeData?.nextAction;
-  const hasHabits = homeData ? homeData.totalActive > 0 : false;
-  const allDone = homeData ? homeData.completedToday >= homeData.totalActive && homeData.totalActive > 0 : false;
+  const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
 
-  const reflection = DAILY_REFLECTIONS[onboardingDay] || DAILY_REFLECTIONS[7];
-
-  useEffect(() => {
-    if (homeData && prevCompletedToday !== null && homeData.completedToday > prevCompletedToday) {
-      setShowCompletionGlow(true);
-      const timer = setTimeout(() => setShowCompletionGlow(false), 2000);
-      return () => clearTimeout(timer);
-    }
-    if (homeData) {
-      setPrevCompletedToday(homeData.completedToday);
-    }
-  }, [homeData?.completedToday]);
-
-  useEffect(() => {
-    if (onboardingDay >= 4) {
-      const timer = setTimeout(() => setShowEncouragement(true), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [onboardingDay]);
+  const isTrainingMode = (onboardingDay >= 7 && homeData?.isOnboardingComplete) || (homeData?.isOnboardingComplete);
+  const isOnboardingFlow = onboardingDay <= 7 && !isTrainingMode;
 
   useEffect(() => {
     if (!homeData || onboardingDay !== 3) return;
     const today = new Date().toISOString().split("T")[0];
     const seenKey = "ascend_day3_intro_seen";
-    const alreadySeen = localStorage.getItem(seenKey);
-    if (alreadySeen === today) return;
+    if (localStorage.getItem(seenKey) === today) return;
     const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
     if (prevCompleted && !homeData.hasCompletedHabitToday) {
       localStorage.setItem(seenKey, today);
@@ -271,8 +297,7 @@ export default function HomePage() {
     if (!homeData || onboardingDay !== 4) return;
     const today = new Date().toISOString().split("T")[0];
     const seenKey = "ascend_day4_intro_seen";
-    const alreadySeen = localStorage.getItem(seenKey);
-    if (alreadySeen === today) return;
+    if (localStorage.getItem(seenKey) === today) return;
     const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
     if (prevCompleted && !homeData.hasCompletedHabitToday) {
       localStorage.setItem(seenKey, today);
@@ -284,8 +309,7 @@ export default function HomePage() {
     if (!homeData || onboardingDay !== 5) return;
     const today = new Date().toISOString().split("T")[0];
     const seenKey = "ascend_day5_intro_seen";
-    const alreadySeen = localStorage.getItem(seenKey);
-    if (alreadySeen === today) return;
+    if (localStorage.getItem(seenKey) === today) return;
     const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
     if (prevCompleted && !homeData.hasCompletedHabitToday) {
       localStorage.setItem(seenKey, today);
@@ -321,26 +345,6 @@ export default function HomePage() {
     setShowDay7Transition(false);
   };
 
-  const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
-  const otherHabits = RECOMMENDED_HABITS.filter(h => h.id !== selectedHabitId);
-  const primaryAccent = STAT_COLORS[selectedHabit.stat] || colors.primary;
-
-  const isTrainingMode = (onboardingDay >= 7 && homeData?.isOnboardingComplete) || (homeData?.isOnboardingComplete && hasHabits);
-  const isOnboardingFlow = onboardingDay <= 7 && !isTrainingMode;
-  const isOnboarding = !isTrainingMode;
-
-  const handleStart = () => {
-    if (!hasHabits) {
-      setLocation(`/guided-session/${selectedHabitId}`);
-    } else {
-      setLocation("/habits");
-    }
-  };
-
-  const handleSelectHabit = (habitId: string) => {
-    setSelectedHabitId(habitId);
-  };
-
   if (isOnboardingFlow) {
     const step = ONBOARDING_STEPS[onboardingDay] || ONBOARDING_STEPS[1];
     const StepIcon = step.icon;
@@ -349,10 +353,6 @@ export default function HomePage() {
     return (
       <SystemLayout>
         <style>{`
-          @keyframes subtleGlow {
-            0%, 100% { box-shadow: 0 0 8px var(--glow-color, rgba(59,130,246,0.15)); }
-            50% { box-shadow: 0 0 20px var(--glow-color, rgba(59,130,246,0.3)); }
-          }
           @keyframes fadeSlideIn {
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
@@ -455,7 +455,6 @@ export default function HomePage() {
             }
           }}
         />
-
         <Day4IntroFlow
           visible={showDay4Intro}
           lastCompletionTime={homeData?.lastCompletionTime ?? null}
@@ -464,12 +463,10 @@ export default function HomePage() {
             localStorage.setItem("ascend_reminder_preference", timeWindow);
           }}
         />
-
         <Day5IntroFlow
           visible={showDay5Intro}
           onComplete={() => setShowDay5Intro(false)}
         />
-
         <ReminderPrompt
           visible={showReminderPrompt}
           onSelect={(preference) => {
@@ -478,12 +475,10 @@ export default function HomePage() {
           }}
           onDismiss={() => setShowReminderPrompt(false)}
         />
-
         <Day6RevealModal
           visible={showDay6Reveal}
           onContinue={handleDay6RevealContinue}
         />
-
         <Day7TransitionModal
           visible={showDay7Transition}
           onContinue={handleDay7TransitionContinue}
@@ -491,14 +486,6 @@ export default function HomePage() {
       </SystemLayout>
     );
   }
-
-  const startLabel = allDone
-    ? t("View Habits")
-    : (nextAction ? `Complete ${nextAction.name}` : t("Complete Today's Power Growth"));
-
-  const microCommitText = hasHabits
-    ? (nextAction ? `Takes only ${nextAction.durationMinutes} minute${nextAction.durationMinutes !== 1 ? "s" : ""}` : null)
-    : `Takes only ${selectedHabit.durationText}`;
 
   if (homeData?.returnProtocol && !returnProtocolDismissed) {
     return (
@@ -509,43 +496,56 @@ export default function HomePage() {
     );
   }
 
+  const tiers: CategoryTiers = {
+    strength: scalingData?.trainingScaling?.strength?.tier ?? 1,
+    agility: scalingData?.trainingScaling?.agility?.tier ?? 1,
+    meditation: scalingData?.trainingScaling?.meditation?.tier ?? 1,
+    vitality: scalingData?.trainingScaling?.vitality?.tier ?? 1,
+  };
+  const activities = buildPhase1Activities(onboardingDay, tiers);
+  const totalMins = Math.ceil(activities.reduce((sum, a) => sum + a.duration, 0) / 60);
+
+  const statLevels = playerData?.statLevels ?? {
+    strength: { level: 1 },
+    agility: { level: 1 },
+    sense: { level: 1 },
+    vitality: { level: 1 },
+  };
+
+  const consecutiveDays = homeData?.stability?.consecutiveActiveDays ?? homeData?.streak ?? 0;
+  const phaseName = homeData?.phase?.name ?? "Phase 1 — Stabilization";
+
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMin = now.getMinutes();
+  const suggestedHour = currentMin > 30 ? currentHour + 1 : currentHour;
+  const suggestedStart = `${suggestedHour > 12 ? suggestedHour - 12 : suggestedHour}:${currentMin > 30 ? "00" : "30"} ${suggestedHour >= 12 ? "PM" : "AM"}`;
+  const suggestedEnd = `${(suggestedHour + (totalMins > 30 ? 1 : 0)) > 12 ? (suggestedHour + (totalMins > 30 ? 1 : 0)) - 12 : (suggestedHour + (totalMins > 30 ? 1 : 0))}:${((currentMin > 30 ? 0 : 30) + totalMins) % 60 < 10 ? "0" : ""}${((currentMin > 30 ? 0 : 30) + totalMins) % 60} ${(suggestedHour + (totalMins > 30 ? 1 : 0)) >= 12 ? "PM" : "AM"}`;
+
+  const handleFlowComplete = (completedIds: string[], _bonusAwarded: boolean) => {
+    if (completedIds.length > 0) {
+      setFlowCompletedToday(true);
+    }
+    setFlowActive(false);
+  };
+
   return (
     <SystemLayout>
-      <style>{`
-        @keyframes subtleGlow {
-          0%, 100% { box-shadow: 0 0 8px var(--glow-color, rgba(59,130,246,0.15)); }
-          50% { box-shadow: 0 0 20px var(--glow-color, rgba(59,130,246,0.3)); }
-        }
-        @keyframes completionPulse {
-          0% { opacity: 0; transform: scale(0.95); }
-          50% { opacity: 1; transform: scale(1.02); }
-          100% { opacity: 0; transform: scale(1); }
-        }
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes encourageFade {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-
-      <div
-        className="flex flex-col gap-5 py-6 px-1 max-w-md mx-auto w-full relative"
-        data-testid="home-page"
-      >
-        {showCompletionGlow && (
-          <div
-            data-testid="completion-glow-overlay"
-            className="absolute inset-0 rounded-2xl pointer-events-none z-10"
-            style={{
-              animation: "completionPulse 2s ease-out forwards",
-              background: `radial-gradient(circle at center, ${colors.primary}15 0%, transparent 70%)`,
-            }}
+      <AnimatePresence>
+        {flowActive && player && (
+          <DailyFlowEngine
+            activities={activities}
+            playerId={player.id}
+            onComplete={handleFlowComplete}
+            onCancel={() => setFlowActive(false)}
           />
         )}
+      </AnimatePresence>
 
+      <div
+        className="flex flex-col gap-5 py-6 px-1 max-w-md mx-auto w-full"
+        data-testid="home-page"
+      >
         {!dismissedNotification && homeData?.notification && (
           <NotificationBanner
             notification={homeData.notification}
@@ -553,162 +553,175 @@ export default function HomePage() {
           />
         )}
 
-        <div className="pt-4">
+        <div className="pt-2" data-testid="daily-status-section">
           <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-            {allDone ? "Great work today. Rest up." : t("Today's Power Growth")}
+            {phaseName}
           </p>
           <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
-            {hasHabits && !allDone
-              ? `${homeData!.completedToday}/${homeData!.totalActive} complete`
-              : "Consistency builds strength."}
+            Day {consecutiveDays} of Consistency
           </p>
         </div>
 
         <div
-          data-testid="training-status-card"
-          className="rounded-xl px-4 py-3"
+          data-testid="training-flow-card"
+          className="rounded-xl overflow-hidden"
           style={{
             backgroundColor: `${colors.surface || colors.background}cc`,
             border: `1px solid ${colors.surfaceBorder}`,
-            animation: "subtleGlow 4s ease-in-out infinite",
-            ["--glow-color" as string]: `${colors.primary}12`,
           }}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <Activity size={14} style={{ color: colors.primary }} />
-            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
-              {t("Power Growth")}: Active
-            </span>
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Zap size={14} style={{ color: colors.primary }} />
+                <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
+                  Today's Training Flow
+                </span>
+              </div>
+              <span className="text-[10px]" style={{ color: colors.textMuted }}>
+                ~{totalMins} min
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {FLOW_ACTIVITIES.map((act, i) => {
+                const Icon = act.icon;
+                return (
+                  <div
+                    key={act.label}
+                    className="flex items-center gap-3 py-1.5"
+                    data-testid={`flow-step-${i}`}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: flowCompletedToday ? "#22c55e12" : `${act.color}12`,
+                      }}
+                    >
+                      {flowCompletedToday ? (
+                        <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+                      ) : (
+                        <Icon size={14} style={{ color: act.color }} />
+                      )}
+                    </div>
+                    <span
+                      className="text-sm"
+                      style={{ color: flowCompletedToday ? colors.textMuted : colors.text }}
+                    >
+                      {act.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div>
-              <span className="text-lg font-bold font-mono" style={{ color: colors.text }}>
-                {homeData?.streak ?? 0}
-              </span>
-              <span className="text-[10px] ml-1" style={{ color: colors.textMuted }}>
-                day streak
-              </span>
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[9px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
-                  {t("Momentum")}
-                </span>
-                <span className="text-[9px] font-mono" style={{ color: colors.primary }}>
-                  {homeData?.momentum ?? 0}
-                </span>
-              </div>
+
+          <div className="px-4 pb-4 pt-2">
+            {flowCompletedToday ? (
               <div
-                className="h-1.5 rounded-full overflow-hidden"
-                style={{ backgroundColor: `${colors.surfaceBorder}50` }}
+                className="w-full py-3 rounded-xl text-center text-sm font-bold"
+                style={{
+                  backgroundColor: "#22c55e10",
+                  color: "#22c55e",
+                  border: "1px solid #22c55e25",
+                }}
+                data-testid="text-flow-completed"
               >
-                <div
-                  data-testid="training-momentum-bar"
-                  className="h-full rounded-full transition-all duration-1000"
-                  style={{
-                    width: `${Math.min(homeData?.momentum ?? 0, 100)}%`,
-                    background: `linear-gradient(90deg, ${colors.primary}80, ${colors.primary})`,
-                  }}
-                />
+                <span className="flex items-center justify-center gap-2">
+                  <CheckCircle2 size={16} />
+                  Flow completed today
+                </span>
               </div>
-            </div>
+            ) : (
+              <button
+                data-testid="button-begin-flow"
+                onClick={() => setFlowActive(true)}
+                className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-[0.1em] transition-all active:scale-[0.98]"
+                style={{
+                  backgroundColor: colors.primary,
+                  color: colors.background,
+                  boxShadow: `0 0 20px ${colors.primaryGlow}25`,
+                }}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Play size={16} />
+                  Begin Flow
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
-        {showCompletionGlow && (
-          <div
-            data-testid="completion-feedback"
-            className="rounded-lg px-3 py-2 text-center"
-            style={{
-              backgroundColor: `${colors.primary}10`,
-              animation: "fadeSlideIn 0.4s ease-out",
-            }}
-          >
-            <p className="text-xs font-medium" style={{ color: colors.primary }}>
-              {t("Action completed. Momentum increased.")}
-            </p>
+        <div
+          data-testid="suggested-time-card"
+          className="rounded-xl px-4 py-3"
+          style={{
+            backgroundColor: `${colors.primary}06`,
+            border: `1px solid ${colors.primary}12`,
+          }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Clock size={12} style={{ color: colors.primary }} />
+            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: `${colors.primary}99` }}>
+              Suggested Time
+            </span>
           </div>
-        )}
+          <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
+            You have a {totalMins}‑minute window around {suggestedStart}.
+          </p>
+          <button
+            className="mt-2 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95"
+            style={{ color: colors.primary }}
+            onClick={() => setLocation("/schedule")}
+            data-testid="button-view-sectograph"
+          >
+            <Eye size={12} />
+            View in Sectograph
+          </button>
+        </div>
 
-        {homeData && (
-          <div
-            data-testid="phase-card"
-            className="rounded-xl px-4 py-3 flex items-center justify-between"
-            style={{
-              backgroundColor: `${colors.surface || colors.background}88`,
-              border: `1px solid ${colors.surfaceBorder}`,
-            }}
-          >
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: colors.textMuted }}>
-                {homeData.phase.name}
-              </p>
-              <p className="text-[10px] mt-0.5 flex items-center gap-1.5" style={{ color: `${colors.textMuted}99` }}>
-                <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: homeData.stability.stateInfo?.color ?? colors.textMuted }} />
-                {homeData.stability.stateInfo?.label ?? homeData.stability.label}
-                {homeData.stability.trend === "improving" && <span style={{ color: "#22c55e", fontSize: "8px" }}>▲</span>}
-                {homeData.stability.trend === "declining" && <span style={{ color: "#ef4444", fontSize: "8px" }}>▼</span>}
-              </p>
-            </div>
-            {homeData.flow && (
-              <div className="text-right">
-                <p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: colors.textMuted }}>
-                  Flow
-                </p>
-                <p className="text-xs font-mono font-medium" style={{ color: colors.primary }}>
-                  {homeData.flow.label}
-                </p>
-              </div>
-            )}
+        <div
+          data-testid="progress-snapshot-card"
+          className="rounded-xl px-4 py-4"
+          style={{
+            backgroundColor: `${colors.surface || colors.background}cc`,
+            border: `1px solid ${colors.surfaceBorder}`,
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 size={12} style={{ color: colors.textMuted }} />
+            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.textMuted }}>
+              Quick Progress
+            </span>
           </div>
-        )}
 
-        {homeData?.stability?.recoveryModeActive && homeData?.recoveryMessage && (
-          <div
-            data-testid="recovery-mode-banner"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: "rgba(168,85,247,0.06)",
-              border: "1px solid rgba(168,85,247,0.15)",
-            }}
-          >
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#a855f7" }}>
-                <div className="w-full h-full rounded-full animate-pulse" style={{ backgroundColor: "#a855f7" }} />
-              </div>
-              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: "rgba(168,85,247,0.8)" }}>
-                Recovery Mode
-              </p>
-            </div>
-            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}bb` }}>
-              {homeData.recoveryMessage}
-            </p>
-            <p className="text-[9px] mt-2" style={{ color: `${colors.textMuted}66` }}>
-              Expectations simplified · Habit limit: {homeData.stability.habitLimit}
-            </p>
+          <div className="grid grid-cols-4 gap-2">
+            {(["strength", "agility", "sense", "vitality"] as const).map((stat) => {
+              const Icon = STAT_ICONS[stat];
+              const color = STAT_COLORS[stat];
+              const level = statLevels[stat]?.level ?? 1;
+              return (
+                <div
+                  key={stat}
+                  className="text-center p-2 rounded-lg"
+                  style={{
+                    backgroundColor: `${color}08`,
+                    border: `1px solid ${color}15`,
+                  }}
+                  data-testid={`stat-snapshot-${stat}`}
+                >
+                  <Icon size={16} className="mx-auto mb-1" style={{ color }} />
+                  <div className="text-lg font-bold font-mono" style={{ color: colors.text }}>
+                    {level}
+                  </div>
+                  <div className="text-[9px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
+                    {STAT_LABELS[stat]}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-
-        {homeData?.stability?.expansionReady && !homeData?.stability?.recoveryModeActive && (
-          <div
-            data-testid="expansion-ready-banner"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: "rgba(34,197,94,0.06)",
-              border: "1px solid rgba(34,197,94,0.15)",
-            }}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
-              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: "rgba(34,197,94,0.8)" }}>
-                Expansion Ready
-              </p>
-            </div>
-            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
-              Your stability has been strong for multiple weeks. Advanced features and deeper insights are now available.
-            </p>
-          </div>
-        )}
+        </div>
 
         {homeData?.insight && (
           <div
@@ -757,89 +770,12 @@ export default function HomePage() {
             </p>
           </div>
         )}
-
-        {homeData?.identity?.reflectionAnchor && (
-          <div
-            data-testid="identity-anchor-card"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: "rgba(99,102,241,0.04)",
-              border: "1px dashed rgba(99,102,241,0.12)",
-            }}
-          >
-            <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1.5" style={{ color: "rgba(99,102,241,0.6)" }}>
-              Reflect
-            </p>
-            <p className="text-xs leading-relaxed italic" style={{ color: `${colors.text}99` }}>
-              "{homeData.identity.reflectionAnchor.message}"
-            </p>
-          </div>
-        )}
-
-        {hasHabits && !allDone && nextAction && (
-          <div
-            data-testid="next-action-card"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: `${colors.surface || colors.background}cc`,
-              border: `1px solid ${colors.surfaceBorder}`,
-            }}
-          >
-            <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-1" style={{ color: colors.textMuted }}>
-              Up next
-            </p>
-            <p className="text-sm font-medium" style={{ color: colors.text }}>
-              {nextAction.name}
-              <span className="ml-2 text-xs" style={{ color: colors.textMuted }}>
-                {nextAction.durationMinutes}m
-              </span>
-            </p>
-          </div>
-        )}
-
-        <div className="flex flex-col items-center gap-1">
-          {microCommitText && !allDone && (
-            <p
-              data-testid="micro-commit-text"
-              className="text-[10px] tracking-wide"
-              style={{ color: `${colors.textMuted}99` }}
-            >
-              {microCommitText}
-            </p>
-          )}
-
-          <button
-            data-testid="button-start"
-            onClick={handleStart}
-            className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
-            style={{
-              backgroundColor: colors.primary,
-              color: colors.background,
-              boxShadow: `0 0 24px ${colors.primaryGlow}30`,
-            }}
-          >
-            <span className="flex items-center justify-center gap-2">
-              <Play size={16} />
-              {startLabel}
-            </span>
-          </button>
-        </div>
-
-        {hasHabits && !allDone && (
-          <button
-            data-testid="button-view-schedule"
-            onClick={() => setLocation("/schedule")}
-            className="w-full py-2.5 rounded-xl text-xs tracking-[0.1em] uppercase transition-all active:scale-[0.98]"
-            style={{
-              color: colors.textMuted,
-              backgroundColor: `${colors.surface || colors.background}60`,
-              border: `1px solid ${colors.surfaceBorder}`,
-            }}
-          >
-            View Schedule
-          </button>
-        )}
       </div>
+
+      <Day7TransitionModal
+        visible={showDay7Transition}
+        onContinue={handleDay7TransitionContinue}
+      />
     </SystemLayout>
   );
 }

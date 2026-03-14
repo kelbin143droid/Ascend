@@ -31,7 +31,7 @@ Ascend OS is built around seven interconnected modular systems:
 -   **Stat Rule**: Stat value equals that stat's level (derived from per-stat XP). XP ≠ stat value.
 -   **HP/MP Scaling**: HP = 100 × 1.05^(level-1), MP = 50 × 1.05^(level-1). Increases by 5% per level.
 -   **Rank System**: E (1-4), D (5-9), C (10-14), B (15-19), A (20-29), S (30+).
--   **All tabs unlocked**: No day-gating on navigation; all 4 bottom tabs available from start.
+-   **Progressive tab unlocking**: HOME and COACH available from Day 1; HABITS unlocks Day 3; TRAIN unlocks Day 7. All tabs unlock after onboarding.
 -   **Implementation**: `server/gameLogic/levelSystem.ts` contains all formulas. `storage.ts` gainExp uses scaled HP/MP + rank. Routes derive stats from per-stat XP levels.
 
 ### Guided Activity Engine
@@ -56,6 +56,14 @@ The application features a 4-stage Language Evolution System that gradually intr
 -   **Backend**: Node.js with Express, TypeScript, and ESM modules, following a RESTful API pattern.
 -   **Data Layer**: PostgreSQL database managed with Drizzle ORM. Zod schemas ensure shared validation.
 -   **Core Design Principles**: Shared schema, stats derived from quests only, stability-driven dynamics, positive reinforcement, gradual onboarding, and guided sessions.
+
+### Post-Onboarding Home Screen
+After completing the 7-day onboarding, the Home screen becomes a daily command center with 4 sections:
+1. **Daily Status**: Phase name + "Day X of Consistency" (consecutive active days).
+2. **Today's Training Flow**: Card listing all 4 activities with "Begin Flow" button (launches DailyFlowEngine). Shows "Flow completed today" after completion.
+3. **Suggested Time Window**: Uses current time to suggest an available window for training, with "View in Sectograph" link.
+4. **Quick Progress Snapshot**: 4-column grid showing current level for Strength, Agility, Focus, Vitality (from `statLevels`).
+Also displays Coach insight and Identity reflection cards when available. Return Protocol screen takes priority when active.
 
 ### Navigation
 -   **Bottom Nav**: HOME, TRAIN, HABITS, COACH.
