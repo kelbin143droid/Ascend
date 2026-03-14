@@ -59,6 +59,19 @@ export const STRENGTH_TIERS: Record<number, TierConfig> = {
   5: { pushups: 10, cardioSeconds: 60, crunches: 20 },
 };
 
+export interface AgilityTierConfig {
+  torsoTwistSeconds: number;
+  forwardFoldSeconds: number;
+}
+
+export const AGILITY_TIERS: Record<number, AgilityTierConfig> = {
+  1: { torsoTwistSeconds: 20, forwardFoldSeconds: 15 },
+  2: { torsoTwistSeconds: 25, forwardFoldSeconds: 20 },
+  3: { torsoTwistSeconds: 30, forwardFoldSeconds: 25 },
+  4: { torsoTwistSeconds: 35, forwardFoldSeconds: 30 },
+  5: { torsoTwistSeconds: 40, forwardFoldSeconds: 35 },
+};
+
 export function getMaxTierForPhase(phase: number): number {
   if (phase <= 1) return 3;
   return 5;
@@ -86,9 +99,7 @@ export function buildPhase1Activities(
   const meditationMultiplier = TIER_XP_MULTIPLIERS[meditationTier] ?? 1.0;
   const vitalityMultiplier = TIER_XP_MULTIPLIERS[vitalityTier] ?? 1.0;
 
-  const agilityNeckDuration = 20 + (agilityTier - 1) * 5;
-  const agilityShoulderReps = 10 + (agilityTier - 1) * 2;
-  const agilityBendDuration = 15 + (agilityTier - 1) * 5;
+  const ag = AGILITY_TIERS[agilityTier] ?? AGILITY_TIERS[1];
 
   const meditationDuration = 120 + (meditationTier - 1) * 30;
 
@@ -150,41 +161,61 @@ export function buildPhase1Activities(
     },
     {
       id: "phase1_agility",
-      activityName: "Agility",
+      activityName: "Agility Mobility Flow",
       category: "agility",
       stat: "agility",
-      duration: 60,
+      duration: 75,
       xpReward: 0,
       color: CATEGORY_COLORS.agility,
       tier: agilityTier,
       xpMultiplier: agilityMultiplier,
       steps: [
         {
-          id: "neck_roll",
+          id: "intro",
+          type: "instruction",
+          label: "Get Ready",
+          instruction: "Follow the mobility flow slowly.",
+        },
+        {
+          id: "neck_cw",
           type: "timer",
-          label: "Neck Rolls",
-          instruction: `Gently roll your neck in circles. ${Math.round(agilityNeckDuration / 2)} seconds each direction.`,
-          durationSeconds: agilityNeckDuration,
+          label: "Neck Clockwise",
+          instruction: "Slowly roll your neck clockwise. Keep it gentle.",
+          durationSeconds: 10,
+        },
+        {
+          id: "neck_ccw",
+          type: "timer",
+          label: "Neck Counter-clockwise",
+          instruction: "Now roll your neck counter-clockwise. Same pace.",
+          durationSeconds: 10,
         },
         {
           id: "shoulder_rolls",
           type: "rep",
           label: "Shoulder Rolls",
-          instruction: "Roll your shoulders forward and backward.",
-          repCount: agilityShoulderReps,
-          repLabel: "each direction",
+          instruction: "Roll your shoulders forward and backward. Loosen up.",
+          repCount: 10,
+          repLabel: "rolls",
         },
         {
-          id: "forward_bend",
+          id: "torso_twist",
           type: "timer",
-          label: "Forward Bend",
-          instruction: "Stand and slowly bend forward. Reach toward your toes. Hold gently.",
-          durationSeconds: agilityBendDuration,
+          label: "Torso Twist",
+          instruction: "Stand with feet shoulder-width apart. Gently twist your torso side to side.",
+          durationSeconds: ag.torsoTwistSeconds,
+        },
+        {
+          id: "forward_fold",
+          type: "timer",
+          label: "Forward Fold",
+          instruction: "Slowly bend forward and reach toward your toes. Hold gently — no bouncing.",
+          durationSeconds: ag.forwardFoldSeconds,
         },
         {
           id: "agility_done",
           type: "completion",
-          label: "Agility Complete",
+          label: "Mobility Complete",
           instruction: "Activity complete.\nSmall actions build momentum.",
         },
       ],
