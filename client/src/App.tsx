@@ -24,6 +24,7 @@ import LibraryPage from "@/pages/LibraryPage";
 import WeeklyPlanningPage from "@/pages/WeeklyPlanningPage";
 import TrialsPage from "@/pages/TrialsPage";
 import CalendarPage from "@/pages/CalendarPage";
+import SectographPage from "@/pages/SectographPage";
 import HabitsPage from "@/pages/HabitsPage";
 import GuidedSessionPage from "@/pages/GuidedSessionPage";
 import NotFound from "@/pages/not-found";
@@ -56,6 +57,7 @@ function Router() {
       <Route path="/weekly-planning" component={WeeklyPlanningPage} />
       <Route path="/trials" component={TrialsPage} />
       <Route path="/calendar" component={CalendarPage} />
+      <Route path="/sectograph" component={SectographPage} />
       <Route path="/" component={HomePage} />
       <Route path="/schedule" component={StatusPage} />
       <Route path="/train" component={TrainPage} />

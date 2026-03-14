@@ -65,7 +65,8 @@ Ascend OS is built around seven interconnected modular systems:
 
 ### Navigation
 -   **Bottom Nav (4 items)**: HOME (`/`), TRAIN (`/train`), RITUALS (`/habits`), COACH (`/coach`)
--   **Sidebar Menu**: Hamburger icon trigger, slide-out overlay. Items: Profile, Analytics, Progress History, Library, Achievements, Weekly Planning, Calendar, Future Game (3D at `/game3d`).
+-   **Sidebar Menu**: Hamburger icon trigger, slide-out overlay. Items: Profile, Analytics, Progress History, Library, Achievements, Weekly Planning. System Tools section: Sectograph (unlocks Day 7). Also: Future Game (3D at `/game3d`).
+-   **Sectograph** (`/sectograph`): Unified time system page with 3 tabbed views — Timeline (radial Sectograph clock, default), Calendar (monthly event management), and Week (weekly overview). Replaces standalone Calendar sidebar item. Locked before Day 7 with message "Sectograph unlocks once your rhythm begins."
 
 ### Key Pages
 -   **HomePage** (`client/src/pages/HomePage.tsx`): Default landing. Shows Phase Card (phase name + stability label), Flow State label, AI Coach insight card, Growth State indicator, primary action button, "View Schedule" secondary button. Adapts based on onboarding day and power growth mode.
