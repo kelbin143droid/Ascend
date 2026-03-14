@@ -20,6 +20,7 @@ import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "
 import { checkPhaseEligibility, getStatCapForPhase, getPhaseVisualConfig, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
 import { calculateStabilityScore, checkRegression, buildUpdatedStabilityData, getStabilityTier, detectDisruption, getSystemState, getStabilityStateInfo, getRecoveryCoachMessage } from "./gameLogic/stabilityEngine";
 import { getReturnProtocol, calculateDaysSinceLastActivity, getReturnCoachComment, getSimplifiedHabitLimit, getSimplifiedFocusDuration } from "./gameLogic/returnProtocol";
+import { generateIdentityProfile, getIdentityCoachComment, getIdentityAnchorForChat } from "./gameLogic/identityEngine";
 import { getTasksForToday, completeTask as taskEngineComplete, getPhaseAdjustedDuration } from "./gameLogic/taskEngine";
 import { getEnvironmentVisuals, getAvatarAura, getTaskCompletionVisuals } from "./gameLogic/visualEngine";
 import { checkNotificationEligibility, buildNotification, type PreviousState } from "./gameLogic/notificationEngine";
@@ -1342,6 +1343,18 @@ export async function registerRoutes(
       const disruptionChat = detectDisruption(player, recentCompletions, previousRateChat);
       const systemStateChat = getSystemState(stabilityCalcChat, player, disruptionChat);
 
+      const chatEvents = extractActionEvents(allCompletions);
+      const chatRhythmWindows = detectRhythmWindows(chatEvents);
+      const identityProfileChat = generateIdentityProfile(player, allCompletions, chatRhythmWindows);
+
+      const identityComment = getIdentityCoachComment(identityProfileChat);
+      const identityAnchor = getIdentityAnchorForChat(identityProfileChat);
+      if (identityAnchor && response.response) {
+        response.response = response.response + " " + identityAnchor;
+      } else if (identityComment && response.response) {
+        response.response = response.response + " " + identityComment;
+      }
+
       const returnProtocolChat = getReturnProtocol(player, allCompletions);
       if (returnProtocolChat.active && response.response) {
         const returnComment = getReturnCoachComment(returnProtocolChat.tier, returnProtocolChat.daysSinceLastActivity);
@@ -1722,6 +1735,10 @@ export async function registerRoutes(
         systemState.habitLimit = getSimplifiedHabitLimit(systemState.habitLimit, returnProtocol.simplifyMode);
       }
 
+      const homeEvents = extractActionEvents(allCompletions);
+      const homeRhythmWindows = detectRhythmWindows(homeEvents);
+      const identityProfile = generateIdentityProfile(player, allCompletions, homeRhythmWindows);
+
       res.json({
         phase: {
           number: player.phase,
@@ -1765,9 +1782,38 @@ export async function registerRoutes(
         userLanguageStage,
         recoveryMessage,
         returnProtocol: returnProtocol.active ? returnProtocol : null,
+        identity: {
+          stage: identityProfile.stage,
+          stageLabel: identityProfile.stageLabel,
+          stageDescription: identityProfile.stageDescription,
+          reflection: identityProfile.reflection,
+          reflectionAnchor: identityProfile.reflectionAnchor,
+          metrics: {
+            totalActiveDays: identityProfile.metrics.totalActiveDays,
+            longestStreak: identityProfile.metrics.longestStreak,
+            weeksEngaged: identityProfile.metrics.weeksEngaged,
+            recoveryCount: identityProfile.metrics.recoveryCount,
+          },
+        },
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get home data" });
+    }
+  });
+
+  app.get("/api/player/:id/identity", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+      const events = extractActionEvents(allCompletions);
+      const rhythmWindows = detectRhythmWindows(events);
+      const profile = generateIdentityProfile(player, allCompletions, rhythmWindows);
+
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get identity profile" });
     }
   });
 

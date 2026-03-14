@@ -67,6 +67,19 @@ interface HomeData {
     softRestart: boolean;
     hideProgress: boolean;
   } | null;
+  identity: {
+    stage: "early" | "developing" | "stabilized" | "advanced";
+    stageLabel: string;
+    stageDescription: string;
+    reflection: { message: string; stage: string; category: string; source: string } | null;
+    reflectionAnchor: { message: string; stage: string; category: string; source: string } | null;
+    metrics: {
+      totalActiveDays: number;
+      longestStreak: number;
+      weeksEngaged: number;
+      recoveryCount: number;
+    };
+  } | null;
 }
 
 const RECOMMENDED_HABITS = [
@@ -711,6 +724,54 @@ export default function HomePage() {
             </p>
             <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
               {homeData.insight}
+            </p>
+          </div>
+        )}
+
+        {homeData?.identity?.reflection && (
+          <div
+            data-testid="identity-reflection-card"
+            className="rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: "rgba(139,92,246,0.05)",
+              border: "1px solid rgba(139,92,246,0.1)",
+            }}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: "rgba(139,92,246,0.7)" }}>
+                {homeData.identity.reflection.category === "anchor" ? "Reflection" : "Identity"}
+              </p>
+              <span
+                className="text-[9px] px-1.5 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: "rgba(139,92,246,0.08)",
+                  color: "rgba(139,92,246,0.6)",
+                }}
+                data-testid="text-identity-stage"
+              >
+                {homeData.identity.stageLabel}
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}bb` }}>
+              {homeData.identity.reflection.message}
+            </p>
+          </div>
+        )}
+
+        {homeData?.identity?.reflectionAnchor && (
+          <div
+            data-testid="identity-anchor-card"
+            className="rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: "rgba(99,102,241,0.04)",
+              border: "1px dashed rgba(99,102,241,0.12)",
+            }}
+          >
+            <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1.5" style={{ color: "rgba(99,102,241,0.6)" }}>
+              Reflect
+            </p>
+            <p className="text-xs leading-relaxed italic" style={{ color: `${colors.text}99` }}>
+              "{homeData.identity.reflectionAnchor.message}"
             </p>
           </div>
         )}
