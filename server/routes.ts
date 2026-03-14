@@ -1973,6 +1973,70 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/player/:id/behavioral-anchors", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+      const guidedCompletions = allCompletions
+        .filter(c => c.habitId.startsWith("guided_") && c.completedAt)
+        .map(c => ({
+          sessionId: c.habitId.replace("guided_", ""),
+          completedAt: c.completedAt!.toISOString(),
+          hour: new Date(c.completedAt!).getHours(),
+          minute: new Date(c.completedAt!).getMinutes(),
+          durationMinutes: c.durationMinutes,
+        }))
+        .sort((a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime());
+
+      res.json({ anchors: guidedCompletions });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch behavioral anchors" });
+    }
+  });
+
+  app.post("/api/player/:id/start-focus-session", async (req, res) => {
+    try {
+      const schema = z.object({
+        durationMinutes: z.number().min(1).max(120),
+        label: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid focus session data" });
+
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const now = new Date();
+      const sessionId = `focus_${Date.now()}`;
+
+      await storage.createHabitCompletion({
+        habitId: sessionId,
+        userId: req.params.id,
+        durationMinutes: parsed.data.durationMinutes,
+        xpEarned: Math.ceil(parsed.data.durationMinutes / 3),
+      });
+
+      const xpGain = Math.ceil(parsed.data.durationMinutes / 3);
+      await storage.updatePlayer(req.params.id, {
+        exp: (player.exp || 0) + xpGain,
+        totalExp: (player.totalExp || 0) + xpGain,
+      });
+
+      res.json({
+        success: true,
+        sessionId,
+        startHour: now.getHours(),
+        startMinute: now.getMinutes(),
+        durationMinutes: parsed.data.durationMinutes,
+        xpEarned: xpGain,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start focus session" });
+    }
+  });
+
   app.post("/api/player/:id/reset-progress", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);

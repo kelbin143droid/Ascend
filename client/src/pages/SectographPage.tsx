@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SystemLayout } from "@/components/game/SystemLayout";
-import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow } from "@/components/game/Sectograph";
+import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow, type BehavioralAnchor, type ActiveFocusBlock } from "@/components/game/Sectograph";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
 import { apiRequest } from "@/lib/queryClient";
@@ -20,6 +20,10 @@ import {
   CalendarDays,
   Sparkles,
   Eye,
+  Play,
+  Pause,
+  X,
+  Target,
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
 
@@ -122,6 +126,83 @@ export default function SectographPage() {
   const [formColor, setFormColor] = useState(EVENT_COLORS[0]);
   const [formType, setFormType] = useState<"appointment" | "reminder">("appointment");
   const [formReminder, setFormReminder] = useState<number | undefined>(undefined);
+
+  const [showIntroOverlay, setShowIntroOverlay] = useState(false);
+  const [focusDuration, setFocusDuration] = useState(15);
+  const [showFocusSetup, setShowFocusSetup] = useState(false);
+  const [activeFocus, setActiveFocus] = useState<{ block: ActiveFocusBlock; endTime: number; label: string } | null>(null);
+  const [focusRemaining, setFocusRemaining] = useState(0);
+  const [focusPaused, setFocusPaused] = useState(false);
+
+  useEffect(() => {
+    const seen = localStorage.getItem("ascend_sectograph_intro_seen");
+    if (!seen) setShowIntroOverlay(true);
+  }, []);
+
+  const dismissIntro = useCallback(() => {
+    localStorage.setItem("ascend_sectograph_intro_seen", "1");
+    setShowIntroOverlay(false);
+  }, []);
+
+  useEffect(() => {
+    if (!activeFocus || focusPaused) return;
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, activeFocus.endTime - Date.now());
+      setFocusRemaining(remaining);
+      if (remaining <= 0) {
+        setActiveFocus(null);
+        setFocusRemaining(0);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [activeFocus, focusPaused]);
+
+  const { data: anchorsData } = useQuery<{ anchors: BehavioralAnchor[] }>({
+    queryKey: ["behavioral-anchors", player?.id],
+    queryFn: async () => {
+      if (!player?.id) return { anchors: [] };
+      const res = await fetch(`/api/player/${player.id}/behavioral-anchors`);
+      if (!res.ok) return { anchors: [] };
+      return res.json();
+    },
+    enabled: !!player?.id,
+  });
+
+  const behavioralAnchors = anchorsData?.anchors ?? [];
+
+  const focusMutation = useMutation({
+    mutationFn: async (data: { durationMinutes: number; label?: string }) => {
+      const res = await apiRequest("POST", `/api/player/${player?.id}/start-focus-session`, data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      const now = new Date();
+      const block: ActiveFocusBlock = {
+        startHour: now.getHours(),
+        startMinute: now.getMinutes(),
+        durationMinutes: data.durationMinutes,
+      };
+      setActiveFocus({
+        block,
+        endTime: Date.now() + data.durationMinutes * 60 * 1000,
+        label: "Focus Session",
+      });
+      setFocusRemaining(data.durationMinutes * 60 * 1000);
+      setShowFocusSetup(false);
+      queryClient.invalidateQueries({ queryKey: ["behavioral-anchors"] });
+    },
+  });
+
+  const startFocusSession = () => {
+    if (!player?.id) return;
+    focusMutation.mutate({ durationMinutes: focusDuration });
+  };
+
+  const cancelFocus = () => {
+    setActiveFocus(null);
+    setFocusRemaining(0);
+    setFocusPaused(false);
+  };
 
   const monthKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
 
@@ -309,6 +390,53 @@ export default function SectographPage() {
           ))}
         </div>
 
+        {showIntroOverlay && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(0,0,0,0.85)" }}
+            onClick={dismissIntro}
+            data-testid="sectograph-intro-overlay"
+          >
+            <div
+              className="mx-6 max-w-sm rounded-xl p-6 text-center"
+              style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: `${colors.primary}20` }}>
+                <Clock size={24} style={{ color: colors.primary }} />
+              </div>
+              <h2 className="text-lg font-display font-bold mb-2" style={{ color: colors.text }}>
+                Your Time System
+              </h2>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: colors.textMuted }}>
+                The Sectograph maps your entire day as a 24-hour circle. Watch your schedule unfold in real time, spot free windows, and build focused sessions into your rhythm.
+              </p>
+              <div className="space-y-2 text-left mb-5">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
+                  <span className="text-xs" style={{ color: colors.textMuted }}>Green dot tracks present moment</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#f59e0b" }} />
+                  <span className="text-xs" style={{ color: colors.textMuted }}>Amber marks show your Reset moments</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#8b5cf6" }} />
+                  <span className="text-xs" style={{ color: colors.textMuted }}>Purple blocks are active focus sessions</span>
+                </div>
+              </div>
+              <Button
+                onClick={dismissIntro}
+                className="w-full"
+                style={{ backgroundColor: colors.primary, color: "#fff" }}
+                data-testid="button-dismiss-intro"
+              >
+                Begin Observing
+              </Button>
+            </div>
+          </div>
+        )}
+
         {activeTab === "sectograph" && (
           <div className="flex flex-col items-center gap-4">
             <div className="flex justify-center pt-2">
@@ -316,9 +444,84 @@ export default function SectographPage() {
                 schedule={activeSchedule}
                 size={300}
                 showAwareness={true}
+                anchors={behavioralAnchors}
+                focusBlock={activeFocus?.block ?? null}
                 onCenterClick={() => navigate("/schedule")}
+                onFreeWindowClick={(w) => {
+                  setFocusDuration(Math.min(w.durationMinutes, 30));
+                  setShowFocusSetup(true);
+                }}
               />
             </div>
+
+            {activeFocus && (
+              <div
+                className="w-full rounded-lg p-3"
+                style={{
+                  backgroundColor: "rgba(139,92,246,0.1)",
+                  border: "1px solid rgba(139,92,246,0.3)",
+                }}
+                data-testid="active-focus-card"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Target size={14} style={{ color: "#8b5cf6" }} />
+                    <span className="text-sm font-bold" style={{ color: colors.text }}>Focus Active</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setFocusPaused(!focusPaused)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/10"
+                      data-testid="button-pause-focus"
+                    >
+                      {focusPaused ? <Play size={12} style={{ color: "#8b5cf6" }} /> : <Pause size={12} style={{ color: "#8b5cf6" }} />}
+                    </button>
+                    <button
+                      onClick={cancelFocus}
+                      className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/10"
+                      data-testid="button-cancel-focus"
+                    >
+                      <X size={12} style={{ color: colors.textMuted }} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-mono font-bold" style={{ color: "#8b5cf6" }}>
+                    {Math.floor(focusRemaining / 60000)}:{String(Math.floor((focusRemaining % 60000) / 1000)).padStart(2, '0')}
+                  </span>
+                  <span className="text-xs" style={{ color: colors.textMuted }}>remaining</span>
+                </div>
+                <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(139,92,246,0.2)" }}>
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      backgroundColor: "#8b5cf6",
+                      width: `${activeFocus ? ((1 - focusRemaining / (activeFocus.block.durationMinutes * 60 * 1000)) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {!activeFocus && (
+              <button
+                onClick={() => setShowFocusSetup(true)}
+                className="w-full rounded-lg p-3 flex items-center gap-3 transition-all hover:scale-[1.01]"
+                style={{
+                  backgroundColor: "rgba(139,92,246,0.08)",
+                  border: "1px solid rgba(139,92,246,0.2)",
+                }}
+                data-testid="button-start-focus"
+              >
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(139,92,246,0.15)" }}>
+                  <Target size={14} style={{ color: "#8b5cf6" }} />
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-medium block" style={{ color: colors.text }}>Start Focus Session</span>
+                  <span className="text-[10px]" style={{ color: colors.textMuted }}>Block time on your timeline</span>
+                </div>
+              </button>
+            )}
 
             {awarenessInsight && (
               <div
@@ -333,6 +536,34 @@ export default function SectographPage() {
                 <p className="text-xs leading-relaxed" style={{ color: colors.text, opacity: 0.85 }}>
                   {awarenessInsight}
                 </p>
+              </div>
+            )}
+
+            {behavioralAnchors.length > 0 && (
+              <div
+                className="w-full rounded-lg p-4"
+                style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
+                data-testid="anchors-card"
+              >
+                <h3 className="text-xs font-display font-bold tracking-wider mb-3" style={{ color: "#f59e0b" }}>
+                  RESET MARKERS
+                </h3>
+                <div className="space-y-1.5">
+                  {behavioralAnchors.slice(-5).map((a, i) => (
+                    <div key={i} className="flex items-center gap-3 px-2 py-1.5 rounded" style={{ backgroundColor: "rgba(245,158,11,0.06)" }}>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#f59e0b" }} />
+                      <span className="text-xs font-mono" style={{ color: colors.textMuted }}>
+                        {formatTimeSlot(a.hour, a.minute)}
+                      </span>
+                      <span className="text-[10px]" style={{ color: colors.textMuted, opacity: 0.6 }}>
+                        {a.sessionId.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[10px] ml-auto" style={{ color: colors.textMuted, opacity: 0.5 }}>
+                        {new Date(a.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -834,6 +1065,63 @@ export default function SectographPage() {
                   onClick={() => setShowEventForm(false)}
                   className="border-white/10"
                   data-testid="button-cancel-event"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={showFocusSetup} onOpenChange={setShowFocusSetup}>
+          <DialogContent className="max-w-xs border-white/10" style={{ backgroundColor: colors.surface }}>
+            <DialogHeader>
+              <DialogTitle className="text-base font-display" style={{ color: colors.text }}>
+                <Target size={16} className="inline mr-2" style={{ color: "#8b5cf6" }} />
+                Focus Session
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider block mb-2" style={{ color: colors.textMuted }}>
+                  Duration
+                </label>
+                <div className="flex gap-2">
+                  {[5, 10, 15, 25, 30, 45, 60].map(d => (
+                    <button
+                      key={d}
+                      onClick={() => setFocusDuration(d)}
+                      className="flex-1 py-2 rounded text-xs font-mono font-bold transition-all"
+                      style={{
+                        backgroundColor: focusDuration === d ? "rgba(139,92,246,0.3)" : "rgba(255,255,255,0.05)",
+                        color: focusDuration === d ? "#8b5cf6" : colors.textMuted,
+                        border: `1px solid ${focusDuration === d ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.1)"}`,
+                      }}
+                      data-testid={`button-focus-${d}`}
+                    >
+                      {d}m
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
+                A {focusDuration}-minute focus block will appear on your timeline. Stay present with the task at hand.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={startFocusSession}
+                  className="flex-1"
+                  style={{ backgroundColor: "#8b5cf6", color: "#fff" }}
+                  disabled={focusMutation.isPending}
+                  data-testid="button-confirm-focus"
+                >
+                  <Play size={12} className="mr-1" />
+                  {focusMutation.isPending ? "Starting..." : "Begin Focus"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFocusSetup(false)}
+                  className="border-white/10"
+                  data-testid="button-cancel-focus-setup"
                 >
                   Cancel
                 </Button>

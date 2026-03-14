@@ -24,6 +24,20 @@ export interface FreeWindow {
   durationMinutes: number;
 }
 
+export interface BehavioralAnchor {
+  sessionId: string;
+  completedAt: string;
+  hour: number;
+  minute: number;
+  durationMinutes: number;
+}
+
+export interface ActiveFocusBlock {
+  startHour: number;
+  startMinute: number;
+  durationMinutes: number;
+}
+
 export const DEFAULT_SEGMENTS: ScheduleBlock[] = [
   { id: "seg-sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#2d3a4f", segment: "sleep" },
   { id: "seg-morning", name: "Morning", startHour: 6, endHour: 9, color: "#4a6272", segment: "personal" },
@@ -78,6 +92,8 @@ interface SectographProps {
   schedule?: ScheduleBlock[];
   size?: number;
   showAwareness?: boolean;
+  anchors?: BehavioralAnchor[];
+  focusBlock?: ActiveFocusBlock | null;
   onCenterClick?: () => void;
   onBlockClick?: (block: ScheduleBlock) => void;
   onFreeWindowClick?: (window: FreeWindow) => void;
@@ -87,6 +103,8 @@ export function Sectograph({
   schedule = DEFAULT_SEGMENTS,
   size = 280,
   showAwareness = false,
+  anchors = [],
+  focusBlock = null,
   onCenterClick,
   onBlockClick,
   onFreeWindowClick,
@@ -230,6 +248,35 @@ export function Sectograph({
           return (
             <g key={`free-${i}`} onClick={() => onFreeWindowClick?.(gap)} style={{ cursor: onFreeWindowClick ? "pointer" : "default" }} data-testid={`sectograph-free-${i}`}>
               <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="rgba(34,197,94,0.08)" stroke="rgba(34,197,94,0.25)" strokeWidth="1" strokeDasharray="4 3" />
+            </g>
+          );
+        })}
+
+        {focusBlock && (() => {
+          const endMin = focusBlock.startHour * 60 + focusBlock.startMinute + focusBlock.durationMinutes;
+          const endH = Math.floor(endMin / 60) % 24;
+          const endM = endMin % 60;
+          const startAngle = timeToAngle(focusBlock.startHour, focusBlock.startMinute);
+          const endAngle = timeToAngle(endH, endM);
+          return (
+            <g data-testid="sectograph-focus-block">
+              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="rgba(139,92,246,0.35)" stroke="rgba(139,92,246,0.7)" strokeWidth="1.5" />
+              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="none" stroke="rgba(139,92,246,0.5)" strokeWidth="4" style={{ filter: "blur(4px)", pointerEvents: "none" }} />
+            </g>
+          );
+        })()}
+
+        {anchors.map((anchor, i) => {
+          const angle = timeToAngle(anchor.hour, anchor.minute);
+          const markerOuter = scheduleOuterRadius + 6;
+          const markerPos = polarToCartesian(angle, markerOuter);
+          const tickInnerPos = polarToCartesian(angle, scheduleOuterRadius);
+          const tickOuterPos = polarToCartesian(angle, markerOuter - 3);
+          return (
+            <g key={`anchor-${i}`} data-testid={`sectograph-anchor-${i}`}>
+              <line x1={tickInnerPos.x} y1={tickInnerPos.y} x2={tickOuterPos.x} y2={tickOuterPos.y} stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
+              <circle cx={markerPos.x} cy={markerPos.y} r={3.5} fill="#f59e0b" opacity="0.9" />
+              <circle cx={markerPos.x} cy={markerPos.y} r={6} fill="none" stroke="#f59e0b" strokeWidth="0.5" opacity="0.4" />
             </g>
           );
         })}
