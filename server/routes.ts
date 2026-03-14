@@ -349,6 +349,25 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/daily-flow-bonus", async (req, res) => {
+    try {
+      const schema = z.object({
+        bonusXP: z.number().min(1).max(20),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid bonus data" });
+      }
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const updatedPlayer = await storage.gainExp(req.params.id, parsed.data.bonusXP);
+      res.json({ success: true, bonusXP: parsed.data.bonusXP });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to award bonus" });
+    }
+  });
+
   app.get("/api/player/:id/training-scaling", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);

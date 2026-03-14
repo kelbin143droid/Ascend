@@ -377,7 +377,7 @@ export function GuidedActivityEngine({
     }
   }, [isCompletionStep]);
 
-  const getActionLabel = (s: ActivityStep): string => {
+  const getActionLabel = (s: ActivityStep, stepIdx: number): string => {
     switch (s.type) {
       case "timer":
         return "Start Timer";
@@ -386,7 +386,7 @@ export function GuidedActivityEngine({
       case "rep":
         return "Mark Complete";
       case "instruction":
-        return "Done";
+        return stepIdx === 0 ? "Begin" : "Done";
       default:
         return "Continue";
     }
@@ -534,7 +534,7 @@ export function GuidedActivityEngine({
                 data-testid="button-step-action"
               >
                 {getActionIcon(step)}
-                {getActionLabel(step)}
+                {getActionLabel(step, currentStepIdx)}
               </button>
             )}
 

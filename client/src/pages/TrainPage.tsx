@@ -5,8 +5,9 @@ import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { GuidedActivityEngine } from "@/components/game/GuidedActivityEngine";
-import { buildPhase1Activities, STRENGTH_TIERS, TIER_XP_MULTIPLIERS, type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
-import { Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield } from "lucide-react";
+import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
+import { buildPhase1Activities, TIER_XP_MULTIPLIERS, type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
+import { Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield, Zap, ListChecks } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const CATEGORY_ICONS: Record<string, typeof Dumbbell> = {
@@ -32,6 +33,7 @@ export default function TrainPage() {
   const queryClient = useQueryClient();
   const [activeActivity, setActiveActivity] = useState<ActivityDefinition | null>(null);
   const [completedToday, setCompletedToday] = useState<Set<string>>(new Set());
+  const [flowActive, setFlowActive] = useState(false);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; isOnboardingComplete: boolean }>({
     queryKey: ["home", player?.id],
@@ -75,6 +77,17 @@ export default function TrainPage() {
     queryClient.invalidateQueries({ queryKey: ["training-scaling", player?.id] });
   };
 
+  const handleFlowComplete = (completedIds: string[], _bonusAwarded: boolean) => {
+    setCompletedToday((prev) => {
+      const next = new Set(prev);
+      completedIds.forEach((id) => next.add(id));
+      return next;
+    });
+    setFlowActive(false);
+    queryClient.invalidateQueries({ queryKey: ["training-scaling", player?.id] });
+    queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+  };
+
   const allComplete = completedToday.size === activities.length;
 
   return (
@@ -86,6 +99,14 @@ export default function TrainPage() {
             playerId={player.id}
             onComplete={() => handleActivityComplete(activeActivity.id)}
             onCancel={() => setActiveActivity(null)}
+          />
+        )}
+        {flowActive && player && (
+          <DailyFlowEngine
+            activities={activities}
+            playerId={player.id}
+            onComplete={handleFlowComplete}
+            onCancel={() => setFlowActive(false)}
           />
         )}
       </AnimatePresence>
@@ -102,6 +123,45 @@ export default function TrainPage() {
           </h1>
         </div>
 
+        {!allComplete && (
+          <button
+            className="w-full rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98]"
+            style={{
+              background: `linear-gradient(135deg, ${colors.primary}20, ${colors.primary}08)`,
+              border: `1px solid ${colors.primary}30`,
+            }}
+            onClick={() => setFlowActive(true)}
+            data-testid="button-start-daily-flow"
+          >
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                backgroundColor: `${colors.primary}20`,
+                border: `1px solid ${colors.primary}40`,
+              }}
+            >
+              <ListChecks size={24} style={{ color: colors.primary }} />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-base font-bold" style={{ color: colors.text }}>
+                Start Daily Flow
+              </div>
+              <div className="text-xs" style={{ color: colors.textMuted }}>
+                All 4 activities in sequence · ~{totalMins} min · +5 bonus XP
+              </div>
+            </div>
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{
+                backgroundColor: `${colors.primary}20`,
+                border: `1px solid ${colors.primary}40`,
+              }}
+            >
+              <Play size={16} style={{ color: colors.primary }} />
+            </div>
+          </button>
+        )}
+
         <div
           className="rounded-lg px-4 py-3"
           style={{
@@ -110,7 +170,7 @@ export default function TrainPage() {
           }}
         >
           <p className="text-xs leading-relaxed" style={{ color: colors.textMuted }}>
-            Phase 1 — Build consistency with small daily rituals. Complete all 4 activities (~{totalMins} min total).
+            Phase 1 — Build consistency with small daily rituals. Complete all 4 activities (~{totalMins} min total) or run the Daily Flow.
           </p>
         </div>
 
@@ -145,7 +205,6 @@ export default function TrainPage() {
             const multiplier = activity.xpMultiplier ?? 1.0;
             const catScaling = scalingData?.trainingScaling?.[activity.category];
             const streak = catScaling?.completionStreak ?? 0;
-            const sessionsCompleted = catScaling?.sessionsCompleted ?? 0;
 
             return (
               <div
