@@ -33,7 +33,7 @@ const menuItems: MenuItem[] = [
   { icon: BookOpen, label: "Library", path: "/library" },
   { icon: Trophy, label: "Achievements", path: "/inventory" },
   { icon: Settings, label: "Weekly Planning", path: "/weekly-planning" },
-  { icon: Clock, label: "Sectograph", path: "/sectograph", section: "system", unlockDay: 7, lockMessage: "Sectograph unlocks once your rhythm begins." },
+  { icon: Clock, label: "Sectograph", path: "/sectograph", section: "system", unlockDay: 1, lockMessage: "Sectograph unlocks once your rhythm begins." },
   { icon: Gamepad2, label: "Future Game", path: "/game3d" },
 ];
 

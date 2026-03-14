@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SystemLayout } from "@/components/game/SystemLayout";
-import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
+import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow } from "@/components/game/Sectograph";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
 import { apiRequest } from "@/lib/queryClient";
@@ -18,7 +18,8 @@ import {
   Trash2,
   Check,
   CalendarDays,
-  Circle,
+  Sparkles,
+  Eye,
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
 
@@ -36,6 +37,71 @@ const REMINDER_OPTIONS = [
   { value: 60, label: "1 hour before" },
 ];
 
+const SEGMENT_LABELS: Record<string, { label: string; color: string }> = {
+  sleep: { label: "Sleep", color: "#2d3a4f" },
+  personal: { label: "Personal", color: "#5a6b7a" },
+  work: { label: "Work", color: "#3d5a80" },
+  focus: { label: "Focus", color: "#6b5b8a" },
+  open: { label: "Open Time", color: "#22c55e" },
+};
+
+function getAwarenessInsight(schedule: ScheduleBlock[], freeWindows: FreeWindow[]): string | null {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMin = now.getMinutes();
+  const currentTotal = currentHour * 60 + currentMin;
+
+  const currentBlock = schedule.find(b => {
+    const start = b.startHour * 60 + (b.startMinute ?? 0);
+    let end = b.endHour * 60 + (b.endMinute ?? 0);
+    if (end <= start) end += 24 * 60;
+    return currentTotal >= start && currentTotal < end;
+  });
+
+  if (currentBlock?.segment === "work" || currentBlock?.isSystemTask) {
+    if (currentHour < 12) return "Morning focus is active. This is often your strongest window.";
+    return "Deep work block in progress. Stay in the zone.";
+  }
+
+  const upcomingFree = freeWindows.find(w => {
+    const freeStart = w.startHour * 60 + w.startMinute;
+    return freeStart > currentTotal && freeStart - currentTotal < 120;
+  });
+  if (upcomingFree) {
+    const h = Math.floor(upcomingFree.durationMinutes / 60);
+    const m = upcomingFree.durationMinutes % 60;
+    const dur = h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ''}` : `${m}m`;
+    return `You have a free window coming up — ${dur} of open time.`;
+  }
+
+  const currentFree = freeWindows.find(w => {
+    const freeStart = w.startHour * 60 + w.startMinute;
+    const freeEnd = w.endHour * 60 + w.endMinute;
+    return currentTotal >= freeStart && currentTotal < freeEnd;
+  });
+  if (currentFree) {
+    const remaining = (currentFree.endHour * 60 + currentFree.endMinute) - currentTotal;
+    return `You're in open time right now — ${remaining} minutes before your next block.`;
+  }
+
+  if (currentBlock?.segment === "personal") {
+    return "Personal time. A good moment to recharge.";
+  }
+
+  if (currentBlock?.segment === "sleep") {
+    return "Rest is part of progress. Sleep well.";
+  }
+
+  return "Observe your day's rhythm. Patterns will emerge over time.";
+}
+
+function formatTimeSlot(hour: number, minute: number): string {
+  const h = hour % 12 || 12;
+  const p = hour < 12 ? "AM" : "PM";
+  const m = minute.toString().padStart(2, '0');
+  return `${h}:${m} ${p}`;
+}
+
 export default function SectographPage() {
   const [, navigate] = useLocation();
   const { backgroundTheme } = useTheme();
@@ -44,12 +110,10 @@ export default function SectographPage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<ViewTab>("sectograph");
-
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formDate, setFormDate] = useState("");
@@ -154,9 +218,14 @@ export default function SectographPage() {
     setShowEventForm(false);
   };
 
-  const schedule: ScheduleBlock[] = player?.schedule?.length
+  const activeSchedule: ScheduleBlock[] = player?.schedule?.length
     ? (player.schedule as ScheduleBlock[])
-    : [];
+    : DEFAULT_SEGMENTS;
+
+  const hasCustomSchedule = (player?.schedule as any[])?.length > 0;
+
+  const freeWindows = useMemo(() => detectFreeWindows(activeSchedule, 30), [activeSchedule]);
+  const awarenessInsight = useMemo(() => getAwarenessInsight(activeSchedule, freeWindows), [activeSchedule, freeWindows]);
 
   const todayKey = formatDateKey(new Date());
   const daysInMonth = getDaysInMonth(currentMonth);
@@ -191,6 +260,15 @@ export default function SectographPage() {
     { id: "week", label: "Week" },
   ];
 
+  const usedSegments = useMemo(() => {
+    const segs = new Set<string>();
+    activeSchedule.forEach(b => {
+      if (b.segment) segs.add(b.segment);
+    });
+    if (freeWindows.length > 0) segs.add("open");
+    return segs;
+  }, [activeSchedule, freeWindows]);
+
   return (
     <SystemLayout>
       <div className="flex flex-col gap-4 pt-4 pb-20">
@@ -212,7 +290,7 @@ export default function SectographPage() {
 
         <div
           className="flex rounded-lg p-0.5"
-          style={{ backgroundColor: `${colors.surface}`, border: `1px solid ${colors.surfaceBorder}` }}
+          style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
         >
           {tabs.map((tab) => (
             <button
@@ -235,56 +313,139 @@ export default function SectographPage() {
           <div className="flex flex-col items-center gap-4">
             <div className="flex justify-center pt-2">
               <Sectograph
-                schedule={schedule}
+                schedule={activeSchedule}
                 size={300}
+                showAwareness={true}
                 onCenterClick={() => navigate("/schedule")}
               />
             </div>
+
+            {awarenessInsight && (
+              <div
+                className="w-full rounded-lg p-3 flex items-start gap-3"
+                style={{
+                  backgroundColor: `${colors.primary}08`,
+                  border: `1px solid ${colors.primary}20`,
+                }}
+                data-testid="awareness-insight"
+              >
+                <Sparkles size={14} className="flex-shrink-0 mt-0.5" style={{ color: colors.primary, opacity: 0.7 }} />
+                <p className="text-xs leading-relaxed" style={{ color: colors.text, opacity: 0.85 }}>
+                  {awarenessInsight}
+                </p>
+              </div>
+            )}
+
             <div
               className="w-full rounded-lg p-4"
               style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
             >
-              <h3 className="text-xs font-display font-bold tracking-wider mb-3" style={{ color: colors.textMuted }}>
-                TODAY'S BLOCKS
-              </h3>
-              {schedule.length === 0 ? (
-                <p className="text-xs text-center py-4" style={{ color: colors.textMuted }}>
-                  No schedule blocks yet. Use the schedule editor to add blocks.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  {schedule
-                    .filter(b => !b.isTemplate || b.isTemplate)
-                    .sort((a, b) => a.startHour - b.startHour)
-                    .map((block) => {
-                      const startH = block.startHour % 12 || 12;
-                      const startP = block.startHour < 12 ? "AM" : "PM";
-                      const endH = block.endHour % 12 || 12;
-                      const endP = block.endHour < 12 ? "AM" : "PM";
-                      const startMin = (block.startMinute ?? 0).toString().padStart(2, '0');
-                      const endMin = (block.endMinute ?? 0).toString().padStart(2, '0');
-                      return (
-                        <div
-                          key={block.id}
-                          className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                          style={{ backgroundColor: "rgba(0,0,0,0.2)" }}
-                          data-testid={`block-item-${block.id}`}
-                        >
-                          <div className="w-1 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: block.color }} />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm font-medium truncate block" style={{ color: colors.text }}>
-                              {block.name}
-                            </span>
-                            <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
-                              {startH}:{startMin} {startP} — {endH}:{endMin} {endP}
-                            </span>
-                          </div>
-                          {block.isSystemTask && (
-                            <Circle size={6} fill={colors.primary} stroke="none" className="flex-shrink-0 opacity-60" />
-                          )}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-display font-bold tracking-wider" style={{ color: colors.textMuted }}>
+                  TIME SEGMENTS
+                </h3>
+                <div className="flex items-center gap-1">
+                  <Eye size={10} style={{ color: colors.textMuted, opacity: 0.5 }} />
+                  <span className="text-[9px]" style={{ color: colors.textMuted, opacity: 0.5 }}>
+                    {hasCustomSchedule ? "Your schedule" : "Default layout"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-4">
+                {Array.from(usedSegments).map(seg => {
+                  const info = SEGMENT_LABELS[seg];
+                  if (!info) return null;
+                  return (
+                    <div key={seg} className="flex items-center gap-1.5" data-testid={`segment-tag-${seg}`}>
+                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: info.color }} />
+                      <span className="text-[10px] font-medium" style={{ color: colors.textMuted }}>{info.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-1.5">
+                {activeSchedule
+                  .sort((a, b) => {
+                    const aStart = a.startHour * 60 + (a.startMinute ?? 0);
+                    const bStart = b.startHour * 60 + (b.startMinute ?? 0);
+                    const aNorm = a.startHour >= 22 ? aStart - 24 * 60 : aStart;
+                    const bNorm = b.startHour >= 22 ? bStart - 24 * 60 : bStart;
+                    return aNorm - bNorm;
+                  })
+                  .map((block) => {
+                    const now = new Date();
+                    const currentTotal = now.getHours() * 60 + now.getMinutes();
+                    const blockStart = block.startHour * 60 + (block.startMinute ?? 0);
+                    let blockEnd = block.endHour * 60 + (block.endMinute ?? 0);
+                    if (blockEnd <= blockStart) blockEnd += 24 * 60;
+                    const isCurrent = currentTotal >= blockStart && currentTotal < blockEnd;
+
+                    return (
+                      <div
+                        key={block.id}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
+                        style={{
+                          backgroundColor: isCurrent ? `${colors.primary}12` : "rgba(0,0,0,0.2)",
+                          border: isCurrent ? `1px solid ${colors.primary}25` : "1px solid transparent",
+                        }}
+                        data-testid={`block-item-${block.id}`}
+                      >
+                        <div className="w-1 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: block.color }} />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium truncate block" style={{ color: colors.text }}>
+                            {block.name}
+                          </span>
+                          <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
+                            {formatTimeSlot(block.startHour, block.startMinute ?? 0)} — {formatTimeSlot(block.endHour, block.endMinute ?? 0)}
+                          </span>
                         </div>
-                      );
-                    })}
+                        {isCurrent && (
+                          <span
+                            className="text-[8px] px-1.5 py-0.5 rounded-full font-bold tracking-wider"
+                            style={{ backgroundColor: `${colors.primary}20`, color: colors.primary }}
+                          >
+                            NOW
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {freeWindows.map((gap, i) => (
+                  <div
+                    key={`free-${i}`}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg"
+                    style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px dashed rgba(34,197,94,0.2)" }}
+                    data-testid={`free-window-${i}`}
+                  >
+                    <div className="w-1 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(34,197,94,0.4)" }} />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium" style={{ color: "rgba(34,197,94,0.8)" }}>
+                        Open Time
+                      </span>
+                      <span className="text-[10px] font-mono block" style={{ color: colors.textMuted }}>
+                        {formatTimeSlot(gap.startHour, gap.startMinute)} — {formatTimeSlot(gap.endHour, gap.endMinute)}
+                        <span className="ml-1 opacity-60">({gap.durationMinutes}m)</span>
+                      </span>
+                    </div>
+                    <span className="text-[9px]" style={{ color: "rgba(34,197,94,0.6)" }}>Free window</span>
+                  </div>
+                ))}
+              </div>
+
+              {!hasCustomSchedule && (
+                <div
+                  className="mt-4 p-3 rounded-lg text-center"
+                  style={{ backgroundColor: "rgba(0,0,0,0.15)" }}
+                  data-testid="observe-hint"
+                >
+                  <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
+                    This is a default day layout. Observe how your actual day flows.
+                    <br />
+                    <span style={{ opacity: 0.6 }}>Schedule editing unlocks as you build consistency.</span>
+                  </p>
                 </div>
               )}
             </div>
@@ -470,7 +631,6 @@ export default function SectographPage() {
                   const dateKey = formatDateKey(date);
                   const dayEvents = getEventsForDate(dateKey);
                   const isToday = dateKey === todayKey;
-                  const dayBlocks = schedule.filter(b => !b.isTemplate || b.isTemplate);
 
                   return (
                     <div
@@ -521,13 +681,7 @@ export default function SectographPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 mt-1">
-                          {isToday && dayBlocks.length > 0 ? (
-                            <span className="text-[10px]" style={{ color: colors.textMuted }}>
-                              {dayBlocks.length} schedule block{dayBlocks.length !== 1 ? 's' : ''}
-                            </span>
-                          ) : (
-                            <span className="text-[10px]" style={{ color: colors.textMuted }}>No events</span>
-                          )}
+                          <span className="text-[10px]" style={{ color: colors.textMuted }}>No events</span>
                         </div>
                       )}
                     </div>
