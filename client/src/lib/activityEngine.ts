@@ -26,6 +26,8 @@ export interface ActivityDefinition {
   xpReward: number;
   color: string;
   steps: ActivityStep[];
+  tier?: number;
+  xpMultiplier?: number;
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -35,10 +37,60 @@ export const CATEGORY_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
-export function buildPhase1Activities(dayNumber: number): ActivityDefinition[] {
-  const pushupReps = 5 + Math.floor((dayNumber - 1) / 3);
-  const cardioSeconds = 30 + Math.floor((dayNumber - 1) / 3) * 5;
-  const crunchReps = 10 + Math.floor((dayNumber - 1) / 3) * 2;
+export const TIER_XP_MULTIPLIERS: Record<number, number> = {
+  1: 1.0,
+  2: 1.1,
+  3: 1.2,
+  4: 1.3,
+  5: 1.5,
+};
+
+export interface TierConfig {
+  pushups: number;
+  cardioSeconds: number;
+  crunches: number;
+}
+
+export const STRENGTH_TIERS: Record<number, TierConfig> = {
+  1: { pushups: 5, cardioSeconds: 30, crunches: 10 },
+  2: { pushups: 6, cardioSeconds: 35, crunches: 12 },
+  3: { pushups: 7, cardioSeconds: 40, crunches: 14 },
+  4: { pushups: 8, cardioSeconds: 45, crunches: 16 },
+  5: { pushups: 10, cardioSeconds: 60, crunches: 20 },
+};
+
+export function getMaxTierForPhase(phase: number): number {
+  if (phase <= 1) return 3;
+  return 5;
+}
+
+export interface CategoryTiers {
+  strength: number;
+  agility: number;
+  meditation: number;
+  vitality: number;
+}
+
+export function buildPhase1Activities(
+  _dayNumber: number,
+  tiers?: CategoryTiers,
+): ActivityDefinition[] {
+  const strengthTier = tiers?.strength ?? 1;
+  const agilityTier = tiers?.agility ?? 1;
+  const meditationTier = tiers?.meditation ?? 1;
+  const vitalityTier = tiers?.vitality ?? 1;
+
+  const st = STRENGTH_TIERS[strengthTier] ?? STRENGTH_TIERS[1];
+  const strengthMultiplier = TIER_XP_MULTIPLIERS[strengthTier] ?? 1.0;
+  const agilityMultiplier = TIER_XP_MULTIPLIERS[agilityTier] ?? 1.0;
+  const meditationMultiplier = TIER_XP_MULTIPLIERS[meditationTier] ?? 1.0;
+  const vitalityMultiplier = TIER_XP_MULTIPLIERS[vitalityTier] ?? 1.0;
+
+  const agilityNeckDuration = 20 + (agilityTier - 1) * 5;
+  const agilityShoulderReps = 10 + (agilityTier - 1) * 2;
+  const agilityBendDuration = 15 + (agilityTier - 1) * 5;
+
+  const meditationDuration = 120 + (meditationTier - 1) * 30;
 
   return [
     {
@@ -49,6 +101,8 @@ export function buildPhase1Activities(dayNumber: number): ActivityDefinition[] {
       duration: 120,
       xpReward: 0,
       color: CATEGORY_COLORS.strength,
+      tier: strengthTier,
+      xpMultiplier: strengthMultiplier,
       steps: [
         {
           id: "intro",
@@ -60,23 +114,23 @@ export function buildPhase1Activities(dayNumber: number): ActivityDefinition[] {
           id: "pushups",
           type: "rep",
           label: "Push-ups",
-          instruction: `Do ${pushupReps} push-ups at your own pace. Knee push-ups are perfectly fine.`,
-          repCount: pushupReps,
+          instruction: `Do ${st.pushups} push-ups at your own pace. Knee push-ups are perfectly fine.`,
+          repCount: st.pushups,
           repLabel: "push-ups",
         },
         {
           id: "cardio",
           type: "timer",
           label: "Cardio",
-          instruction: `Jog in place. Keep it light and steady.`,
-          durationSeconds: cardioSeconds,
+          instruction: "Jog in place. Keep it light and steady.",
+          durationSeconds: st.cardioSeconds,
         },
         {
           id: "abs",
           type: "rep",
           label: "Abs",
-          instruction: `Do ${crunchReps} crunches. Slow and controlled.`,
-          repCount: crunchReps,
+          instruction: `Do ${st.crunches} crunches. Slow and controlled.`,
+          repCount: st.crunches,
           repLabel: "crunches",
         },
         {
@@ -102,20 +156,22 @@ export function buildPhase1Activities(dayNumber: number): ActivityDefinition[] {
       duration: 60,
       xpReward: 0,
       color: CATEGORY_COLORS.agility,
+      tier: agilityTier,
+      xpMultiplier: agilityMultiplier,
       steps: [
         {
           id: "neck_roll",
           type: "timer",
           label: "Neck Rolls",
-          instruction: "Gently roll your neck in circles. 10 seconds each direction.",
-          durationSeconds: 20,
+          instruction: `Gently roll your neck in circles. ${Math.round(agilityNeckDuration / 2)} seconds each direction.`,
+          durationSeconds: agilityNeckDuration,
         },
         {
           id: "shoulder_rolls",
           type: "rep",
           label: "Shoulder Rolls",
           instruction: "Roll your shoulders forward and backward.",
-          repCount: 10,
+          repCount: agilityShoulderReps,
           repLabel: "each direction",
         },
         {
@@ -123,7 +179,7 @@ export function buildPhase1Activities(dayNumber: number): ActivityDefinition[] {
           type: "timer",
           label: "Forward Bend",
           instruction: "Stand and slowly bend forward. Reach toward your toes. Hold gently.",
-          durationSeconds: 15,
+          durationSeconds: agilityBendDuration,
         },
         {
           id: "agility_done",
@@ -138,22 +194,24 @@ export function buildPhase1Activities(dayNumber: number): ActivityDefinition[] {
       activityName: "Calm Breathing",
       category: "meditation",
       stat: "sense",
-      duration: 120,
+      duration: meditationDuration,
       xpReward: 0,
       color: CATEGORY_COLORS.meditation,
+      tier: meditationTier,
+      xpMultiplier: meditationMultiplier,
       steps: [
         {
           id: "calm_intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: "Find a comfortable position. Close your eyes or soften your gaze. We'll breathe together for 2 minutes.",
+          instruction: `Find a comfortable position. Close your eyes or soften your gaze. We'll breathe together for ${Math.round(meditationDuration / 60)} minutes.`,
         },
         {
           id: "calm_breathing",
           type: "breath",
           label: "Calm Breathing",
           instruction: "Follow the circle. Inhale 4s → Hold 2s → Exhale 6s.",
-          durationSeconds: 120,
+          durationSeconds: meditationDuration,
           breathTiming: { inhaleSeconds: 4, holdSeconds: 2, exhaleSeconds: 6 },
         },
         {
@@ -172,6 +230,8 @@ export function buildPhase1Activities(dayNumber: number): ActivityDefinition[] {
       duration: 30,
       xpReward: 0,
       color: CATEGORY_COLORS.vitality,
+      tier: vitalityTier,
+      xpMultiplier: vitalityMultiplier,
       steps: [
         {
           id: "hydration",

@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { GuidedActivityEngine } from "@/components/game/GuidedActivityEngine";
-import { buildPhase1Activities, type ActivityDefinition } from "@/lib/activityEngine";
-import { Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, Sparkles } from "lucide-react";
+import { buildPhase1Activities, STRENGTH_TIERS, TIER_XP_MULTIPLIERS, type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
+import { Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const CATEGORY_ICONS: Record<string, typeof Dumbbell> = {
@@ -16,11 +16,20 @@ const CATEGORY_ICONS: Record<string, typeof Dumbbell> = {
   vitality: Heart,
 };
 
+const TIER_LABELS: Record<number, string> = {
+  1: "Beginner",
+  2: "Building",
+  3: "Steady",
+  4: "Strong",
+  5: "Peak",
+};
+
 export default function TrainPage() {
   const { player } = useGame();
   const { backgroundTheme } = useTheme();
   const { t } = useLanguage();
   const colors = backgroundTheme.colors;
+  const queryClient = useQueryClient();
   const [activeActivity, setActiveActivity] = useState<ActivityDefinition | null>(null);
   const [completedToday, setCompletedToday] = useState<Set<string>>(new Set());
 
@@ -36,14 +45,34 @@ export default function TrainPage() {
     staleTime: 30000,
   });
 
+  const { data: scalingData } = useQuery<{ trainingScaling: Record<string, { tier: number; completionStreak: number; missedDays: number; sessionsCompleted: number }> }>({
+    queryKey: ["training-scaling", player?.id],
+    queryFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      const res = await fetch(`/api/player/${player.id}/training-scaling`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!player?.id,
+    staleTime: 10000,
+  });
+
+  const tiers: CategoryTiers = {
+    strength: scalingData?.trainingScaling?.strength?.tier ?? 1,
+    agility: scalingData?.trainingScaling?.agility?.tier ?? 1,
+    meditation: scalingData?.trainingScaling?.meditation?.tier ?? 1,
+    vitality: scalingData?.trainingScaling?.vitality?.tier ?? 1,
+  };
+
   const dayNumber = homeData?.onboardingDay ?? 1;
-  const activities = buildPhase1Activities(dayNumber);
+  const activities = buildPhase1Activities(dayNumber, tiers);
   const totalTime = activities.reduce((sum, a) => sum + a.duration, 0);
   const totalMins = Math.ceil(totalTime / 60);
 
   const handleActivityComplete = (activityId: string) => {
     setCompletedToday((prev) => new Set(prev).add(activityId));
     setActiveActivity(null);
+    queryClient.invalidateQueries({ queryKey: ["training-scaling", player?.id] });
   };
 
   const allComplete = completedToday.size === activities.length;
@@ -112,6 +141,11 @@ export default function TrainPage() {
             const actMins = Math.ceil(activity.duration / 60);
             const Icon = CATEGORY_ICONS[activity.category] || Dumbbell;
             const stepsWithoutCompletion = activity.steps.filter((s) => s.type !== "completion");
+            const tier = activity.tier ?? 1;
+            const multiplier = activity.xpMultiplier ?? 1.0;
+            const catScaling = scalingData?.trainingScaling?.[activity.category];
+            const streak = catScaling?.completionStreak ?? 0;
+            const sessionsCompleted = catScaling?.sessionsCompleted ?? 0;
 
             return (
               <div
@@ -143,16 +177,36 @@ export default function TrainPage() {
                     )}
                   </div>
                   <div className="flex-1 text-left">
-                    <div
-                      className="text-base font-bold"
-                      style={{ color: isDone ? colors.textMuted : colors.text }}
-                    >
-                      {activity.activityName}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-base font-bold"
+                        style={{ color: isDone ? colors.textMuted : colors.text }}
+                      >
+                        {activity.activityName}
+                      </span>
+                      {tier > 1 && (
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                          style={{
+                            backgroundColor: `${activity.color}20`,
+                            color: activity.color,
+                          }}
+                        >
+                          T{tier}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-xs" style={{ color: colors.textMuted }}>
-                      {isDone
-                        ? "Completed"
-                        : `${stepsWithoutCompletion.length} steps · ~${actMins} min`}
+                    <div className="text-xs flex items-center gap-2" style={{ color: colors.textMuted }}>
+                      {isDone ? (
+                        "Completed"
+                      ) : (
+                        <>
+                          <span>{stepsWithoutCompletion.length} steps · ~{actMins} min</span>
+                          {multiplier > 1 && (
+                            <span style={{ color: activity.color }}>×{multiplier.toFixed(1)} XP</span>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                   {!isDone && (
@@ -169,20 +223,28 @@ export default function TrainPage() {
                 </button>
 
                 {!isDone && (
-                  <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-                    {stepsWithoutCompletion.map((step) => (
-                      <span
-                        key={step.id}
-                        className="text-[10px] px-2 py-0.5 rounded-full"
-                        style={{
-                          backgroundColor: `${activity.color}10`,
-                          color: activity.color,
-                          border: `1px solid ${activity.color}20`,
-                        }}
-                      >
-                        {step.label}
-                      </span>
-                    ))}
+                  <div className="px-4 pb-3">
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {stepsWithoutCompletion.map((step) => (
+                        <span
+                          key={step.id}
+                          className="text-[10px] px-2 py-0.5 rounded-full"
+                          style={{
+                            backgroundColor: `${activity.color}10`,
+                            color: activity.color,
+                            border: `1px solid ${activity.color}20`,
+                          }}
+                        >
+                          {step.label}
+                        </span>
+                      ))}
+                    </div>
+                    {streak > 0 && (
+                      <div className="flex items-center gap-1.5 text-[10px]" style={{ color: colors.textMuted }}>
+                        <TrendingUp size={10} style={{ color: activity.color }} />
+                        <span>{streak}/3 streak to next tier</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -199,39 +261,57 @@ export default function TrainPage() {
           data-testid="card-progression-info"
         >
           <div
-            className="text-xs font-bold uppercase tracking-wider mb-2"
+            className="text-xs font-bold uppercase tracking-wider mb-3"
             style={{ color: colors.textMuted }}
           >
-            Today's Progression
+            Adaptive Scaling
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="text-center">
-              <div className="text-2xl font-bold" style={{ color: colors.primary }}>
-                {completedToday.size}/{activities.length}
-              </div>
-              <div
-                className="text-[10px] uppercase tracking-wider"
-                style={{ color: colors.textMuted }}
-              >
-                Activities Done
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold" style={{ color: colors.primary }}>
-                Day {dayNumber}
-              </div>
-              <div
-                className="text-[10px] uppercase tracking-wider"
-                style={{ color: colors.textMuted }}
-              >
-                Phase 1
-              </div>
-            </div>
+          <div className="grid grid-cols-4 gap-2">
+            {(["strength", "agility", "meditation", "vitality"] as const).map((cat) => {
+              const catTier = tiers[cat];
+              const catColor = {
+                strength: "#ef4444",
+                agility: "#22c55e",
+                meditation: "#3b82f6",
+                vitality: "#f59e0b",
+              }[cat];
+              const catIcon = {
+                strength: "STR",
+                agility: "AGI",
+                meditation: "SEN",
+                vitality: "VIT",
+              }[cat];
+              return (
+                <div
+                  key={cat}
+                  className="text-center p-2 rounded-lg"
+                  style={{
+                    backgroundColor: `${catColor}10`,
+                    border: `1px solid ${catColor}20`,
+                  }}
+                >
+                  <div className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: catColor }}>
+                    {catIcon}
+                  </div>
+                  <div className="text-lg font-bold" style={{ color: colors.text }}>
+                    T{catTier}
+                  </div>
+                  <div className="text-[9px]" style={{ color: colors.textMuted }}>
+                    {TIER_LABELS[catTier] ?? "Beginner"}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <div className="mt-3 text-[10px] leading-relaxed" style={{ color: colors.textMuted }}>
-            Push-ups: {5 + Math.floor((dayNumber - 1) / 3)} · Cardio:{" "}
-            {30 + Math.floor((dayNumber - 1) / 3) * 5}s · Crunches:{" "}
-            {10 + Math.floor((dayNumber - 1) / 3) * 2} — increases every few days
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingUp size={10} style={{ color: colors.primary }} />
+              <span>3 completions in a row → tier up</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Shield size={10} style={{ color: colors.textMuted }} />
+              <span>3 missed days → tier down · Phase 1 max: Tier 3</span>
+            </div>
           </div>
         </div>
       </div>

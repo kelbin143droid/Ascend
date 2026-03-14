@@ -211,6 +211,23 @@ export const stabilityDataSchema = z.object({
 
 export type StabilityData = z.infer<typeof stabilityDataSchema>;
 
+export const categoryScalingSchema = z.object({
+  tier: z.number().min(1).max(5).default(1),
+  completionStreak: z.number().default(0),
+  missedDays: z.number().default(0),
+  sessionsCompleted: z.number().default(0),
+  lastSessionDate: z.string().nullable().default(null),
+});
+export type CategoryScaling = z.infer<typeof categoryScalingSchema>;
+
+export const trainingScalingSchema = z.object({
+  strength: categoryScalingSchema,
+  agility: categoryScalingSchema,
+  meditation: categoryScalingSchema,
+  vitality: categoryScalingSchema,
+});
+export type TrainingScaling = z.infer<typeof trainingScalingSchema>;
+
 export const PHASE_NAMES: Record<number, string> = {
   1: "Stabilization",
   2: "Foundation",
@@ -293,6 +310,12 @@ export const players = pgTable("players", {
   stamina: integer("stamina").notNull().default(1),
   lastMVDCheckDate: text("last_mvd_check_date"),
   onboardingCompleted: integer("onboarding_completed").notNull().default(0),
+  trainingScaling: jsonb("training_scaling").$type<TrainingScaling>().notNull().default({
+    strength: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+    agility: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+    meditation: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+    vitality: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+  }),
   stability: jsonb("stability").$type<StabilityData>().notNull().default({
     score: 50,
     habitCompletionPct: 0,

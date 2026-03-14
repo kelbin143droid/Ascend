@@ -272,6 +272,8 @@ export async function registerRoutes(
         sessionId: z.string(),
         stat: z.enum(["strength", "agility", "sense", "vitality"]),
         durationMinutes: z.number().min(1),
+        category: z.enum(["strength", "agility", "meditation", "vitality"]).optional(),
+        xpMultiplier: z.number().min(1).max(2).optional(),
       });
 
       const parsed = schema.safeParse(req.body);
@@ -283,7 +285,19 @@ export async function registerRoutes(
       if (!player) return res.status(404).json({ error: "Player not found" });
 
       const { getXPForActivity } = await import("./gameLogic/levelSystem");
-      const guidedXP = getXPForActivity(parsed.data.durationMinutes);
+      const { processSessionCompletion, ensureTrainingScaling, getXPMultiplier } = await import("./gameLogic/trainingScaling");
+
+      const statToCat: Record<string, "strength" | "agility" | "meditation" | "vitality"> = {
+        strength: "strength", agility: "agility", sense: "meditation", vitality: "vitality",
+      };
+      const category = parsed.data.category || statToCat[parsed.data.stat] || "strength";
+      const scaling = ensureTrainingScaling(player.trainingScaling);
+      const tierMultiplier = getXPMultiplier(scaling[category].tier);
+
+      const baseXP = getXPForActivity(parsed.data.durationMinutes);
+      const guidedXP = Math.round(baseXP * tierMultiplier);
+
+      const updatedScaling = processSessionCompletion(scaling, category, player.phase || 1);
 
       await storage.createHabitCompletion({
         habitId: `guided_${parsed.data.sessionId}`,
@@ -318,13 +332,40 @@ export async function registerRoutes(
         stability: updatedStability,
         statXP: newStatXP,
         stats: derivedStats,
+        trainingScaling: updatedScaling,
       });
 
       const updatedPlayer = await storage.gainExp(req.params.id, guidedXP);
 
-      res.json({ success: true, xpEarned: guidedXP, stabilityScore: newScore });
+      res.json({
+        success: true,
+        xpEarned: guidedXP,
+        stabilityScore: newScore,
+        trainingScaling: updatedScaling,
+        tierMultiplier,
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to complete guided session" });
+    }
+  });
+
+  app.get("/api/player/:id/training-scaling", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const { ensureTrainingScaling, checkAndProcessMissedDays } = await import("./gameLogic/trainingScaling");
+      let scaling = ensureTrainingScaling(player.trainingScaling);
+      const processed = checkAndProcessMissedDays(scaling);
+
+      if (JSON.stringify(processed) !== JSON.stringify(scaling)) {
+        await storage.updatePlayer(req.params.id, { trainingScaling: processed });
+        scaling = processed;
+      }
+
+      res.json({ trainingScaling: scaling });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch training scaling" });
     }
   });
 

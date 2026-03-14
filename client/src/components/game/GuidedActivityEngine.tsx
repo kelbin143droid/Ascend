@@ -315,6 +315,8 @@ export function GuidedActivityEngine({
           sessionId: activity.id,
           stat: activity.stat,
           durationMinutes,
+          category: activity.category,
+          xpMultiplier: activity.xpMultiplier ?? 1.0,
         }
       );
       return res.json();
@@ -324,6 +326,7 @@ export function GuidedActivityEngine({
       setXpEarned(earned);
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
+      queryClient.invalidateQueries({ queryKey: ["training-scaling"] });
 
       apiRequest("POST", `/api/player/${playerId}/record-activity`, {
         activityId: activity.id,
