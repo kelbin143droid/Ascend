@@ -184,16 +184,29 @@ export const pendingPhaseUnlockSchema = z.object({
 
 export type PendingPhaseUnlock = z.infer<typeof pendingPhaseUnlockSchema>;
 
+export const stabilityStateEnum = z.enum(["stabilizing", "stable", "expanding"]);
+export type StabilityState = z.infer<typeof stabilityStateEnum>;
+
 export const stabilityDataSchema = z.object({
   score: z.number().default(50),
+  state: stabilityStateEnum.default("stabilizing"),
   habitCompletionPct: z.number().default(0),
   sleepConsistency: z.number().default(50),
   energyCompliance: z.number().default(50),
   emotionalStability: z.number().default(50),
   taskTimingAdherence: z.number().default(50),
+  consecutiveActiveDays: z.number().default(0),
+  focusSessionFrequency: z.number().default(0),
+  recoverySpeed: z.number().default(50),
   lastCalculated: z.string().optional(),
   consecutiveLowDays: z.number().default(0),
   softRegressionActive: z.boolean().default(false),
+  recoveryModeActive: z.boolean().default(false),
+  recoveryModeEnteredDate: z.string().optional(),
+  weeksAtStable: z.number().default(0),
+  lastWeeklyCheck: z.string().optional(),
+  habitLimit: z.number().default(3),
+  disruptionDetected: z.boolean().default(false),
 });
 
 export type StabilityData = z.infer<typeof stabilityDataSchema>;

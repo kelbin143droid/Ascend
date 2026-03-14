@@ -18,7 +18,7 @@ import { generatePlacementSuggestions, getCoachPlacementComment, type PlacementS
 import { calculateMomentumUpdate, getMomentumTier, shouldTriggerRecovery } from "./gameLogic/momentumEngine";
 import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "./gameLogic/difficultyScaler";
 import { checkPhaseEligibility, getStatCapForPhase, getPhaseVisualConfig, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
-import { calculateStabilityScore, checkRegression, buildUpdatedStabilityData, getStabilityTier } from "./gameLogic/stabilityEngine";
+import { calculateStabilityScore, checkRegression, buildUpdatedStabilityData, getStabilityTier, detectDisruption, getSystemState, getStabilityStateInfo, getRecoveryCoachMessage } from "./gameLogic/stabilityEngine";
 import { getTasksForToday, completeTask as taskEngineComplete, getPhaseAdjustedDuration } from "./gameLogic/taskEngine";
 import { getEnvironmentVisuals, getAvatarAura, getTaskCompletionVisuals } from "./gameLogic/visualEngine";
 import { checkNotificationEligibility, buildNotification, type PreviousState } from "./gameLogic/notificationEngine";
@@ -466,9 +466,11 @@ export async function registerRoutes(
       const recentCompletions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
       const stabilityCalc = calculateStabilityScore(player, habits, recentCompletions);
       const regression = checkRegression(player, stabilityCalc.score);
+      const previousRate = player.stability?.habitCompletionPct ?? 50;
+      const disruption = detectDisruption(player, recentCompletions, previousRate);
 
       if (regression.type === "hard") {
-        const updatedStability = buildUpdatedStabilityData(stabilityCalc, regression);
+        const updatedStability = buildUpdatedStabilityData(stabilityCalc, regression, disruption, player.stability ?? undefined);
         const regressed = await storage.updatePlayer(req.params.id, {
           stability: updatedStability,
           phase: regression.newPhase,
@@ -484,7 +486,7 @@ export async function registerRoutes(
         });
       }
 
-      const updatedStability = buildUpdatedStabilityData(stabilityCalc, regression);
+      const updatedStability = buildUpdatedStabilityData(stabilityCalc, regression, disruption, player.stability ?? undefined);
       await storage.updatePlayer(req.params.id, { stability: updatedStability });
 
       const result = checkPhaseEligibility(player, habits, completions);
@@ -1334,7 +1336,24 @@ export async function registerRoutes(
         response.response = response.response + " " + rhythmComment;
       }
 
-      res.json(response);
+      const stabilityCalcChat = calculateStabilityScore(player, userHabits, recentCompletions);
+      const previousRateChat = player.stability?.habitCompletionPct ?? 50;
+      const disruptionChat = detectDisruption(player, recentCompletions, previousRateChat);
+      const systemStateChat = getSystemState(stabilityCalcChat, player, disruptionChat);
+
+      if (disruptionChat.detected && response.response) {
+        const recoveryMsg = getRecoveryCoachMessage(disruptionChat, systemStateChat.state);
+        response.response = recoveryMsg + " " + response.response;
+      }
+
+      if (systemStateChat.coachToneModifier === "gentle" && response.response) {
+        response.response = response.response
+          .replace(/You must/g, "You could")
+          .replace(/You need to/g, "You might try")
+          .replace(/You should/g, "You could");
+      }
+
+      res.json({ ...response, coachTone: systemStateChat.coachToneModifier, stabilityState: systemStateChat.state });
     } catch (error) {
       res.status(500).json({ error: "Failed to process coach chat" });
     }
@@ -1537,12 +1556,16 @@ export async function registerRoutes(
       );
 
       const stabilityScore = player.stability?.score ?? 50;
-      let stabilityLabel: string;
-      if (stabilityScore >= 85) stabilityLabel = "Excellent";
-      else if (stabilityScore >= 70) stabilityLabel = "Strong";
-      else if (stabilityScore >= 55) stabilityLabel = "Solid";
-      else if (stabilityScore >= 40) stabilityLabel = "Developing";
-      else stabilityLabel = "Building";
+      const stabilityCalcHome = calculateStabilityScore(player, habits, recentCompletions);
+      const regressionHome = checkRegression(player, stabilityCalcHome.score);
+      const previousRateHome = player.stability?.habitCompletionPct ?? 50;
+      const disruptionHome = detectDisruption(player, recentCompletions, previousRateHome);
+      const systemState = getSystemState(stabilityCalcHome, player, disruptionHome);
+      const stabilityStateInfo = getStabilityStateInfo(systemState.state);
+      const stabilityLabel = stabilityStateInfo.label;
+
+      const updatedStabilityHome = buildUpdatedStabilityData(stabilityCalcHome, regressionHome, disruptionHome, player.stability ?? undefined);
+      await storage.updatePlayer(req.params.id, { stability: updatedStabilityHome });
 
       const flow = getFlowState(player, habits, recentCompletions);
 
@@ -1678,14 +1701,29 @@ export async function registerRoutes(
       const homeInsight = getHomeInsight(player, habits, recentCompletions, userLanguageStage as 1 | 2 | 3 | 4, guidedAnchors);
       const insight = homeInsight.message;
 
+      let recoveryMessage: string | null = null;
+      if (disruptionHome.detected) {
+        recoveryMessage = getRecoveryCoachMessage(disruptionHome, systemState.state);
+      }
+
       res.json({
         phase: {
           number: player.phase,
           name: PHASE_NAMES[player.phase] || "Unknown",
         },
         stability: {
-          score: stabilityScore,
+          score: stabilityCalcHome.score,
           label: stabilityLabel,
+          state: systemState.state,
+          stateInfo: stabilityStateInfo,
+          recoveryModeActive: systemState.recoveryModeActive,
+          disruptionDetected: systemState.disruptionDetected,
+          habitLimit: systemState.habitLimit,
+          unlockedFeatures: systemState.unlockedFeatures,
+          coachTone: systemState.coachToneModifier,
+          expansionReady: systemState.expansionReady,
+          consecutiveActiveDays: stabilityCalcHome.components.consecutiveActiveDays,
+          trend: stabilityCalcHome.trend,
         },
         flow,
         growthState,
@@ -1709,6 +1747,7 @@ export async function registerRoutes(
         isOnboardingComplete,
         streak,
         userLanguageStage,
+        recoveryMessage,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get home data" });

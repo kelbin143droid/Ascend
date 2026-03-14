@@ -99,7 +99,7 @@ export default function HabitsPage() {
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
   const [showDayClose, setShowDayClose] = useState(false);
 
-  const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean }>({
+  const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean; stability?: { habitLimit?: number; state?: string; recoveryModeActive?: boolean } }>({
     queryKey: ["home", player?.id],
     queryFn: async () => {
       if (!player?.id) throw new Error("No player");
@@ -113,6 +113,11 @@ export default function HabitsPage() {
 
   const onboardingDay = homeData?.onboardingDay ?? 1;
   const habitCreationLocked = onboardingDay < 3;
+  const habitLimit = homeData?.stability?.habitLimit ?? 10;
+  const activeHabitCount = habits.filter(h => h.active).length;
+  const habitLimitReached = activeHabitCount >= habitLimit;
+  const isRecoveryMode = homeData?.stability?.recoveryModeActive ?? false;
+  const stabilityState = homeData?.stability?.state ?? "stabilizing";
 
   const [formName, setFormName] = useState("");
   const [formStat, setFormStat] = useState<string>("strength");
@@ -273,6 +278,7 @@ export default function HabitsPage() {
   };
 
   const openAddForm = () => {
+    if (habitLimitReached) return;
     resetForm();
     setEditingHabit(null);
     setShowAddForm(true);
@@ -365,13 +371,14 @@ export default function HabitsPage() {
           </div>
           <Button
             size="sm"
-            onClick={habitCreationLocked ? undefined : openAddForm}
-            className={habitCreationLocked ? "bg-gray-700 text-gray-400 cursor-default" : "bg-cyan-600 hover:bg-cyan-700 text-white"}
-            disabled={habitCreationLocked}
+            onClick={(habitCreationLocked || habitLimitReached) ? undefined : openAddForm}
+            className={(habitCreationLocked || habitLimitReached) ? "bg-gray-700 text-gray-400 cursor-default" : "bg-cyan-600 hover:bg-cyan-700 text-white"}
+            disabled={habitCreationLocked || habitLimitReached}
             data-testid="button-add-habit"
+            title={habitLimitReached ? `Habit limit reached (${activeHabitCount}/${habitLimit})` : ""}
           >
             <Plus className="w-4 h-4 mr-1" />
-            {t("Add Ritual")}
+            {habitLimitReached ? `${activeHabitCount}/${habitLimit}` : t("Add Ritual")}
           </Button>
         </div>
 
@@ -522,6 +529,23 @@ export default function HabitsPage() {
                 ))}
               </div>
             ))}
+
+            {habitLimitReached && !habitCreationLocked && (
+              <div
+                data-testid="habit-limit-banner"
+                className="rounded-xl px-5 py-4 text-center"
+                style={{
+                  backgroundColor: isRecoveryMode ? "rgba(168,85,247,0.04)" : "rgba(234,179,8,0.04)",
+                  border: `1px solid ${isRecoveryMode ? "rgba(168,85,247,0.12)" : "rgba(234,179,8,0.12)"}`,
+                }}
+              >
+                <p className="text-sm leading-relaxed" style={{ color: isRecoveryMode ? "rgba(168,85,247,0.8)" : "rgba(234,179,8,0.8)" }}>
+                  {isRecoveryMode
+                    ? `Recovery mode active — focus on ${habitLimit} key habits right now.`
+                    : `You've reached your current habit limit (${activeHabitCount}/${habitLimit}). Strengthen existing habits to unlock more.`}
+                </p>
+              </div>
+            )}
 
             {habitCreationLocked && (
               <div

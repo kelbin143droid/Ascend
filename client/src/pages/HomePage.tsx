@@ -16,7 +16,20 @@ import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 
 interface HomeData {
   phase: { number: number; name: string };
-  stability: { score: number; label: string };
+  stability: {
+    score: number;
+    label: string;
+    state: "stabilizing" | "stable" | "expanding";
+    stateInfo: { label: string; description: string; color: string; icon: string };
+    recoveryModeActive: boolean;
+    disruptionDetected: boolean;
+    habitLimit: number;
+    unlockedFeatures: string[];
+    coachTone: "gentle" | "encouraging" | "challenging";
+    expansionReady: boolean;
+    consecutiveActiveDays: number;
+    trend: "improving" | "stable" | "declining";
+  };
   flow: { value: number; label: string; trending: "rising" | "steady" | "cooling" };
   growthState: string;
   momentum: number;
@@ -33,6 +46,7 @@ interface HomeData {
   lastCompletionTime: string | null;
   isOnboardingComplete: boolean;
   streak: number;
+  recoveryMessage: string | null;
 }
 
 const RECOMMENDED_HABITS = [
@@ -586,8 +600,11 @@ export default function HomePage() {
               <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: colors.textMuted }}>
                 {homeData.phase.name}
               </p>
-              <p className="text-[10px] mt-0.5" style={{ color: `${colors.textMuted}99` }}>
-                Stability: {homeData.stability.label}
+              <p className="text-[10px] mt-0.5 flex items-center gap-1.5" style={{ color: `${colors.textMuted}99` }}>
+                <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: homeData.stability.stateInfo?.color ?? colors.textMuted }} />
+                {homeData.stability.stateInfo?.label ?? homeData.stability.label}
+                {homeData.stability.trend === "improving" && <span style={{ color: "#22c55e", fontSize: "8px" }}>▲</span>}
+                {homeData.stability.trend === "declining" && <span style={{ color: "#ef4444", fontSize: "8px" }}>▼</span>}
               </p>
             </div>
             {homeData.flow && (
@@ -600,6 +617,53 @@ export default function HomePage() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {homeData?.stability?.recoveryModeActive && homeData?.recoveryMessage && (
+          <div
+            data-testid="recovery-mode-banner"
+            className="rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: "rgba(168,85,247,0.06)",
+              border: "1px solid rgba(168,85,247,0.15)",
+            }}
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#a855f7" }}>
+                <div className="w-full h-full rounded-full animate-pulse" style={{ backgroundColor: "#a855f7" }} />
+              </div>
+              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: "rgba(168,85,247,0.8)" }}>
+                Recovery Mode
+              </p>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}bb` }}>
+              {homeData.recoveryMessage}
+            </p>
+            <p className="text-[9px] mt-2" style={{ color: `${colors.textMuted}66` }}>
+              Expectations simplified · Habit limit: {homeData.stability.habitLimit}
+            </p>
+          </div>
+        )}
+
+        {homeData?.stability?.expansionReady && !homeData?.stability?.recoveryModeActive && (
+          <div
+            data-testid="expansion-ready-banner"
+            className="rounded-xl px-4 py-3"
+            style={{
+              backgroundColor: "rgba(34,197,94,0.06)",
+              border: "1px solid rgba(34,197,94,0.15)",
+            }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
+              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: "rgba(34,197,94,0.8)" }}>
+                Expansion Ready
+              </p>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
+              Your stability has been strong for multiple weeks. Advanced features and deeper insights are now available.
+            </p>
           </div>
         )}
 
