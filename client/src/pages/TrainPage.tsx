@@ -229,8 +229,9 @@ export default function TrainPage() {
             </div>
           </div>
           <div className="mt-3 text-[10px] leading-relaxed" style={{ color: colors.textMuted }}>
-            Push-ups: {5 + Math.floor((dayNumber - 1) / 2)} reps · Plank:{" "}
-            {15 + Math.floor((dayNumber - 1) / 2) * 5}s — increases every 2 days
+            Push-ups: {5 + Math.floor((dayNumber - 1) / 3)} · Cardio:{" "}
+            {30 + Math.floor((dayNumber - 1) / 3) * 5}s · Crunches:{" "}
+            {10 + Math.floor((dayNumber - 1) / 3) * 2} — increases every few days
           </div>
         </div>
       </div>

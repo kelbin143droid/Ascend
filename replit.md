@@ -38,7 +38,7 @@ Ascend OS is built around seven interconnected modular systems:
 Reusable engine that runs any training activity through a common step-based system. New activities are created by defining steps in `ActivityDefinition` objects — no new code needed per activity.
 -   **Step Types**: `instruction` (text display), `timer` (countdown), `rep` (repetition counter with count/label), `breath` (animated breathing circle with configurable inhale/hold/exhale timing), `completion` (final screen with XP claim).
 -   **Activity Flow**: Load definition → run steps sequentially → show progress bar → complete → grant XP via `complete-guided-session` → record to Sectograph timeline via `record-activity`.
--   **Phase 1 Activities**: Strength (push-ups + core + cardio), Agility (neck rolls + shoulder rolls + forward bend), Calm Breathing (4-2-6 pattern, 2 min), Vitality Check (hydration + sleep). Micro-progression: push-ups +1 every 2 days, plank +5s every 2 days.
+-   **Phase 1 Activities**: Strength Micro Circuit (instruction → push-ups → cardio jog → crunches → rest, ~2 min), Agility (neck rolls + shoulder rolls + forward bend), Calm Breathing (4-2-6 pattern, 2 min), Vitality Check (hydration + sleep). Micro-progression every 3 days: push-ups +1, cardio +5s, crunches +2.
 -   **Files**: Engine component at `client/src/components/game/GuidedActivityEngine.tsx`, activity definitions at `client/src/lib/activityEngine.ts`, TrainPage at `client/src/pages/TrainPage.tsx`.
 -   **API**: `POST /api/player/:id/record-activity` adds a schedule entry to the player's Sectograph timeline with timestamp, stat color, category, and XP earned.
 
