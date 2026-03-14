@@ -38,6 +38,15 @@ export interface ActiveFocusBlock {
   durationMinutes: number;
 }
 
+export interface RhythmWindowVisual {
+  startHour: number;
+  startMinute: number;
+  endHour: number;
+  endMinute: number;
+  actionType: "reset" | "habit" | "focusSession" | "mixed";
+  confidenceScore: number;
+}
+
 export const DEFAULT_SEGMENTS: ScheduleBlock[] = [
   { id: "seg-sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#2d3a4f", segment: "sleep" },
   { id: "seg-morning", name: "Morning", startHour: 6, endHour: 9, color: "#4a6272", segment: "personal" },
@@ -94,6 +103,7 @@ interface SectographProps {
   showAwareness?: boolean;
   anchors?: BehavioralAnchor[];
   focusBlock?: ActiveFocusBlock | null;
+  rhythmWindows?: RhythmWindowVisual[];
   onCenterClick?: () => void;
   onBlockClick?: (block: ScheduleBlock) => void;
   onFreeWindowClick?: (window: FreeWindow) => void;
@@ -105,6 +115,7 @@ export function Sectograph({
   showAwareness = false,
   anchors = [],
   focusBlock = null,
+  rhythmWindows = [],
   onCenterClick,
   onBlockClick,
   onFreeWindowClick,
@@ -238,6 +249,22 @@ export function Sectograph({
               {block.isSystemTask && (
                 <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="none" stroke={colors.ringGlow} strokeWidth="3" style={{ filter: "blur(4px)", pointerEvents: "none" }} />
               )}
+            </g>
+          );
+        })}
+
+        {rhythmWindows.map((rw, i) => {
+          const startAngle = timeToAngle(rw.startHour, rw.startMinute);
+          const endAngle = timeToAngle(rw.endHour, rw.endMinute);
+          const glowColor = rw.actionType === "reset" ? "245,158,11" : rw.actionType === "focusSession" ? "139,92,246" : rw.actionType === "habit" ? "59,130,246" : "99,102,241";
+          const opacity = Math.min(0.25, rw.confidenceScore * 0.35);
+          const glowOpacity = Math.min(0.15, rw.confidenceScore * 0.2);
+          return (
+            <g key={`rhythm-${i}`} data-testid={`sectograph-rhythm-${i}`}>
+              <path d={createArcPath(startAngle, endAngle, outerRadius - 2, scheduleOuterRadius + 1)} fill={`rgba(${glowColor},${opacity})`} stroke="none" />
+              <path d={createArcPath(startAngle, endAngle, outerRadius - 2, scheduleOuterRadius + 1)} fill={`rgba(${glowColor},${glowOpacity})`} stroke="none" style={{ filter: "blur(6px)", pointerEvents: "none" }}>
+                <animate attributeName="opacity" values={`${glowOpacity};${glowOpacity * 0.4};${glowOpacity}`} dur="4s" repeatCount="indefinite" />
+              </path>
             </g>
           );
         })}

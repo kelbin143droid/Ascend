@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SystemLayout } from "@/components/game/SystemLayout";
-import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow, type BehavioralAnchor, type ActiveFocusBlock } from "@/components/game/Sectograph";
+import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow, type BehavioralAnchor, type ActiveFocusBlock, type RhythmWindowVisual } from "@/components/game/Sectograph";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
 import { apiRequest } from "@/lib/queryClient";
@@ -24,6 +24,7 @@ import {
   Pause,
   X,
   Target,
+  Activity,
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
 
@@ -187,6 +188,27 @@ export default function SectographPage() {
     return `You often reset around ${h} ${p}. This may be your natural window.`;
   }, [behavioralAnchors]);
 
+  interface RhythmData {
+    windows: RhythmWindowVisual[];
+    insights: { message: string; windowLabel: string; actionType: string; confidenceScore: number }[];
+    totalEvents: number;
+  }
+
+  const { data: rhythmData } = useQuery<RhythmData>({
+    queryKey: ["rhythm", player?.id],
+    queryFn: async () => {
+      if (!player?.id) return { windows: [], insights: [], totalEvents: 0 };
+      const res = await fetch(`/api/player/${player.id}/rhythm`);
+      if (!res.ok) return { windows: [], insights: [], totalEvents: 0 };
+      return res.json();
+    },
+    enabled: !!player?.id,
+    refetchInterval: 60000,
+  });
+
+  const rhythmWindows = rhythmData?.windows ?? [];
+  const rhythmInsights = rhythmData?.insights ?? [];
+
   const focusMutation = useMutation({
     mutationFn: async (data: { durationMinutes: number; label?: string }) => {
       const res = await apiRequest("POST", `/api/player/${player?.id}/start-focus-session`, data);
@@ -207,6 +229,7 @@ export default function SectographPage() {
       setFocusRemaining(data.durationMinutes * 60 * 1000);
       setShowFocusSetup(false);
       queryClient.invalidateQueries({ queryKey: ["behavioral-anchors"] });
+      queryClient.invalidateQueries({ queryKey: ["rhythm"] });
     },
   });
 
@@ -490,6 +513,7 @@ export default function SectographPage() {
                 showAwareness={true}
                 anchors={behavioralAnchors}
                 focusBlock={activeFocus?.block ?? null}
+                rhythmWindows={rhythmWindows}
                 onCenterClick={() => navigate("/schedule")}
                 onFreeWindowClick={(w) => {
                   setFocusDuration(Math.min(w.durationMinutes, 30));
@@ -580,6 +604,59 @@ export default function SectographPage() {
                 <p className="text-xs leading-relaxed" style={{ color: colors.text, opacity: 0.85 }}>
                   {awarenessInsight}
                 </p>
+              </div>
+            )}
+
+            {rhythmInsights.length > 0 && (
+              <div
+                className="w-full rounded-lg p-4"
+                style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
+                data-testid="rhythm-insights-card"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity size={12} style={{ color: "#6366f1" }} />
+                  <h3 className="text-xs font-display font-bold tracking-wider" style={{ color: "#6366f1" }}>
+                    RHYTHM DETECTED
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  {rhythmInsights.slice(0, 2).map((insight, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-2.5 px-3 py-2 rounded-lg"
+                      style={{ backgroundColor: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}
+                      data-testid={`rhythm-insight-${i}`}
+                    >
+                      <div
+                        className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                        style={{
+                          backgroundColor: insight.actionType === "reset" ? "#f59e0b" : insight.actionType === "focusSession" ? "#8b5cf6" : insight.actionType === "habit" ? "#3b82f6" : "#6366f1",
+                        }}
+                      />
+                      <div>
+                        <p className="text-xs leading-relaxed" style={{ color: colors.text, opacity: 0.85 }}>
+                          {insight.message}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="h-1 rounded-full flex-1" style={{ backgroundColor: "rgba(99,102,241,0.15)" }}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${Math.round(insight.confidenceScore * 100)}%`, backgroundColor: "rgba(99,102,241,0.5)" }}
+                            />
+                          </div>
+                          <span className="text-[9px] font-mono" style={{ color: colors.textMuted, opacity: 0.5 }}>
+                            {Math.round(insight.confidenceScore * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {rhythmWindows.length > 0 && (
+                  <p className="text-[10px] mt-3 leading-relaxed" style={{ color: colors.textMuted, opacity: 0.5 }}>
+                    Glowing arcs on the timeline show where your rhythms are strongest.
+                  </p>
+                )}
               </div>
             )}
 

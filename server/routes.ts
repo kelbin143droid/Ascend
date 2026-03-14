@@ -13,6 +13,7 @@ import {
 import { suggestHabitStacks } from "./gameLogic/habitProgression";
 import { calculateHabitXP, checkDailyBonus, checkWeeklyBonus, checkBadgeEligibility } from "./gameLogic/rewardEngine";
 import { generateCoachMessages, getDurationSuggestion, getMotivationNudge, handleCoachChat, getHomeInsight } from "./gameLogic/aiCoach";
+import { extractActionEvents, detectRhythmWindows, generateRhythmInsights, suggestFocusInFreeWindows, getCoachRhythmComment, type RhythmWindow, type RhythmInsight } from "./gameLogic/rhythmEngine";
 import { calculateMomentumUpdate, getMomentumTier, shouldTriggerRecovery } from "./gameLogic/momentumEngine";
 import { scaleDifficulty, calculateTrainingDuration, getDifficultyLabel } from "./gameLogic/difficultyScaler";
 import { checkPhaseEligibility, getStatCapForPhase, getPhaseVisualConfig, PHASE_PLANNING_UNLOCK, PHASE_TRIALS_UNLOCK } from "./gameLogic/phaseEngine";
@@ -1324,6 +1325,14 @@ export async function registerRoutes(
         }));
 
       const response = handleCoachChat(message, player, userHabits, recentCompletions, languageStage, anchorsForChat);
+
+      const events = extractActionEvents(allCompletions);
+      const windows = detectRhythmWindows(events);
+      const rhythmComment = getCoachRhythmComment(windows, new Date().getHours());
+      if (rhythmComment && response.response) {
+        response.response = response.response + " " + rhythmComment;
+      }
+
       res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to process coach chat" });
@@ -2001,6 +2010,22 @@ export async function registerRoutes(
       res.json({ habitStats, badges: userBadges, totalHabits: userHabits.length });
     } catch (error) {
       res.status(500).json({ error: "Failed to get habit analytics" });
+    }
+  });
+
+  app.get("/api/player/:id/rhythm", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+      const events = extractActionEvents(allCompletions);
+      const windows = detectRhythmWindows(events);
+      const insights = generateRhythmInsights(windows);
+
+      res.json({ windows, insights, totalEvents: events.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to detect rhythm" });
     }
   });
 
