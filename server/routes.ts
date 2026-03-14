@@ -282,12 +282,28 @@ export async function registerRoutes(
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
+      const { getXPForActivity } = await import("./gameLogic/levelSystem");
+      const guidedXP = getXPForActivity(parsed.data.durationMinutes);
+
       await storage.createHabitCompletion({
         habitId: `guided_${parsed.data.sessionId}`,
         userId: req.params.id,
         durationMinutes: parsed.data.durationMinutes,
-        xpEarned: 5,
+        xpEarned: guidedXP,
       });
+
+      const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+      const statKey = parsed.data.stat as keyof typeof currentStatXP;
+      const newStatXP = {
+        ...currentStatXP,
+        [statKey]: (currentStatXP[statKey] || 0) + guidedXP,
+      };
+      const derivedStats = {
+        strength: getStatLevel(newStatXP.strength).level,
+        agility: getStatLevel(newStatXP.agility).level,
+        sense: getStatLevel(newStatXP.sense).level,
+        vitality: getStatLevel(newStatXP.vitality).level,
+      };
 
       const stabilityData = player.stability || {
         score: 50, habitCompletionPct: 0, sleepConsistency: 50,
@@ -300,11 +316,13 @@ export async function registerRoutes(
 
       await storage.updatePlayer(req.params.id, {
         stability: updatedStability,
-        exp: (player.exp || 0) + 5,
-        totalExp: (player.totalExp || 0) + 5,
+        statXP: newStatXP,
+        stats: derivedStats,
       });
 
-      res.json({ success: true, xpEarned: 5, stabilityScore: newScore });
+      const updatedPlayer = await storage.gainExp(req.params.id, guidedXP);
+
+      res.json({ success: true, xpEarned: guidedXP, stabilityScore: newScore });
     } catch (error) {
       res.status(500).json({ error: "Failed to complete guided session" });
     }
