@@ -1252,7 +1252,18 @@ export async function registerRoutes(
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const recentCompletions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
 
-      const messages = generateCoachMessages(player, userHabits, recentCompletions);
+      const allCompletionsForAnchors = await storage.getHabitCompletions(req.params.id);
+      const anchors = allCompletionsForAnchors
+        .filter(c => c.habitId.startsWith("guided_") && c.completedAt)
+        .map(c => ({
+          sessionId: c.habitId.replace("guided_", ""),
+          completedAt: c.completedAt!.toISOString(),
+          hour: new Date(c.completedAt!).getHours(),
+          minute: new Date(c.completedAt!).getMinutes(),
+          durationMinutes: c.durationMinutes,
+        }));
+
+      const messages = generateCoachMessages(player, userHabits, recentCompletions, anchors);
 
       const avgMomentum = userHabits.length > 0
         ? userHabits.reduce((sum, h) => sum + h.momentum, 0) / userHabits.length
@@ -1302,7 +1313,17 @@ export async function registerRoutes(
       else if (distinctDays.size >= 28 && streak >= 14) languageStage = 4;
       else languageStage = 3;
 
-      const response = handleCoachChat(message, player, userHabits, recentCompletions, languageStage);
+      const anchorsForChat = allCompletions
+        .filter(c => c.habitId.startsWith("guided_") && c.completedAt)
+        .map(c => ({
+          sessionId: c.habitId.replace("guided_", ""),
+          completedAt: c.completedAt!.toISOString(),
+          hour: new Date(c.completedAt!).getHours(),
+          minute: new Date(c.completedAt!).getMinutes(),
+          durationMinutes: c.durationMinutes,
+        }));
+
+      const response = handleCoachChat(message, player, userHabits, recentCompletions, languageStage, anchorsForChat);
       res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to process coach chat" });
@@ -1634,7 +1655,17 @@ export async function registerRoutes(
         userLanguageStage = 3;
       }
 
-      const homeInsight = getHomeInsight(player, habits, recentCompletions, userLanguageStage as 1 | 2 | 3 | 4);
+      const guidedAnchors = allCompletions
+        .filter(c => c.habitId.startsWith("guided_") && c.completedAt)
+        .map(c => ({
+          sessionId: c.habitId.replace("guided_", ""),
+          completedAt: c.completedAt!.toISOString(),
+          hour: new Date(c.completedAt!).getHours(),
+          minute: new Date(c.completedAt!).getMinutes(),
+          durationMinutes: c.durationMinutes,
+        }));
+
+      const homeInsight = getHomeInsight(player, habits, recentCompletions, userLanguageStage as 1 | 2 | 3 | 4, guidedAnchors);
       const insight = homeInsight.message;
 
       res.json({

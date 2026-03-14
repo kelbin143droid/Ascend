@@ -170,6 +170,23 @@ export default function SectographPage() {
 
   const behavioralAnchors = anchorsData?.anchors ?? [];
 
+  const anchorClusterInsight = useMemo(() => {
+    if (behavioralAnchors.length < 2) return null;
+    const hourBuckets: Record<number, number> = {};
+    for (const a of behavioralAnchors) {
+      hourBuckets[a.hour] = (hourBuckets[a.hour] || 0) + 1;
+    }
+    const clusters = Object.entries(hourBuckets)
+      .filter(([, count]) => count >= 2)
+      .sort(([, a], [, b]) => b - a);
+    if (clusters.length === 0) return null;
+    const [hourStr, count] = clusters[0];
+    const hour = parseInt(hourStr);
+    const h = hour % 12 || 12;
+    const p = hour < 12 ? "AM" : "PM";
+    return `You often reset around ${h} ${p}. This may be your natural window.`;
+  }, [behavioralAnchors]);
+
   const focusMutation = useMutation({
     mutationFn: async (data: { durationMinutes: number; label?: string }) => {
       const res = await apiRequest("POST", `/api/player/${player?.id}/start-focus-session`, data);
@@ -408,9 +425,36 @@ export default function SectographPage() {
               <h2 className="text-lg font-display font-bold mb-2" style={{ color: colors.text }}>
                 Your Time System
               </h2>
-              <p className="text-sm leading-relaxed mb-4" style={{ color: colors.textMuted }}>
-                The Sectograph maps your entire day as a 24-hour circle. Watch your schedule unfold in real time, spot free windows, and build focused sessions into your rhythm.
-              </p>
+              {behavioralAnchors.length > 0 ? (
+                <div className="space-y-3 mb-5">
+                  <p className="text-sm leading-relaxed" style={{ color: colors.textMuted }}>
+                    Your previous resets appear here. The system has been learning when you naturally show up.
+                  </p>
+                  <div
+                    className="rounded-lg p-3 text-left"
+                    style={{ backgroundColor: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)" }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#f59e0b" }} />
+                      <span className="text-xs font-bold" style={{ color: "#f59e0b" }}>
+                        {behavioralAnchors.length} Reset{behavioralAnchors.length > 1 ? "s" : ""} Recorded
+                      </span>
+                    </div>
+                    {anchorClusterInsight && (
+                      <p className="text-xs leading-relaxed" style={{ color: colors.textMuted }}>
+                        {anchorClusterInsight}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: colors.textMuted, opacity: 0.7 }}>
+                    These markers connect your earlier actions to this larger time system. Your behavior was always part of the structure.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm leading-relaxed mb-4" style={{ color: colors.textMuted }}>
+                  The Sectograph maps your entire day as a 24-hour circle. Watch your schedule unfold in real time, spot free windows, and build focused sessions into your rhythm.
+                </p>
+              )}
               <div className="space-y-2 text-left mb-5">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
@@ -545,9 +589,21 @@ export default function SectographPage() {
                 style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
                 data-testid="anchors-card"
               >
-                <h3 className="text-xs font-display font-bold tracking-wider mb-3" style={{ color: "#f59e0b" }}>
+                <h3 className="text-xs font-display font-bold tracking-wider mb-2" style={{ color: "#f59e0b" }}>
                   RESET MARKERS
                 </h3>
+                {anchorClusterInsight && (
+                  <div
+                    className="rounded-lg px-3 py-2 mb-3 flex items-start gap-2"
+                    style={{ backgroundColor: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)" }}
+                    data-testid="anchor-cluster-insight"
+                  >
+                    <Sparkles size={12} className="flex-shrink-0 mt-0.5" style={{ color: "#f59e0b", opacity: 0.7 }} />
+                    <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
+                      {anchorClusterInsight}
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   {behavioralAnchors.slice(-5).map((a, i) => (
                     <div key={i} className="flex items-center gap-3 px-2 py-1.5 rounded" style={{ backgroundColor: "rgba(245,158,11,0.06)" }}>
@@ -564,6 +620,11 @@ export default function SectographPage() {
                     </div>
                   ))}
                 </div>
+                {!anchorClusterInsight && behavioralAnchors.length < 3 && (
+                  <p className="text-[10px] mt-2 leading-relaxed" style={{ color: colors.textMuted, opacity: 0.5 }}>
+                    As more resets accumulate, patterns will emerge.
+                  </p>
+                )}
               </div>
             )}
 
