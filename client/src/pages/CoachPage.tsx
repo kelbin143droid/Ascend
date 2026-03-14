@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -309,7 +310,7 @@ function DeepCoachView({
         }}
       >
         <div className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary }}>
-          Understanding Momentum
+          {t("Understanding Momentum")}
         </div>
         <p className="text-[11px] leading-relaxed" style={{ color: colors.text }}>
           Momentum builds each day you show up. It reflects your consistency, not perfection.
@@ -429,7 +430,7 @@ function DeepCoachView({
           }}
         >
           <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: colors.textMuted }}>
-            Ritual Insights
+            {t("Ritual Insights")}
           </div>
           <div className="space-y-2">
             {coachData.habitSuggestions.map((s) => (
@@ -474,6 +475,7 @@ function DeepCoachView({
 export default function CoachPage() {
   const { player } = useGame();
   const { backgroundTheme } = useTheme();
+  const { t } = useLanguage();
   const colors = backgroundTheme.colors;
   const [activeTab, setActiveTab] = useState<"insights" | "chat">("insights");
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
@@ -580,7 +582,7 @@ export default function CoachPage() {
           >
             <Sparkles size={14} style={{ color: colors.primary }} />
             <span className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary }}>
-              Phase 1 Power Growth Guidance
+              {t("Phase 1 Power Growth Guidance")}
             </span>
           </div>
         )}

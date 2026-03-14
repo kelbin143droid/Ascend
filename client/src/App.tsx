@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { GameProvider, useGame } from "@/context/GameContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { LanguageStageProvider } from "@/context/LanguageStageContext";
 import { RolesProvider } from "@/context/RolesContext";
 import { WeeklyGoalsProvider, useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { TasksProvider } from "@/context/TasksContext";
@@ -79,16 +80,18 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <GameProvider>
-          <PlanningProviders>
-            <IntroWrapper>
-              <PlanningGate>
-                <Router />
-              </PlanningGate>
-              <LevelUpOverlay />
-              <PhaseUnlockOverlay />
-              <Toaster />
-            </IntroWrapper>
-          </PlanningProviders>
+          <LanguageStageProvider>
+            <PlanningProviders>
+              <IntroWrapper>
+                <PlanningGate>
+                  <Router />
+                </PlanningGate>
+                <LevelUpOverlay />
+                <PhaseUnlockOverlay />
+                <Toaster />
+              </IntroWrapper>
+            </PlanningProviders>
+          </LanguageStageProvider>
         </GameProvider>
       </ThemeProvider>
     </QueryClientProvider>

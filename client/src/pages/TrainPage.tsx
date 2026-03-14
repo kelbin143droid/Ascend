@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { Dumbbell, Wind, Brain, Moon, Play, Timer, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,7 @@ const CATEGORIES: TrainingCategory[] = [
 export default function TrainPage() {
   const { player, activeSession, startSession } = useGame();
   const { backgroundTheme } = useTheme();
+  const { t } = useLanguage();
   const colors = backgroundTheme.colors;
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -110,7 +112,7 @@ export default function TrainPage() {
             style={{ color: colors.text }}
             data-testid="text-train-title"
           >
-            Power Growth
+            {t("Power Growth")}
           </h1>
           {isTrainingMode && (
             <button
@@ -133,7 +135,8 @@ export default function TrainPage() {
             }}
           >
             <p className="text-xs leading-relaxed" style={{ color: colors.textMuted }}>
-              Grow stats through real-world actions. Each category maps to daily rituals you complete in real life.
+              {t("Grow stats through real-world actions. Each category maps to daily rituals you complete in real life.")}
+
             </p>
           </div>
         )}

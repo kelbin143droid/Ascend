@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
+import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { apiRequest } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -76,6 +77,7 @@ interface StackSuggestion {
 
 export default function HabitsPage() {
   const { player } = useGame();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
@@ -325,7 +327,7 @@ export default function HabitsPage() {
           <div className="flex items-center gap-3">
             <Target className="w-5 h-5 text-cyan-400" />
             <h1 className="text-lg font-bold text-white font-orbitron tracking-wide">
-              Daily Rituals
+              {t("Daily Rituals")}
             </h1>
           </div>
           <Button
@@ -336,7 +338,7 @@ export default function HabitsPage() {
             data-testid="button-add-habit"
           >
             <Plus className="w-4 h-4 mr-1" />
-            Add Ritual
+            {t("Add Ritual")}
           </Button>
         </div>
 
@@ -589,7 +591,7 @@ export default function HabitsPage() {
           <DialogContent className="bg-gray-950 border-gray-800 max-w-sm">
             <DialogHeader>
               <DialogTitle className="font-orbitron text-sm text-white">
-                {editingHabit ? "Edit Ritual" : "New Daily Ritual"}
+                {editingHabit ? t("Edit Ritual") : t("New Daily Ritual")}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3">

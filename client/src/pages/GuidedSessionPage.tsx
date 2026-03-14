@@ -3,6 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageStageContext";
 import { apiRequest } from "@/lib/queryClient";
 import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
@@ -409,6 +410,7 @@ export default function GuidedSessionPage() {
   const [, setLocation] = useLocation();
   const { player } = useGame();
   const { backgroundTheme } = useTheme();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
 
   const sessionId = (params?.sessionId || "calm-breathing") as SessionId;
@@ -636,7 +638,7 @@ export default function GuidedSessionPage() {
               Step complete.
             </p>
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-              You showed up. Momentum begins.
+              {t("You showed up. Momentum begins.")}
             </p>
             <button
               data-testid="button-return-home"

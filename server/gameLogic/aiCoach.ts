@@ -4,6 +4,7 @@ import { PHASE_NAMES } from "@shared/schema";
 import { getMomentumTier, shouldTriggerRecovery } from "./momentumEngine";
 import { getDifficultyLabel, getPhaseMaxDuration } from "./difficultyScaler";
 import { getStabilityTier } from "./stabilityEngine";
+import { applyLanguageStage, type LanguageStage } from "./languageStage";
 
 export interface CoachMessage {
   type: "motivation" | "suggestion" | "warning" | "celebration" | "check_in" | "recovery" | "insight" | "regression" | "stability";
@@ -275,7 +276,8 @@ export function getMotivationNudge(momentum: number, streak: number, missedDays:
 export function getHomeInsight(
   player: Player,
   habits: Habit[],
-  recentCompletions: HabitCompletion[]
+  recentCompletions: HabitCompletion[],
+  languageStage: LanguageStage = 4
 ): { title: string; message: string; action?: string } {
   const now = new Date();
   const today = now.toLocaleDateString("en-CA");
@@ -290,10 +292,12 @@ export function getHomeInsight(
   const activeHabits = habits.filter(h => h.active);
   const remainingHabits = activeHabits.filter(h => !completedHabitIds.has(h.id));
 
+  const ls = (text: string) => applyLanguageStage(text, languageStage);
+
   if (activeHabits.length === 0) {
     return {
       title: "Coach",
-      message: "Start your first habit to activate Flow.",
+      message: ls("Start your first step to begin."),
       action: "create_habit",
     };
   }
@@ -306,14 +310,14 @@ export function getHomeInsight(
     ];
     return {
       title: "Coach",
-      message: doneMessages[todayCompletions.length % doneMessages.length],
+      message: ls(doneMessages[todayCompletions.length % doneMessages.length]),
     };
   }
 
   if (player.stability?.softRegressionActive) {
     return {
       title: "Coach",
-      message: "A short session now will rebuild momentum gently.",
+      message: ls("A short session now will rebuild momentum gently."),
       action: "start_habit",
     };
   }
@@ -325,26 +329,26 @@ export function getHomeInsight(
 
   if (completedCount === 0) {
     const startMessages = [
-      "Momentum begins with a small action.",
+      "Begin with a small action.",
       `A ${next.currentDurationMinutes}-minute session will shift your state.`,
-      "One action is all it takes to start Flow.",
-      hour < 12 ? "Morning sessions set the tone for the day." : "It's never too late to build momentum.",
+      "One action is all it takes to start.",
+      hour < 12 ? "Morning sessions set the tone for the day." : "It's never too late to continue.",
     ];
     return {
       title: "Coach",
-      message: startMessages[dayIndex],
+      message: ls(startMessages[dayIndex]),
       action: "start_habit",
     };
   }
 
   const flowMessages = [
-    "A short session now will build Flow.",
+    "A short session now will keep things moving.",
     `Keep going — ${remainingHabits.length} session${remainingHabits.length > 1 ? "s" : ""} left today.`,
     stabilityScore >= 70 ? "Your consistency is paying off." : "Each action strengthens your stability.",
   ];
   return {
     title: "Coach",
-    message: flowMessages[completedCount % flowMessages.length],
+    message: ls(flowMessages[completedCount % flowMessages.length]),
     action: "start_habit",
   };
 }
@@ -353,16 +357,18 @@ export function handleCoachChat(
   question: string,
   player: Player,
   habits: Habit[],
-  recentCompletions: HabitCompletion[]
+  recentCompletions: HabitCompletion[],
+  languageStage: LanguageStage = 4
 ): CoachChatResponse {
   const q = question.toLowerCase().trim();
   const stabilityScore = player.stability?.score ?? 50;
   const phaseName = PHASE_NAMES[player.phase] || `Phase ${player.phase}`;
+  const ls = (text: string) => applyLanguageStage(text, languageStage);
 
   for (const [topic, knowledge] of Object.entries(APP_KNOWLEDGE)) {
     if (q.includes(topic) || matchesTopic(q, topic)) {
       return {
-        reply: knowledge,
+        reply: ls(knowledge),
         suggestions: getFollowUpSuggestions(topic),
         context: topic,
       };
@@ -372,7 +378,7 @@ export function handleCoachChat(
   if (q.includes("how") && (q.includes("level") || q.includes("progress"))) {
     const nextPhaseReq = player.phase < 5 ? ` To reach ${PHASE_NAMES[player.phase + 1]}, maintain your Stability Score above the threshold while keeping completion rates high.` : "";
     return {
-      reply: `You're Level ${player.level} in ${phaseName} (Phase ${player.phase}). Stability: ${stabilityScore}/100.${nextPhaseReq} Focus on consistent daily completions.`,
+      reply: ls(`You're Level ${player.level} in ${phaseName} (Phase ${player.phase}). Stability: ${stabilityScore}/100.${nextPhaseReq} Focus on consistent daily completions.`),
       suggestions: ["How does stability work?", "What causes regression?", "How does momentum work?"],
       context: "progression",
     };

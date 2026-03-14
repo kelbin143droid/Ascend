@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useMemo, useEffect } from "react";
@@ -127,7 +128,7 @@ const STAT_COLORS: Record<string, string> = {
 const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }> = {
   1: { subtitle: "Beginning your journey.", motivation: "Small actions build momentum." },
   2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
-  3: { subtitle: "You're building a hunter path.", motivation: "Make it yours." },
+  3: { subtitle: "You're building a routine.", motivation: "Make it yours." },
   4: { subtitle: "Rhythm forming", motivation: "Consistency creates structure naturally." },
   5: { subtitle: "Momentum growing", motivation: "Growth expands naturally." },
   6: { subtitle: "System awareness unlocked.", motivation: "Your consistency has been building all along." },
@@ -137,6 +138,7 @@ const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }
 export default function HomePage() {
   const { player } = useGame();
   const { backgroundTheme } = useTheme();
+  const { t } = useLanguage();
   const colors = backgroundTheme.colors;
   const [, setLocation] = useLocation();
   const [selectedHabitId, setSelectedHabitId] = useState(RECOMMENDED_HABITS[0].id);
@@ -443,8 +445,8 @@ export default function HomePage() {
   }
 
   const startLabel = allDone
-    ? "View Rituals"
-    : (nextAction ? `Complete ${nextAction.name}` : "Complete Today's Power Growth");
+    ? t("View Rituals")
+    : (nextAction ? `Complete ${nextAction.name}` : t("Complete Today's Power Growth"));
 
   const microCommitText = hasHabits
     ? (nextAction ? `Takes only ${nextAction.durationMinutes} minute${nextAction.durationMinutes !== 1 ? "s" : ""}` : null)
@@ -496,7 +498,7 @@ export default function HomePage() {
 
         <div className="pt-4">
           <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-            {allDone ? "Great work today. Rest up." : "Today's Power Growth"}
+            {allDone ? "Great work today. Rest up." : t("Today's Power Growth")}
           </p>
           <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
             {hasHabits && !allDone
@@ -518,7 +520,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2 mb-2">
             <Activity size={14} style={{ color: colors.primary }} />
             <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
-              Power Growth: Active
+              {t("Power Growth")}: Active
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -533,7 +535,7 @@ export default function HomePage() {
             <div className="flex-1">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[9px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
-                  Momentum
+                  {t("Momentum")}
                 </span>
                 <span className="text-[9px] font-mono" style={{ color: colors.primary }}>
                   {homeData?.momentum ?? 0}
@@ -566,7 +568,7 @@ export default function HomePage() {
             }}
           >
             <p className="text-xs font-medium" style={{ color: colors.primary }}>
-              Action completed. Momentum increased.
+              {t("Action completed. Momentum increased.")}
             </p>
           </div>
         )}

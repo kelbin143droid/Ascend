@@ -4,6 +4,7 @@ import { Home, Dumbbell, Target, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
+import { useLanguage } from "@/context/LanguageStageContext";
 import { useQuery } from "@tanstack/react-query";
 import { ThemeSelector } from "./ThemeSelector";
 import { SidebarMenu } from "./SidebarMenu";
@@ -17,7 +18,7 @@ interface NavItem {
   lockMessage: string;
 }
 
-const navItems: NavItem[] = [
+const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/", unlockDay: 1, lockMessage: "" },
   { icon: Dumbbell, label: "TRAIN", path: "/train", unlockDay: 7, lockMessage: "Power Growth unlocks after your first week." },
   { icon: Target, label: "RITUALS", path: "/habits", unlockDay: 3, lockMessage: "Daily Rituals unlock once your rhythm begins." },
@@ -56,6 +57,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { backgroundTheme } = useTheme();
   const { player } = useGame();
+  const { t } = useLanguage();
   const colors = backgroundTheme.colors;
 
   const [toastMessage, setToastMessage] = useState("");
@@ -79,7 +81,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
     const prevDay = parseInt(localStorage.getItem("ascend_nav_last_day") || "0", 10);
     if (onboardingDay > prevDay && prevDay > 0) {
       const newlyUnlocked = new Set<string>();
-      navItems.forEach(item => {
+      NAV_ITEMS.forEach(item => {
         if (item.unlockDay > prevDay && item.unlockDay <= onboardingDay) {
           newlyUnlocked.add(item.path);
         }
@@ -98,9 +100,9 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   }, [onboardingDay, isComplete]);
 
   const handleLockedTap = useCallback((item: NavItem) => {
-    setToastMessage(item.lockMessage);
+    setToastMessage(t(item.lockMessage));
     setToastVisible(true);
-  }, []);
+  }, [t]);
 
   const handleToastFade = useCallback(() => {
     setToastVisible(false);
@@ -210,7 +212,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         data-testid="bottom-nav"
       >
         <div className="flex justify-around items-end h-16 w-full mx-auto pb-2 max-w-md">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const isActive = location === item.path;
             const locked = isTabLocked(item);
             const wasJustUnlocked = justUnlocked.has(item.path);
@@ -247,7 +249,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                     className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase"
                     style={{ opacity: 0.25 }}
                   >
-                    {item.label}
+                    {t(item.label)}
                   </span>
                 </button>
               );
@@ -280,7 +282,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                     className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase transition-all"
                     style={{ opacity: isActive ? 1 : 0.6 }}
                   >
-                    {item.label}
+                    {t(item.label)}
                   </span>
                 </button>
               </Link>

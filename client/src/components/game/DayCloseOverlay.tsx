@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/context/LanguageStageContext";
 
 interface DayCloseOverlayProps {
   visible: boolean;
@@ -52,6 +53,7 @@ const DAY_MESSAGES: Record<number, { phase1: string; phase2: string; footer: str
 };
 
 export function DayCloseOverlay({ visible, onClose, onboardingDay }: DayCloseOverlayProps) {
+  const { t } = useLanguage();
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -103,7 +105,7 @@ export function DayCloseOverlay({ visible, onClose, onboardingDay }: DayCloseOve
             className="text-xl font-display font-medium tracking-wide"
             style={{ color: "rgba(255,255,255,0.9)", animation: "dcFadeIn 0.4s ease-out" }}
           >
-            {messages.phase1}
+            {t(messages.phase1)}
           </p>
         )}
 
@@ -114,13 +116,13 @@ export function DayCloseOverlay({ visible, onClose, onboardingDay }: DayCloseOve
               className="text-lg font-display font-medium leading-relaxed whitespace-pre-line"
               style={{ color: "rgba(255,255,255,0.88)" }}
             >
-              {messages.phase2}
+              {t(messages.phase2)}
             </p>
             <p
               className="text-[11px] mt-5 tracking-wide"
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
-              {messages.footer}
+              {t(messages.footer)}
             </p>
 
             <button
@@ -134,7 +136,7 @@ export function DayCloseOverlay({ visible, onClose, onboardingDay }: DayCloseOve
                 animation: "dcFadeIn 0.5s ease-out 0.2s both",
               }}
             >
-              {messages.button}
+              {t(messages.button)}
             </button>
           </div>
         )}

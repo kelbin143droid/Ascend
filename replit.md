@@ -6,14 +6,37 @@ Ascend OS is a full-stack self-growth RPG designed as an "Awakened Hunter System
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
-## Terminology
-The app uses RPG-themed language throughout:
-- **Quest** (replaces "Task"): Individual actions or activities to complete
-- **Daily Ritual** (replaces "Habit"): Recurring daily activities linked to stats
-- **Power Growth** (replaces "Training"): The active growth/training mode and process
-- **Focus Session** (replaces "Work Session"): Timed concentration blocks
-- **Hunter Path** (replaces "Routine"): Daily structured sequences of rituals
-- **Mission** (replaces "Goal"): Weekly objectives and targets
+## Terminology & Language Evolution System
+The app uses a 4-stage Language Evolution System that gradually introduces RPG terminology as the user progresses. Full RPG language only appears at Stage 4 (Narrative).
+
+### Language Stages
+- **Stage 1 (Onboarding)**: Simple, low-effort wording — Step, Reset, Moment, Begin, Continue, Focus. No RPG language.
+- **Stage 2 (Rhythm)**: Structured language — Habit, Focus Session, Schedule, Flow, Consistency, Routine.
+- **Stage 3 (Growth)**: Identity language — Growth, Path, Momentum, Development, Progress.
+- **Stage 4 (Narrative)**: Full RPG language — Quest, Mission, Hunter Path, Power Growth, Daily Ritual.
+
+### Stage Determination
+- `onboardingDay ≤ 7 && !isOnboardingComplete` → Stage 1
+- `completionDays < 14 || streak < 7` → Stage 2
+- `completionDays ≥ 28 && streak ≥ 14` → Stage 4
+- Otherwise → Stage 3
+
+### Key Term Mappings (Stage 1 → 2 → 3 → 4)
+- Quest → Step → Task → Challenge → Quest
+- Mission → Goal → Goal → Goal → Mission
+- Power Growth → Practice → Training → Growth → Power Growth
+- Daily Ritual → Step → Habit → Habit → Daily Ritual
+- Hunter Path → Routine → Routine → Path → Hunter Path
+- Focus Session → Moment → Focus Session → Focus Session → Focus Session
+- Momentum → Progress → Consistency → Momentum → Momentum
+
+### Implementation
+- **`client/src/lib/languageStage.ts`**: Client-side `applyLanguageStage(text, stage)` function and stage calculation
+- **`server/gameLogic/languageStage.ts`**: Server-side duplicate for AI Coach integration
+- **`client/src/context/LanguageStageContext.tsx`**: React context providing `stage` and `t()` function
+- **`userLanguageStage`**: Returned from `/api/player/:id/home` endpoint
+- **AI Coach**: `getHomeInsight()` and `handleCoachChat()` both accept `languageStage` parameter
+- **Reset endpoint**: `POST /api/player/:id/reset-progress` resets player to Day 1 for testing
 
 ## System Architecture
 

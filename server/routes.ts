@@ -1288,7 +1288,21 @@ export async function registerRoutes(
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const recentCompletions = await storage.getHabitCompletions(req.params.id, sevenDaysAgo);
 
-      const response = handleCoachChat(message, player, userHabits, recentCompletions);
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+      const distinctDays = new Set(
+        allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
+      );
+      const onboardingDay = Math.min(Math.max(distinctDays.size, 1), 7);
+      const isOnboardingComplete = onboardingDay >= 7 || player.onboardingCompleted === 1;
+      const streak = player.streak ?? 0;
+
+      let languageStage: 1 | 2 | 3 | 4;
+      if (!isOnboardingComplete && onboardingDay <= 7) languageStage = 1;
+      else if (distinctDays.size < 14 || streak < 7) languageStage = 2;
+      else if (distinctDays.size >= 28 && streak >= 14) languageStage = 4;
+      else languageStage = 3;
+
+      const response = handleCoachChat(message, player, userHabits, recentCompletions, languageStage);
       res.json(response);
     } catch (error) {
       res.status(500).json({ error: "Failed to process coach chat" });
@@ -1515,9 +1529,6 @@ export async function registerRoutes(
       else if (clampedGrowth >= 21) growthState = "Growth forming";
       else growthState = "Beginning";
 
-      const homeInsight = getHomeInsight(player, habits, recentCompletions);
-      const insight = homeInsight.message;
-
       const today = new Date().toLocaleDateString("en-CA");
       const completedIds = new Set(
         allCompletions
@@ -1608,6 +1619,24 @@ export async function registerRoutes(
         }
       }
 
+      const isOnboardingComplete = onboardingDay >= 7 || player.onboardingCompleted === 1;
+      const totalCompletionDays = distinctCompletionDays.size;
+      const streak = player.streak ?? 0;
+
+      let userLanguageStage: number;
+      if (!isOnboardingComplete && onboardingDay <= 7) {
+        userLanguageStage = 1;
+      } else if (totalCompletionDays < 14 || streak < 7) {
+        userLanguageStage = 2;
+      } else if (totalCompletionDays >= 28 && streak >= 14) {
+        userLanguageStage = 4;
+      } else {
+        userLanguageStage = 3;
+      }
+
+      const homeInsight = getHomeInsight(player, habits, recentCompletions, userLanguageStage as 1 | 2 | 3 | 4);
+      const insight = homeInsight.message;
+
       res.json({
         phase: {
           number: player.phase,
@@ -1636,8 +1665,9 @@ export async function registerRoutes(
         notification,
         suggestedReminderTime,
         lastCompletionTime,
-        isOnboardingComplete: onboardingDay >= 7 || player.onboardingCompleted === 1,
-        streak: player.streak ?? 0,
+        isOnboardingComplete,
+        streak,
+        userLanguageStage,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get home data" });
@@ -1940,6 +1970,19 @@ export async function registerRoutes(
       res.json({ habitStats, badges: userBadges, totalHabits: userHabits.length });
     } catch (error) {
       res.status(500).json({ error: "Failed to get habit analytics" });
+    }
+  });
+
+  app.post("/api/player/:id/reset-progress", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      await storage.resetPlayerProgress(req.params.id);
+
+      res.json({ success: true, message: "Progress reset to Day 1" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset progress" });
     }
   });
 

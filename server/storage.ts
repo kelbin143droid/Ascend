@@ -78,6 +78,7 @@ export interface IStorage {
   
   getBadges(userId: string): Promise<Badge[]>;
   createBadge(badge: InsertBadge): Promise<Badge>;
+  resetPlayerProgress(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -494,6 +495,28 @@ export class DatabaseStorage implements IStorage {
   async createBadge(badge: InsertBadge): Promise<Badge> {
     const [newBadge] = await db.insert(badges).values(badge as any).returning();
     return newBadge;
+  }
+
+  async resetPlayerProgress(id: string): Promise<void> {
+    await db.delete(habitCompletions).where(eq(habitCompletions.userId, id));
+    await db.delete(badges).where(eq(badges.userId, id));
+    await db.delete(habits).where(eq(habits.userId, id));
+    await db.delete(dailyStatSnapshots).where(eq(dailyStatSnapshots.playerId, id));
+
+    await db.update(players).set({
+      level: 1,
+      xp: 0,
+      phase: 1,
+      streak: 0,
+      onboardingCompleted: 0,
+      stats: { strength: 1, agility: 1, sense: 1, vitality: 1 },
+      stability: {
+        score: 50,
+        trend: "stable" as const,
+        lastUpdate: new Date().toISOString(),
+        softRegressionActive: false,
+      },
+    } as any).where(eq(players.id, id));
   }
 }
 
