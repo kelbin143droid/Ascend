@@ -24,6 +24,16 @@ Ascend OS is built around seven interconnected modular systems:
 -   **Return Protocol System**: Responds intelligently to user inactivity with 3 absence tiers. Tier 1 (3-5 days): welcome-back screen + 60-second reset ritual (breathing + reflection). Tier 2 (10+ days): Simplify Mode — reduces habit load, shortens focus durations, hides complex analytics for 7 days. Tier 3 (30+ days): Soft Restart — guides user through reset, hides previous progress initially, minimal starting load for 14 days. Never uses guilt language (no "You missed"/"You failed"/"streak ended"). Integrates with Stability Engine (adjusts habit limits), AI Coach (tone-appropriate messages, banned phrase filtering), and Home screen (full-screen return flow with animated ritual steps). Located in `server/gameLogic/returnProtocol.ts`. Frontend: `client/src/components/game/ReturnProtocolScreen.tsx`.
 -   **Stability Engine (Enhanced)**: 3-state system (stabilizing/stable/expanding) with disruption detection, recovery mode, and expansion logic. States: stabilizing (score<45 OR <5 consecutive active days), stable (score≥45 AND ≥5 days), expanding (score≥70 AND ≥2 weeks stable). Disruption triggers recovery mode (habit limit=2, gentle coach tone). Habit limits per state: stabilizing=3, stable=6, expanding=10. Feature gates control progressive feature access. Coach tone modifier (gentle/encouraging/challenging) adjusts message intensity. Located in `server/gameLogic/stabilityEngine.ts`. Integrated into home endpoint (systemState in response), coach chat (tone + recovery messages), and HabitsPage (habit limit enforcement + recovery/expansion banners).
 
+### APGS Stat Progression System
+-   **Level Curve**: XP_required(level) = 100 × level^1.5 (exponential scaling).
+-   **XP Per Activity**: Small tasks (≤3 min) = 10–15 XP, Medium tasks (≤10 min) = 25–40 XP, Large tasks (>10 min) = 60–100 XP. Duration-based with randomized range.
+-   **Level Calculation**: Iterative subtraction — XP overflow carries forward to next level.
+-   **Stat Rule**: Stat value equals that stat's level (derived from per-stat XP). XP ≠ stat value.
+-   **HP/MP Scaling**: HP = 100 × 1.05^(level-1), MP = 50 × 1.05^(level-1). Increases by 5% per level.
+-   **Rank System**: E (1-4), D (5-9), C (10-14), B (15-19), A (20-29), S (30+).
+-   **All tabs unlocked**: No day-gating on navigation; all 4 bottom tabs available from start.
+-   **Implementation**: `server/gameLogic/levelSystem.ts` contains all formulas. `storage.ts` gainExp uses scaled HP/MP + rank. Routes derive stats from per-stat XP levels.
+
 ### Language Evolution System
 The application features a 4-stage Language Evolution System that gradually introduces RPG terminology as the user progresses:
 -   **Stage 1 (Onboarding)**: Simple, non-RPG language.

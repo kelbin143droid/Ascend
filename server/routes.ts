@@ -31,8 +31,8 @@ import { PHASE_NAMES, PHASE_DESCRIPTIONS } from "@shared/schema";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
 import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
-import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, calculateXPRequired, type TaskStatType } from "./gameLogic/xpProgressionSystem";
-import { getTotalXPForLevel } from "./gameLogic/levelSystem";
+import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, type TaskStatType } from "./gameLogic/xpProgressionSystem";
+import { getStatFromLevel as getStatLevel, getRankFromLevel, getXPForNextLevel as calculateXPRequired, getTotalXPForLevel } from "./gameLogic/levelSystem";
 import { getFlowState, updateFlowAfterCompletion } from "./gameLogic/flowEngine";
 
 function getWeekStartDate(date: Date = new Date()): string {
@@ -43,6 +43,12 @@ function getWeekStartDate(date: Date = new Date()): string {
   return d.toISOString().split('T')[0];
 }
 
+interface StatLevelInfo {
+  level: number;
+  currentXP: number;
+  xpForNext: number;
+}
+
 interface PlayerWithDerived extends Player {
   derived: DerivedStats;
   displayStats: { strength: number; agility: number; sense: number; vitality: number };
@@ -50,6 +56,12 @@ interface PlayerWithDerived extends Player {
   phaseStatCap: number;
   systemMessage?: string;
   computedStamina: number;
+  statLevels: {
+    strength: StatLevelInfo;
+    agility: StatLevelInfo;
+    sense: StatLevelInfo;
+    vitality: StatLevelInfo;
+  };
 }
 
 function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithDerived {
@@ -61,14 +73,24 @@ function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithD
   
   const sxp = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
   const computedStamina = updateStamina(sxp.strength, sxp.agility);
+
+  const statLevels = {
+    strength: getStatLevel(sxp.strength),
+    agility: getStatLevel(sxp.agility),
+    sense: getStatLevel(sxp.sense),
+    vitality: getStatLevel(sxp.vitality),
+  };
+  const rank = getRankFromLevel(player.level);
   
   return {
     ...player,
+    rank,
     derived: calculateDerivedStats(player.stats),
     displayStats,
     fatigueInfo,
     phaseStatCap: PHASE_STAT_CAPS[player.phase] || 30,
     computedStamina,
+    statLevels,
     ...(systemMessage && { systemMessage }),
   };
 }
@@ -345,10 +367,18 @@ export async function registerRoutes(
         player.phase
       );
 
+      const derivedStats = {
+        strength: getStatLevel(result.newStatXP.strength).level,
+        agility: getStatLevel(result.newStatXP.agility).level,
+        sense: getStatLevel(result.newStatXP.sense).level,
+        vitality: getStatLevel(result.newStatXP.vitality).level,
+      };
+
       const updates: Record<string, any> = {
         totalExp: result.newTotalXP,
         statXP: result.newStatXP,
         stamina: result.newStamina,
+        stats: derivedStats,
       };
 
       if (result.leveledUp) {
@@ -1085,6 +1115,21 @@ export async function registerRoutes(
         durationMinutes: habit.currentDurationMinutes,
         xpEarned,
       });
+
+      const { getStatFromLevel } = await import("./gameLogic/levelSystem");
+      const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+      const statKey = habit.stat as keyof typeof currentStatXP;
+      const newStatXP = {
+        ...currentStatXP,
+        [statKey]: (currentStatXP[statKey] || 0) + xpEarned,
+      };
+      const derivedStats = {
+        strength: getStatFromLevel(newStatXP.strength).level,
+        agility: getStatFromLevel(newStatXP.agility).level,
+        sense: getStatFromLevel(newStatXP.sense).level,
+        vitality: getStatFromLevel(newStatXP.vitality).level,
+      };
+      await storage.updatePlayer(habit.userId, { statXP: newStatXP, stats: derivedStats });
 
       const updatedPlayer = await storage.gainExp(habit.userId, xpEarned);
 
@@ -2283,11 +2328,13 @@ export async function registerRoutes(
         if (completeHabits && activeHabits.length > 0) {
           const habitsToComplete = activeHabits.slice(0, Math.max(1, Math.ceil(activeHabits.length * 0.7)));
           for (const habit of habitsToComplete) {
-            const completion = await storage.createHabitCompletion({
+            const { getXPForActivity } = await import("./gameLogic/levelSystem");
+          const simXP = getXPForActivity(habit.baseDurationMinutes);
+          const completion = await storage.createHabitCompletion({
               habitId: habit.id,
               userId: req.params.id,
               durationMinutes: habit.baseDurationMinutes,
-              xpEarned: 10,
+              xpEarned: simXP,
             });
             await db.update(habitCompletions)
               .set({ completedAt: simulatedDate })

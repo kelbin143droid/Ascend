@@ -129,7 +129,7 @@ export class DatabaseStorage implements IStorage {
     const player = await this.getPlayer(id);
     if (!player) return undefined;
 
-    const { getLevelFromXP } = await import("./gameLogic/levelSystem");
+    const { getLevelFromXP, getScaledHP, getScaledMP, getRankFromLevel } = await import("./gameLogic/levelSystem");
 
     const newTotalExp = (player.totalExp || 0) + amount;
     const levelInfo = getLevelFromXP(newTotalExp);
@@ -147,11 +147,11 @@ export class DatabaseStorage implements IStorage {
     };
 
     if (newLevel > oldLevel) {
-      const levelsGained = newLevel - oldLevel;
-      updates.maxHp = Math.min(999999, player.maxHp + (levelsGained * 50));
-      updates.maxMp = Math.min(99999, player.maxMp + (levelsGained * 20));
+      updates.maxHp = getScaledHP(newLevel);
+      updates.maxMp = getScaledMP(newLevel);
       updates.hp = updates.maxHp;
       updates.mp = updates.maxMp;
+      updates.rank = getRankFromLevel(newLevel);
     }
 
     return this.updatePlayer(id, updates);
@@ -209,6 +209,7 @@ export class DatabaseStorage implements IStorage {
 
     const newFatigue = updateFatigueTracker(fatigue, input.stat);
 
+    const { getStatFromLevel } = await import("./gameLogic/levelSystem");
     const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
     const statKey = input.stat as keyof typeof currentStatXP;
     const newStatXP = {
@@ -216,10 +217,17 @@ export class DatabaseStorage implements IStorage {
       [statKey]: (currentStatXP[statKey] || 0) + result.levelXP,
     };
 
+    const derivedStats = {
+      strength: getStatFromLevel(newStatXP.strength).level,
+      agility: getStatFromLevel(newStatXP.agility).level,
+      sense: getStatFromLevel(newStatXP.sense).level,
+      vitality: getStatFromLevel(newStatXP.vitality).level,
+    };
+
     const newStamina = updateStamina(newStatXP.strength, newStatXP.agility);
 
     await this.updatePlayer(id, {
-      stats: result.updatedStats,
+      stats: derivedStats,
       fatigue: newFatigue,
       statXP: newStatXP,
       stamina: newStamina,

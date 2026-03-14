@@ -21,8 +21,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/", unlockDay: 1, lockMessage: "" },
-  { icon: Dumbbell, label: "TRAIN", path: "/train", unlockDay: 7, lockMessage: "Power Growth unlocks after your first week." },
-  { icon: Target, label: "HABITS", path: "/habits", unlockDay: 3, lockMessage: "Daily Habits unlock once your rhythm begins." },
+  { icon: Dumbbell, label: "TRAIN", path: "/train", unlockDay: 1, lockMessage: "" },
+  { icon: Target, label: "HABITS", path: "/habits", unlockDay: 1, lockMessage: "" },
   { icon: Brain, label: "COACH", path: "/coach", unlockDay: 1, lockMessage: "" },
 ];
 

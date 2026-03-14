@@ -1,12 +1,12 @@
 import type { Habit, Badge, BadgeType } from "@shared/schema";
 import { calculateXPMultiplier } from "./momentumEngine";
-
-const BASE_HABIT_XP = 10;
+import { getXPForActivity } from "./levelSystem";
 
 export function calculateHabitXP(habit: Habit, momentum: number, streak: number): number {
+  const duration = habit.currentDurationMinutes || 5;
+  const baseXP = getXPForActivity(duration);
   const multiplier = calculateXPMultiplier(momentum, streak);
-  const difficultyBonus = 1 + (habit.difficultyLevel - 1) * 0.15;
-  return Math.floor(BASE_HABIT_XP * multiplier * difficultyBonus);
+  return Math.floor(baseXP * multiplier);
 }
 
 export interface DailyBonusResult {

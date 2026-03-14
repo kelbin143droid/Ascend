@@ -116,6 +116,7 @@ export function calculateXPRequired(level: number): number {
   return getXPForNextLevel(level);
 }
 
+
 export function updateStamina(totalStrengthXP: number, totalAgilityXP: number): number {
   const combinedXP = totalStrengthXP + totalAgilityXP;
   return Math.max(1, Math.floor(combinedXP / STAMINA_XP_PER_POINT));
