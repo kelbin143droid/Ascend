@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { useQuery } from "@tanstack/react-query";
 import { ThemeSelector } from "./ThemeSelector";
 import { SidebarMenu } from "./SidebarMenu";
+import { DevPanel } from "./DevPanel";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 
 interface NavItem {
@@ -21,7 +22,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/", unlockDay: 1, lockMessage: "" },
   { icon: Dumbbell, label: "TRAIN", path: "/train", unlockDay: 7, lockMessage: "Power Growth unlocks after your first week." },
-  { icon: Target, label: "RITUALS", path: "/habits", unlockDay: 3, lockMessage: "Daily Rituals unlock once your rhythm begins." },
+  { icon: Target, label: "HABITS", path: "/habits", unlockDay: 3, lockMessage: "Daily Habits unlock once your rhythm begins." },
   { icon: Brain, label: "COACH", path: "/coach", unlockDay: 1, lockMessage: "" },
 ];
 
@@ -202,6 +203,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       <LockedToast message={toastMessage} visible={toastVisible} onFade={handleToastFade} />
+      <DevPanel />
 
       <nav 
         className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl"

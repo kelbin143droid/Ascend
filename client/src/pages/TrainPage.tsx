@@ -135,7 +135,7 @@ export default function TrainPage() {
             }}
           >
             <p className="text-xs leading-relaxed" style={{ color: colors.textMuted }}>
-              {t("Grow stats through real-world actions. Each category maps to daily rituals you complete in real life.")}
+              {t("Grow stats through real-world actions. Each category maps to daily habits you complete in real life.")}
 
             </p>
           </div>

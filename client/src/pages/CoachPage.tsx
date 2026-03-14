@@ -430,7 +430,7 @@ function DeepCoachView({
           }}
         >
           <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: colors.textMuted }}>
-            {t("Ritual Insights")}
+            {t("Habit Insights")}
           </div>
           <div className="space-y-2">
             {coachData.habitSuggestions.map((s) => (
@@ -630,7 +630,7 @@ export default function CoachPage() {
                   <div className="text-xs mb-4" style={{ color: colors.textMuted }}>
                     {isGuidedMode
                       ? "Ask about today's focus, how to stay consistent, or what to do next."
-                      : "Ask about your progress, daily rituals, phases, or how to improve."}
+                      : "Ask about your progress, daily habits, phases, or how to improve."}
                   </div>
                   <div className="flex flex-wrap gap-2 justify-center">
                     {starterQuestions.map((q) => (

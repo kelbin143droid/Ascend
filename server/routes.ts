@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
+import { habitCompletions } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { 
   insertPlayerSchema, updatePlayerSchema, type Player, type StatName, PHASE_STAT_CAPS,
   insertRoleSchema, updateRoleSchema,
@@ -2257,6 +2260,122 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to start focus session" });
+    }
+  });
+
+  app.post("/api/player/:id/dev/simulate-day", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const { days = 1, completeHabits = true } = req.body;
+      const dayCount = Math.min(Math.max(1, days), 30);
+
+      const habits = await storage.getHabits(req.params.id);
+      const activeHabits = habits.filter(h => h.active);
+      const completionsCreated: string[] = [];
+
+      for (let d = 0; d < dayCount; d++) {
+        const simulatedDate = new Date();
+        simulatedDate.setDate(simulatedDate.getDate() - (dayCount - 1 - d));
+        simulatedDate.setHours(9 + (d % 8), 30, 0, 0);
+
+        if (completeHabits && activeHabits.length > 0) {
+          const habitsToComplete = activeHabits.slice(0, Math.max(1, Math.ceil(activeHabits.length * 0.7)));
+          for (const habit of habitsToComplete) {
+            const completion = await storage.createHabitCompletion({
+              habitId: habit.id,
+              userId: req.params.id,
+              durationMinutes: habit.baseDurationMinutes,
+              xpEarned: 10,
+            });
+            await db.update(habitCompletions)
+              .set({ completedAt: simulatedDate })
+              .where(eq(habitCompletions.id, completion.id));
+            completionsCreated.push(completion.id);
+
+            const newTime = new Date(simulatedDate);
+            newTime.setMinutes(newTime.getMinutes() + habit.baseDurationMinutes + 15);
+            simulatedDate.setTime(newTime.getTime());
+          }
+        } else if (!completeHabits) {
+          const guidedCompletion = await storage.createHabitCompletion({
+            habitId: `guided_day${d + 1}`,
+            userId: req.params.id,
+            durationMinutes: 2,
+            xpEarned: 5,
+          });
+          await db.update(habitCompletions)
+            .set({ completedAt: simulatedDate })
+            .where(eq(habitCompletions.id, guidedCompletion.id));
+          completionsCreated.push(guidedCompletion.id);
+        }
+      }
+
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+      const distinctDays = new Set(
+        allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
+      );
+      const newOnboardingDay = Math.min(Math.max(distinctDays.size, 1), 7);
+
+      const newStreak = Math.min(player.streak + dayCount, 999);
+      await storage.updatePlayer(req.params.id, { streak: newStreak });
+
+      res.json({
+        success: true,
+        daysSimulated: dayCount,
+        completionsCreated: completionsCreated.length,
+        newOnboardingDay,
+        newStreak,
+        distinctActiveDays: distinctDays.size,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to simulate days" });
+    }
+  });
+
+  app.get("/api/player/:id/dev/status", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+      const habits = await storage.getHabits(req.params.id);
+      const distinctDays = new Set(
+        allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
+      );
+      const onboardingDay = Math.min(Math.max(distinctDays.size, 1), 7);
+
+      const sortedDays = [...distinctDays].sort().reverse();
+      const lastActiveDate = sortedDays[0] ?? null;
+      const daysSinceLastActivity = lastActiveDate
+        ? Math.floor((Date.now() - new Date(lastActiveDate + "T23:59:59").getTime()) / 86400000)
+        : 999;
+
+      res.json({
+        playerId: player.id,
+        playerName: player.name,
+        onboardingDay,
+        onboardingCompleted: player.onboardingCompleted === 1,
+        streak: player.streak,
+        phase: player.phase,
+        level: player.level,
+        stabilityScore: player.stability?.score ?? 50,
+        stabilityState: player.stability?.state ?? "stabilizing",
+        totalCompletions: allCompletions.length,
+        totalActiveHabits: habits.filter(h => h.active).length,
+        distinctActiveDays: distinctDays.size,
+        lastActiveDate,
+        daysSinceLastActivity,
+        tabUnlocks: {
+          HOME: { unlockDay: 1, unlocked: onboardingDay >= 1 },
+          COACH: { unlockDay: 1, unlocked: onboardingDay >= 1 },
+          HABITS: { unlockDay: 3, unlocked: onboardingDay >= 3 },
+          TRAIN: { unlockDay: 7, unlocked: onboardingDay >= 7 },
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get dev status" });
     }
   });
 

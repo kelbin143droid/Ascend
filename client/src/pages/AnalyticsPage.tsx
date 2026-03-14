@@ -399,7 +399,7 @@ export default function AnalyticsPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="habit-total">
-                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Active Rituals</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Active Habits</div>
                     <div className="text-2xl font-bold text-cyan-400 font-orbitron">
                       {habitAnalytics.totalHabits}
                     </div>

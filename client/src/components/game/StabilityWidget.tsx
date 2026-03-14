@@ -125,7 +125,7 @@ export function StabilityWidget() {
                 <div className="text-[10px] font-display tracking-wider uppercase text-gray-500">
                   Components
                 </div>
-                <ComponentBar label="Daily Rituals" value={stabilityData.components.habitCompletionPct} color="#3b82f6" weight="35%" />
+                <ComponentBar label="Daily Habits" value={stabilityData.components.habitCompletionPct} color="#3b82f6" weight="35%" />
                 <ComponentBar label="Sleep" value={stabilityData.components.sleepConsistency} color="#a855f7" weight="20%" />
                 <ComponentBar label="Energy" value={stabilityData.components.energyCompliance} color="#22c55e" weight="15%" />
                 <ComponentBar label="Emotional" value={stabilityData.components.emotionalStability} color="#f59e0b" weight="15%" />

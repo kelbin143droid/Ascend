@@ -493,7 +493,7 @@ export default function HomePage() {
   }
 
   const startLabel = allDone
-    ? t("View Rituals")
+    ? t("View Habits")
     : (nextAction ? `Complete ${nextAction.name}` : t("Complete Today's Power Growth"));
 
   const microCommitText = hasHabits

@@ -38,7 +38,7 @@ The application features a 4-stage Language Evolution System that gradually intr
 -   **Core Design Principles**: Shared schema, stats derived from quests only, stability-driven dynamics, positive reinforcement, gradual onboarding, and guided sessions.
 
 ### Navigation
--   **Bottom Nav**: HOME, TRAIN, RITUALS, COACH.
+-   **Bottom Nav**: HOME, TRAIN, HABITS, COACH.
 -   **Sidebar Menu**: Profile, Analytics, Progress History, Library, Achievements, Weekly Planning, System Tools (including Sectograph).
 -   **Sectograph**: A unified time system page with Timeline, Calendar, and Week views. It includes a time awareness layer, behavioral anchoring markers, and active focus session management.
 

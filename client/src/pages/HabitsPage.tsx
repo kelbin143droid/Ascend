@@ -366,7 +366,7 @@ export default function HabitsPage() {
           <div className="flex items-center gap-3">
             <Target className="w-5 h-5 text-cyan-400" />
             <h1 className="text-lg font-bold text-white font-orbitron tracking-wide">
-              {t("Daily Rituals")}
+              {t("Daily Habits")}
             </h1>
           </div>
           <Button
@@ -378,13 +378,13 @@ export default function HabitsPage() {
             title={habitLimitReached ? `Habit limit reached (${activeHabitCount}/${habitLimit})` : ""}
           >
             <Plus className="w-4 h-4 mr-1" />
-            {habitLimitReached ? `${activeHabitCount}/${habitLimit}` : t("Add Ritual")}
+            {habitLimitReached ? `${activeHabitCount}/${habitLimit}` : t("Add Habit")}
           </Button>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="text-gray-500">Loading rituals...</div>
+            <div className="text-gray-500">Loading habits...</div>
           </div>
         ) : (
           <>
@@ -557,7 +557,7 @@ export default function HabitsPage() {
                 }}
               >
                 <p className="text-sm leading-relaxed" style={{ color: "rgba(147,197,253,0.7)" }}>
-                  Custom daily rituals unlock as your hunter path develops.
+                  Custom daily habits unlock as your hunter path develops.
                 </p>
                 <p className="text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
                   Complete guided sessions from Home to build your foundation.
@@ -648,7 +648,7 @@ export default function HabitsPage() {
           <DialogContent className="bg-gray-950 border-gray-800 max-w-sm">
             <DialogHeader>
               <DialogTitle className="font-orbitron text-sm text-white">
-                {editingHabit ? t("Edit Ritual") : t("New Daily Ritual")}
+                {editingHabit ? t("Edit Habit") : t("New Daily Habit")}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
