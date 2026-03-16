@@ -2,25 +2,74 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
+import { X, Play, CheckCircle2, RotateCcw, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
+
+function useVoiceGuidance() {
+  const [enabled, setEnabled] = useState(() => {
+    const saved = localStorage.getItem("ascend_voice_guidance");
+    return saved !== "false";
+  });
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const toggle = useCallback(() => {
+    setEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem("ascend_voice_guidance", String(next));
+      if (!next) {
+        window.speechSynthesis?.cancel();
+      }
+      return next;
+    });
+  }, []);
+
+  const speak = useCallback((text: string) => {
+    if (!enabled || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 0.85;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(
+      (v) => v.lang.startsWith("en") && v.name.toLowerCase().includes("female")
+    ) || voices.find(
+      (v) => v.lang.startsWith("en") && v.localService
+    ) || voices.find(
+      (v) => v.lang.startsWith("en")
+    );
+    if (preferred) utterance.voice = preferred;
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  }, [enabled]);
+
+  const stop = useCallback(() => {
+    window.speechSynthesis?.cancel();
+  }, []);
+
+  return { enabled, toggle, speak, stop };
+}
 
 function CountdownTimer({
   seconds,
   color,
   onComplete,
   running,
+  onCountdown,
 }: {
   seconds: number;
   color: string;
   onComplete: () => void;
   running: boolean;
+  onCountdown?: (remaining: number) => void;
 }) {
   const [remaining, setRemaining] = useState(seconds);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onCompleteRef = useRef(onComplete);
+  const onCountdownRef = useRef(onCountdown);
   onCompleteRef.current = onComplete;
+  onCountdownRef.current = onCountdown;
 
   useEffect(() => {
     setRemaining(seconds);
@@ -33,12 +82,16 @@ function CountdownTimer({
     }
     intervalRef.current = setInterval(() => {
       setRemaining((prev) => {
-        if (prev <= 1) {
+        const next = prev - 1;
+        if (next <= 3 && next > 0) {
+          onCountdownRef.current?.(next);
+        }
+        if (next <= 0) {
           clearInterval(intervalRef.current!);
           onCompleteRef.current();
           return 0;
         }
-        return prev - 1;
+        return next;
       });
     }, 1000);
     return () => {
@@ -292,6 +345,7 @@ export function GuidedActivityEngine({
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
+  const voice = useVoiceGuidance();
 
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [stepRunning, setStepRunning] = useState(false);
@@ -299,6 +353,18 @@ export function GuidedActivityEngine({
   const [xpEarned, setXpEarned] = useState<number | null>(null);
 
   const step = activity.steps[currentStepIdx];
+
+  useEffect(() => {
+    if (step?.voiceText) {
+      voice.speak(step.voiceText);
+    }
+  }, [currentStepIdx, step?.voiceText]);
+
+  useEffect(() => {
+    return () => {
+      voice.stop();
+    };
+  }, []);
   const isCompletionStep = step?.type === "completion";
   const isLastNonCompletion = (() => {
     const remaining = activity.steps.slice(currentStepIdx + 1);
@@ -362,6 +428,12 @@ export function GuidedActivityEngine({
   const handleTimerComplete = useCallback(() => {
     advanceStep();
   }, [advanceStep]);
+
+  const handleCountdown = useCallback((remaining: number) => {
+    if (remaining <= 3 && remaining > 0) {
+      voice.speak(String(remaining));
+    }
+  }, [voice.speak]);
 
   const handleFinish = useCallback(() => {
     if (!completeMutation.isSuccess) {
@@ -434,14 +506,28 @@ export function GuidedActivityEngine({
             </span>
           </div>
         </div>
-        <button
-          onClick={onCancel}
-          className="p-2 rounded-lg transition-colors"
-          style={{ backgroundColor: `${colors.textMuted}15` }}
-          data-testid="button-cancel-activity"
-        >
-          <X size={18} style={{ color: colors.textMuted }} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={voice.toggle}
+            className="p-2 rounded-lg transition-colors"
+            style={{ backgroundColor: `${colors.textMuted}15` }}
+            data-testid="button-toggle-voice"
+          >
+            {voice.enabled ? (
+              <Volume2 size={18} style={{ color: activity.color }} />
+            ) : (
+              <VolumeX size={18} style={{ color: colors.textMuted }} />
+            )}
+          </button>
+          <button
+            onClick={() => { voice.stop(); onCancel(); }}
+            className="p-2 rounded-lg transition-colors"
+            style={{ backgroundColor: `${colors.textMuted}15` }}
+            data-testid="button-cancel-activity"
+          >
+            <X size={18} style={{ color: colors.textMuted }} />
+          </button>
+        </div>
       </div>
 
       <StepProgressBar
@@ -514,6 +600,7 @@ export function GuidedActivityEngine({
                 color={activity.color}
                 onComplete={handleTimerComplete}
                 running={stepRunning}
+                onCountdown={handleCountdown}
               />
             )}
 
@@ -523,6 +610,7 @@ export function GuidedActivityEngine({
                 color={activity.color}
                 onComplete={handleTimerComplete}
                 running={stepRunning}
+                onCountdown={handleCountdown}
               />
             )}
 

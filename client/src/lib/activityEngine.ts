@@ -15,6 +15,7 @@ export interface ActivityStep {
   repCount?: number;
   repLabel?: string;
   breathTiming?: BreathTiming;
+  voiceText?: string;
 }
 
 export interface ActivityDefinition {
@@ -46,30 +47,31 @@ export const TIER_XP_MULTIPLIERS: Record<number, number> = {
 };
 
 export interface TierConfig {
-  pushups: number;
+  pushupSeconds: number;
   cardioSeconds: number;
-  crunches: number;
+  crunchSeconds: number;
 }
 
 export const STRENGTH_TIERS: Record<number, TierConfig> = {
-  1: { pushups: 5, cardioSeconds: 30, crunches: 10 },
-  2: { pushups: 6, cardioSeconds: 35, crunches: 12 },
-  3: { pushups: 7, cardioSeconds: 40, crunches: 14 },
-  4: { pushups: 8, cardioSeconds: 45, crunches: 16 },
-  5: { pushups: 10, cardioSeconds: 60, crunches: 20 },
+  1: { pushupSeconds: 20, cardioSeconds: 30, crunchSeconds: 20 },
+  2: { pushupSeconds: 25, cardioSeconds: 35, crunchSeconds: 25 },
+  3: { pushupSeconds: 30, cardioSeconds: 40, crunchSeconds: 30 },
+  4: { pushupSeconds: 35, cardioSeconds: 45, crunchSeconds: 35 },
+  5: { pushupSeconds: 45, cardioSeconds: 60, crunchSeconds: 45 },
 };
 
 export interface AgilityTierConfig {
+  shoulderRollSeconds: number;
   torsoTwistSeconds: number;
   forwardFoldSeconds: number;
 }
 
 export const AGILITY_TIERS: Record<number, AgilityTierConfig> = {
-  1: { torsoTwistSeconds: 20, forwardFoldSeconds: 15 },
-  2: { torsoTwistSeconds: 25, forwardFoldSeconds: 20 },
-  3: { torsoTwistSeconds: 30, forwardFoldSeconds: 25 },
-  4: { torsoTwistSeconds: 35, forwardFoldSeconds: 30 },
-  5: { torsoTwistSeconds: 40, forwardFoldSeconds: 35 },
+  1: { shoulderRollSeconds: 15, torsoTwistSeconds: 20, forwardFoldSeconds: 15 },
+  2: { shoulderRollSeconds: 18, torsoTwistSeconds: 25, forwardFoldSeconds: 20 },
+  3: { shoulderRollSeconds: 20, torsoTwistSeconds: 30, forwardFoldSeconds: 25 },
+  4: { shoulderRollSeconds: 25, torsoTwistSeconds: 35, forwardFoldSeconds: 30 },
+  5: { shoulderRollSeconds: 30, torsoTwistSeconds: 40, forwardFoldSeconds: 35 },
 };
 
 export function getMaxTierForPhase(phase: number): number {
@@ -120,6 +122,7 @@ export function buildPhase1Activities(
           type: "instruction",
           label: "Get Ready",
           instruction: `Find a comfortable position. Close your eyes or soften your gaze. We'll breathe together for ${Math.round(meditationDuration / 60)} minutes.`,
+          voiceText: `Find a comfortable position. Close your eyes. We'll breathe together for ${Math.round(meditationDuration / 60)} minutes.`,
         },
         {
           id: "calm_breathing",
@@ -128,12 +131,14 @@ export function buildPhase1Activities(
           instruction: "Follow the circle. Inhale 4s → Hold 2s → Exhale 6s.",
           durationSeconds: meditationDuration,
           breathTiming: { inhaleSeconds: 4, holdSeconds: 2, exhaleSeconds: 6 },
+          voiceText: "Follow the circle. Inhale for 4 seconds. Hold for 2. Exhale for 6.",
         },
         {
           id: "meditation_done",
           type: "completion",
           label: "Meditation Complete",
           instruction: "Activity complete.\nSmall actions build momentum.",
+          voiceText: "Meditation complete. Well done.",
         },
       ],
     },
@@ -153,14 +158,15 @@ export function buildPhase1Activities(
           type: "instruction",
           label: "Get Ready",
           instruction: "Quick body activation. Follow the steps.",
+          voiceText: "Get ready. Quick body activation.",
         },
         {
           id: "pushups",
-          type: "rep",
+          type: "timer",
           label: "Push-ups",
-          instruction: `Do ${st.pushups} push-ups at your own pace. Knee push-ups are perfectly fine.`,
-          repCount: st.pushups,
-          repLabel: "push-ups",
+          instruction: `Push-ups for ${st.pushupSeconds} seconds. Go at your own pace. Knee push-ups are perfectly fine.`,
+          durationSeconds: st.pushupSeconds,
+          voiceText: `Push-ups. Go at your own pace for ${st.pushupSeconds} seconds.`,
         },
         {
           id: "cardio",
@@ -168,14 +174,15 @@ export function buildPhase1Activities(
           label: "Cardio",
           instruction: "Jog in place. Keep it light and steady.",
           durationSeconds: st.cardioSeconds,
+          voiceText: `Jog in place for ${st.cardioSeconds} seconds. Keep it light and steady.`,
         },
         {
           id: "abs",
-          type: "rep",
-          label: "Abs",
-          instruction: `Do ${st.crunches} crunches. Slow and controlled.`,
-          repCount: st.crunches,
-          repLabel: "crunches",
+          type: "timer",
+          label: "Crunches",
+          instruction: `Crunches for ${st.crunchSeconds} seconds. Slow and controlled.`,
+          durationSeconds: st.crunchSeconds,
+          voiceText: `Crunches. Slow and controlled for ${st.crunchSeconds} seconds.`,
         },
         {
           id: "rest",
@@ -183,12 +190,14 @@ export function buildPhase1Activities(
           label: "Rest",
           instruction: "Catch your breath. Shake out your arms and legs.",
           durationSeconds: 20,
+          voiceText: "Rest. Catch your breath. Shake out your arms and legs.",
         },
         {
           id: "strength_done",
           type: "completion",
           label: "Circuit Complete",
           instruction: "Activity complete.\nSmall actions build momentum.",
+          voiceText: "Circuit complete. Great work.",
         },
       ],
     },
@@ -208,6 +217,7 @@ export function buildPhase1Activities(
           type: "instruction",
           label: "Get Ready",
           instruction: "Follow the mobility flow slowly.",
+          voiceText: "Get ready. Follow the mobility flow slowly.",
         },
         {
           id: "neck_cw",
@@ -215,6 +225,7 @@ export function buildPhase1Activities(
           label: "Neck Clockwise",
           instruction: "Slowly roll your neck clockwise. Keep it gentle.",
           durationSeconds: 10,
+          voiceText: "Roll your neck clockwise. Keep it gentle.",
         },
         {
           id: "neck_ccw",
@@ -222,14 +233,15 @@ export function buildPhase1Activities(
           label: "Neck Counter-clockwise",
           instruction: "Now roll your neck counter-clockwise. Same pace.",
           durationSeconds: 10,
+          voiceText: "Now counter-clockwise. Same pace.",
         },
         {
           id: "shoulder_rolls",
-          type: "rep",
+          type: "timer",
           label: "Shoulder Rolls",
-          instruction: "Roll your shoulders forward and backward. Loosen up.",
-          repCount: 10,
-          repLabel: "rolls",
+          instruction: `Roll your shoulders forward and backward for ${ag.shoulderRollSeconds} seconds. Loosen up.`,
+          durationSeconds: ag.shoulderRollSeconds,
+          voiceText: `Shoulder rolls for ${ag.shoulderRollSeconds} seconds. Roll forward and backward. Loosen up.`,
         },
         {
           id: "torso_twist",
@@ -237,6 +249,7 @@ export function buildPhase1Activities(
           label: "Torso Twist",
           instruction: "Stand with feet shoulder-width apart. Gently twist your torso side to side.",
           durationSeconds: ag.torsoTwistSeconds,
+          voiceText: `Torso twist for ${ag.torsoTwistSeconds} seconds. Twist side to side.`,
         },
         {
           id: "forward_fold",
@@ -244,12 +257,14 @@ export function buildPhase1Activities(
           label: "Forward Fold",
           instruction: "Slowly bend forward and reach toward your toes. Hold gently — no bouncing.",
           durationSeconds: ag.forwardFoldSeconds,
+          voiceText: `Forward fold for ${ag.forwardFoldSeconds} seconds. Reach toward your toes. No bouncing.`,
         },
         {
           id: "agility_done",
           type: "completion",
           label: "Mobility Complete",
           instruction: "Activity complete.\nSmall actions build momentum.",
+          voiceText: "Mobility complete. Well done.",
         },
       ],
     },
@@ -269,18 +284,21 @@ export function buildPhase1Activities(
           type: "instruction",
           label: "Hydration",
           instruction: "Drink one full glass of water right now. Hydration is the foundation of energy.",
+          voiceText: "Drink a full glass of water. Hydration is the foundation of energy.",
         },
         {
           id: "sleep_check",
           type: "instruction",
           label: "Sleep Check",
           instruction: "Did you sleep at least 6 hours last night? Consistent sleep fuels recovery.",
+          voiceText: "Did you sleep at least 6 hours? Consistent sleep fuels recovery.",
         },
         {
           id: "vitality_done",
           type: "completion",
           label: "Vitality Complete",
           instruction: "Activity complete.\nSmall actions build momentum.",
+          voiceText: "Vitality check complete.",
         },
       ],
     },
