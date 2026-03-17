@@ -2557,6 +2557,55 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/dev/go-back-day", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const allCompletions = await storage.getHabitCompletions(req.params.id);
+      const toDateStr = (d: Date) => d.toISOString().split("T")[0];
+      const distinctDays = [...new Set(
+        allCompletions.filter(c => c.completedAt).map(c => toDateStr(new Date(c.completedAt!)))
+      )].sort();
+
+      if (distinctDays.length === 0) {
+        return res.json({ success: true, message: "Already at Day 1", newOnboardingDay: 1, newStreak: 0 });
+      }
+
+      const latestDay = distinctDays[distinctDays.length - 1];
+      const completionsToRemove = allCompletions.filter(c =>
+        c.completedAt && toDateStr(new Date(c.completedAt!)) === latestDay
+      );
+
+      await db.transaction(async (tx) => {
+        for (const c of completionsToRemove) {
+          await tx.delete(habitCompletions).where(eq(habitCompletions.id, c.id));
+        }
+
+        const remainingDays = distinctDays.length - 1;
+        const newOnboardingDay = Math.max(1, Math.min(remainingDays, 7));
+        const newStreak = Math.max(0, player.streak - 1);
+
+        const updates: Record<string, any> = { streak: newStreak };
+        if (newOnboardingDay < 7) {
+          updates.onboardingCompleted = 0;
+        }
+
+        await storage.updatePlayer(req.params.id, updates);
+
+        res.json({
+          success: true,
+          removedCompletions: completionsToRemove.length,
+          removedDay: latestDay,
+          newOnboardingDay,
+          newStreak,
+        });
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to go back a day" });
+    }
+  });
+
   app.post("/api/player/:id/reset-progress", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);

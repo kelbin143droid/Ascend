@@ -1,25 +1,85 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, CheckCircle2, RotateCcw, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
+
+const EXERCISE_ANIMATIONS: Record<string, { emoji: string; movementHint: string }> = {
+  pushups: { emoji: "💪", movementHint: "Push up · Hold · Lower down" },
+  cardio: { emoji: "🏃", movementHint: "Jog in place · Knees up · Stay light" },
+  abs: { emoji: "🔥", movementHint: "Curl up · Squeeze · Lower slowly" },
+  rest: { emoji: "🧘", movementHint: "Breathe deeply · Relax your muscles" },
+  neck_cw: { emoji: "🔄", movementHint: "Slow clockwise circles" },
+  neck_ccw: { emoji: "🔄", movementHint: "Slow counter-clockwise circles" },
+  shoulder_rolls: { emoji: "🤸", movementHint: "Roll forward · Then backward" },
+  torso_twist: { emoji: "🌀", movementHint: "Twist left · Center · Twist right" },
+  forward_fold: { emoji: "🙏", movementHint: "Fold forward · Reach toes · Hold" },
+};
+
+function useBeepSound() {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const getCtx = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  const playBeep = useCallback((frequency = 880, duration = 0.15, volume = 0.3) => {
+    try {
+      const ctx = getCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = frequency;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    } catch {}
+  }, [getCtx]);
+
+  const playCountdownBeep = useCallback(() => {
+    playBeep(660, 0.1, 0.2);
+  }, [playBeep]);
+
+  const playCompleteBeep = useCallback(() => {
+    try {
+      const ctx = getCtx();
+      [0, 0.12, 0.24].forEach((delay, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = [660, 880, 1100][i];
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.25, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.2);
+      });
+    } catch {}
+  }, [getCtx]);
+
+  return { playBeep, playCountdownBeep, playCompleteBeep };
+}
 
 function useVoiceGuidance() {
   const [enabled, setEnabled] = useState(() => {
     const saved = localStorage.getItem("ascend_voice_guidance");
     return saved !== "false";
   });
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const toggle = useCallback(() => {
     setEnabled((prev) => {
       const next = !prev;
       localStorage.setItem("ascend_voice_guidance", String(next));
-      if (!next) {
-        window.speechSynthesis?.cancel();
-      }
+      if (!next) window.speechSynthesis?.cancel();
       return next;
     });
   }, []);
@@ -36,105 +96,163 @@ function useVoiceGuidance() {
       (v) => v.lang.startsWith("en") && v.name.toLowerCase().includes("female")
     ) || voices.find(
       (v) => v.lang.startsWith("en") && v.localService
-    ) || voices.find(
-      (v) => v.lang.startsWith("en")
-    );
+    ) || voices.find((v) => v.lang.startsWith("en"));
     if (preferred) utterance.voice = preferred;
-    utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
   }, [enabled]);
 
-  const stop = useCallback(() => {
-    window.speechSynthesis?.cancel();
-  }, []);
+  const stop = useCallback(() => { window.speechSynthesis?.cancel(); }, []);
 
   return { enabled, toggle, speak, stop };
 }
 
-function CountdownTimer({
+function CircularTimer({
   seconds,
+  remaining,
   color,
-  onComplete,
-  running,
-  onCountdown,
+  label,
+  exerciseId,
 }: {
   seconds: number;
+  remaining: number;
   color: string;
-  onComplete: () => void;
-  running: boolean;
-  onCountdown?: (remaining: number) => void;
+  label: string;
+  exerciseId: string;
 }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const onCompleteRef = useRef(onComplete);
-  const onCountdownRef = useRef(onCountdown);
-  onCompleteRef.current = onComplete;
-  onCountdownRef.current = onCountdown;
-
-  useEffect(() => {
-    setRemaining(seconds);
-  }, [seconds]);
-
-  useEffect(() => {
-    if (!running) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      return;
-    }
-    intervalRef.current = setInterval(() => {
-      setRemaining((prev) => {
-        const next = prev - 1;
-        if (next <= 3 && next > 0) {
-          onCountdownRef.current?.(next);
-        }
-        if (next <= 0) {
-          clearInterval(intervalRef.current!);
-          onCompleteRef.current();
-          return 0;
-        }
-        return next;
-      });
-    }, 1000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [running]);
-
+  const progress = seconds > 0 ? (1 - remaining / seconds) : 0;
+  const radius = 90;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - progress);
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
-  const progress = seconds > 0 ? (1 - remaining / seconds) * 100 : 0;
+  const anim = EXERCISE_ANIMATIONS[exerciseId];
+
+  const pulsePhase = remaining % 2 === 0;
 
   return (
-    <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-      <div
-        className="text-4xl font-bold font-mono tabular-nums"
-        style={{ color }}
-        data-testid="text-countdown"
-      >
-        {mins}:{secs.toString().padStart(2, "0")}
-      </div>
-      <div
-        className="w-full h-2 rounded-full overflow-hidden"
-        style={{ backgroundColor: `${color}20` }}
-      >
-        <div
-          className="h-full rounded-full transition-all duration-1000 ease-linear"
-          style={{ width: `${progress}%`, backgroundColor: color }}
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative w-52 h-52 flex items-center justify-center">
+        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 200 200">
+          <circle
+            cx="100" cy="100" r={radius}
+            fill="none"
+            stroke={`${color}15`}
+            strokeWidth="8"
+          />
+          <circle
+            cx="100" cy="100" r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            style={{ transition: "stroke-dashoffset 1s linear" }}
+          />
+        </svg>
+
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+          {anim && (
+            <motion.div
+              animate={{ scale: pulsePhase ? 1.1 : 0.95 }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+              className="text-4xl mb-1 select-none"
+            >
+              {anim.emoji}
+            </motion.div>
+          )}
+          <div
+            className="text-3xl font-bold font-mono tabular-nums"
+            style={{ color }}
+            data-testid="text-countdown"
+          >
+            {mins}:{secs.toString().padStart(2, "0")}
+          </div>
+          <div className="text-[10px] uppercase tracking-wider mt-1 font-bold" style={{ color: `${color}99` }}>
+            {label}
+          </div>
+        </div>
+
+        <motion.div
+          className="absolute inset-0 rounded-full"
+          animate={{
+            boxShadow: remaining <= 3
+              ? `0 0 40px ${color}40`
+              : `0 0 20px ${color}15`,
+          }}
+          transition={{ duration: 0.3 }}
         />
       </div>
+
+      {anim && (
+        <motion.div
+          key={exerciseId}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-xs text-center tracking-wide"
+          style={{ color: `${color}88` }}
+        >
+          {anim.movementHint}
+        </motion.div>
+      )}
     </div>
   );
 }
 
-function RepCounter({ count, label, color }: { count: number; label: string; color: string }) {
+function GetReadyCountdown({
+  color,
+  onComplete,
+  exerciseName,
+}: {
+  color: string;
+  onComplete: () => void;
+  exerciseName: string;
+}) {
+  const [count, setCount] = useState(3);
+  const beep = useBeepSound();
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    beep.playCountdownBeep();
+    const interval = setInterval(() => {
+      setCount((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimeout(() => onCompleteRef.current(), 200);
+          return 0;
+        }
+        beep.playCountdownBeep();
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="text-5xl font-bold" style={{ color }}>
-        {count}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.2 }}
+      className="flex flex-col items-center gap-4"
+    >
+      <div className="text-xs uppercase tracking-widest font-bold" style={{ color: `${color}88` }}>
+        Get Ready
       </div>
-      <div className="text-sm" style={{ color: `${color}cc` }}>
-        {label}
+      <div className="text-sm mb-2" style={{ color: `${color}cc` }}>
+        {exerciseName}
       </div>
-    </div>
+      <motion.div
+        key={count}
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 1.5, opacity: 0 }}
+        className="text-7xl font-bold font-mono"
+        style={{ color }}
+      >
+        {count || "GO!"}
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -165,7 +283,6 @@ function BreathingVisual({
           setScale(0.5 + (i / inhaleFrames) * 0.5);
           await new Promise((r) => setTimeout(r, frameMs));
         }
-
         setPhase("hold");
         const holdMs = timing.holdSeconds * 1000;
         const holdStart = Date.now();
@@ -173,7 +290,6 @@ function BreathingVisual({
           if (cancelledRef.current) return;
           await new Promise((r) => setTimeout(r, 100));
         }
-
         setPhase("exhale");
         const exhaleFrames = Math.floor((timing.exhaleSeconds * 1000) / frameMs);
         for (let i = 0; i <= exhaleFrames; i++) {
@@ -183,40 +299,31 @@ function BreathingVisual({
         }
       }
     };
-
     animate();
-    return () => {
-      cancelledRef.current = true;
-    };
+    return () => { cancelledRef.current = true; };
   }, [active, timing.inhaleSeconds, timing.holdSeconds, timing.exhaleSeconds]);
 
   if (!active) return null;
 
   const size = 80 + scale * 80;
   const phaseLabel =
-    phase === "inhale"
-      ? `Inhale ${timing.inhaleSeconds}s`
-      : phase === "hold"
-      ? `Hold ${timing.holdSeconds}s`
-      : `Exhale ${timing.exhaleSeconds}s`;
+    phase === "inhale" ? `Inhale ${timing.inhaleSeconds}s`
+    : phase === "hold" ? `Hold ${timing.holdSeconds}s`
+    : `Exhale ${timing.exhaleSeconds}s`;
 
   return (
     <div className="flex flex-col items-center gap-4 my-2">
       <div
         className="rounded-full flex items-center justify-center"
         style={{
-          width: size,
-          height: size,
+          width: size, height: size,
           backgroundColor: `${color}20`,
           border: `2px solid ${color}50`,
           boxShadow: `0 0 ${Math.floor(size / 3)}px ${color}25`,
           transition: "width 50ms linear, height 50ms linear",
         }}
       >
-        <span
-          className="text-xs font-bold uppercase tracking-wider select-none"
-          style={{ color }}
-        >
+        <span className="text-xs font-bold uppercase tracking-wider select-none" style={{ color }}>
           {phase}
         </span>
       </div>
@@ -294,7 +401,6 @@ function CompletionScreen({
           <Sparkles size={36} style={{ color: activity.color }} />
         </div>
       </motion.div>
-
       <div>
         <div className="text-lg font-bold mb-1" style={{ color: colors.text }}>
           Activity complete.
@@ -303,7 +409,6 @@ function CompletionScreen({
           Small actions build momentum.
         </div>
       </div>
-
       {xpEarned !== null && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -315,7 +420,6 @@ function CompletionScreen({
           +{xpEarned} XP
         </motion.div>
       )}
-
       <button
         className="px-10 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 mt-2"
         style={{ backgroundColor: activity.color, color: "#fff" }}
@@ -346,30 +450,29 @@ export function GuidedActivityEngine({
   const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
   const voice = useVoiceGuidance();
+  const beep = useBeepSound();
 
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
-  const [stepRunning, setStepRunning] = useState(false);
+  const [stepPhase, setStepPhase] = useState<"ready" | "getready" | "running" | "done">("ready");
   const [stepsCompleted, setStepsCompleted] = useState<Set<number>>(new Set());
   const [xpEarned, setXpEarned] = useState<number | null>(null);
+  const [timerRemaining, setTimerRemaining] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const step = activity.steps[currentStepIdx];
+  const isCompletionStep = step?.type === "completion";
+  const isTimerStep = step?.type === "timer";
+  const isBreathStep = step?.type === "breath";
 
   useEffect(() => {
-    if (step?.voiceText) {
+    if (step?.voiceText && stepPhase !== "getready") {
       voice.speak(step.voiceText);
     }
-  }, [currentStepIdx, step?.voiceText]);
+  }, [currentStepIdx]);
 
   useEffect(() => {
-    return () => {
-      voice.stop();
-    };
+    return () => { voice.stop(); };
   }, []);
-  const isCompletionStep = step?.type === "completion";
-  const isLastNonCompletion = (() => {
-    const remaining = activity.steps.slice(currentStepIdx + 1);
-    return remaining.every((s) => s.type === "completion");
-  })();
 
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -393,7 +496,6 @@ export function GuidedActivityEngine({
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
       queryClient.invalidateQueries({ queryKey: ["training-scaling"] });
-
       apiRequest("POST", `/api/player/${playerId}/record-activity`, {
         activityId: activity.id,
         activityName: activity.activityName,
@@ -406,42 +508,86 @@ export function GuidedActivityEngine({
   });
 
   const advanceStep = useCallback(() => {
-    setStepRunning(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setStepPhase("done");
     setStepsCompleted((prev) => new Set(prev).add(currentStepIdx));
 
     const nextIdx = currentStepIdx + 1;
     if (nextIdx < activity.steps.length) {
-      setTimeout(() => setCurrentStepIdx(nextIdx), 350);
+      setTimeout(() => {
+        setCurrentStepIdx(nextIdx);
+        setStepPhase("ready");
+      }, 400);
     }
   }, [currentStepIdx, activity.steps.length]);
 
+  const startTimer = useCallback(() => {
+    if (!step?.durationSeconds) return;
+    setTimerRemaining(step.durationSeconds);
+    setStepPhase("running");
+
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    let remaining = step.durationSeconds;
+    intervalRef.current = setInterval(() => {
+      remaining -= 1;
+      setTimerRemaining(remaining);
+      if (remaining <= 3 && remaining > 0) {
+        beep.playCountdownBeep();
+        voice.speak(String(remaining));
+      }
+      if (remaining <= 0) {
+        clearInterval(intervalRef.current!);
+        intervalRef.current = null;
+        beep.playCompleteBeep();
+        advanceStep();
+      }
+    }, 1000);
+  }, [step, advanceStep, beep, voice]);
+
   const handleAction = useCallback(() => {
     if (!step) return;
-
-    if (step.type === "timer" || step.type === "breath") {
-      setStepRunning(true);
+    if (isTimerStep) {
+      setStepPhase("getready");
+    } else if (isBreathStep) {
+      setStepPhase("getready");
     } else {
       advanceStep();
     }
-  }, [step, advanceStep]);
+  }, [step, isTimerStep, isBreathStep, advanceStep]);
 
-  const handleTimerComplete = useCallback(() => {
+  const handleGetReadyComplete = useCallback(() => {
+    if (isBreathStep) {
+      setStepPhase("running");
+      if (step?.durationSeconds) {
+        setTimerRemaining(step.durationSeconds);
+        let remaining = step.durationSeconds;
+        intervalRef.current = setInterval(() => {
+          remaining -= 1;
+          setTimerRemaining(remaining);
+          if (remaining <= 3 && remaining > 0) beep.playCountdownBeep();
+          if (remaining <= 0) {
+            clearInterval(intervalRef.current!);
+            beep.playCompleteBeep();
+            advanceStep();
+          }
+        }, 1000);
+      }
+    } else {
+      startTimer();
+    }
+    if (step?.voiceText) voice.speak(step.voiceText);
+  }, [isBreathStep, step, startTimer, advanceStep, beep, voice]);
+
+  const handleSkip = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
     advanceStep();
   }, [advanceStep]);
-
-  const handleCountdown = useCallback((remaining: number) => {
-    if (remaining <= 3 && remaining > 0) {
-      voice.speak(String(remaining));
-    }
-  }, [voice.speak]);
-
-  const handleFinish = useCallback(() => {
-    if (!completeMutation.isSuccess) {
-      completeMutation.mutate();
-      return;
-    }
-    onComplete(xpEarned ?? 0);
-  }, [completeMutation, onComplete, xpEarned]);
 
   useEffect(() => {
     if (isCompletionStep && !completeMutation.isPending && !completeMutation.isSuccess) {
@@ -449,29 +595,15 @@ export function GuidedActivityEngine({
     }
   }, [isCompletionStep]);
 
-  const getActionLabel = (s: ActivityStep, stepIdx: number): string => {
-    switch (s.type) {
-      case "timer":
-        return "Start Timer";
-      case "breath":
-        return "Begin Breathing";
-      case "rep":
-        return "Mark Complete";
-      case "instruction":
-        return stepIdx === 0 ? "Begin" : "Done";
-      default:
-        return "Continue";
-    }
-  };
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
-  const getActionIcon = (s: ActivityStep) => {
-    switch (s.type) {
-      case "timer":
-      case "breath":
-        return <Play size={16} />;
-      default:
-        return <CheckCircle2 size={16} />;
-    }
+  const getActionLabel = (s: ActivityStep, stepIdx: number): string => {
+    if (s.type === "timer" || s.type === "breath") return "Start";
+    return stepIdx === 0 ? "Begin" : "Done";
   };
 
   return (
@@ -520,7 +652,7 @@ export function GuidedActivityEngine({
             )}
           </button>
           <button
-            onClick={() => { voice.stop(); onCancel(); }}
+            onClick={() => { voice.stop(); if (intervalRef.current) clearInterval(intervalRef.current); onCancel(); }}
             className="p-2 rounded-lg transition-colors"
             style={{ backgroundColor: `${colors.textMuted}15` }}
             data-testid="button-cancel-activity"
@@ -539,107 +671,142 @@ export function GuidedActivityEngine({
       />
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6 overflow-y-auto">
-        {isCompletionStep ? (
-          <CompletionScreen
-            activity={activity}
-            colors={colors}
-            xpEarned={xpEarned}
-            onFinish={() => onComplete(xpEarned ?? 0)}
-            isPending={completeMutation.isPending}
-          />
-        ) : step ? (
-          <>
-            <div className="text-center">
-              <div
-                className="text-sm uppercase tracking-widest mb-1 font-bold"
-                style={{ color: activity.color }}
-                data-testid="text-step-label"
-              >
-                {step.label}
-              </div>
-              <div className="text-xs" style={{ color: colors.textMuted }}>
-                Step {currentStepIdx + 1} of {activity.steps.length}
-              </div>
-            </div>
-
-            <div
-              className="rounded-xl p-6 text-center max-w-sm w-full"
-              style={{
-                backgroundColor: `${activity.color}10`,
-                border: `1px solid ${activity.color}20`,
-              }}
+        <AnimatePresence mode="wait">
+          {isCompletionStep ? (
+            <CompletionScreen
+              key="completion"
+              activity={activity}
+              colors={colors}
+              xpEarned={xpEarned}
+              onFinish={() => onComplete(xpEarned ?? 0)}
+              isPending={completeMutation.isPending}
+            />
+          ) : stepPhase === "getready" && step ? (
+            <GetReadyCountdown
+              key={`getready-${currentStepIdx}`}
+              color={activity.color}
+              onComplete={handleGetReadyComplete}
+              exerciseName={step.label}
+            />
+          ) : step ? (
+            <motion.div
+              key={`step-${currentStepIdx}-${stepPhase}`}
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center gap-5 w-full"
             >
-              <p
-                className="text-sm leading-relaxed whitespace-pre-line"
-                style={{ color: colors.text }}
-                data-testid="text-step-instruction"
-              >
-                {step.instruction}
-              </p>
-            </div>
+              <div className="text-center">
+                <div
+                  className="text-sm uppercase tracking-widest mb-1 font-bold"
+                  style={{ color: activity.color }}
+                  data-testid="text-step-label"
+                >
+                  {step.label}
+                </div>
+                <div className="text-xs" style={{ color: colors.textMuted }}>
+                  Step {currentStepIdx + 1} of {activity.steps.length}
+                </div>
+              </div>
 
-            {step.type === "rep" && step.repCount != null && (
-              <RepCounter
-                count={step.repCount}
-                label={step.repLabel || "reps"}
-                color={activity.color}
-              />
-            )}
+              {(isTimerStep && stepPhase === "running") ? (
+                <CircularTimer
+                  seconds={step.durationSeconds!}
+                  remaining={timerRemaining}
+                  color={activity.color}
+                  label={step.label}
+                  exerciseId={step.id}
+                />
+              ) : (isBreathStep && stepPhase === "running") ? (
+                <>
+                  <BreathingVisual
+                    active={true}
+                    color={activity.color}
+                    timing={step.breathTiming!}
+                  />
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className="text-2xl font-bold font-mono tabular-nums"
+                      style={{ color: activity.color }}
+                    >
+                      {Math.floor(timerRemaining / 60)}:{(timerRemaining % 60).toString().padStart(2, "0")}
+                    </div>
+                    <div
+                      className="w-48 h-1.5 rounded-full overflow-hidden"
+                      style={{ backgroundColor: `${activity.color}20` }}
+                    >
+                      <div
+                        className="h-full rounded-full transition-all duration-1000 ease-linear"
+                        style={{
+                          width: `${step.durationSeconds ? (1 - timerRemaining / step.durationSeconds) * 100 : 0}%`,
+                          backgroundColor: activity.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div
+                  className="rounded-xl p-6 text-center max-w-sm w-full"
+                  style={{
+                    backgroundColor: `${activity.color}10`,
+                    border: `1px solid ${activity.color}20`,
+                  }}
+                >
+                  <p
+                    className="text-sm leading-relaxed whitespace-pre-line"
+                    style={{ color: colors.text }}
+                    data-testid="text-step-instruction"
+                  >
+                    {step.instruction}
+                  </p>
+                </div>
+              )}
 
-            {step.type === "breath" && stepRunning && step.breathTiming && (
-              <BreathingVisual
-                active={stepRunning}
-                color={activity.color}
-                timing={step.breathTiming}
-              />
-            )}
+              {stepPhase === "running" && (
+                <button
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs transition-all active:scale-95"
+                  style={{
+                    backgroundColor: `${colors.textMuted}10`,
+                    color: colors.textMuted,
+                    border: `1px solid ${colors.textMuted}20`,
+                  }}
+                  onClick={handleSkip}
+                  data-testid="button-skip-step"
+                >
+                  <SkipForward size={14} />
+                  Skip
+                </button>
+              )}
 
-            {step.type === "breath" && stepRunning && step.durationSeconds && (
-              <CountdownTimer
-                seconds={step.durationSeconds}
-                color={activity.color}
-                onComplete={handleTimerComplete}
-                running={stepRunning}
-                onCountdown={handleCountdown}
-              />
-            )}
+              {stepPhase === "ready" && !stepsCompleted.has(currentStepIdx) && (
+                <button
+                  className="px-8 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
+                  style={{ backgroundColor: activity.color, color: "#fff" }}
+                  onClick={handleAction}
+                  data-testid="button-step-action"
+                >
+                  <Play size={16} />
+                  {getActionLabel(step, currentStepIdx)}
+                </button>
+              )}
 
-            {step.type === "timer" && stepRunning && step.durationSeconds && (
-              <CountdownTimer
-                seconds={step.durationSeconds}
-                color={activity.color}
-                onComplete={handleTimerComplete}
-                running={stepRunning}
-                onCountdown={handleCountdown}
-              />
-            )}
-
-            {!stepRunning && !stepsCompleted.has(currentStepIdx) && (
-              <button
-                className="px-8 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
-                style={{ backgroundColor: activity.color, color: "#fff" }}
-                onClick={handleAction}
-                data-testid="button-step-action"
-              >
-                {getActionIcon(step)}
-                {getActionLabel(step, currentStepIdx)}
-              </button>
-            )}
-
-            {stepsCompleted.has(currentStepIdx) && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="flex items-center gap-2"
-              >
-                <CheckCircle2 size={24} style={{ color: activity.color }} />
-                <span className="text-sm font-bold" style={{ color: activity.color }}>
-                  Done!
-                </span>
-              </motion.div>
-            )}
-          </>
-        ) : null}
+              {stepPhase === "done" && stepsCompleted.has(currentStepIdx) && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="flex items-center gap-2"
+                >
+                  <CheckCircle2 size={24} style={{ color: activity.color }} />
+                  <span className="text-sm font-bold" style={{ color: activity.color }}>
+                    Done!
+                  </span>
+                </motion.div>
+              )}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

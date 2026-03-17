@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronUp, ChevronDown, Zap, RotateCcw, Info } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap, RotateCcw, Info } from "lucide-react";
 
 interface DevStatus {
   onboardingDay: number;
@@ -70,6 +70,32 @@ export function DevPanel() {
       setLastResult("Error simulating");
     }
     setLoading(false);
+  };
+
+  const goBackDay = async () => {
+    if (!player?.id || loading) return;
+    setLoading(true);
+    setLastResult(null);
+    try {
+      const res = await fetch(`/api/player/${player.id}/dev/go-back-day`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLastResult(`← Day ${data.newOnboardingDay}, removed ${data.removedCompletions} completions`);
+        queryClient.invalidateQueries();
+        fetchStatus();
+      }
+    } catch {
+      setLastResult("Error going back");
+    }
+    setLoading(false);
+  };
+
+  const goForwardDay = async () => {
+    if (!player?.id || loading) return;
+    await simulateDays(1, true);
   };
 
   const resetProgress = async () => {
@@ -166,6 +192,37 @@ export function DevPanel() {
           )}
 
           <div className="space-y-2">
+            <div className="flex gap-2 mb-1">
+              <button
+                onClick={goBackDay}
+                disabled={loading}
+                className="flex-1 text-[10px] font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
+                style={{
+                  backgroundColor: loading ? "rgba(168,85,247,0.05)" : "rgba(168,85,247,0.12)",
+                  border: "1px solid rgba(168,85,247,0.2)",
+                  color: loading ? "rgba(168,85,247,0.4)" : "rgba(168,85,247,0.9)",
+                }}
+                data-testid="button-prev-day"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Previous Day
+              </button>
+              <button
+                onClick={goForwardDay}
+                disabled={loading}
+                className="flex-1 text-[10px] font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
+                style={{
+                  backgroundColor: loading ? "rgba(34,197,94,0.05)" : "rgba(34,197,94,0.12)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                  color: loading ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.9)",
+                }}
+                data-testid="button-next-day"
+              >
+                Next Day
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             <div className="flex items-center gap-2">
               <label className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>Days:</label>
               <input
