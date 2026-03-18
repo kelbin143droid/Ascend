@@ -5,17 +5,35 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
+import { WarriorSprite, type WarriorAnimation } from "./WarriorSprite";
 
-const EXERCISE_ANIMATIONS: Record<string, { emoji: string; movementHint: string }> = {
-  pushups: { emoji: "💪", movementHint: "Push up · Hold · Lower down" },
-  cardio: { emoji: "🏃", movementHint: "Jog in place · Knees up · Stay light" },
-  abs: { emoji: "🔥", movementHint: "Curl up · Squeeze · Lower slowly" },
-  rest: { emoji: "🧘", movementHint: "Breathe deeply · Relax your muscles" },
-  neck_cw: { emoji: "🔄", movementHint: "Slow clockwise circles" },
-  neck_ccw: { emoji: "🔄", movementHint: "Slow counter-clockwise circles" },
-  shoulder_rolls: { emoji: "🤸", movementHint: "Roll forward · Then backward" },
-  torso_twist: { emoji: "🌀", movementHint: "Twist left · Center · Twist right" },
-  forward_fold: { emoji: "🙏", movementHint: "Fold forward · Reach toes · Hold" },
+const EXERCISE_WARRIOR_ANIM: Record<string, WarriorAnimation> = {
+  pushups: "attack",
+  cardio: "walk",
+  abs: "attack",
+  rest: "idle",
+  neck_cw: "idle",
+  neck_ccw: "idle",
+  shoulder_rolls: "walk",
+  torso_twist: "walk",
+  forward_fold: "idle",
+  calm_intro: "idle",
+  calm_breathing: "idle",
+  intro: "idle",
+  hydration: "idle",
+  sleep_check: "idle",
+};
+
+const EXERCISE_HINTS: Record<string, string> = {
+  pushups: "Push up · Hold · Lower down",
+  cardio: "Jog in place · Knees up · Stay light",
+  abs: "Curl up · Squeeze · Lower slowly",
+  rest: "Breathe deeply · Relax your muscles",
+  neck_cw: "Slow clockwise circles",
+  neck_ccw: "Slow counter-clockwise circles",
+  shoulder_rolls: "Roll forward · Then backward",
+  torso_twist: "Twist left · Center · Twist right",
+  forward_fold: "Fold forward · Reach toes · Hold",
 };
 
 function useBeepSound() {
@@ -125,13 +143,21 @@ function CircularTimer({
   const strokeDashoffset = circumference * (1 - progress);
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
-  const anim = EXERCISE_ANIMATIONS[exerciseId];
-
-  const pulsePhase = remaining % 2 === 0;
+  const warriorAnim = EXERCISE_WARRIOR_ANIM[exerciseId] || "idle";
+  const hint = EXERCISE_HINTS[exerciseId];
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative w-52 h-52 flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <motion.div
+        key={exerciseId}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="mb-1"
+      >
+        <WarriorSprite animation={warriorAnim} scale={1.8} />
+      </motion.div>
+
+      <div className="relative w-44 h-44 flex items-center justify-center">
         <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 200 200">
           <circle
             cx="100" cy="100" r={radius}
@@ -152,15 +178,6 @@ function CircularTimer({
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-          {anim && (
-            <motion.div
-              animate={{ scale: pulsePhase ? 1.1 : 0.95 }}
-              transition={{ duration: 1, ease: "easeInOut" }}
-              className="text-4xl mb-1 select-none"
-            >
-              {anim.emoji}
-            </motion.div>
-          )}
           <div
             className="text-3xl font-bold font-mono tabular-nums"
             style={{ color }}
@@ -184,7 +201,7 @@ function CircularTimer({
         />
       </div>
 
-      {anim && (
+      {hint && (
         <motion.div
           key={exerciseId}
           initial={{ opacity: 0, y: 6 }}
@@ -192,7 +209,7 @@ function CircularTimer({
           className="text-xs text-center tracking-wide"
           style={{ color: `${color}88` }}
         >
-          {anim.movementHint}
+          {hint}
         </motion.div>
       )}
     </div>
@@ -203,10 +220,12 @@ function GetReadyCountdown({
   color,
   onComplete,
   exerciseName,
+  exerciseId,
 }: {
   color: string;
   onComplete: () => void;
   exerciseName: string;
+  exerciseId: string;
 }) {
   const [count, setCount] = useState(3);
   const beep = useBeepSound();
@@ -229,6 +248,8 @@ function GetReadyCountdown({
     return () => clearInterval(interval);
   }, []);
 
+  const warriorAnim = EXERCISE_WARRIOR_ANIM[exerciseId] || "idle";
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.8 }}
@@ -236,10 +257,11 @@ function GetReadyCountdown({
       exit={{ opacity: 0, scale: 1.2 }}
       className="flex flex-col items-center gap-4"
     >
+      <WarriorSprite animation={warriorAnim} scale={2} />
       <div className="text-xs uppercase tracking-widest font-bold" style={{ color: `${color}88` }}>
         Get Ready
       </div>
-      <div className="text-sm mb-2" style={{ color: `${color}cc` }}>
+      <div className="text-sm mb-1" style={{ color: `${color}cc` }}>
         {exerciseName}
       </div>
       <motion.div
@@ -247,7 +269,7 @@ function GetReadyCountdown({
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 1.5, opacity: 0 }}
-        className="text-7xl font-bold font-mono"
+        className="text-6xl font-bold font-mono"
         style={{ color }}
       >
         {count || "GO!"}
@@ -390,16 +412,7 @@ function CompletionScreen({
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
       >
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center"
-          style={{
-            backgroundColor: `${activity.color}20`,
-            border: `2px solid ${activity.color}50`,
-            boxShadow: `0 0 30px ${activity.color}30`,
-          }}
-        >
-          <Sparkles size={36} style={{ color: activity.color }} />
-        </div>
+        <WarriorSprite animation="idle" scale={2} />
       </motion.div>
       <div>
         <div className="text-lg font-bold mb-1" style={{ color: colors.text }}>
@@ -687,6 +700,7 @@ export function GuidedActivityEngine({
               color={activity.color}
               onComplete={handleGetReadyComplete}
               exerciseName={step.label}
+              exerciseId={step.exerciseId || step.id || ""}
             />
           ) : step ? (
             <motion.div
@@ -747,20 +761,23 @@ export function GuidedActivityEngine({
                   </div>
                 </>
               ) : (
-                <div
-                  className="rounded-xl p-6 text-center max-w-sm w-full"
-                  style={{
-                    backgroundColor: `${activity.color}10`,
-                    border: `1px solid ${activity.color}20`,
-                  }}
-                >
-                  <p
-                    className="text-sm leading-relaxed whitespace-pre-line"
-                    style={{ color: colors.text }}
-                    data-testid="text-step-instruction"
+                <div className="flex flex-col items-center gap-4">
+                  <WarriorSprite animation="idle" scale={1.6} />
+                  <div
+                    className="rounded-xl p-6 text-center max-w-sm w-full"
+                    style={{
+                      backgroundColor: `${activity.color}10`,
+                      border: `1px solid ${activity.color}20`,
+                    }}
                   >
-                    {step.instruction}
-                  </p>
+                    <p
+                      className="text-sm leading-relaxed whitespace-pre-line"
+                      style={{ color: colors.text }}
+                      data-testid="text-step-instruction"
+                    >
+                      {step.instruction}
+                    </p>
+                  </div>
                 </div>
               )}
 
