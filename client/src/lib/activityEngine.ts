@@ -61,17 +61,21 @@ export const STRENGTH_TIERS: Record<number, TierConfig> = {
 };
 
 export interface AgilityTierConfig {
+  neckRollSeconds: number;
   shoulderRollSeconds: number;
+  armCircleSeconds: number;
   torsoTwistSeconds: number;
+  hipCircleSeconds: number;
   forwardFoldSeconds: number;
+  restSeconds: number;
 }
 
 export const AGILITY_TIERS: Record<number, AgilityTierConfig> = {
-  1: { shoulderRollSeconds: 15, torsoTwistSeconds: 20, forwardFoldSeconds: 15 },
-  2: { shoulderRollSeconds: 18, torsoTwistSeconds: 25, forwardFoldSeconds: 20 },
-  3: { shoulderRollSeconds: 20, torsoTwistSeconds: 30, forwardFoldSeconds: 25 },
-  4: { shoulderRollSeconds: 25, torsoTwistSeconds: 35, forwardFoldSeconds: 30 },
-  5: { shoulderRollSeconds: 30, torsoTwistSeconds: 40, forwardFoldSeconds: 35 },
+  1: { neckRollSeconds: 15, shoulderRollSeconds: 15, armCircleSeconds: 15, torsoTwistSeconds: 20, hipCircleSeconds: 15, forwardFoldSeconds: 15, restSeconds: 15 },
+  2: { neckRollSeconds: 18, shoulderRollSeconds: 18, armCircleSeconds: 18, torsoTwistSeconds: 25, hipCircleSeconds: 18, forwardFoldSeconds: 20, restSeconds: 15 },
+  3: { neckRollSeconds: 20, shoulderRollSeconds: 20, armCircleSeconds: 20, torsoTwistSeconds: 30, hipCircleSeconds: 20, forwardFoldSeconds: 25, restSeconds: 15 },
+  4: { neckRollSeconds: 25, shoulderRollSeconds: 25, armCircleSeconds: 25, torsoTwistSeconds: 35, hipCircleSeconds: 25, forwardFoldSeconds: 30, restSeconds: 15 },
+  5: { neckRollSeconds: 30, shoulderRollSeconds: 30, armCircleSeconds: 30, torsoTwistSeconds: 40, hipCircleSeconds: 30, forwardFoldSeconds: 35, restSeconds: 15 },
 };
 
 export function getMaxTierForPhase(phase: number): number {
@@ -203,10 +207,10 @@ export function buildPhase1Activities(
     },
     {
       id: "phase1_agility",
-      activityName: "Agility Mobility Flow",
+      activityName: "Light Movement Circuit",
       category: "agility",
       stat: "agility",
-      duration: 75,
+      duration: ag.neckRollSeconds + ag.shoulderRollSeconds + ag.armCircleSeconds + ag.torsoTwistSeconds + ag.hipCircleSeconds + ag.forwardFoldSeconds + ag.restSeconds,
       xpReward: 0,
       color: CATEGORY_COLORS.agility,
       tier: agilityTier,
@@ -216,55 +220,71 @@ export function buildPhase1Activities(
           id: "intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: "Follow the mobility flow slowly.",
-          voiceText: "Get ready. Follow the mobility flow slowly.",
+          instruction: "Light movement circuit. Follow the intervals — each exercise has a timer.",
+          voiceText: "Get ready. Light movement circuit. Follow the intervals.",
         },
         {
-          id: "neck_cw",
+          id: "neck_rolls",
           type: "timer",
-          label: "Neck Clockwise",
-          instruction: "Slowly roll your neck clockwise. Keep it gentle.",
-          durationSeconds: 10,
-          voiceText: "Roll your neck clockwise. Keep it gentle.",
-        },
-        {
-          id: "neck_ccw",
-          type: "timer",
-          label: "Neck Counter-clockwise",
-          instruction: "Now roll your neck counter-clockwise. Same pace.",
-          durationSeconds: 10,
-          voiceText: "Now counter-clockwise. Same pace.",
+          label: "Neck Rolls",
+          instruction: `Roll your neck gently — clockwise then counter-clockwise. ${ag.neckRollSeconds} seconds.`,
+          durationSeconds: ag.neckRollSeconds,
+          voiceText: `Neck rolls for ${ag.neckRollSeconds} seconds. Clockwise then counter-clockwise.`,
         },
         {
           id: "shoulder_rolls",
           type: "timer",
           label: "Shoulder Rolls",
-          instruction: `Roll your shoulders forward and backward for ${ag.shoulderRollSeconds} seconds. Loosen up.`,
+          instruction: `Roll your shoulders forward and backward. Loosen up. ${ag.shoulderRollSeconds} seconds.`,
           durationSeconds: ag.shoulderRollSeconds,
-          voiceText: `Shoulder rolls for ${ag.shoulderRollSeconds} seconds. Roll forward and backward. Loosen up.`,
+          voiceText: `Shoulder rolls for ${ag.shoulderRollSeconds} seconds. Forward and backward.`,
+        },
+        {
+          id: "arm_circles",
+          type: "timer",
+          label: "Arm Circles",
+          instruction: `Extend your arms and make small circles, then big circles. ${ag.armCircleSeconds} seconds.`,
+          durationSeconds: ag.armCircleSeconds,
+          voiceText: `Arm circles for ${ag.armCircleSeconds} seconds. Small circles, then big circles.`,
         },
         {
           id: "torso_twist",
           type: "timer",
           label: "Torso Twist",
-          instruction: "Stand with feet shoulder-width apart. Gently twist your torso side to side.",
+          instruction: `Feet shoulder-width apart. Twist your torso side to side. ${ag.torsoTwistSeconds} seconds.`,
           durationSeconds: ag.torsoTwistSeconds,
           voiceText: `Torso twist for ${ag.torsoTwistSeconds} seconds. Twist side to side.`,
+        },
+        {
+          id: "hip_circles",
+          type: "timer",
+          label: "Hip Circles",
+          instruction: `Hands on hips. Rotate your hips in slow circles. ${ag.hipCircleSeconds} seconds.`,
+          durationSeconds: ag.hipCircleSeconds,
+          voiceText: `Hip circles for ${ag.hipCircleSeconds} seconds. Slow rotations.`,
         },
         {
           id: "forward_fold",
           type: "timer",
           label: "Forward Fold",
-          instruction: "Slowly bend forward and reach toward your toes. Hold gently — no bouncing.",
+          instruction: `Bend forward and reach toward your toes. Hold gently — no bouncing. ${ag.forwardFoldSeconds} seconds.`,
           durationSeconds: ag.forwardFoldSeconds,
-          voiceText: `Forward fold for ${ag.forwardFoldSeconds} seconds. Reach toward your toes. No bouncing.`,
+          voiceText: `Forward fold for ${ag.forwardFoldSeconds} seconds. Reach toward your toes.`,
+        },
+        {
+          id: "rest",
+          type: "timer",
+          label: "Rest",
+          instruction: "Shake out your limbs. Take a few deep breaths.",
+          durationSeconds: ag.restSeconds,
+          voiceText: "Rest. Shake out your limbs. Take a few deep breaths.",
         },
         {
           id: "agility_done",
           type: "completion",
-          label: "Mobility Complete",
+          label: "Circuit Complete",
           instruction: "Activity complete.\nSmall actions build momentum.",
-          voiceText: "Mobility complete. Well done.",
+          voiceText: "Light movement circuit complete. Well done.",
         },
       ],
     },
