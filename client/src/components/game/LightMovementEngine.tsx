@@ -213,8 +213,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
-      setXpClaimed(true);
-      onCompleteRef.current(XP_REWARD);
     },
   });
 
@@ -379,9 +377,11 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
   }, [phase]); // eslint-disable-line
 
   const handleClaim = useCallback(() => {
-    if (noApiCall) {
-      onCompleteRef.current(XP_REWARD);
-    } else if (!xpClaimed && !claimMutation.isPending) {
+    // Close immediately so the user sees the day card without any delay
+    onCompleteRef.current(XP_REWARD);
+    // Record XP in the background (don't block the UI on it)
+    if (!noApiCall && !xpClaimed) {
+      setXpClaimed(true);
       claimMutation.mutate();
     }
   }, [noApiCall, xpClaimed, claimMutation]);
@@ -613,10 +613,9 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
                 className="w-full py-4 rounded-2xl font-bold text-base transition-all active:scale-95"
                 style={{ backgroundColor: COLOR, color: "#fff" }}
                 onClick={handleClaim}
-                disabled={claimMutation.isPending}
                 data-testid="button-claim-light-movement-xp"
               >
-                {claimMutation.isPending ? "Saving..." : "Claim & Continue"}
+                Continue
               </button>
             </motion.div>
           )}
