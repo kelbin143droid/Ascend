@@ -2451,10 +2451,24 @@ export async function registerRoutes(
       const activeHabits = habits.filter(h => h.active);
       const completionsCreated: string[] = [];
 
+      // Find the latest existing completion date so new days start AFTER it
+      const existingCompletions = await storage.getHabitCompletions(req.params.id);
+      const existingDates = existingCompletions
+        .filter(c => c.completedAt)
+        .map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
+        .sort();
+      const latestDateStr = existingDates[existingDates.length - 1];
+      const startBase = latestDateStr ? new Date(latestDateStr + "T12:00:00") : new Date();
+      // Each simulated day is 1 day after the previous latest
+      const getSimulatedDate = (d: number) => {
+        const date = new Date(startBase);
+        date.setDate(date.getDate() + d + 1);
+        date.setHours(9 + (d % 8), 30, 0, 0);
+        return date;
+      };
+
       for (let d = 0; d < dayCount; d++) {
-        const simulatedDate = new Date();
-        simulatedDate.setDate(simulatedDate.getDate() - (dayCount - 1 - d));
-        simulatedDate.setHours(9 + (d % 8), 30, 0, 0);
+        const simulatedDate = getSimulatedDate(d);
 
         if (completeHabits && activeHabits.length > 0) {
           const habitsToComplete = activeHabits.slice(0, Math.max(1, Math.ceil(activeHabits.length * 0.7)));
@@ -2476,9 +2490,10 @@ export async function registerRoutes(
             newTime.setMinutes(newTime.getMinutes() + habit.baseDurationMinutes + 15);
             simulatedDate.setTime(newTime.getTime());
           }
-        } else if (!completeHabits) {
+        } else {
+          // No active habits or completeHabits=false — create a guided placeholder so the day counts
           const guidedCompletion = await storage.createHabitCompletion({
-            habitId: `guided_day${d + 1}`,
+            habitId: `guided_day_sim_${d}`,
             userId: req.params.id,
             durationMinutes: 2,
             xpEarned: 5,
