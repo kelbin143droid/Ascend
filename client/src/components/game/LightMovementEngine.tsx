@@ -187,6 +187,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
   const [xpClaimed, setXpClaimed] = useState(false);
   const [started, setStarted] = useState(false);
   const [bowEnded, setBowEnded] = useState(false);
+  const bowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bowVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -305,13 +306,33 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     }
   }, [phase, exerciseIdx]); // eslint-disable-line
 
-  // Ref callback for bow video — autoPlay + play() on mount
+  // When bow phase starts, play the video and wait for it to fully finish
   const bowVideoCallback = useCallback((el: HTMLVideoElement | null) => {
     bowVideoRef.current = el;
-    if (el) {
-      el.currentTime = 0;
+    if (!el) return;
+    if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
+    setBowEnded(false);
+    el.currentTime = 0;
+
+    const onMeta = () => {
+      const dur = isFinite(el.duration) && el.duration > 0 ? el.duration : 5;
       el.play().catch(() => {});
+      // Show completion card 500ms after the video naturally ends
+      bowTimerRef.current = setTimeout(() => setBowEnded(true), (dur + 0.5) * 1000);
+    };
+
+    if (isFinite(el.duration) && el.duration > 0) {
+      onMeta();
+    } else {
+      el.addEventListener("loadedmetadata", onMeta, { once: true });
+      // Hard fallback: 8 seconds maximum wait
+      bowTimerRef.current = setTimeout(() => setBowEnded(true), 8000);
+      el.load();
     }
+  }, []); // eslint-disable-line
+
+  useEffect(() => {
+    return () => { if (bowTimerRef.current) clearTimeout(bowTimerRef.current); };
   }, []);
 
   const handleClaim = useCallback(() => {
@@ -429,7 +450,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
               muted
               loop={false}
               preload="auto"
-              onEnded={() => setBowEnded(true)}
             />
             <div
               className="absolute inset-0"
