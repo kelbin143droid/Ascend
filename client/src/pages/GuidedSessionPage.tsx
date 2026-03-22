@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
 import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
+import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow" | "weekly-reflection";
 
@@ -521,6 +522,49 @@ export default function GuidedSessionPage() {
   if (!session) {
     setLocation("/");
     return null;
+  }
+
+  // Light Movement uses the video-guided engine instead of the generic session page
+  if (sessionId === "light-movement" && player?.id) {
+    const handleLightMovementComplete = () => {
+      const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
+      const isDay5 = homeData?.onboardingDay === 5;
+      const alreadyExpanded = localStorage.getItem("ascend_day5_expansion_shown") === new Date().toISOString().split("T")[0];
+
+      if (isFirstCompletionToday && isDay5 && !alreadyExpanded) {
+        localStorage.setItem("ascend_day5_expansion_shown", new Date().toISOString().split("T")[0]);
+        setShowDay5Expansion(true);
+      } else if (isFirstCompletionToday) {
+        setShowDayClose(true);
+      } else {
+        setLocation("/");
+      }
+    };
+
+    return (
+      <>
+        <LightMovementEngine
+          playerId={player.id}
+          onComplete={handleLightMovementComplete}
+          onCancel={() => setLocation("/")}
+        />
+        <Day5ExpansionOverlay
+          visible={showDay5Expansion}
+          onComplete={() => { setShowDay5Expansion(false); setLocation("/"); }}
+          onSkip={() => { setShowDay5Expansion(false); setShowDayClose(true); }}
+          onSessionComplete={() => {
+            apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
+              sessionId: "day5-expansion", stat: "vitality", durationMinutes: 1,
+            }).then(() => { queryClient.invalidateQueries({ queryKey: ["home"] }); });
+          }}
+        />
+        <DayCloseOverlay
+          visible={showDayClose}
+          onboardingDay={homeData?.onboardingDay ?? 2}
+          onClose={() => { setShowDayClose(false); setLocation("/"); }}
+        />
+      </>
+    );
   }
 
   const accentColor = STAT_COLORS[session.stat] || "#3b82f6";

@@ -170,11 +170,13 @@ interface LightMovementEngineProps {
   playerId: string;
   onComplete: (xpEarned: number) => void;
   onCancel: () => void;
+  /** When true, skip internal complete-guided-session call (parent handles XP) */
+  noApiCall?: boolean;
 }
 
 type Phase = "intro" | "running" | "rest" | "bow" | "done";
 
-export function LightMovementEngine({ playerId, onComplete, onCancel }: LightMovementEngineProps) {
+export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall = false }: LightMovementEngineProps) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
@@ -192,6 +194,9 @@ export function LightMovementEngine({ playerId, onComplete, onCancel }: LightMov
   const exercise = EXERCISES[exerciseIdx];
   const isLast = exerciseIdx === EXERCISES.length - 1;
 
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   const claimMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/player/${playerId}/complete-guided-session`, {
@@ -206,6 +211,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel }: LightMov
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
       setXpClaimed(true);
+      onCompleteRef.current(XP_REWARD);
     },
   });
 
@@ -284,11 +290,12 @@ export function LightMovementEngine({ playerId, onComplete, onCancel }: LightMov
   }, [phase]);
 
   const handleClaim = useCallback(() => {
-    if (!xpClaimed) {
+    if (noApiCall) {
+      onCompleteRef.current(XP_REWARD);
+    } else if (!xpClaimed && !claimMutation.isPending) {
       claimMutation.mutate();
     }
-    onComplete(XP_REWARD);
-  }, [xpClaimed, claimMutation, onComplete]);
+  }, [noApiCall, xpClaimed, claimMutation]);
 
   return (
     <motion.div
