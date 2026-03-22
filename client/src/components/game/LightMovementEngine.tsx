@@ -306,34 +306,64 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     }
   }, [phase, exerciseIdx]); // eslint-disable-line
 
-  // When bow phase starts, play the video and wait for it to fully finish
+  // Simple ref setter for bow video — no logic here
   const bowVideoCallback = useCallback((el: HTMLVideoElement | null) => {
     bowVideoRef.current = el;
-    if (!el) return;
-    if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
-    setBowEnded(false);
-    el.currentTime = 0;
-
-    const onMeta = () => {
-      const dur = isFinite(el.duration) && el.duration > 0 ? el.duration : 5;
-      el.play().catch(() => {});
-      // Show completion card 500ms after the video naturally ends
-      bowTimerRef.current = setTimeout(() => setBowEnded(true), (dur + 0.5) * 1000);
-    };
-
-    if (isFinite(el.duration) && el.duration > 0) {
-      onMeta();
-    } else {
-      el.addEventListener("loadedmetadata", onMeta, { once: true });
-      // Hard fallback: 8 seconds maximum wait
-      bowTimerRef.current = setTimeout(() => setBowEnded(true), 8000);
-      el.load();
-    }
-  }, []); // eslint-disable-line
-
-  useEffect(() => {
-    return () => { if (bowTimerRef.current) clearTimeout(bowTimerRef.current); };
   }, []);
+
+  // When bow phase starts: play the video, listen for `ended`, set fallback timer
+  useEffect(() => {
+    if (phase !== "bow") return;
+    setBowEnded(false);
+    if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
+
+    const el = bowVideoRef.current;
+    if (!el) {
+      // Element hasn't mounted yet — wait a tick then try again via fallback
+      bowTimerRef.current = setTimeout(() => {
+        const v = bowVideoRef.current;
+        if (v) {
+          v.currentTime = 0;
+          v.play().catch(() => {});
+          const onEnd = () => setBowEnded(true);
+          v.addEventListener("ended", onEnd, { once: true });
+          bowTimerRef.current = setTimeout(() => setBowEnded(true), 9000);
+        } else {
+          setBowEnded(true); // nothing to play, just show card
+        }
+      }, 100);
+      return;
+    }
+
+    el.currentTime = 0;
+    el.play().catch(() => {});
+
+    const onEnd = () => {
+      if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
+      // Small pause after bow ends before showing the card
+      bowTimerRef.current = setTimeout(() => setBowEnded(true), 600);
+    };
+    el.addEventListener("ended", onEnd, { once: true });
+
+    // Fallback: read duration once metadata is available, or hard cap at 10s
+    const setFallback = () => {
+      if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
+      const dur = isFinite(el.duration) && el.duration > 0 ? el.duration : 6;
+      bowTimerRef.current = setTimeout(() => setBowEnded(true), (dur + 1) * 1000);
+    };
+    if (isFinite(el.duration) && el.duration > 0) {
+      setFallback();
+    } else {
+      el.addEventListener("loadedmetadata", setFallback, { once: true });
+      // Absolute hard cap
+      bowTimerRef.current = setTimeout(() => setBowEnded(true), 10000);
+    }
+
+    return () => {
+      el.removeEventListener("ended", onEnd);
+      if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
+    };
+  }, [phase]); // eslint-disable-line
 
   const handleClaim = useCallback(() => {
     if (noApiCall) {
