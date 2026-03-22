@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { GuidedActivityEngine } from "./GuidedActivityEngine";
+import { LightMovementEngine } from "./LightMovementEngine";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition } from "@/lib/activityEngine";
 import { Sparkles, CheckCircle2, SkipForward, Play, Zap } from "lucide-react";
@@ -123,6 +124,15 @@ export function DailyFlowEngine({
   }, [completedIds, bonusXpAwarded, onComplete]);
 
   if (runningActivity && currentActivity) {
+    if (currentActivity.id === "phase1_agility") {
+      return (
+        <LightMovementEngine
+          playerId={playerId}
+          onComplete={handleActivityComplete}
+          onCancel={() => setRunningActivity(false)}
+        />
+      );
+    }
     return (
       <GuidedActivityEngine
         activity={currentActivity}
