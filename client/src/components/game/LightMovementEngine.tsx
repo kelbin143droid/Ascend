@@ -521,7 +521,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
             >
               <div className="text-white text-lg font-bold tracking-wide">Rest</div>
               <CircularCountdown total={REST_SECONDS} remaining={countdown} isRest />
-              <div className="text-white/50 text-xs">
+              <div className="text-white/85 text-xs font-medium">
                 {isLast ? "Last exercise done" : `Next: ${EXERCISES[exerciseIdx + 1]?.name}`}
               </div>
             </motion.div>
@@ -549,7 +549,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
                 <div className="text-white text-xl font-bold leading-tight">
                   {exercise.name}
                 </div>
-                <div className="text-white/60 text-sm mt-2 leading-relaxed">
+                <div className="text-white/90 text-sm mt-2 leading-relaxed font-medium">
                   {exercise.instruction}
                 </div>
               </div>
@@ -602,7 +602,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
                 <CheckCircle2 size={20} style={{ color: COLOR }} />
                 <span className="text-white font-bold text-lg">Circuit Complete</span>
               </div>
-              <div className="text-white/50 text-sm">
+              <div className="text-white/90 text-sm font-medium">
                 All 8 exercises done. Your body thanks you.
               </div>
               <div
