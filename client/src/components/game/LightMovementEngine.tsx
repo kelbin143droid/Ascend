@@ -41,7 +41,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Reach your left arm behind your head. Use your right hand to gently press down. Hold and breathe.",
     video: "/videos/tricep-stretch-left.mp4",
     duration: 15,
-    loop: false,
+    loop: true,
   },
   {
     id: "tricep_right",
@@ -49,7 +49,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Switch sides — right arm behind your head. Press gently and hold.",
     video: "/videos/tricep-stretch-right.mp4",
     duration: 15,
-    loop: false,
+    loop: true,
   },
   {
     id: "cross_arm_left",
@@ -57,7 +57,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Bring your left arm across your chest. Pull it close with your right hand. Hold steady.",
     video: "/videos/cross-arm-left.mp4",
     duration: 15,
-    loop: false,
+    loop: true,
   },
   {
     id: "cross_arm_right",
@@ -65,7 +65,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Switch — pull your right arm across your chest. Breathe steadily and hold.",
     video: "/videos/cross-arm-right.mp4",
     duration: 15,
-    loop: false,
+    loop: true,
   },
   {
     id: "toe_hold",
@@ -73,7 +73,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Slowly fold forward, reach down, and hold your toes. No bouncing — just a gentle hold.",
     video: "/videos/toe-hold.mp4",
     duration: 15,
-    loop: false,
+    loop: true,
   },
   {
     id: "arm_shake",
@@ -81,7 +81,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Shake out your arms and hands loosely. Let everything go — wrists, fingers, shoulders.",
     video: "/videos/arm-shake.mp4",
     duration: 15,
-    loop: false,
+    loop: true,
   },
 ];
 
@@ -288,15 +288,12 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     return () => clearTimer();
   }, [clearTimer]);
 
+  // Pause video during rest/intro; autoPlay handles starting when the element mounts
   useEffect(() => {
-    if (phase === "running" && videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
-    }
     if (phase !== "running" && videoRef.current) {
       videoRef.current.pause();
     }
-  }, [phase, exerciseIdx]);
+  }, [phase]);
 
   useEffect(() => {
     if (phase === "bow" && bowVideoRef.current) {
@@ -352,21 +349,23 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
       </div>
 
       {/* Video background */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="sync">
         {phase !== "bow" ? (
           <motion.div
             key={`vid-${exerciseIdx}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: phase === "rest" ? 0.3 : 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
             className="absolute inset-0"
           >
             <video
               ref={videoRef}
+              key={`video-${exerciseIdx}`}
               src={exercise.video}
               className="w-full h-full object-cover"
               playsInline
+              autoPlay
               muted
               loop={exercise.loop}
               preload="auto"

@@ -577,6 +577,25 @@ export default function GuidedSessionPage() {
       className="fixed inset-0 z-40 flex flex-col"
       style={{ backgroundColor: backgroundTheme.colors.background }}
     >
+      {/* Calm breathing ambient video background */}
+      {sessionId === "calm-breathing" && state === "active" && (
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+          <video
+            src="/videos/calm-breathing.mp4"
+            className="w-full h-full object-cover"
+            autoPlay
+            playsInline
+            muted
+            loop
+            preload="auto"
+            style={{ opacity: 0.25 }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 100%)" }}
+          />
+        </div>
+      )}
       <style>{`
         @keyframes gsGlowPulse {
           0%, 100% { opacity: 0.3; }
