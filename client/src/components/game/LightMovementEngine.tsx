@@ -288,21 +288,23 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     return () => clearTimer();
   }, [clearTimer]);
 
-  // Pause video during rest/intro; mounting with autoPlay + ref callback handles starting
-  useEffect(() => {
-    if (phase !== "running" && videoRef.current) {
-      videoRef.current.pause();
-    }
-  }, [phase]);
-
-  // Ref callback for exercise video — fires immediately when element mounts
+  // Simple ref — just stores the element, no logic here
   const exerciseVideoRef = useCallback((el: HTMLVideoElement | null) => {
     videoRef.current = el;
-    if (el && phase === "running") {
+  }, []);
+
+  // Whenever the exercise index changes AND we're running, restart from frame 0
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (phase === "running") {
+      el.pause();
       el.currentTime = 0;
       el.play().catch(() => {});
+    } else {
+      el.pause();
     }
-  }, [phase, exerciseIdx]); // eslint-disable-line
+  }, [exerciseIdx, phase]);
 
   // Simple ref setter for bow video — no logic here
   const bowVideoCallback = useCallback((el: HTMLVideoElement | null) => {
