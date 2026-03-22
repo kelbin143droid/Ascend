@@ -41,7 +41,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Reach your left arm behind your head. Use your right hand to gently press down. Hold and breathe.",
     video: "/videos/tricep-stretch-left.mp4",
     duration: 15,
-    loop: true,
+    loop: false,
   },
   {
     id: "tricep_right",
@@ -49,7 +49,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Switch sides — right arm behind your head. Press gently and hold.",
     video: "/videos/tricep-stretch-right.mp4",
     duration: 15,
-    loop: true,
+    loop: false,
   },
   {
     id: "cross_arm_left",
@@ -57,7 +57,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Bring your left arm across your chest. Pull it close with your right hand. Hold steady.",
     video: "/videos/cross-arm-left.mp4",
     duration: 15,
-    loop: true,
+    loop: false,
   },
   {
     id: "cross_arm_right",
@@ -65,7 +65,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Switch — pull your right arm across your chest. Breathe steadily and hold.",
     video: "/videos/cross-arm-right.mp4",
     duration: 15,
-    loop: true,
+    loop: false,
   },
   {
     id: "toe_hold",
@@ -73,7 +73,7 @@ const EXERCISES: Exercise[] = [
     instruction: "Slowly fold forward, reach down, and hold your toes. No bouncing — just a gentle hold.",
     video: "/videos/toe-hold.mp4",
     duration: 15,
-    loop: true,
+    loop: false,
   },
   {
     id: "arm_shake",
@@ -186,6 +186,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
   const [countdown, setCountdown] = useState(0);
   const [xpClaimed, setXpClaimed] = useState(false);
   const [started, setStarted] = useState(false);
+  const [bowEnded, setBowEnded] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bowVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -288,19 +289,30 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     return () => clearTimer();
   }, [clearTimer]);
 
-  // Pause video during rest/intro; autoPlay handles starting when the element mounts
+  // Pause video during rest/intro; mounting with autoPlay + ref callback handles starting
   useEffect(() => {
     if (phase !== "running" && videoRef.current) {
       videoRef.current.pause();
     }
   }, [phase]);
 
-  useEffect(() => {
-    if (phase === "bow" && bowVideoRef.current) {
-      bowVideoRef.current.currentTime = 0;
-      bowVideoRef.current.play().catch(() => {});
+  // Ref callback for exercise video — fires immediately when element mounts
+  const exerciseVideoRef = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el && phase === "running") {
+      el.currentTime = 0;
+      el.play().catch(() => {});
     }
-  }, [phase]);
+  }, [phase, exerciseIdx]); // eslint-disable-line
+
+  // Ref callback for bow video — autoPlay + play() on mount
+  const bowVideoCallback = useCallback((el: HTMLVideoElement | null) => {
+    bowVideoRef.current = el;
+    if (el) {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    }
+  }, []);
 
   const handleClaim = useCallback(() => {
     if (noApiCall) {
@@ -348,6 +360,28 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
         </button>
       </div>
 
+      {/* Hidden preload: load the next exercise video while current plays */}
+      {phase === "running" && exerciseIdx + 1 < EXERCISES.length && (
+        <video
+          key={`preload-${exerciseIdx + 1}`}
+          src={EXERCISES[exerciseIdx + 1].video}
+          preload="auto"
+          muted
+          playsInline
+          style={{ display: "none" }}
+        />
+      )}
+      {phase === "running" && exerciseIdx + 2 < EXERCISES.length && (
+        <video
+          key={`preload-${exerciseIdx + 2}`}
+          src={EXERCISES[exerciseIdx + 2].video}
+          preload="auto"
+          muted
+          playsInline
+          style={{ display: "none" }}
+        />
+      )}
+
       {/* Video background */}
       <AnimatePresence mode="sync">
         {phase !== "bow" ? (
@@ -360,7 +394,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
             className="absolute inset-0"
           >
             <video
-              ref={videoRef}
+              ref={exerciseVideoRef}
               key={`video-${exerciseIdx}`}
               src={exercise.video}
               className="w-full h-full object-cover"
@@ -387,13 +421,15 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
             className="absolute inset-0"
           >
             <video
-              ref={bowVideoRef}
+              ref={bowVideoCallback}
               src="/videos/bow-finish.mp4"
               className="w-full h-full object-cover"
               playsInline
+              autoPlay
               muted
               loop={false}
               preload="auto"
+              onEnded={() => setBowEnded(true)}
             />
             <div
               className="absolute inset-0"
@@ -488,13 +524,13 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
             </motion.div>
           )}
 
-          {/* BOW / COMPLETE */}
-          {phase === "bow" && (
+          {/* BOW / COMPLETE — only appears after bow video finishes */}
+          {phase === "bow" && bowEnded && (
             <motion.div
               key="bow-complete"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
+              transition={{ duration: 0.5 }}
               className="flex flex-col gap-4"
             >
               <div className="flex items-center gap-2 mb-1">
