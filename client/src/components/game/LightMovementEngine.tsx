@@ -185,6 +185,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
   const [phase, setPhase] = useState<Phase>("intro");
   const [countdown, setCountdown] = useState(0);
   const [xpClaimed, setXpClaimed] = useState(false);
+  const [started, setStarted] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bowVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -215,6 +216,12 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     },
   });
 
+  // Use refs so callbacks can reference each other without circular deps
+  const exerciseIdxRef = useRef(exerciseIdx);
+  exerciseIdxRef.current = exerciseIdx;
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -241,15 +248,23 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     [clearTimer, beepTick]
   );
 
+  // Stored in ref so goToNextExercise can call it without circular dep
+  const startRestRef = useRef<() => void>(() => {});
+
   const goToNextExercise = useCallback(() => {
-    const next = exerciseIdx + 1;
+    const next = exerciseIdxRef.current + 1;
     if (next >= EXERCISES.length) {
+      beepDone();
       setPhase("bow");
     } else {
+      // Auto-start next exercise — no "Begin" button after the first one
       setExerciseIdx(next);
-      setPhase("intro");
+      setPhase("running");
+      const nextEx = EXERCISES[next];
+      setCountdown(nextEx.duration);
+      startCountdown(nextEx.duration, () => startRestRef.current());
     }
-  }, [exerciseIdx]);
+  }, [startCountdown, beepDone]);
 
   const startRest = useCallback(() => {
     beepDone();
@@ -258,13 +273,14 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     startCountdown(REST_SECONDS, goToNextExercise);
   }, [beepDone, startCountdown, goToNextExercise]);
 
+  // Keep ref in sync
+  startRestRef.current = startRest;
+
+  // "Begin" button handler — only used for the very first exercise
   const beginExercise = useCallback(() => {
+    setStarted(true);
     setPhase("running");
     setCountdown(exercise.duration);
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
-    }
     startCountdown(exercise.duration, startRest);
   }, [exercise.duration, startCountdown, startRest]);
 
