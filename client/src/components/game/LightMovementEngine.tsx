@@ -311,56 +311,69 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     bowVideoRef.current = el;
   }, []);
 
-  // When bow phase starts: play the video, listen for `ended`, set fallback timer
+  // When bow phase starts: play the video and show the card only after it fully ends
+  // + a comfortable pause so the user can absorb the final moment
   useEffect(() => {
     if (phase !== "bow") return;
     setBowEnded(false);
     if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
 
-    const el = bowVideoRef.current;
-    if (!el) {
-      // Element hasn't mounted yet — wait a tick then try again via fallback
-      bowTimerRef.current = setTimeout(() => {
-        const v = bowVideoRef.current;
-        if (v) {
-          v.currentTime = 0;
-          v.play().catch(() => {});
-          const onEnd = () => setBowEnded(true);
-          v.addEventListener("ended", onEnd, { once: true });
-          bowTimerRef.current = setTimeout(() => setBowEnded(true), 9000);
-        } else {
-          setBowEnded(true); // nothing to play, just show card
-        }
-      }, 100);
-      return;
-    }
+    let videoEnded = false;
+    let minTimePassed = false;
 
-    el.currentTime = 0;
-    el.play().catch(() => {});
-
-    const onEnd = () => {
-      if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
-      // Small pause after bow ends before showing the card
-      bowTimerRef.current = setTimeout(() => setBowEnded(true), 600);
+    const tryReveal = () => {
+      if (videoEnded && minTimePassed) {
+        setBowEnded(true);
+      }
     };
-    el.addEventListener("ended", onEnd, { once: true });
 
-    // Fallback: read duration once metadata is available, or hard cap at 10s
-    const setFallback = () => {
-      if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
-      const dur = isFinite(el.duration) && el.duration > 0 ? el.duration : 6;
-      bowTimerRef.current = setTimeout(() => setBowEnded(true), (dur + 1) * 1000);
+    // Minimum 3 seconds in bow phase regardless of video length
+    const minTimer = setTimeout(() => {
+      minTimePassed = true;
+      tryReveal();
+    }, 3000);
+
+    // Try to play and listen for ended
+    const tryPlay = () => {
+      const el = bowVideoRef.current;
+      if (!el) {
+        // Hard cap if element never mounts
+        bowTimerRef.current = setTimeout(() => setBowEnded(true), 8000);
+        return;
+      }
+
+      el.currentTime = 0;
+      el.play().catch(() => {});
+
+      const onEnded = () => {
+        videoEnded = true;
+        tryReveal();
+      };
+      el.addEventListener("ended", onEnded, { once: true });
+
+      // Hard fallback based on actual video duration + extra buffer
+      const startFallback = () => {
+        const dur = isFinite(el.duration) && el.duration > 0 ? el.duration : 5;
+        bowTimerRef.current = setTimeout(() => {
+          videoEnded = true;
+          tryReveal();
+        }, (dur + 2) * 1000);
+      };
+
+      if (isFinite(el.duration) && el.duration > 0) {
+        startFallback();
+      } else {
+        el.addEventListener("loadedmetadata", startFallback, { once: true });
+        bowTimerRef.current = setTimeout(() => setBowEnded(true), 12000);
+      }
     };
-    if (isFinite(el.duration) && el.duration > 0) {
-      setFallback();
-    } else {
-      el.addEventListener("loadedmetadata", setFallback, { once: true });
-      // Absolute hard cap
-      bowTimerRef.current = setTimeout(() => setBowEnded(true), 10000);
-    }
+
+    // Give AnimatePresence a frame to mount the element before we grab it
+    const mountTimer = setTimeout(tryPlay, 50);
 
     return () => {
-      el.removeEventListener("ended", onEnd);
+      clearTimeout(minTimer);
+      clearTimeout(mountTimer);
       if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
     };
   }, [phase]); // eslint-disable-line
