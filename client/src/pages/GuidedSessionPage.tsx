@@ -485,6 +485,8 @@ export default function GuidedSessionPage() {
   }, [state]);
 
   useEffect(() => {
+    // light-movement uses LightMovementEngine which manages its own timing
+    if (sessionId === "light-movement") return;
     if (state !== "active" || session.type === "instant") return;
 
     intervalRef.current = setInterval(() => {
@@ -501,13 +503,14 @@ export default function GuidedSessionPage() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [state, session.type, session.durationSeconds]);
+  }, [state, session.type, session.durationSeconds, sessionId]);
 
   useEffect(() => {
+    if (sessionId === "light-movement") return;
     if (session.type !== "instant" && elapsed >= session.durationSeconds && state === "active") {
       handleComplete();
     }
-  }, [elapsed, session.durationSeconds, state]);
+  }, [elapsed, session.durationSeconds, state, sessionId]);
 
   const handleComplete = useCallback(() => {
     if (state !== "active") return;
