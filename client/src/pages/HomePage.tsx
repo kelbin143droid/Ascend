@@ -150,9 +150,9 @@ const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
   },
   6: {
     sessionId: "plan-tomorrow",
-    name: "Plan Tomorrow",
-    description: "Choose a time for tomorrow's practice.",
-    coachMessage: "Structure protects consistency.",
+    name: "Time Placement",
+    description: "Place one action into tomorrow's timeline. See your day before it starts.",
+    coachMessage: "Deciding when to act — before the moment — is a skill.",
     duration: "1 minute",
     icon: Calendar,
     buttonLabel: "Begin Today's Step",

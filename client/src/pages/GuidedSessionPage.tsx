@@ -10,6 +10,7 @@ import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
 import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
 import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
+import { Day6SectographIntro } from "@/components/game/Day6SectographIntro";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow" | "weekly-reflection";
 
@@ -486,8 +487,8 @@ export default function GuidedSessionPage() {
   }, [state]);
 
   useEffect(() => {
-    // light-movement uses LightMovementEngine which manages its own timing
-    if (sessionId === "light-movement") return;
+    // These sessions use their own engines and manage timing independently
+    if (sessionId === "light-movement" || sessionId === "focus-block") return;
     if (state !== "active" || session.type === "instant") return;
 
     intervalRef.current = setInterval(() => {
@@ -507,7 +508,7 @@ export default function GuidedSessionPage() {
   }, [state, session.type, session.durationSeconds, sessionId]);
 
   useEffect(() => {
-    if (sessionId === "light-movement") return;
+    if (sessionId === "light-movement" || sessionId === "focus-block") return;
     if (session.type !== "instant" && elapsed >= session.durationSeconds && state === "active") {
       handleComplete();
     }
@@ -587,6 +588,39 @@ export default function GuidedSessionPage() {
         <CardioSessionEngine
           playerId={player.id}
           onComplete={handleCardioComplete}
+          onCancel={() => setLocation("/")}
+        />
+        <DayCloseOverlay
+          visible={showDayClose}
+          onboardingDay={homeData?.onboardingDay ?? 2}
+          onClose={() => { setShowDayClose(false); setLocation("/"); }}
+        />
+      </>
+    );
+  }
+
+  // Day 6 — Sectograph intro: guided time placement experience
+  if (sessionId === "plan-tomorrow" && player?.id) {
+    const handleDay6Complete = () => {
+      // Fire the completion API in background to record the day
+      apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
+        sessionId: "plan-tomorrow",
+        stat: "sense",
+        durationMinutes: 1,
+      }).then(() => queryClient.invalidateQueries({ queryKey: ["home"] })).catch(() => {});
+
+      const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
+      if (isFirstCompletionToday) {
+        setShowDayClose(true);
+      } else {
+        setLocation("/");
+      }
+    };
+
+    return (
+      <>
+        <Day6SectographIntro
+          onComplete={handleDay6Complete}
           onCancel={() => setLocation("/")}
         />
         <DayCloseOverlay
