@@ -11,6 +11,7 @@ import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
 import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
 import { Day6SectographIntro } from "@/components/game/Day6SectographIntro";
+import { Day7FollowThrough } from "@/components/game/Day7FollowThrough";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow" | "weekly-reflection";
 
@@ -621,6 +622,38 @@ export default function GuidedSessionPage() {
       <>
         <Day6SectographIntro
           onComplete={handleDay6Complete}
+          onCancel={() => setLocation("/")}
+        />
+        <DayCloseOverlay
+          visible={showDayClose}
+          onboardingDay={homeData?.onboardingDay ?? 2}
+          onClose={() => { setShowDayClose(false); setLocation("/"); }}
+        />
+      </>
+    );
+  }
+
+  // Day 7 — Follow-Through: meets the planned action from Day 6
+  if (sessionId === "weekly-reflection" && player?.id) {
+    const handleDay7Complete = () => {
+      apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
+        sessionId: "weekly-reflection",
+        stat: "sense",
+        durationMinutes: 2,
+      }).then(() => queryClient.invalidateQueries({ queryKey: ["home"] })).catch(() => {});
+
+      const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
+      if (isFirstCompletionToday) {
+        setShowDayClose(true);
+      } else {
+        setLocation("/");
+      }
+    };
+
+    return (
+      <>
+        <Day7FollowThrough
+          onComplete={handleDay7Complete}
           onCancel={() => setLocation("/")}
         />
         <DayCloseOverlay

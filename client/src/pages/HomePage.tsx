@@ -159,12 +159,12 @@ const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
   },
   7: {
     sessionId: "weekly-reflection",
-    name: "Weekly Reflection",
-    description: "Review your first week.",
-    coachMessage: "You showed up for 7 days. Consistency builds strength.",
+    name: "Follow-Through",
+    description: "Return to the time you planned yesterday. Two minutes — as promised.",
+    coachMessage: "Every time you meet your intention, you become someone who does.",
     duration: "2 minutes",
     icon: BarChart3,
-    buttonLabel: "Begin Reflection",
+    buttonLabel: "Begin Your Planned Step",
   },
 };
 
