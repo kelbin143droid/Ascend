@@ -200,10 +200,10 @@ const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }
 };
 
 const FLOW_ACTIVITIES = [
-  { label: "Calm Breathing", icon: Brain, color: "#3b82f6" },
-  { label: "Strength Circuit", icon: Dumbbell, color: "#ef4444" },
-  { label: "Mobility Flow", icon: Wind, color: "#22c55e" },
-  { label: "Vitality Check", icon: Heart, color: "#f59e0b" },
+  { label: "Reset", sublabel: "2 min breathing", icon: Brain, color: "#3b82f6" },
+  { label: "Strength", sublabel: "3–5 min circuit", icon: Dumbbell, color: "#ef4444" },
+  { label: "Mobility", sublabel: "2–3 min", icon: Wind, color: "#22c55e" },
+  { label: "Vitality Check", sublabel: "hydration + sleep", icon: Heart, color: "#f59e0b" },
 ];
 
 export default function HomePage() {
@@ -577,9 +577,23 @@ export default function HomePage() {
         )}
 
         <div className="pt-2" data-testid="daily-status-section">
-          <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-            {phaseName}
-          </p>
+          {playerData?.name && (
+            <p className="text-[10px] uppercase tracking-[0.12em] mb-1" style={{ color: colors.textMuted }}>
+              {playerData.name}
+            </p>
+          )}
+          <div className="flex items-baseline gap-3">
+            <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
+              Phase: Stabilization
+            </p>
+            <span
+              className="text-xs font-mono px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: `${colors.primary}15`, color: colors.primary }}
+              data-testid="text-player-level"
+            >
+              Lv {playerData?.level ?? 1}
+            </span>
+          </div>
           <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
             Day {consecutiveDays} of Consistency
           </p>
@@ -598,7 +612,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <Zap size={14} style={{ color: colors.primary }} />
                 <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
-                  Today's Training Flow
+                  Today's Flow
                 </span>
               </div>
               <span className="text-[10px]" style={{ color: colors.textMuted }}>
@@ -606,19 +620,24 @@ export default function HomePage() {
               </span>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {FLOW_ACTIVITIES.map((act, i) => {
                 const Icon = act.icon;
                 return (
                   <div
                     key={act.label}
-                    className="flex items-center gap-3 py-1.5"
+                    className="flex items-center gap-3 py-2 px-2 rounded-lg"
                     data-testid={`flow-step-${i}`}
+                    style={{
+                      backgroundColor: flowCompletedToday
+                        ? "#22c55e08"
+                        : `${act.color}06`,
+                    }}
                   >
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                       style={{
-                        backgroundColor: flowCompletedToday ? "#22c55e12" : `${act.color}12`,
+                        backgroundColor: flowCompletedToday ? "#22c55e18" : `${act.color}18`,
                       }}
                     >
                       {flowCompletedToday ? (
@@ -627,11 +646,25 @@ export default function HomePage() {
                         <Icon size={14} style={{ color: act.color }} />
                       )}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className="text-sm block leading-tight"
+                        style={{ color: flowCompletedToday ? colors.textMuted : colors.text }}
+                      >
+                        {act.label}
+                      </span>
+                      <span
+                        className="text-[10px]"
+                        style={{ color: `${colors.textMuted}88` }}
+                      >
+                        {act.sublabel}
+                      </span>
+                    </div>
                     <span
-                      className="text-sm"
-                      style={{ color: flowCompletedToday ? colors.textMuted : colors.text }}
+                      className="text-[10px] font-mono shrink-0"
+                      style={{ color: flowCompletedToday ? "#22c55e80" : `${act.color}80` }}
                     >
-                      {act.label}
+                      {i + 1}/4
                     </span>
                   </div>
                 );
@@ -659,19 +692,43 @@ export default function HomePage() {
               <button
                 data-testid="button-begin-flow"
                 onClick={() => setFlowActive(true)}
-                className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-[0.1em] transition-all active:scale-[0.98]"
+                className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
                 style={{
                   backgroundColor: colors.primary,
                   color: colors.background,
-                  boxShadow: `0 0 20px ${colors.primaryGlow}25`,
+                  boxShadow: `0 0 24px ${colors.primaryGlow}30`,
                 }}
               >
                 <span className="flex items-center justify-center gap-2">
                   <Play size={16} />
-                  Begin Flow
+                  Begin Daily Flow
                 </span>
               </button>
             )}
+          </div>
+        </div>
+
+        <div
+          data-testid="consistency-coach-card"
+          className="rounded-xl px-4 py-3 flex items-start gap-3"
+          style={{
+            backgroundColor: `${colors.primary}08`,
+            border: `1px solid ${colors.primary}12`,
+          }}
+        >
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+            style={{ backgroundColor: `${colors.primary}18` }}
+          >
+            <Brain size={12} style={{ color: colors.primary }} />
+          </div>
+          <div>
+            <p className="text-[9px] uppercase tracking-[0.12em] font-bold mb-0.5" style={{ color: `${colors.primary}80` }}>
+              Coach
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
+              Consistency is becoming your baseline.
+            </p>
           </div>
         </div>
 
