@@ -597,6 +597,43 @@ export default function HomePage() {
           <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
             Day {consecutiveDays} of Consistency
           </p>
+
+          {/* XP Bar — revealed after onboarding as evidence of progress */}
+          {(() => {
+            const currentXP = playerData?.exp ?? 0;
+            const maxXP = playerData?.maxExp ?? 100;
+            const pct = Math.min(100, Math.round((currentXP / maxXP) * 100));
+            return (
+              <div className="mt-4" data-testid="xp-progress-section">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: colors.textMuted }}>
+                    Level {playerData?.level ?? 1}
+                  </span>
+                  <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
+                    {currentXP} / {maxXP} XP
+                  </span>
+                </div>
+                <div
+                  className="w-full h-1 rounded-full overflow-hidden"
+                  style={{ backgroundColor: `${colors.primary}18` }}
+                  data-testid="xp-bar-track"
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: colors.primary,
+                      opacity: 0.7,
+                    }}
+                    data-testid="xp-bar-fill"
+                  />
+                </div>
+                <p className="text-[10px] mt-2 italic" style={{ color: `${colors.textMuted}88` }}>
+                  This is the result of what you've already done.
+                </p>
+              </div>
+            );
+          })()}
         </div>
 
         <div
