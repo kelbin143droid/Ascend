@@ -5,6 +5,9 @@ import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { apiRequest } from "@/lib/queryClient";
+import inhaleUrl from "@assets/Inhale_1774271882288.mp3";
+import holdUrl from "@assets/Hold_1774271892968.mp3";
+import exhaleUrl from "@assets/Exhale_1774271901274.mp3";
 import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
 import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
@@ -177,45 +180,101 @@ function useBreathingAudio(active: boolean) {
   }, [active]);
 }
 
-let cachedVoice: SpeechSynthesisVoice | null = null;
+// ─── Voice clips (MP3) ───────────────────────────────────────────────────────
+const VOICE_MAP: Record<string, string> = {
+  Inhale: inhaleUrl,
+  Hold: holdUrl,
+  Exhale: exhaleUrl,
+};
 
-function getVoice(): SpeechSynthesisVoice | null {
-  if (cachedVoice) return cachedVoice;
-  const voices = window.speechSynthesis.getVoices();
-  if (voices.length === 0) return null;
-  cachedVoice =
-    voices.find(v => v.lang.startsWith("en") && /samantha/i.test(v.name)) ||
-    voices.find(v => v.lang.startsWith("en") && /fiona|moira|tessa|karen|victoria|zoe|serena/i.test(v.name)) ||
-    voices.find(v => v.lang.startsWith("en") && /female|woman/i.test(v.name)) ||
-    voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("google") && /us|uk/i.test(v.name)) ||
-    voices.find(v => v.lang.startsWith("en-") && !v.localService) ||
-    voices.find(v => v.lang.startsWith("en")) ||
-    voices[0];
-  return cachedVoice;
+let activeVoiceAudio: HTMLAudioElement | null = null;
+
+function playVoiceClip(label: string) {
+  try {
+    const url = VOICE_MAP[label];
+    if (!url) return;
+    if (activeVoiceAudio) {
+      activeVoiceAudio.pause();
+      activeVoiceAudio.currentTime = 0;
+    }
+    const audio = new Audio(url);
+    audio.volume = 0.9;
+    audio.play().catch(() => {});
+    activeVoiceAudio = audio;
+  } catch {}
 }
 
-function speakPhase(label: string) {
+function stopVoiceClip() {
   try {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-
-    const speak = () => {
-      const utterance = new SpeechSynthesisUtterance(label);
-      utterance.rate = 0.9;
-      utterance.pitch = 0.95;
-      utterance.volume = 0.55;
-      const voice = getVoice();
-      if (voice) utterance.voice = voice;
-      window.speechSynthesis.speak(utterance);
-    };
-
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length === 0) {
-      window.speechSynthesis.addEventListener("voiceschanged", () => speak(), { once: true });
-    } else {
-      speak();
+    if (activeVoiceAudio) {
+      activeVoiceAudio.pause();
+      activeVoiceAudio.currentTime = 0;
+      activeVoiceAudio = null;
     }
   } catch {}
+}
+
+// ─── Calm background music (pentatonic, Web Audio) ───────────────────────────
+const CALM_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25]; // C D E G A C (pentatonic)
+
+function useCalmMusic(active: boolean) {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+
+    let closed = false;
+
+    const playNote = (ctx: AudioContext, dest: GainNode) => {
+      if (closed) return;
+      const freq = CALM_NOTES[Math.floor(Math.random() * CALM_NOTES.length)];
+      // Occasionally play the note an octave up for shimmer
+      const f = Math.random() > 0.7 ? freq * 2 : freq;
+
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(f, ctx.currentTime);
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.055, ctx.currentTime + 1.2);
+      g.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 3.5);
+      g.gain.linearRampToValueAtTime(0, ctx.currentTime + 5.5);
+
+      osc.connect(g);
+      g.connect(dest);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 6);
+    };
+
+    const schedule = (ctx: AudioContext, dest: GainNode) => {
+      if (closed) return;
+      playNote(ctx, dest);
+      const delay = 2800 + Math.random() * 3200;
+      timerRef.current = setTimeout(() => schedule(ctx, dest), delay);
+    };
+
+    try {
+      const ctx = new AudioContext();
+      ctxRef.current = ctx;
+
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0, ctx.currentTime);
+      master.gain.linearRampToValueAtTime(1, ctx.currentTime + 6);
+      master.connect(ctx.destination);
+
+      // Start first note after 4s (let ambient pad settle first)
+      timerRef.current = setTimeout(() => schedule(ctx, master), 4000);
+    } catch {}
+
+    return () => {
+      closed = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      try { ctxRef.current?.close(); } catch {}
+      ctxRef.current = null;
+    };
+  }, [active]);
 }
 
 
@@ -225,6 +284,7 @@ function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentCol
   const lastSpokenRef = useRef<string>("");
 
   useBreathingAudio(true);
+  useCalmMusic(true);
 
   let cumulative = 0;
   let currentPhase = BREATHING_PHASES[0];
@@ -242,14 +302,12 @@ function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentCol
   useEffect(() => {
     if (currentPhase.label !== lastSpokenRef.current) {
       lastSpokenRef.current = currentPhase.label;
-      speakPhase(currentPhase.label);
+      playVoiceClip(currentPhase.label);
     }
   }, [currentPhase.label]);
 
   useEffect(() => {
-    return () => {
-      try { window.speechSynthesis?.cancel(); } catch {}
-    };
+    return () => { stopVoiceClip(); };
   }, []);
 
   const scale = currentPhase.label === "Inhale"
