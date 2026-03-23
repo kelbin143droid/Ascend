@@ -9,6 +9,7 @@ import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
 import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
 import { LightMovementEngine } from "@/components/game/LightMovementEngine";
+import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow" | "weekly-reflection";
 
@@ -560,6 +561,33 @@ export default function GuidedSessionPage() {
               sessionId: "day5-expansion", stat: "vitality", durationMinutes: 1,
             }).then(() => { queryClient.invalidateQueries({ queryKey: ["home"] }); });
           }}
+        />
+        <DayCloseOverlay
+          visible={showDayClose}
+          onboardingDay={homeData?.onboardingDay ?? 2}
+          onClose={() => { setShowDayClose(false); setLocation("/"); }}
+        />
+      </>
+    );
+  }
+
+  // Light Cardio Session uses the video-guided cardio engine
+  if (sessionId === "focus-block" && player?.id) {
+    const handleCardioComplete = () => {
+      const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
+      if (isFirstCompletionToday) {
+        setShowDayClose(true);
+      } else {
+        setLocation("/");
+      }
+    };
+
+    return (
+      <>
+        <CardioSessionEngine
+          playerId={player.id}
+          onComplete={handleCardioComplete}
+          onCancel={() => setLocation("/")}
         />
         <DayCloseOverlay
           visible={showDayClose}
