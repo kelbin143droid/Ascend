@@ -430,21 +430,40 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-col items-center gap-1">
-            <button
-              data-testid="button-start"
-              onClick={() => setLocation(`/guided-session/${step.sessionId}`)}
-              className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
-              style={{
-                backgroundColor: colors.primary,
-                color: colors.background,
-                boxShadow: `0 0 24px ${colors.primaryGlow}30`,
-              }}
-            >
-              <span className="flex items-center justify-center gap-2">
-                <Play size={16} />
-                {step.buttonLabel}
-              </span>
-            </button>
+            {homeData?.hasCompletedHabitToday ? (
+              <div
+                data-testid="session-completed-indicator"
+                className="w-full py-4 rounded-xl flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: `${colors.primary}14`,
+                  border: `1px solid ${colors.primary}30`,
+                }}
+              >
+                <CheckCircle2 size={16} style={{ color: colors.primary }} />
+                <span
+                  className="text-sm font-display font-medium tracking-wide"
+                  style={{ color: colors.primary }}
+                >
+                  Session completed today
+                </span>
+              </div>
+            ) : (
+              <button
+                data-testid="button-start"
+                onClick={() => setLocation(`/guided-session/${step.sessionId}`)}
+                className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
+                style={{
+                  backgroundColor: colors.primary,
+                  color: colors.background,
+                  boxShadow: `0 0 24px ${colors.primaryGlow}30`,
+                }}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Play size={16} />
+                  {step.buttonLabel}
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
