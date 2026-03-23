@@ -384,6 +384,8 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     // Record XP in the background (don't block the UI on it)
     if (!noApiCall && !xpClaimed) {
       setXpClaimed(true);
+      // Persist today's completion so the home screen can reflect it
+      localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
       claimMutation.mutate();
     }
   }, [noApiCall, xpClaimed, claimMutation]);

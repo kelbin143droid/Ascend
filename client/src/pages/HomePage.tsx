@@ -223,7 +223,10 @@ export default function HomePage() {
   const [showDay7Transition, setShowDay7Transition] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
-  const [flowCompletedToday, setFlowCompletedToday] = useState(false);
+  const [flowCompletedToday, setFlowCompletedToday] = useState(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return localStorage.getItem("ascend_light_movement_completed") === today;
+  });
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -525,6 +528,7 @@ export default function HomePage() {
   const handleFlowComplete = (completedIds: string[], _bonusAwarded: boolean) => {
     if (completedIds.length > 0) {
       setFlowCompletedToday(true);
+      localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
     }
     setFlowActive(false);
   };
