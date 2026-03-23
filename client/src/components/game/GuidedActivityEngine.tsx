@@ -373,13 +373,25 @@ function CompletionScreen({
   xpEarned,
   onFinish,
   isPending,
+  antiGrindMultiplier,
+  dailyCapReached,
 }: {
   activity: ActivityDefinition;
   colors: any;
   xpEarned: number | null;
   onFinish: () => void;
   isPending: boolean;
+  antiGrindMultiplier?: number;
+  dailyCapReached?: boolean;
 }) {
+  const xpNote = dailyCapReached
+    ? "Daily XP limit reached"
+    : antiGrindMultiplier === 0.5
+    ? "Reduced XP — already done today"
+    : antiGrindMultiplier === 0.25
+    ? "Minimal XP — third repetition"
+    : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -415,10 +427,16 @@ function CompletionScreen({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="text-2xl font-bold"
-          style={{ color: activity.color }}
+          className="flex flex-col items-center gap-1"
         >
-          +{xpEarned} XP
+          <span className="text-2xl font-bold" style={{ color: activity.color }}>
+            +{xpEarned} XP
+          </span>
+          {xpNote && (
+            <span className="text-xs opacity-60" style={{ color: colors.textMuted }}>
+              {xpNote}
+            </span>
+          )}
         </motion.div>
       )}
       <button
@@ -457,6 +475,8 @@ export function GuidedActivityEngine({
   const [stepPhase, setStepPhase] = useState<"ready" | "getready" | "running" | "done">("ready");
   const [stepsCompleted, setStepsCompleted] = useState<Set<number>>(new Set());
   const [xpEarned, setXpEarned] = useState<number | null>(null);
+  const [antiGrindMultiplier, setAntiGrindMultiplier] = useState<number>(1.0);
+  const [dailyCapReached, setDailyCapReached] = useState(false);
   const [timerRemaining, setTimerRemaining] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -497,6 +517,8 @@ export function GuidedActivityEngine({
     onSuccess: (data: any) => {
       const earned = data?.xpEarned ?? 0;
       setXpEarned(earned);
+      setAntiGrindMultiplier(data?.antiGrindMultiplier ?? 1.0);
+      setDailyCapReached(data?.dailyCapReached ?? false);
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
       queryClient.invalidateQueries({ queryKey: ["training-scaling"] });
@@ -684,6 +706,8 @@ export function GuidedActivityEngine({
               xpEarned={xpEarned}
               onFinish={() => onComplete(xpEarned ?? 0)}
               isPending={completeMutation.isPending}
+              antiGrindMultiplier={antiGrindMultiplier}
+              dailyCapReached={dailyCapReached}
             />
           ) : stepPhase === "getready" && step ? (
             <GetReadyCountdown

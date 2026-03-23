@@ -284,7 +284,7 @@ export async function registerRoutes(
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
-      const { getXPForActivity } = await import("./gameLogic/levelSystem");
+      const { getBaseXPForCategory } = await import("./gameLogic/levelSystem");
       const { processSessionCompletion, ensureTrainingScaling, getXPMultiplier } = await import("./gameLogic/trainingScaling");
 
       const statToCat: Record<string, "strength" | "agility" | "meditation" | "vitality"> = {
@@ -294,8 +294,24 @@ export async function registerRoutes(
       const scaling = ensureTrainingScaling(player.trainingScaling);
       const tierMultiplier = getXPMultiplier(scaling[category].tier);
 
-      const baseXP = getXPForActivity(parsed.data.durationMinutes);
-      const guidedXP = Math.round(baseXP * tierMultiplier);
+      // Anti-grind: check how many times this same session was already done today
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const todayCompletions = await storage.getHabitCompletions(req.params.id, startOfToday);
+      const sessionHabitId = `guided_${parsed.data.sessionId}`;
+      const priorSessionsToday = todayCompletions.filter(c => c.habitId === sessionHabitId).length;
+      const antiGrindMultiplier = priorSessionsToday === 0 ? 1.0 : priorSessionsToday === 1 ? 0.5 : 0.25;
+
+      // Daily XP cap (50–55 XP from guided sessions)
+      const DAILY_XP_CAP = 55;
+      const totalGuidedXPToday = todayCompletions
+        .filter(c => c.habitId.startsWith("guided_"))
+        .reduce((sum, c) => sum + (c.xpEarned || 0), 0);
+      const remainingCap = Math.max(0, DAILY_XP_CAP - totalGuidedXPToday);
+
+      const baseXP = getBaseXPForCategory(category);
+      const rawXP = Math.round(baseXP * tierMultiplier * antiGrindMultiplier);
+      const guidedXP = Math.min(rawXP, remainingCap);
 
       const updatedScaling = processSessionCompletion(scaling, category, player.phase || 1);
 
@@ -343,6 +359,8 @@ export async function registerRoutes(
         stabilityScore: newScore,
         trainingScaling: updatedScaling,
         tierMultiplier,
+        antiGrindMultiplier,
+        dailyCapReached: remainingCap === 0,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to complete guided session" });
