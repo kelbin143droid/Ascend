@@ -203,7 +203,7 @@ const FLOW_ACTIVITIES = [
   { label: "Reset", sublabel: "2 min breathing", icon: Brain, color: "#3b82f6" },
   { label: "Strength", sublabel: "3–5 min circuit", icon: Dumbbell, color: "#ef4444" },
   { label: "Mobility", sublabel: "2–3 min", icon: Wind, color: "#22c55e" },
-  { label: "Vitality Check", sublabel: "hydration + sleep", icon: Heart, color: "#f59e0b" },
+  { label: "Vitality Check", sublabel: "hydration · sleep · nutrition", icon: Heart, color: "#f59e0b" },
 ];
 
 export default function HomePage() {

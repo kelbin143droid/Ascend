@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward } from "lucide-react";
+import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward, Info, Check } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
 
@@ -464,8 +464,11 @@ export function GuidedActivityEngine({
   const isCompletionStep = step?.type === "completion";
   const isTimerStep = step?.type === "timer";
   const isBreathStep = step?.type === "breath";
+  const isCheckStep = step?.type === "check";
+  const [showCheckInfo, setShowCheckInfo] = useState(false);
 
   useEffect(() => {
+    setShowCheckInfo(false);
     if (step?.voiceText && stepPhase !== "getready") {
       voice.speak(step.voiceText);
     }
@@ -747,6 +750,108 @@ export function GuidedActivityEngine({
                     </div>
                   </div>
                 </>
+              ) : isCheckStep ? (
+                <div className="flex flex-col items-center gap-4 w-full max-w-sm">
+                  <div
+                    className="rounded-xl p-5 w-full"
+                    style={{
+                      backgroundColor: `${activity.color}10`,
+                      border: `1px solid ${activity.color}20`,
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p
+                        className="text-base font-medium leading-relaxed"
+                        style={{ color: colors.text }}
+                        data-testid="text-step-instruction"
+                      >
+                        {step.instruction}
+                      </p>
+                      {step.infoTooltip && (
+                        <button
+                          onClick={() => setShowCheckInfo(v => !v)}
+                          className="shrink-0 mt-0.5 p-1 rounded-lg transition-colors"
+                          style={{
+                            backgroundColor: showCheckInfo ? `${activity.color}20` : "transparent",
+                            color: `${activity.color}90`,
+                          }}
+                          data-testid="button-meal-info"
+                          aria-label="Nutrition info"
+                        >
+                          <Info size={17} />
+                        </button>
+                      )}
+                    </div>
+
+                    <AnimatePresence>
+                      {showCheckInfo && step.infoTooltip && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div
+                            className="mt-4 pt-4"
+                            style={{ borderTop: `1px solid ${activity.color}20` }}
+                          >
+                            <p
+                              className="text-[10px] font-bold uppercase tracking-wider mb-2.5"
+                              style={{ color: `${activity.color}cc` }}
+                            >
+                              {step.infoTooltip.title}
+                            </p>
+                            <ul className="space-y-1.5 mb-3">
+                              {step.infoTooltip.bullets.map((b) => (
+                                <li
+                                  key={b}
+                                  className="text-xs flex items-start gap-2 leading-relaxed"
+                                  style={{ color: `${colors.text}bb` }}
+                                >
+                                  <span className="shrink-0 mt-0.5" style={{ color: activity.color }}>•</span>
+                                  {b}
+                                </li>
+                              ))}
+                            </ul>
+                            <p
+                              className="text-[10px] leading-relaxed italic"
+                              style={{ color: colors.textMuted }}
+                            >
+                              {step.infoTooltip.note}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {!stepsCompleted.has(currentStepIdx) && (
+                    <div className="flex gap-3 w-full">
+                      <button
+                        className="flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        style={{ backgroundColor: activity.color, color: "#fff" }}
+                        onClick={advanceStep}
+                        data-testid="button-meal-check-yes"
+                      >
+                        <Check size={16} />
+                        Yes
+                      </button>
+                      <button
+                        className="flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        style={{
+                          backgroundColor: `${activity.color}15`,
+                          color: activity.color,
+                          border: `1px solid ${activity.color}30`,
+                        }}
+                        onClick={advanceStep}
+                        data-testid="button-meal-check-not-yet"
+                      >
+                        <Check size={16} />
+                        Not yet
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div
                   className="rounded-xl p-6 text-center max-w-sm w-full"
@@ -781,7 +886,7 @@ export function GuidedActivityEngine({
                 </button>
               )}
 
-              {stepPhase === "ready" && !stepsCompleted.has(currentStepIdx) && (
+              {!isCheckStep && stepPhase === "ready" && !stepsCompleted.has(currentStepIdx) && (
                 <button
                   className="px-8 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
                   style={{ backgroundColor: activity.color, color: "#fff" }}

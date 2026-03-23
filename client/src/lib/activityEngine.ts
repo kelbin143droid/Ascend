@@ -1,9 +1,15 @@
-export type StepType = "instruction" | "timer" | "rep" | "breath" | "completion";
+export type StepType = "instruction" | "timer" | "rep" | "breath" | "completion" | "check";
 
 export interface BreathTiming {
   inhaleSeconds: number;
   holdSeconds: number;
   exhaleSeconds: number;
+}
+
+export interface CheckInfoTooltip {
+  title: string;
+  bullets: string[];
+  note: string;
 }
 
 export interface ActivityStep {
@@ -16,6 +22,7 @@ export interface ActivityStep {
   repLabel?: string;
   breathTiming?: BreathTiming;
   voiceText?: string;
+  infoTooltip?: CheckInfoTooltip;
 }
 
 export interface ActivityDefinition {
@@ -312,6 +319,22 @@ export function buildPhase1Activities(
           label: "Sleep Check",
           instruction: "Did you sleep at least 6 hours last night? Consistent sleep fuels recovery.",
           voiceText: "Did you sleep at least 6 hours? Consistent sleep fuels recovery.",
+        },
+        {
+          id: "meal_check",
+          type: "check",
+          label: "Nutrition Check",
+          instruction: "Did you eat a balanced meal today?",
+          voiceText: "Did you eat a balanced meal today?",
+          infoTooltip: {
+            title: "What counts as balanced?",
+            bullets: [
+              "Carbohydrates — energy (50%)",
+              "Protein — muscle repair (30%)",
+              "Healthy fats — hormonal support (20%)",
+            ],
+            note: "Aim for variety. Any whole-food meal with all three groups counts.",
+          },
         },
         {
           id: "vitality_done",
