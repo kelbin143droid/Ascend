@@ -3,7 +3,7 @@ import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { motion } from "framer-motion";
-import { Shield, Calendar, Play, User, Trophy } from "lucide-react";
+import { Shield, Calendar, Play, Flame, Zap, Star } from "lucide-react";
 import { PHASE_UNLOCK_DATA, PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
 
 const PHASE_COLORS: Record<number, string> = {
@@ -14,16 +14,34 @@ const PHASE_COLORS: Record<number, string> = {
   5: "#ffd700",
 };
 
+const STAT_COLORS: Record<string, string> = {
+  strength: "#ef4444",
+  agility: "#22c55e",
+  sense: "#3b82f6",
+  vitality: "#f59e0b",
+};
+
+const RANK_COLORS: Record<string, string> = {
+  E: "#6b7280",
+  D: "#22c55e",
+  C: "#3b82f6",
+  B: "#a855f7",
+  A: "#ef4444",
+  S: "#ffd700",
+};
+
 interface HomeData {
   phase: { number: number; name: string };
-  stability: { score: number; label: string };
-  flow: { value: number; label: string; trending: "rising" | "steady" | "cooling" };
+  stability: { score: number; label: string; state: string };
   growthState: string;
-  insight: string;
-  todaysFocus: string;
-  nextAction: { habitId: string; name: string; stat: string; durationMinutes: number } | null;
-  completedToday: number;
-  totalActive: number;
+  streak: number;
+  onboardingDay: number;
+  isOnboardingComplete: boolean;
+  identity?: {
+    stage: string;
+    stageLabel: string;
+    reflection?: { message: string };
+  };
 }
 
 export default function ProfilePage() {
@@ -31,7 +49,7 @@ export default function ProfilePage() {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
 
-  const { data: homeData } = useQuery<HomeData & { onboardingDay: number }>({
+  const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
     queryFn: async () => {
       if (!player?.id) throw new Error("No player");
@@ -42,7 +60,6 @@ export default function ProfilePage() {
     enabled: !!player?.id,
     staleTime: 30000,
   });
-  const metricsLocked = (homeData?.onboardingDay ?? 1) < 6;
 
   if (isLoading || !player) {
     return (
@@ -58,205 +75,250 @@ export default function ProfilePage() {
   const currentPhase = player.phase || 1;
   const phaseColor = PHASE_COLORS[currentPhase] || "#6b7280";
   const phaseName = PHASE_NAMES[currentPhase] || "Stabilization";
-
+  const rank = player.rank || "E";
+  const rankColor = RANK_COLORS[rank] || "#6b7280";
   const growthState = homeData?.growthState || "Beginning";
+  const streak = homeData?.streak ?? player.streak ?? 0;
+  const totalExp = player.totalExp || 0;
+
+  const statLevels = (player as any).statLevels as Record<string, { level: number; currentXP: number; xpForNext: number }> | undefined;
+  const stats = [
+    { key: "strength", label: "STR" },
+    { key: "agility", label: "AGI" },
+    { key: "sense", label: "SNS" },
+    { key: "vitality", label: "VIT" },
+  ];
 
   return (
     <SystemLayout>
-      <div className="min-h-screen p-4 pb-24" data-testid="profile-page">
-        <div className="text-center mb-6">
-          <div className="text-xs tracking-[0.3em] text-muted-foreground mb-1">ASCENDANT IDENTITY</div>
-          <h1 className="text-2xl font-display font-bold text-primary">
+      <div className="min-h-screen p-4 pb-28 space-y-5" data-testid="profile-page">
+
+        {/* Header */}
+        <div className="text-center pt-2">
+          <div className="text-[9px] tracking-[0.3em] mb-1" style={{ color: colors.textMuted }}>
+            ASCENDANT IDENTITY
+          </div>
+          <h1 className="text-2xl font-display font-bold" style={{ color: colors.text }}>
             {player.name || "AWAKENED"}
           </h1>
+          <div
+            className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1 rounded-full"
+            style={{ backgroundColor: `${rankColor}18`, border: `1px solid ${rankColor}40` }}
+          >
+            <Star size={10} style={{ color: rankColor }} />
+            <span className="text-xs font-bold font-mono tracking-wider" style={{ color: rankColor }}>
+              {rank} RANK
+            </span>
+          </div>
         </div>
 
-        {metricsLocked ? (
-          <>
+        {/* Core stats — always clean */}
+        <div className="grid grid-cols-3 gap-3">
+          <div
+            className="rounded-xl p-3 text-center"
+            style={{ backgroundColor: `${colors.primary}0d`, border: `1px solid ${colors.primary}25` }}
+            data-testid="text-player-level"
+          >
+            <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: colors.textMuted }}>Level</div>
+            <div className="text-2xl font-mono font-bold" style={{ color: colors.primary }}>{player.level}</div>
+          </div>
+          <div
+            className="rounded-xl p-3 text-center"
+            style={{ backgroundColor: `${phaseColor}0d`, border: `1px solid ${phaseColor}25` }}
+            data-testid="text-player-phase"
+          >
+            <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: colors.textMuted }}>Phase</div>
+            <div className="text-2xl font-mono font-bold" style={{ color: phaseColor }}>{currentPhase}</div>
+          </div>
+          <div
+            className="rounded-xl p-3 text-center"
+            style={{ backgroundColor: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}
+          >
+            <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: colors.textMuted }}>Title</div>
+            <div className="text-xs font-mono font-bold text-amber-400 truncate leading-tight mt-0.5">{player.title || "AWAKENED"}</div>
+          </div>
+        </div>
+
+        {/* Phase & Growth */}
+        <div
+          className="rounded-xl px-4 py-3 flex items-center justify-between"
+          style={{ backgroundColor: `${colors.surface}cc`, border: `1px solid ${colors.surfaceBorder}` }}
+        >
+          <div>
+            <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: colors.textMuted }}>
+              Phase {currentPhase}
+            </div>
+            <div className="text-base font-display font-bold" style={{ color: colors.text }}>{phaseName}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: colors.textMuted }}>Growth</div>
+            <div className="text-base font-display font-bold" style={{ color: colors.primary }} data-testid="text-growth-state">
+              {growthState}
+            </div>
+          </div>
+        </div>
+
+        {/* Stat levels */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-4" style={{ backgroundColor: colors.primary }} />
+            <h2 className="text-[10px] font-display tracking-widest" style={{ color: colors.primary }}>STATS</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {stats.map(({ key, label }) => {
+              const statColor = STAT_COLORS[key];
+              const level = statLevels?.[key]?.level ?? (player.stats as any)?.[key] ?? 1;
+              const currentXP = statLevels?.[key]?.currentXP ?? 0;
+              const xpForNext = statLevels?.[key]?.xpForNext ?? 100;
+              const pct = xpForNext > 0 ? Math.min(currentXP / xpForNext, 1) : 0;
+              return (
+                <div
+                  key={key}
+                  className="rounded-xl px-3 py-2.5"
+                  style={{ backgroundColor: `${statColor}0d`, border: `1px solid ${statColor}25` }}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: `${statColor}cc` }}>{label}</span>
+                    <span className="text-base font-mono font-bold" style={{ color: statColor }}>{level}</span>
+                  </div>
+                  <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${statColor}20` }}>
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${pct * 100}%`, backgroundColor: statColor }}
+                    />
+                  </div>
+                  <div className="text-[8px] mt-1 font-mono" style={{ color: `${statColor}60` }}>
+                    {currentXP} / {xpForNext} XP
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Achievements summary */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-4" style={{ backgroundColor: colors.primary }} />
+            <h2 className="text-[10px] font-display tracking-widest" style={{ color: colors.primary }}>ACHIEVEMENTS</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <div
-              data-testid="soft-lock-profile"
-              className="rounded-xl px-5 py-5 text-center mb-6"
-              style={{
-                backgroundColor: "rgba(147,197,253,0.04)",
-                border: "1px solid rgba(147,197,253,0.08)",
-              }}
+              className="rounded-xl px-3 py-3 flex items-center gap-3"
+              style={{ backgroundColor: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.18)" }}
             >
-              <User className="w-8 h-8 mx-auto mb-3" style={{ color: "rgba(147,197,253,0.3)" }} />
-              <p className="text-sm leading-relaxed" style={{ color: "rgba(147,197,253,0.7)" }}>
-                Your identity is forming through action.
+              <Flame size={18} style={{ color: "#f59e0b" }} />
+              <div>
+                <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: colors.textMuted }}>Streak</div>
+                <div className="text-lg font-mono font-bold text-amber-400">{streak}</div>
+              </div>
+            </div>
+            <div
+              className="rounded-xl px-3 py-3 flex items-center gap-3"
+              style={{ backgroundColor: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.18)" }}
+            >
+              <Zap size={18} style={{ color: "#6366f1" }} />
+              <div>
+                <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: colors.textMuted }}>Total XP</div>
+                <div className="text-lg font-mono font-bold" style={{ color: "#6366f1" }}>{totalExp.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stat cap */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-4" style={{ backgroundColor: colors.primary }} />
+            <h2 className="text-[10px] font-display tracking-widest" style={{ color: colors.primary }}>STAT CAP</h2>
+          </div>
+          <div
+            className="rounded-xl px-4 py-3 text-center"
+            style={{ backgroundColor: `${colors.surface}cc`, border: `1px solid ${colors.surfaceBorder}` }}
+          >
+            <span className="text-2xl font-mono font-bold" style={{ color: phaseColor }}>
+              {PHASE_STAT_CAPS[currentPhase] || 30}
+            </span>
+            <span className="text-xs ml-2" style={{ color: colors.textMuted }}>per stat</span>
+          </div>
+        </div>
+
+        {/* Phase History */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-4" style={{ backgroundColor: colors.primary }} />
+            <h2 className="text-[10px] font-display tracking-widest" style={{ color: colors.primary }}>PHASE HISTORY</h2>
+          </div>
+
+          {phaseHistory.length === 0 ? (
+            <div
+              className="rounded-xl px-4 py-5 text-center"
+              style={{ backgroundColor: `${colors.surface}cc`, border: `1px solid ${colors.surfaceBorder}` }}
+            >
+              <p className="text-sm" style={{ color: colors.textMuted }}>
+                No phase advancements yet. Keep training.
               </p>
-              <p className="text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Detailed metrics appear as your journey deepens.
-              </p>
             </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-card/30 border border-primary/20 rounded p-4 text-center">
-                <div className="text-xs text-muted-foreground mb-1">Level</div>
-                <div className="text-2xl font-mono font-bold text-primary" data-testid="text-player-level">{player.level}</div>
-              </div>
-              <div className="bg-card/30 border border-primary/20 rounded p-4 text-center">
-                <div className="text-xs text-muted-foreground mb-1">Phase</div>
-                <div className="text-2xl font-display font-bold" style={{ color: phaseColor }} data-testid="text-player-phase">
-                  {phaseName}
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="rounded-xl px-4 py-3"
-              style={{
-                backgroundColor: `${colors.surface || colors.background}cc`,
-                border: `1px solid ${colors.surfaceBorder}`,
-              }}
-            >
-              <div className="text-[10px] uppercase tracking-[0.2em] mb-1" style={{ color: colors.textMuted }}>
-                Growth
-              </div>
-              <div className="text-lg font-display font-bold" style={{ color: colors.primary }} data-testid="text-growth-state">
-                {growthState}
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-card/30 border border-primary/20 rounded p-3 text-center">
-                <User className="w-5 h-5 mx-auto mb-1 text-primary" />
-                <div className="text-xs text-muted-foreground">Level</div>
-                <div className="text-xl font-mono font-bold text-primary" data-testid="text-player-level">{player.level}</div>
-              </div>
-              <div className="bg-card/30 border border-primary/20 rounded p-3 text-center">
-                <Shield className="w-5 h-5 mx-auto mb-1" style={{ color: phaseColor }} />
-                <div className="text-xs text-muted-foreground">Phase</div>
-                <div className="text-xl font-display font-bold" style={{ color: phaseColor }} data-testid="text-player-phase">
-                  {currentPhase}
-                </div>
-              </div>
-              <div className="bg-card/30 border border-primary/20 rounded p-3 text-center">
-                <Trophy className="w-5 h-5 mx-auto mb-1 text-yellow-500" />
-                <div className="text-xs text-muted-foreground">Title</div>
-                <div className="text-xs font-mono text-primary truncate">{player.title}</div>
-              </div>
-            </div>
-
-            <div
-              className="rounded-xl px-4 py-3 mb-3"
-              style={{
-                backgroundColor: `${colors.surface || colors.background}cc`,
-                border: `1px solid ${colors.surfaceBorder}`,
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: colors.textMuted }}>
-                    Phase {currentPhase}
-                  </div>
-                  <div className="text-lg font-display font-bold" style={{ color: colors.text }}>
-                    {phaseName}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: colors.textMuted }}>
-                    Growth
-                  </div>
-                  <div className="text-base font-display font-bold" style={{ color: colors.primary }} data-testid="text-growth-state">
-                    {growthState}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1 h-4 bg-primary" />
-                <h2 className="text-sm font-display tracking-widest text-primary">STAT CAP</h2>
-              </div>
-              <div className="bg-card/30 border border-primary/20 rounded px-4 py-3 text-center">
-                <span className="text-2xl font-mono font-bold" style={{ color: phaseColor }}>
-                  {PHASE_STAT_CAPS[currentPhase] || 30}
-                </span>
-                <span className="text-xs text-muted-foreground ml-2">per stat</span>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1 h-4 bg-primary" />
-                <h2 className="text-sm font-display tracking-widest text-primary">PHASE HISTORY</h2>
-              </div>
-
-              {phaseHistory.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  No phase advancements yet. Keep training to evolve.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {phaseHistory.map((entry, index) => {
-                    const unlockData = PHASE_UNLOCK_DATA[entry.phase];
-                    const entryColor = PHASE_COLORS[entry.phase] || "#00ffff";
-
-                    return (
-                      <motion.div
-                        key={`phase-${entry.phase}-${index}`}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="bg-card/30 border border-primary/20 rounded p-4"
-                        data-testid={`phase-history-${entry.phase}`}
+          ) : (
+            <div className="space-y-2">
+              {phaseHistory.map((entry, index) => {
+                const entryColor = PHASE_COLORS[entry.phase] || "#00ffff";
+                return (
+                  <motion.div
+                    key={`phase-${entry.phase}-${index}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.08 }}
+                    className="rounded-xl p-4 flex items-center justify-between"
+                    style={{ backgroundColor: `${colors.surface}cc`, border: `1px solid ${entryColor}30` }}
+                    data-testid={`phase-history-${entry.phase}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-full border-2 flex items-center justify-center"
+                        style={{ borderColor: entryColor }}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-10 h-10 rounded-full border-2 flex items-center justify-center"
-                              style={{ borderColor: entryColor }}
-                            >
-                              <Shield className="w-5 h-5" style={{ color: entryColor }} />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-display font-bold text-lg" style={{ color: entryColor }}>
-                                  Phase {entry.phase}
-                                </span>
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Cap: {PHASE_STAT_CAPS[entry.phase]}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Calendar className="w-3 h-3" />
-                                {entry.date}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => replayPhaseHistory(entry)}
-                              className="p-2 rounded border border-primary/30 hover:bg-primary/10 transition-colors"
-                              data-testid={`button-replay-phase-${entry.phase}`}
-                            >
-                              <Play className="w-4 h-4 text-primary" />
-                            </button>
-                          </div>
+                        <Shield className="w-4 h-4" style={{ color: entryColor }} />
+                      </div>
+                      <div>
+                        <div className="font-display font-bold" style={{ color: entryColor }}>
+                          Phase {entry.phase}
                         </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
+                        <div className="text-[10px]" style={{ color: colors.textMuted }}>
+                          Cap {PHASE_STAT_CAPS[entry.phase]}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-xs" style={{ color: colors.textMuted }}>
+                        <Calendar className="w-3 h-3" />
+                        {entry.date}
+                      </div>
+                      <button
+                        onClick={() => replayPhaseHistory(entry)}
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ border: `1px solid ${entryColor}30`, backgroundColor: `${entryColor}10` }}
+                        data-testid={`button-replay-phase-${entry.phase}`}
+                      >
+                        <Play className="w-3.5 h-3.5" style={{ color: entryColor }} />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
+          )}
+        </div>
 
-            <div className="mt-8 text-center text-xs text-muted-foreground">
-              <div className="mb-2">NEXT PHASE REQUIREMENTS</div>
-              {currentPhase === 1 && <div>Level 5 + Avg Stat 10 + 7-day streak &rarr; Phase 2</div>}
-              {currentPhase === 2 && <div>Level 15 + Avg Stat 25 + 14-day streak &rarr; Phase 3</div>}
-              {currentPhase === 3 && <div>Level 30 + Avg Stat 50 + 14-day streak &rarr; Phase 4</div>}
-              {currentPhase === 4 && <div>Level 50 + Avg Stat 75 + 14-day streak &rarr; Phase 5</div>}
-              {currentPhase === 5 && <div>Maximum phase achieved</div>}
-            </div>
-          </>
-        )}
+        {/* Next phase */}
+        <div className="text-center text-xs pb-4" style={{ color: colors.textMuted }}>
+          <div className="mb-1.5 text-[9px] uppercase tracking-widest">Next Phase Requirements</div>
+          {currentPhase === 1 && <div>Level 5 · Avg Stat 10 · 7-day streak</div>}
+          {currentPhase === 2 && <div>Level 15 · Avg Stat 25 · 14-day streak</div>}
+          {currentPhase === 3 && <div>Level 30 · Avg Stat 50 · 14-day streak</div>}
+          {currentPhase === 4 && <div>Level 50 · Avg Stat 75 · 14-day streak</div>}
+          {currentPhase === 5 && <div>Maximum phase achieved</div>}
+        </div>
       </div>
     </SystemLayout>
   );

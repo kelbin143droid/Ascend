@@ -5,7 +5,10 @@ import { SystemLayout } from "@/components/game/SystemLayout";
 import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow, type BehavioralAnchor, type ActiveFocusBlock, type RhythmWindowVisual, type SuggestedPlacement } from "@/components/game/Sectograph";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
+import { useRoles } from "@/context/RolesContext";
+import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { apiRequest } from "@/lib/queryClient";
+import type { Quadrant } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +31,20 @@ import {
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
 
-type ViewTab = "sectograph" | "calendar" | "week";
+type ViewTab = "sectograph" | "calendar" | "plan";
+
+const QUADRANT_OPTIONS: { value: Quadrant; label: string; color: string }[] = [
+  { value: "Q1", label: "Q1 – Urgent & Important", color: "#ef4444" },
+  { value: "Q2", label: "Q2 – Important, Not Urgent", color: "#22c55e" },
+  { value: "Q3", label: "Q3 – Urgent, Not Important", color: "#f59e0b" },
+  { value: "Q4", label: "Q4 – Neither", color: "#6b7280" },
+];
+
+interface GoalInput {
+  roleId: string;
+  title: string;
+  quadrant: Quadrant;
+}
 
 const EVENT_COLORS = [
   "#8b5cf6", "#ef4444", "#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#14b8a6", "#f97316"
@@ -134,6 +150,37 @@ export default function SectographPage() {
   const [activeFocus, setActiveFocus] = useState<{ block: ActiveFocusBlock; endTime: number; label: string } | null>(null);
   const [focusRemaining, setFocusRemaining] = useState(0);
   const [focusPaused, setFocusPaused] = useState(false);
+
+  // Weekly planning state
+  const { roles } = useRoles();
+  const { weeklyGoals, createWeeklyGoal, currentWeekStart } = useWeeklyGoals();
+  const [goalInputs, setGoalInputs] = useState<GoalInput[]>([]);
+  const [planSubmitting, setPlanSubmitting] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (roles.length > 0 && goalInputs.length === 0) {
+      setGoalInputs(roles.map(role => ({ roleId: role.id, title: "", quadrant: "Q2" as Quadrant })));
+    }
+  }, [roles, goalInputs.length]);
+
+  const rolesWithGoals = useMemo(() => new Set(weeklyGoals.map(g => g.roleId)), [weeklyGoals]);
+  const allRolesHaveGoals = roles.length > 0 && roles.every(r => rolesWithGoals.has(r.id));
+
+  const updateGoalInput = (roleId: string, field: keyof GoalInput, value: string) => {
+    setGoalInputs(prev => prev.map(g => g.roleId === roleId ? { ...g, [field]: value } : g));
+  };
+
+  const handlePlanSubmit = async () => {
+    const toCreate = goalInputs.filter(g => g.title.trim());
+    if (toCreate.length === 0) { setPlanError("Enter at least one goal to continue."); return; }
+    setPlanSubmitting(true); setPlanError(null);
+    try {
+      for (const g of toCreate) await createWeeklyGoal({ roleId: g.roleId, title: g.title.trim(), quadrant: g.quadrant });
+      setGoalInputs([]);
+    } catch { setPlanError("Failed to save. Please try again."); }
+    finally { setPlanSubmitting(false); }
+  };
 
   useEffect(() => {
     const seen = localStorage.getItem("ascend_sectograph_intro_seen");
@@ -373,26 +420,10 @@ export default function SectographPage() {
   const selectedDateKey = selectedDay ? formatDateKey(selectedDay) : null;
   const selectedEvents = selectedDateKey ? getEventsForDate(selectedDateKey) : [];
 
-  const getWeekDates = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
-    const days: Date[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      days.push(d);
-    }
-    return days;
-  };
-
-  const weekDates = getWeekDates();
-
   const tabs: { id: ViewTab; label: string }[] = [
     { id: "sectograph", label: "Timeline" },
     { id: "calendar", label: "Calendar" },
-    { id: "week", label: "Week" },
+    { id: "plan", label: "Plan" },
   ];
 
   const usedSegments = useMemo(() => {
@@ -1004,78 +1035,140 @@ export default function SectographPage() {
           </div>
         )}
 
-        {activeTab === "week" && (
-          <div className="flex flex-col gap-3">
-            <div
-              className="rounded-lg p-3"
-              style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
-            >
-              <h3 className="text-xs font-display font-bold tracking-wider mb-3" style={{ color: colors.textMuted }}>
-                WEEK OVERVIEW
-              </h3>
-              <div className="space-y-2">
-                {weekDates.map((date) => {
-                  const dateKey = formatDateKey(date);
-                  const dayEvents = getEventsForDate(dateKey);
-                  const isToday = dateKey === todayKey;
+        {activeTab === "plan" && (
+          <div className="flex flex-col gap-4 pb-6">
+            {/* Header */}
+            <div className="text-center py-2">
+              <div className="text-[9px] uppercase tracking-[0.25em] mb-1" style={{ color: colors.textMuted }}>
+                Week of {currentWeekStart}
+              </div>
+              <h2 className="text-lg font-display font-black tracking-wider" style={{ color: colors.text }}>
+                WEEKLY PLANNING
+              </h2>
+            </div>
 
-                  return (
-                    <div
-                      key={dateKey}
-                      className="rounded-lg p-3 transition-all"
-                      style={{
-                        backgroundColor: isToday ? `${colors.primary}10` : "rgba(0,0,0,0.15)",
-                        border: isToday ? `1px solid ${colors.primary}30` : "1px solid transparent",
-                      }}
-                      data-testid={`week-day-${dateKey}`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
+            {/* Existing goals */}
+            {weeklyGoals.length > 0 && (
+              <div
+                className="rounded-xl p-4"
+                style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
+                data-testid="existing-goals-card"
+              >
+                <div className="text-[9px] uppercase tracking-widest text-green-400 mb-3">
+                  This Week's Goals ({weeklyGoals.length})
+                </div>
+                <div className="space-y-2">
+                  {weeklyGoals.map(goal => {
+                    const q = QUADRANT_OPTIONS.find(q => q.value === goal.quadrant);
+                    const role = roles.find(r => r.id === goal.roleId);
+                    return (
+                      <div key={goal.id} className="flex items-center gap-2.5 text-sm">
                         <span
-                          className="text-xs font-display font-bold"
-                          style={{ color: isToday ? colors.primary : colors.text }}
+                          className="w-7 h-7 rounded-lg text-[10px] font-bold flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: `${q?.color || "#6b7280"}25`, color: q?.color || "#6b7280" }}
                         >
-                          {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                          <span className="font-mono ml-2 opacity-60">
-                            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
+                          {goal.quadrant}
                         </span>
-                        {isToday && (
-                          <span
-                            className="text-[9px] px-2 py-0.5 rounded-full font-bold tracking-wider"
-                            style={{ backgroundColor: `${colors.primary}20`, color: colors.primary }}
-                          >
-                            TODAY
-                          </span>
+                        <span style={{ color: colors.text }} className="flex-1 truncate">{goal.title}</span>
+                        {role && (
+                          <span className="text-[10px] flex-shrink-0" style={{ color: colors.textMuted }}>{role.name}</span>
                         )}
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-                      {dayEvents.length > 0 ? (
-                        <div className="space-y-1 mt-1.5">
-                          {dayEvents.slice(0, 3).map((event) => (
-                            <div key={event.id} className="flex items-center gap-2">
-                              <div className="w-1 h-4 rounded-full" style={{ backgroundColor: event.color }} />
-                              <span className="text-[11px] truncate" style={{ color: colors.text }}>{event.title}</span>
-                              <span className="text-[9px] font-mono ml-auto flex-shrink-0" style={{ color: colors.textMuted }}>
-                                {event.startTime}
-                              </span>
-                            </div>
-                          ))}
-                          {dayEvents.length > 3 && (
-                            <span className="text-[9px] pl-3" style={{ color: colors.textMuted }}>
-                              +{dayEvents.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px]" style={{ color: colors.textMuted }}>No events</span>
-                        </div>
-                      )}
+            {/* Add goals form */}
+            {!allRolesHaveGoals && roles.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-[9px] uppercase tracking-widest" style={{ color: colors.textMuted }}>
+                  Set Goals per Role
+                </div>
+                {goalInputs.map((input) => {
+                  const role = roles.find(r => r.id === input.roleId);
+                  if (rolesWithGoals.has(input.roleId)) return null;
+                  return (
+                    <div
+                      key={input.roleId}
+                      className="rounded-xl p-4 space-y-3"
+                      style={{ backgroundColor: "rgba(0,0,0,0.35)", border: `1px solid ${colors.surfaceBorder}` }}
+                    >
+                      <div className="text-sm font-bold" style={{ color: colors.text }}>
+                        {role?.name || "Role"}
+                      </div>
+                      <Input
+                        value={input.title}
+                        onChange={(e) => updateGoalInput(input.roleId, "title", e.target.value)}
+                        placeholder="Main mission this week…"
+                        className="bg-black/50 border-white/10 text-sm h-9"
+                        data-testid={`input-goal-${input.roleId}`}
+                      />
+                      <div className="flex gap-1.5 flex-wrap">
+                        {QUADRANT_OPTIONS.map(q => (
+                          <button
+                            key={q.value}
+                            type="button"
+                            onClick={() => updateGoalInput(input.roleId, "quadrant", q.value)}
+                            className="px-2 py-1 rounded text-[10px] font-bold transition-all"
+                            style={{
+                              backgroundColor: input.quadrant === q.value ? `${q.color}30` : "rgba(255,255,255,0.04)",
+                              color: input.quadrant === q.value ? q.color : colors.textMuted,
+                              border: `1px solid ${input.quadrant === q.value ? `${q.color}50` : "rgba(255,255,255,0.08)"}`,
+                              outline: input.quadrant === q.value ? `2px solid ${q.color}40` : "none",
+                            }}
+                            data-testid={`button-quadrant-${input.roleId}-${q.value}`}
+                          >
+                            {q.value}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
+
+                {planError && (
+                  <p className="text-xs text-red-400">{planError}</p>
+                )}
+
+                <Button
+                  onClick={handlePlanSubmit}
+                  disabled={planSubmitting || goalInputs.every(g => !g.title.trim())}
+                  className="w-full h-11 font-display tracking-wider disabled:opacity-40"
+                  style={{ backgroundColor: colors.primary, color: "#fff" }}
+                  data-testid="button-save-goals"
+                >
+                  {planSubmitting ? "Saving…" : "Save Goals"}
+                </Button>
               </div>
-            </div>
+            )}
+
+            {/* No roles state */}
+            {roles.length === 0 && (
+              <div
+                className="rounded-xl px-4 py-8 text-center"
+                style={{ backgroundColor: `${colors.surface}cc`, border: `1px solid ${colors.surfaceBorder}` }}
+              >
+                <p className="text-sm" style={{ color: colors.textMuted }}>
+                  Set up your roles first to begin weekly planning.
+                </p>
+              </div>
+            )}
+
+            {allRolesHaveGoals && (
+              <div
+                className="rounded-xl px-4 py-5 text-center"
+                style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
+              >
+                <p className="text-sm font-semibold text-green-400">
+                  All goals set for this week.
+                </p>
+                <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                  Come back next week to plan again.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

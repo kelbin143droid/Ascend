@@ -6,10 +6,8 @@ import {
   X,
   UserCircle,
   BarChart3,
-  TrendingUp,
   BookOpen,
   Trophy,
-  Settings,
   Gamepad2,
   Clock,
   Lock,
@@ -29,10 +27,8 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { icon: UserCircle, label: "Profile", path: "/profile" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
-  { icon: TrendingUp, label: "Progress History", path: "/trials" },
   { icon: BookOpen, label: "Library", path: "/library" },
   { icon: Trophy, label: "Achievements", path: "/inventory" },
-  { icon: Settings, label: "Weekly Planning", path: "/weekly-planning" },
   { icon: Clock, label: "Sectograph", path: "/sectograph", section: "system", unlockDay: 1, lockMessage: "Sectograph unlocks once your rhythm begins." },
   { icon: Gamepad2, label: "Future Game", path: "/game3d" },
 ];
