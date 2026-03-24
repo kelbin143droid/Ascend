@@ -10,7 +10,7 @@ import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
 import { Day6RevealModal } from "@/components/game/Day6RevealModal";
-import { Day7TransitionModal } from "@/components/game/Day7TransitionModal";
+import { Day7FollowThrough } from "@/components/game/Day7FollowThrough";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
@@ -221,7 +221,7 @@ export default function HomePage() {
   const [showDay5Intro, setShowDay5Intro] = useState(false);
   const [showDay6Reveal, setShowDay6Reveal] = useState(false);
   const [day6MeterVisible, setDay6MeterVisible] = useState(false);
-  const [showDay7Transition, setShowDay7Transition] = useState(false);
+  const [day7Done, setDay7Done] = useState(() => localStorage.getItem("ascend_day7_followthrough_done") === "true");
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
   const [flowCompletedToday, setFlowCompletedToday] = useState(() => {
@@ -337,17 +337,23 @@ export default function HomePage() {
     setTimeout(() => setDay6MeterVisible(true), 300);
   };
 
-  useEffect(() => {
-    if (!homeData || onboardingDay < 7) return;
-    const seenKey = "ascend_day7_transition_seen";
-    if (localStorage.getItem(seenKey) === "true") return;
-    setShowDay7Transition(true);
-  }, [homeData, onboardingDay]);
-
-  const handleDay7TransitionContinue = () => {
-    localStorage.setItem("ascend_day7_transition_seen", "true");
-    setShowDay7Transition(false);
-  };
+  if (isOnboardingComplete && !day7Done && homeData) {
+    return (
+      <SystemLayout>
+        <Day7FollowThrough
+          onComplete={() => {
+            localStorage.setItem("ascend_day7_followthrough_done", "true");
+            setDay7Done(true);
+          }}
+          xpData={playerData ? {
+            level: playerData.level ?? 1,
+            current: playerData.exp ?? 0,
+            max: playerData.maxExp ?? 100,
+          } : undefined}
+        />
+      </SystemLayout>
+    );
+  }
 
   if (isOnboardingFlow) {
     const step = ONBOARDING_STEPS[onboardingDay] || ONBOARDING_STEPS[1];
@@ -501,10 +507,6 @@ export default function HomePage() {
         <Day6RevealModal
           visible={showDay6Reveal}
           onContinue={handleDay6RevealContinue}
-        />
-        <Day7TransitionModal
-          visible={showDay7Transition}
-          onContinue={handleDay7TransitionContinue}
         />
       </SystemLayout>
     );
@@ -890,10 +892,6 @@ export default function HomePage() {
         )}
       </div>
 
-      <Day7TransitionModal
-        visible={showDay7Transition}
-        onContinue={handleDay7TransitionContinue}
-      />
     </SystemLayout>
   );
 }

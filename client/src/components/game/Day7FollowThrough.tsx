@@ -3,15 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Shield } from "lucide-react";
 
 const ACCENT = "#3b82f6";
-const RESET_DURATION = 120; // 2 minutes
+const RESET_DURATION = 120;
 
-// 4-4-6 breathing cycle
 const BREATHING_PHASES = [
   { label: "Inhale", seconds: 4 },
   { label: "Hold", seconds: 4 },
   { label: "Exhale", seconds: 6 },
 ];
-const CYCLE_SECONDS = BREATHING_PHASES.reduce((s, p) => s + p.seconds, 0); // 14s
+const CYCLE_SECONDS = BREATHING_PHASES.reduce((s, p) => s + p.seconds, 0);
 
 interface PlannedTime {
   slot: string;
@@ -58,9 +57,7 @@ function BreathingCircle({ elapsed }: { elapsed: number }) {
 
   return (
     <div className="flex flex-col items-center gap-6">
-      {/* Breathing circle */}
       <div className="relative flex items-center justify-center" style={{ width: 180, height: 180 }}>
-        {/* Outer ambient ring */}
         <motion.div
           className="absolute rounded-full"
           style={{
@@ -71,7 +68,6 @@ function BreathingCircle({ elapsed }: { elapsed: number }) {
           animate={{ opacity: [0.4, 0.7, 0.4] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         />
-        {/* Breathing circle */}
         <div
           style={{
             width: 120, height: 120,
@@ -83,7 +79,6 @@ function BreathingCircle({ elapsed }: { elapsed: number }) {
             boxShadow: `0 0 ${20 + scale * 20}px ${ACCENT}25`,
           }}
         />
-        {/* Phase label inside */}
         <div className="absolute flex flex-col items-center gap-1">
           <span
             className="text-sm font-bold uppercase tracking-widest"
@@ -94,7 +89,6 @@ function BreathingCircle({ elapsed }: { elapsed: number }) {
         </div>
       </div>
 
-      {/* Timer */}
       <div className="text-center space-y-1">
         <div className="text-white/30 text-xs font-mono">{timeStr}</div>
         <div className="text-white/20 text-[10px] uppercase tracking-widest">2-Minute Reset</div>
@@ -105,12 +99,19 @@ function BreathingCircle({ elapsed }: { elapsed: number }) {
 
 type Phase = "intro" | "breathing" | "complete";
 
-interface Props {
-  onComplete: () => void;
-  onCancel: () => void;
+export interface XpData {
+  level: number;
+  current: number;
+  max: number;
 }
 
-export function Day7FollowThrough({ onComplete, onCancel }: Props) {
+interface Props {
+  onComplete: () => void;
+  onCancel?: () => void;
+  xpData?: XpData;
+}
+
+export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
   const [phase, setPhase] = useState<Phase>("intro");
   const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -140,12 +141,15 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
   }, []);
 
   const handleFinish = () => {
-    localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
     onComplete();
   };
 
   const timeLabel = plannedTime?.label ?? "your chosen time";
   const timeRange = plannedTime?.range ?? "";
+
+  const xpPct = xpData && xpData.max > 0
+    ? Math.min(100, Math.round((xpData.current / xpData.max) * 100))
+    : 0;
 
   return (
     <motion.div
@@ -156,7 +160,6 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
       style={{ background: "linear-gradient(160deg, #060d1a 0%, #0a1525 60%, #060d1a 100%)" }}
       data-testid="day7-follow-through"
     >
-      {/* Ambient breathing video */}
       {phase === "breathing" && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <video
@@ -172,7 +175,6 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
         </div>
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between px-5 pt-safe pt-5 pb-4 relative z-10">
         <div className="flex items-center gap-2">
           <Shield size={13} style={{ color: `${ACCENT}99` }} />
@@ -180,21 +182,21 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
             Day 7 · Follow-Through
           </span>
         </div>
-        <button
-          onClick={onCancel}
-          className="w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
-          data-testid="button-cancel-day7"
-        >
-          <X size={15} className="text-white/40" />
-        </button>
+        {phase === "intro" && onCancel && (
+          <button
+            onClick={onCancel}
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+            data-testid="button-cancel-day7"
+          >
+            <X size={15} className="text-white/40" />
+          </button>
+        )}
       </div>
 
-      {/* Content */}
       <div className="flex-1 flex flex-col px-5 pb-safe pb-8 relative z-10 overflow-hidden">
         <AnimatePresence mode="wait">
 
-          {/* INTRO PHASE */}
           {phase === "intro" && (
             <motion.div
               key="intro"
@@ -205,7 +207,6 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
               className="flex flex-col h-full justify-between"
             >
               <div className="flex flex-col gap-8 mt-4">
-                {/* Your planned action card */}
                 <div>
                   <div
                     className="text-[9px] uppercase tracking-widest mb-2 font-bold"
@@ -228,7 +229,6 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
                   </div>
                 </div>
 
-                {/* Coach message */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -244,7 +244,6 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
                 </motion.div>
               </div>
 
-              {/* Begin button */}
               <motion.button
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -259,7 +258,6 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
             </motion.div>
           )}
 
-          {/* BREATHING PHASE */}
           {phase === "breathing" && (
             <motion.div
               key="breathing"
@@ -291,7 +289,6 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
             </motion.div>
           )}
 
-          {/* COMPLETE PHASE */}
           {phase === "complete" && (
             <motion.div
               key="complete"
@@ -299,14 +296,13 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
-              className="flex flex-col items-center justify-center h-full gap-10 text-center"
+              className="flex flex-col items-center justify-center h-full gap-8 text-center"
             >
-              {/* Identity glow */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.1, type: "spring", stiffness: 160, damping: 14 }}
-                className="w-24 h-24 rounded-full flex items-center justify-center relative"
+                className="w-20 h-20 rounded-full flex items-center justify-center relative"
                 style={{
                   backgroundColor: `${ACCENT}15`,
                   border: `2px solid ${ACCENT}45`,
@@ -319,41 +315,80 @@ export function Day7FollowThrough({ onComplete, onCancel }: Props) {
                   animate={{ opacity: [0.6, 0.2, 0.6], scale: [1, 1.08, 1] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 />
-                <Shield size={36} style={{ color: ACCENT }} />
+                <Shield size={32} style={{ color: ACCENT }} />
               </motion.div>
 
-              {/* Completion message */}
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
-                className="space-y-4 px-4"
+                className="space-y-3 px-4"
               >
-                <p className="text-white text-2xl font-bold leading-tight">
+                <p className="text-white text-xl font-bold leading-tight">
                   You followed through.
                 </p>
                 <p
-                  className="text-lg font-semibold leading-snug"
-                  style={{ color: "rgba(255,255,255,0.75)" }}
+                  className="text-base font-medium leading-snug"
+                  style={{ color: "rgba(255,255,255,0.65)" }}
                 >
-                  This is how trust is built.
-                </p>
-                <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.3)" }}>
                   Every time you meet your intention,<br />you become someone who does.
                 </p>
               </motion.div>
 
-              {/* Finish */}
+              {xpData && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6, duration: 0.5 }}
+                  className="w-full max-w-xs px-1"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className="text-[10px] uppercase tracking-wider font-medium"
+                      style={{ color: `${ACCENT}80` }}
+                    >
+                      Level {xpData.level}
+                    </span>
+                    <span
+                      className="text-[10px] font-mono"
+                      style={{ color: "rgba(255,255,255,0.3)" }}
+                    >
+                      {xpData.current} / {xpData.max} XP
+                    </span>
+                  </div>
+                  <div
+                    className="w-full h-1 rounded-full overflow-hidden"
+                    style={{ backgroundColor: `${ACCENT}20` }}
+                    data-testid="xp-bar-track"
+                  >
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: ACCENT, opacity: 0.8 }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${xpPct}%` }}
+                      transition={{ delay: 0.8, duration: 1.2, ease: "easeOut" }}
+                      data-testid="xp-bar-fill"
+                    />
+                  </div>
+                  <p
+                    className="text-[10px] mt-2 italic text-center"
+                    style={{ color: "rgba(255,255,255,0.25)" }}
+                  >
+                    This is the result of what you've already done.
+                  </p>
+                </motion.div>
+              )}
+
               <motion.button
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6, duration: 0.4 }}
+                transition={{ delay: 0.9, duration: 0.4 }}
                 onClick={handleFinish}
-                className="w-full py-4 rounded-2xl font-bold text-base transition-all active:scale-[0.97]"
+                className="w-full max-w-xs py-4 rounded-2xl font-bold text-sm uppercase tracking-[0.08em] transition-all active:scale-[0.97]"
                 style={{ backgroundColor: ACCENT, color: "#fff" }}
                 data-testid="button-finish-day7"
               >
-                Complete Day 7
+                Enter Phase 1
               </motion.button>
             </motion.div>
           )}
