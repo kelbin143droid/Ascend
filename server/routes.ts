@@ -1809,6 +1809,16 @@ export async function registerRoutes(
           .filter(c => c.completedAt && new Date(c.completedAt).toLocaleDateString("en-CA") === today)
           .map(c => c.habitId)
       );
+
+      // Which specific guided sessions were completed today (session IDs without the guided_ prefix)
+      const completedGuidedSessionsToday = allCompletions
+        .filter(c =>
+          c.completedAt &&
+          new Date(c.completedAt).toLocaleDateString("en-CA") === today &&
+          c.habitId.startsWith("guided_") &&
+          !c.habitId.startsWith("guided_day_sim_")
+        )
+        .map(c => c.habitId.replace("guided_", ""));
       const activeHabits = habits.filter(h => h.active);
       const remaining = activeHabits.filter(h => !completedIds.has(h.id));
 
@@ -1970,6 +1980,7 @@ export async function registerRoutes(
         totalActive: activeHabits.length,
         onboardingDay,
         hasCompletedHabitToday,
+        completedGuidedSessionsToday,
         lastCompletionDate,
         notification,
         suggestedReminderTime,

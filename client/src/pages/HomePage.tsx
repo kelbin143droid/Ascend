@@ -44,6 +44,7 @@ interface HomeData {
   totalActive: number;
   onboardingDay: number;
   hasCompletedHabitToday: boolean;
+  completedGuidedSessionsToday: string[];
   lastCompletionDate: string | null;
   notification: { type: "momentum" | "recovery" | "milestone"; message: string } | null;
   suggestedReminderTime: string | null;
@@ -430,7 +431,7 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-col items-center gap-1">
-            {homeData?.hasCompletedHabitToday ? (
+            {homeData?.completedGuidedSessionsToday?.includes(step.sessionId) ? (
               <div
                 data-testid="session-completed-indicator"
                 className="w-full py-4 rounded-xl flex items-center justify-center gap-2"
