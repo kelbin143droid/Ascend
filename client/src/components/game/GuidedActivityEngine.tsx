@@ -200,6 +200,63 @@ function CircularTimer({
   );
 }
 
+function VideoExerciseTimer({
+  src,
+  seconds,
+  remaining,
+  label,
+  color,
+}: {
+  src: string;
+  seconds: number;
+  remaining: number;
+  label: string;
+  color: string;
+}) {
+  const pct = seconds > 0 ? Math.max(0, remaining / seconds) : 0;
+
+  return (
+    <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+      <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: "300px" }}>
+        <video
+          key={src}
+          src={src}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 45%)",
+          }}
+        />
+        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+          <span className="text-white text-sm font-bold drop-shadow">{label}</span>
+          <span
+            className="text-2xl font-bold font-mono tabular-nums drop-shadow"
+            style={{ color: remaining <= 3 ? "#f87171" : "white" }}
+            data-testid="text-countdown"
+          >
+            {remaining}s
+          </span>
+        </div>
+      </div>
+      <div
+        className="w-full h-1 rounded-full overflow-hidden"
+        style={{ backgroundColor: `${color}20` }}
+      >
+        <div
+          className="h-full rounded-full transition-all duration-1000 ease-linear"
+          style={{ width: `${(1 - pct) * 100}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function GetReadyCountdown({
   color,
   onComplete,
@@ -738,7 +795,15 @@ export function GuidedActivityEngine({
                 </div>
               </div>
 
-              {(isTimerStep && stepPhase === "running") ? (
+              {(isTimerStep && stepPhase === "running" && step.videoSrc) ? (
+                <VideoExerciseTimer
+                  src={step.videoSrc}
+                  seconds={step.durationSeconds!}
+                  remaining={timerRemaining}
+                  label={step.label}
+                  color={activity.color}
+                />
+              ) : (isTimerStep && stepPhase === "running") ? (
                 <CircularTimer
                   seconds={step.durationSeconds!}
                   remaining={timerRemaining}

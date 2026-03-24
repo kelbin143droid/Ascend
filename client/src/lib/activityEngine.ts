@@ -23,6 +23,7 @@ export interface ActivityStep {
   breathTiming?: BreathTiming;
   voiceText?: string;
   infoTooltip?: CheckInfoTooltip;
+  videoSrc?: string;
 }
 
 export interface ActivityDefinition {
@@ -54,35 +55,34 @@ export const TIER_XP_MULTIPLIERS: Record<number, number> = {
 };
 
 export interface TierConfig {
-  pushupSeconds: number;
   cardioSeconds: number;
-  crunchSeconds: number;
+  pushupSeconds: number;
+  plankSeconds: number;
+  restSeconds: number;
 }
 
 export const STRENGTH_TIERS: Record<number, TierConfig> = {
-  1: { pushupSeconds: 20, cardioSeconds: 30, crunchSeconds: 20 },
-  2: { pushupSeconds: 25, cardioSeconds: 35, crunchSeconds: 25 },
-  3: { pushupSeconds: 30, cardioSeconds: 40, crunchSeconds: 30 },
-  4: { pushupSeconds: 35, cardioSeconds: 45, crunchSeconds: 35 },
-  5: { pushupSeconds: 45, cardioSeconds: 60, crunchSeconds: 45 },
+  1: { cardioSeconds: 25, pushupSeconds: 20, plankSeconds: 20, restSeconds: 15 },
+  2: { cardioSeconds: 30, pushupSeconds: 25, plankSeconds: 25, restSeconds: 15 },
+  3: { cardioSeconds: 35, pushupSeconds: 30, plankSeconds: 30, restSeconds: 15 },
+  4: { cardioSeconds: 40, pushupSeconds: 35, plankSeconds: 35, restSeconds: 15 },
+  5: { cardioSeconds: 50, pushupSeconds: 45, plankSeconds: 45, restSeconds: 15 },
 };
 
 export interface AgilityTierConfig {
-  neckRollSeconds: number;
-  shoulderRollSeconds: number;
-  armCircleSeconds: number;
-  torsoTwistSeconds: number;
-  hipCircleSeconds: number;
-  forwardFoldSeconds: number;
+  crossArmSeconds: number;
+  tricepSeconds: number;
+  toeTouchSeconds: number;
+  hipOpenerSeconds: number;
   restSeconds: number;
 }
 
 export const AGILITY_TIERS: Record<number, AgilityTierConfig> = {
-  1: { neckRollSeconds: 15, shoulderRollSeconds: 15, armCircleSeconds: 15, torsoTwistSeconds: 20, hipCircleSeconds: 15, forwardFoldSeconds: 15, restSeconds: 15 },
-  2: { neckRollSeconds: 18, shoulderRollSeconds: 18, armCircleSeconds: 18, torsoTwistSeconds: 25, hipCircleSeconds: 18, forwardFoldSeconds: 20, restSeconds: 15 },
-  3: { neckRollSeconds: 20, shoulderRollSeconds: 20, armCircleSeconds: 20, torsoTwistSeconds: 30, hipCircleSeconds: 20, forwardFoldSeconds: 25, restSeconds: 15 },
-  4: { neckRollSeconds: 25, shoulderRollSeconds: 25, armCircleSeconds: 25, torsoTwistSeconds: 35, hipCircleSeconds: 25, forwardFoldSeconds: 30, restSeconds: 15 },
-  5: { neckRollSeconds: 30, shoulderRollSeconds: 30, armCircleSeconds: 30, torsoTwistSeconds: 40, hipCircleSeconds: 30, forwardFoldSeconds: 35, restSeconds: 15 },
+  1: { crossArmSeconds: 15, tricepSeconds: 15, toeTouchSeconds: 20, hipOpenerSeconds: 20, restSeconds: 10 },
+  2: { crossArmSeconds: 18, tricepSeconds: 18, toeTouchSeconds: 25, hipOpenerSeconds: 25, restSeconds: 10 },
+  3: { crossArmSeconds: 20, tricepSeconds: 20, toeTouchSeconds: 30, hipOpenerSeconds: 30, restSeconds: 10 },
+  4: { crossArmSeconds: 25, tricepSeconds: 25, toeTouchSeconds: 35, hipOpenerSeconds: 35, restSeconds: 10 },
+  5: { crossArmSeconds: 30, tricepSeconds: 30, toeTouchSeconds: 40, hipOpenerSeconds: 40, restSeconds: 10 },
 };
 
 export function getMaxTierForPhase(phase: number): number {
@@ -115,6 +115,25 @@ export function buildPhase1Activities(
   const ag = AGILITY_TIERS[agilityTier] ?? AGILITY_TIERS[1];
 
   const meditationDuration = 120 + (meditationTier - 1) * 30;
+
+  const useJumpingJacks = Math.random() < 0.5;
+  const cardioLabel = useJumpingJacks ? "Jumping Jacks" : "Jog in Place";
+  const cardioVideo = useJumpingJacks ? "/videos/jumping-jacks.mp4" : "/videos/jogging.mp4";
+  const cardioInstruction = useJumpingJacks
+    ? `Jumping jacks for ${st.cardioSeconds} seconds. Arms and legs in sync.`
+    : `Jog in place for ${st.cardioSeconds} seconds. Knees up, stay light.`;
+  const cardioVoice = useJumpingJacks
+    ? `Jumping jacks. ${st.cardioSeconds} seconds.`
+    : `Jog in place. ${st.cardioSeconds} seconds.`;
+
+  const pushUpVideo = strengthTier <= 1 ? "/videos/knee-push-ups.mp4" : "/videos/push-ups.mp4";
+  const pushUpLabel = strengthTier <= 1 ? "Knee Push-ups" : "Push-ups";
+  const pushUpInstruction = strengthTier <= 1
+    ? `Knee push-ups for ${st.pushupSeconds} seconds. Control the movement.`
+    : `Push-ups for ${st.pushupSeconds} seconds. Slow and steady.`;
+
+  const strengthTotal = st.cardioSeconds + st.pushupSeconds + st.plankSeconds + st.restSeconds;
+  const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   return [
     {
@@ -155,10 +174,10 @@ export function buildPhase1Activities(
     },
     {
       id: "phase1_strength",
-      activityName: "Strength Micro Circuit",
+      activityName: "Physical Circuit",
       category: "strength",
       stat: "strength",
-      duration: 120,
+      duration: strengthTotal,
       xpReward: 0,
       color: CATEGORY_COLORS.strength,
       tier: strengthTier,
@@ -168,40 +187,42 @@ export function buildPhase1Activities(
           id: "intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: "Quick body activation. Follow the steps.",
-          voiceText: "Get ready. Quick body activation.",
-        },
-        {
-          id: "pushups",
-          type: "timer",
-          label: "Push-ups",
-          instruction: `Push-ups for ${st.pushupSeconds} seconds. Go at your own pace. Knee push-ups are perfectly fine.`,
-          durationSeconds: st.pushupSeconds,
-          voiceText: `Push-ups. Go at your own pace for ${st.pushupSeconds} seconds.`,
+          instruction: "Three exercises. Follow the animations and timer.",
+          voiceText: "Get ready. Three exercises. Follow the animations.",
         },
         {
           id: "cardio",
           type: "timer",
-          label: "Cardio",
-          instruction: "Jog in place. Keep it light and steady.",
+          label: cardioLabel,
+          instruction: cardioInstruction,
           durationSeconds: st.cardioSeconds,
-          voiceText: `Jog in place for ${st.cardioSeconds} seconds. Keep it light and steady.`,
+          voiceText: cardioVoice,
+          videoSrc: cardioVideo,
         },
         {
-          id: "abs",
+          id: "pushups",
           type: "timer",
-          label: "Crunches",
-          instruction: `Crunches for ${st.crunchSeconds} seconds. Slow and controlled.`,
-          durationSeconds: st.crunchSeconds,
-          voiceText: `Crunches. Slow and controlled for ${st.crunchSeconds} seconds.`,
+          label: pushUpLabel,
+          instruction: pushUpInstruction,
+          durationSeconds: st.pushupSeconds,
+          voiceText: `${pushUpLabel}. ${st.pushupSeconds} seconds.`,
+          videoSrc: pushUpVideo,
+        },
+        {
+          id: "plank",
+          type: "timer",
+          label: "Plank Hold",
+          instruction: `Hold a plank for ${st.plankSeconds} seconds. Hips level, core tight.`,
+          durationSeconds: st.plankSeconds,
+          voiceText: `Plank hold. ${st.plankSeconds} seconds. Core tight.`,
+          videoSrc: "/videos/plank.mp4",
         },
         {
           id: "rest",
-          type: "timer",
+          type: "instruction",
           label: "Rest",
-          instruction: "Catch your breath. Shake out your arms and legs.",
-          durationSeconds: 20,
-          voiceText: "Rest. Catch your breath. Shake out your arms and legs.",
+          instruction: "Circuit done. Shake out your arms. Breathe.",
+          voiceText: "Rest. Shake out your arms. Breathe.",
         },
         {
           id: "strength_done",
@@ -214,10 +235,10 @@ export function buildPhase1Activities(
     },
     {
       id: "phase1_agility",
-      activityName: "Light Movement Circuit",
+      activityName: "Agility Flow",
       category: "agility",
       stat: "agility",
-      duration: ag.neckRollSeconds + ag.shoulderRollSeconds + ag.armCircleSeconds + ag.torsoTwistSeconds + ag.hipCircleSeconds + ag.forwardFoldSeconds + ag.restSeconds,
+      duration: agilityTotal,
       xpReward: 0,
       color: CATEGORY_COLORS.agility,
       tier: agilityTier,
@@ -227,71 +248,69 @@ export function buildPhase1Activities(
           id: "intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: "Light movement circuit. Follow the intervals — each exercise has a timer.",
-          voiceText: "Get ready. Light movement circuit. Follow the intervals.",
+          instruction: "Four stretches. Each side, follow the animation.",
+          voiceText: "Get ready. Four stretches. Follow the animation.",
         },
         {
-          id: "neck_rolls",
+          id: "cross_arm_left",
           type: "timer",
-          label: "Neck Rolls",
-          instruction: `Roll your neck gently — clockwise then counter-clockwise. ${ag.neckRollSeconds} seconds.`,
-          durationSeconds: ag.neckRollSeconds,
-          voiceText: `Neck rolls for ${ag.neckRollSeconds} seconds. Clockwise then counter-clockwise.`,
+          label: "Cross Arm — Left",
+          instruction: `Bring your left arm across your chest. Hold the stretch. ${ag.crossArmSeconds} seconds.`,
+          durationSeconds: ag.crossArmSeconds,
+          voiceText: `Cross arm stretch, left side. ${ag.crossArmSeconds} seconds.`,
+          videoSrc: "/videos/cross-arm-left.mp4",
         },
         {
-          id: "shoulder_rolls",
+          id: "cross_arm_right",
           type: "timer",
-          label: "Shoulder Rolls",
-          instruction: `Roll your shoulders forward and backward. Loosen up. ${ag.shoulderRollSeconds} seconds.`,
-          durationSeconds: ag.shoulderRollSeconds,
-          voiceText: `Shoulder rolls for ${ag.shoulderRollSeconds} seconds. Forward and backward.`,
+          label: "Cross Arm — Right",
+          instruction: `Switch to your right arm across your chest. ${ag.crossArmSeconds} seconds.`,
+          durationSeconds: ag.crossArmSeconds,
+          voiceText: `Cross arm stretch, right side. ${ag.crossArmSeconds} seconds.`,
+          videoSrc: "/videos/cross-arm-right.mp4",
         },
         {
-          id: "arm_circles",
+          id: "tricep_left",
           type: "timer",
-          label: "Arm Circles",
-          instruction: `Extend your arms and make small circles, then big circles. ${ag.armCircleSeconds} seconds.`,
-          durationSeconds: ag.armCircleSeconds,
-          voiceText: `Arm circles for ${ag.armCircleSeconds} seconds. Small circles, then big circles.`,
+          label: "Tricep — Left",
+          instruction: `Raise your left arm, bend at the elbow, reach down your back. ${ag.tricepSeconds} seconds.`,
+          durationSeconds: ag.tricepSeconds,
+          voiceText: `Tricep stretch, left side. ${ag.tricepSeconds} seconds.`,
+          videoSrc: "/videos/tricep-stretch-left.mp4",
         },
         {
-          id: "torso_twist",
+          id: "tricep_right",
           type: "timer",
-          label: "Torso Twist",
-          instruction: `Feet shoulder-width apart. Twist your torso side to side. ${ag.torsoTwistSeconds} seconds.`,
-          durationSeconds: ag.torsoTwistSeconds,
-          voiceText: `Torso twist for ${ag.torsoTwistSeconds} seconds. Twist side to side.`,
+          label: "Tricep — Right",
+          instruction: `Switch to your right arm. Elbow up, reach down your back. ${ag.tricepSeconds} seconds.`,
+          durationSeconds: ag.tricepSeconds,
+          voiceText: `Tricep stretch, right side. ${ag.tricepSeconds} seconds.`,
+          videoSrc: "/videos/tricep-stretch-right.mp4",
         },
         {
-          id: "hip_circles",
+          id: "toe_touch",
           type: "timer",
-          label: "Hip Circles",
-          instruction: `Hands on hips. Rotate your hips in slow circles. ${ag.hipCircleSeconds} seconds.`,
-          durationSeconds: ag.hipCircleSeconds,
-          voiceText: `Hip circles for ${ag.hipCircleSeconds} seconds. Slow rotations.`,
+          label: "Toe Touch Hold",
+          instruction: `Reach toward your toes and hold gently. No bouncing. ${ag.toeTouchSeconds} seconds.`,
+          durationSeconds: ag.toeTouchSeconds,
+          voiceText: `Toe touch hold. ${ag.toeTouchSeconds} seconds. No bouncing.`,
+          videoSrc: "/videos/toe-hold.mp4",
         },
         {
-          id: "forward_fold",
+          id: "hip_opener",
           type: "timer",
-          label: "Forward Fold",
-          instruction: `Bend forward and reach toward your toes. Hold gently — no bouncing. ${ag.forwardFoldSeconds} seconds.`,
-          durationSeconds: ag.forwardFoldSeconds,
-          voiceText: `Forward fold for ${ag.forwardFoldSeconds} seconds. Reach toward your toes.`,
-        },
-        {
-          id: "rest",
-          type: "timer",
-          label: "Rest",
-          instruction: "Shake out your limbs. Take a few deep breaths.",
-          durationSeconds: ag.restSeconds,
-          voiceText: "Rest. Shake out your limbs. Take a few deep breaths.",
+          label: "Hip Opener",
+          instruction: `Open your hips with a wide-stance lunge or butterfly stretch. ${ag.hipOpenerSeconds} seconds.`,
+          durationSeconds: ag.hipOpenerSeconds,
+          voiceText: `Hip opener stretch. ${ag.hipOpenerSeconds} seconds.`,
+          videoSrc: "/videos/hip-opener.mp4",
         },
         {
           id: "agility_done",
           type: "completion",
-          label: "Circuit Complete",
+          label: "Flow Complete",
           instruction: "Activity complete.\nSmall actions build momentum.",
-          voiceText: "Light movement circuit complete. Well done.",
+          voiceText: "Agility flow complete. Well done.",
         },
       ],
     },
