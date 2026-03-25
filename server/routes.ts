@@ -1506,7 +1506,7 @@ export async function registerRoutes(
       const distinctDays = new Set(
         allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const onboardingDay = Math.min(Math.max(distinctDays.size, 1), 7);
+      const onboardingDay = Math.min(distinctDays.size + 1, 7);
       const isOnboardingComplete = onboardingDay >= 7 || player.onboardingCompleted === 1;
       const streak = player.streak ?? 0;
 
@@ -1839,7 +1839,7 @@ export async function registerRoutes(
           .filter(c => c.completedAt)
           .map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const onboardingDay = Math.min(Math.max(distinctCompletionDays.size, 1), 7);
+      const onboardingDay = Math.min(distinctCompletionDays.size + 1, 7);
       const hasCompletedHabitToday = completedIds.size > 0;
       const sortedByDate = [...allCompletions]
         .filter(c => c.completedAt)
@@ -2538,7 +2538,7 @@ export async function registerRoutes(
       const distinctDays = new Set(
         allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const newOnboardingDay = Math.min(Math.max(distinctDays.size, 1), 7);
+      const newOnboardingDay = Math.min(distinctDays.size + 1, 7);
 
       const newStreak = Math.min(player.streak + dayCount, 999);
       await storage.updatePlayer(req.params.id, { streak: newStreak });
@@ -2566,7 +2566,7 @@ export async function registerRoutes(
       const distinctDays = new Set(
         allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const onboardingDay = Math.min(Math.max(distinctDays.size, 1), 7);
+      const onboardingDay = Math.min(distinctDays.size + 1, 7);
 
       const sortedDays = [...distinctDays].sort().reverse();
       const lastActiveDate = sortedDays[0] ?? null;
@@ -2627,7 +2627,7 @@ export async function registerRoutes(
         }
 
         const remainingDays = distinctDays.length - 1;
-        const newOnboardingDay = Math.max(1, Math.min(remainingDays, 7));
+        const newOnboardingDay = Math.max(1, Math.min(remainingDays + 1, 7));
         const newStreak = Math.max(0, player.streak - 1);
 
         const updates: Record<string, any> = { streak: newStreak };

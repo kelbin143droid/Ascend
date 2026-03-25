@@ -104,6 +104,7 @@ export function DevPanel() {
     try {
       const res = await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
       if (res.ok) {
+        localStorage.removeItem("ascend_day7_followthrough_done");
         setLastResult("Progress reset to Day 1");
         queryClient.invalidateQueries();
         fetchStatus();
@@ -112,6 +113,18 @@ export function DevPanel() {
       setLastResult("Error resetting");
     }
     setLoading(false);
+  };
+
+  const skipDay7Screen = () => {
+    localStorage.setItem("ascend_day7_followthrough_done", "true");
+    setLastResult("Day 7 screen skipped → Phase 1");
+    queryClient.invalidateQueries();
+  };
+
+  const restoreDay7Screen = () => {
+    localStorage.removeItem("ascend_day7_followthrough_done");
+    setLastResult("Day 7 screen restored");
+    queryClient.invalidateQueries();
   };
 
   if (!player?.id) return null;
@@ -283,6 +296,33 @@ export function DevPanel() {
                 data-testid="button-simulate-guided-only"
               >
                 +{daysInput}d guided only
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={skipDay7Screen}
+                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: "rgba(234,179,8,0.08)",
+                  border: "1px solid rgba(234,179,8,0.15)",
+                  color: "rgba(234,179,8,0.8)",
+                }}
+                data-testid="button-skip-day7"
+              >
+                Skip Day 7
+              </button>
+              <button
+                onClick={restoreDay7Screen}
+                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: "rgba(234,179,8,0.04)",
+                  border: "1px solid rgba(234,179,8,0.1)",
+                  color: "rgba(234,179,8,0.5)",
+                }}
+                data-testid="button-restore-day7"
+              >
+                Show Day 7
               </button>
             </div>
 
