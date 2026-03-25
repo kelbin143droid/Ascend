@@ -267,9 +267,10 @@ export default function HomePage() {
   });
 
   const onboardingDay = homeData?.onboardingDay ?? 1;
+  const isOnboardingComplete = homeData?.isOnboardingComplete ?? false;
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
 
-  const isTrainingMode = (onboardingDay >= 7 && homeData?.isOnboardingComplete) || (homeData?.isOnboardingComplete);
+  const isTrainingMode = isOnboardingComplete;
   const isOnboardingFlow = onboardingDay <= 7 && !isTrainingMode;
 
   useEffect(() => {
