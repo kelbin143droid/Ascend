@@ -225,11 +225,11 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
       )}
 
       {/* ── HEADER ─────────────────────────────────────────────────── */}
-      <div className="relative z-10 px-4 pt-6 pb-3 flex items-center justify-between flex-shrink-0">
+      <div className="relative z-10 px-4 pt-6 pb-2 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Shield size={13} style={{ color: `${ACCENT}99` }} />
-          <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: `${ACCENT}99` }}>
-            Day 7 · Follow-Through
+          <Shield size={12} style={{ color: `${ACCENT}80` }} />
+          <span className="text-[10px] uppercase tracking-[0.18em]" style={{ color: `${ACCENT}80` }}>
+            Day 7 · Follow Through
           </span>
         </div>
         {mode === "execution" && onCancel && (
@@ -245,7 +245,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
       </div>
 
       {/* ── SCROLLABLE BODY ────────────────────────────────────────── */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-36 space-y-5">
+      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-40 space-y-8">
         <AnimatePresence mode="wait">
 
           {/* ═══ EXECUTION MODE ═══════════════════════════════════════ */}
@@ -261,24 +261,28 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               {/* Context card */}
               <div
                 className="rounded-2xl p-5 border"
-                style={{ backgroundColor: "#0B1C2C", borderColor: `${ACCENT}28` }}
+                style={{
+                  background: "linear-gradient(135deg, #0B1C2C 0%, #0A1622 100%)",
+                  borderColor: `${ACCENT}28`,
+                  boxShadow: `0 0 25px rgba(0,255,255,0.05)`,
+                }}
                 data-testid="execution-context-card"
               >
                 <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.38)" }}>
                   You planned this yesterday
                 </p>
-                <h2 className="text-2xl font-bold tracking-tight leading-snug text-white">
+                <h2 className="text-xl font-semibold tracking-wide leading-snug text-white uppercase">
                   2-Minute Reset
                 </h2>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-3 mt-3">
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                    className="px-3 py-1 rounded-full text-xs font-semibold"
                     style={{ backgroundColor: `${ACCENT}18`, color: ACCENT }}
                   >
                     {timeLabel}
                   </span>
                   {timeRange && (
-                    <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    <span className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
                       {timeRange}
                     </span>
                   )}
@@ -472,12 +476,11 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* ── FIXED BOTTOM CTA ─────────────────────────────────────────── */}
+      {/* ── FIXED BOTTOM CTA — sits above the ~60px bottom nav ─────── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-20 p-4 flex-shrink-0"
+        className="fixed bottom-[60px] left-0 right-0 z-40 px-4 pb-3 pt-2"
         style={{
-          background: `linear-gradient(to top, ${ACCENT_BG} 60%, transparent)`,
-          paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+          background: `linear-gradient(to top, ${ACCENT_BG} 65%, transparent)`,
         }}
       >
         <AnimatePresence mode="wait">

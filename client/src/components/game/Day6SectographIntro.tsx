@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Clock, Check } from "lucide-react";
 
@@ -31,7 +31,7 @@ const TIME_BLOCKS = [
   },
 ];
 
-type Phase = "select" | "placed" | "complete";
+type Phase = "select" | "placed" | "complete" | "marked";
 
 interface Props {
   onComplete: () => void;
@@ -61,8 +61,15 @@ export function Day6SectographIntro({ onComplete, onCancel }: Props) {
 
   const handleFinish = () => {
     localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
-    onComplete();
+    setPhase("marked");
   };
+
+  // Auto-exit the "marked" state after a brief pause
+  useEffect(() => {
+    if (phase !== "marked") return;
+    const t = setTimeout(() => onComplete(), 1600);
+    return () => clearTimeout(t);
+  }, [phase, onComplete]);
 
   return (
     <motion.div
@@ -289,6 +296,57 @@ export function Day6SectographIntro({ onComplete, onCancel }: Props) {
               >
                 Finish
               </motion.button>
+            </motion.div>
+          )}
+
+          {/* MARKED PHASE — brief "day marked complete" confirmation */}
+          {phase === "marked" && (
+            <motion.div
+              key="marked"
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35 }}
+              className="flex flex-col items-center justify-center gap-6 h-full text-center"
+              data-testid="day6-marked-complete"
+            >
+              {/* Expanding ring + check */}
+              <div className="relative flex items-center justify-center">
+                <motion.div
+                  className="absolute rounded-full"
+                  style={{ width: 110, height: 110, border: `1px solid ${ACCENT}30` }}
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1.35, opacity: 0 }}
+                  transition={{ duration: 1.2, ease: "easeOut" }}
+                />
+                <motion.div
+                  className="w-20 h-20 rounded-full flex items-center justify-center"
+                  style={{
+                    backgroundColor: `${ACCENT}20`,
+                    border: `2px solid ${ACCENT}60`,
+                    boxShadow: `0 0 36px ${ACCENT}40`,
+                  }}
+                  initial={{ scale: 0.7 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 220, damping: 16 }}
+                >
+                  <Check size={34} style={{ color: ACCENT }} strokeWidth={2.5} />
+                </motion.div>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.45 }}
+                className="space-y-1"
+              >
+                <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: `${ACCENT}80` }}>
+                  Day 6 complete
+                </p>
+                <p className="text-xl font-bold text-white">
+                  Marked.
+                </p>
+              </motion.div>
             </motion.div>
           )}
 

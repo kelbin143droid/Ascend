@@ -1,0 +1,143 @@
+Refactor and clean up the Day 7 “Follow Through” mobile screen (React + Tailwind). The current UI has layout inconsistencies, weak hierarchy, and the bottom navigation bar color is being overridden.
+
+OBJECTIVES
+
+1. Fix layout structure and spacing
+2. Restore correct bottom navigation styling
+3. Improve visual hierarchy for Day 7 (execution state)
+4. Ensure the "Start Session" button is always visible
+5. Remove conflicting styles (opacity, inherited backgrounds, etc.)
+
+---
+
+LAYOUT STRUCTURE (MANDATORY)
+
+Use this exact structure:
+
+- Root container: flex column, full screen
+- Scrollable content in the middle
+- Fixed CTA at bottom
+- Bottom nav must be isolated and not affected by parent styles
+
+---
+
+IMPLEMENT THIS CLEAN LAYOUT
+
+export default function Day7Screen() {
+  return (
+    <div className="min-h-screen flex flex-col bg-[#061018] text-white">
+
+      {/* HEADER */}
+      <div className="px-4 pt-6 pb-2">
+        <h1 className="text-sm tracking-widest text-cyan-400">
+          DAY 7 • FOLLOW THROUGH
+        </h1>
+      </div>
+
+      {/* SCROLLABLE CONTENT */}
+      <div className="flex-1 overflow-y-auto px-4 pb-40 space-y-8">
+
+        {/* ACTION CARD */}
+        <div className="rounded-2xl p-5 bg-gradient-to-br from-[#0B1C2C] to-[#0A1622] border border-cyan-500/20 shadow-[0_0_25px_rgba(0,255,255,0.05)]">
+          
+          <p className="text-xs text-gray-400">
+            You planned this yesterday
+          </p>
+
+          <h2 className="text-xl font-semibold mt-2 tracking-wide">
+            2-MINUTE RESET
+          </h2>
+
+          <div className="flex items-center gap-3 mt-3">
+            <span className="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs">
+              MORNING
+            </span>
+            <span className="text-sm text-gray-400">
+              6 AM – 11 AM
+            </span>
+          </div>
+        </div>
+
+        {/* CONTEXT TEXT */}
+        <div>
+          <p className="text-lg font-medium text-white">
+            You placed this yesterday.
+          </p>
+          <p className="text-gray-400 mt-1">
+            Now you meet yourself there.
+          </p>
+        </div>
+
+        {/* INSTRUCTION CARD */}
+        <div className="rounded-xl bg-[#0A1A26] p-4 border border-white/5">
+          <p className="text-sm text-gray-300 leading-relaxed">
+            A 2-minute guided breathing reset. Follow the circle,
+            clear your mind, and commit to the moment.
+          </p>
+        </div>
+
+      </div>
+
+      {/* FIXED CTA */}
+      <div className="fixed bottom-[70px] left-0 right-0 px-4 z-40">
+        <button className="w-full py-4 rounded-xl bg-cyan-500 text-black font-semibold text-lg active:scale-95 transition shadow-[0_0_20px_rgba(0,255,255,0.3)]">
+          Start Session
+        </button>
+      </div>
+
+      {/* BOTTOM NAV (ISOLATED + FIXED COLOR) */}
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="bg-[#0A1F2E] border-t border-cyan-500/10 backdrop-blur-md">
+          {/* NAV CONTENT HERE */}
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
+---
+
+CRITICAL FIXES TO APPLY
+
+1. Remove any parent:
+   
+   - opacity
+   - bg-opacity
+   - transparent backgrounds affecting children
+
+2. Do NOT use:
+   
+   - justify-between on full-height containers
+   - absolute positioning for main layout
+
+3. Ensure:
+   
+   - pb-40 on scroll container (prevents overlap)
+   - CTA sits above nav using bottom-[70px]
+   - z-index layering:
+     - CTA: z-40
+     - Nav: z-50
+
+---
+
+VISUAL IMPROVEMENTS
+
+- Reduce title size (was too dominant)
+- Add spacing between sections (space-y-8)
+- Use subtle glow (shadow + gradient)
+- Separate instruction card clearly
+
+---
+
+EXPECTED RESULT
+
+- Clean, centered layout
+- No overlapping elements
+- Bottom nav color restored
+- CTA always visible
+- Day 7 clearly feels like an “action” screen
+
+---
+
+Replace any conflicting existing layout code entirely if necessary.
