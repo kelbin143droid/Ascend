@@ -273,6 +273,13 @@ export default function HomePage() {
   const isTrainingMode = isOnboardingComplete;
   const isOnboardingFlow = onboardingDay <= 7 && !isTrainingMode;
 
+  // Keep day7Done state in sync when DevPanel modifies localStorage
+  useEffect(() => {
+    const handler = (e: Event) => setDay7Done((e as CustomEvent<{ done: boolean }>).detail.done);
+    window.addEventListener("ascend:day7done", handler);
+    return () => window.removeEventListener("ascend:day7done", handler);
+  }, []);
+
   useEffect(() => {
     if (!homeData || onboardingDay !== 3) return;
     const today = new Date().toISOString().split("T")[0];

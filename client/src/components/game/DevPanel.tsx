@@ -50,6 +50,10 @@ export function DevPanel() {
     if (!open) fetchStatus();
   };
 
+  const dispatchDay7Event = (done: boolean) => {
+    window.dispatchEvent(new CustomEvent("ascend:day7done", { detail: { done } }));
+  };
+
   const simulateDays = async (days: number, completeHabits: boolean) => {
     if (!player?.id || loading) return;
     setLoading(true);
@@ -62,9 +66,16 @@ export function DevPanel() {
       });
       if (res.ok) {
         const data: SimulateResult = await res.json();
+        // If advancing to Day 7+, clear day7Done so the follow-through screen shows
+        if (data.newOnboardingDay >= 7) {
+          localStorage.removeItem("ascend_day7_followthrough_done");
+          dispatchDay7Event(false);
+        }
         setLastResult(`+${data.daysSimulated}d → Day ${data.newOnboardingDay}, ${data.completionsCreated} completions, streak ${data.newStreak}`);
         queryClient.invalidateQueries();
         fetchStatus();
+      } else {
+        setLastResult("Error simulating");
       }
     } catch {
       setLastResult("Error simulating");
@@ -83,9 +94,16 @@ export function DevPanel() {
       });
       if (res.ok) {
         const data = await res.json();
+        // If going back below Day 7, restore the Day 7 screen so it shows again
+        if (data.newOnboardingDay < 7) {
+          localStorage.removeItem("ascend_day7_followthrough_done");
+          dispatchDay7Event(false);
+        }
         setLastResult(`← Day ${data.newOnboardingDay}, removed ${data.removedCompletions} completions`);
         queryClient.invalidateQueries();
         fetchStatus();
+      } else {
+        setLastResult("Error going back");
       }
     } catch {
       setLastResult("Error going back");
@@ -103,26 +121,32 @@ export function DevPanel() {
     setLoading(true);
     try {
       const res = await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
+      localStorage.removeItem("ascend_day7_followthrough_done");
+      dispatchDay7Event(false);
       if (res.ok) {
-        localStorage.removeItem("ascend_day7_followthrough_done");
         setLastResult("Progress reset to Day 1");
-        queryClient.invalidateQueries();
-        fetchStatus();
+      } else {
+        setLastResult("Reset partial — refresh if needed");
       }
+      queryClient.invalidateQueries();
+      fetchStatus();
     } catch {
       setLastResult("Error resetting");
+      queryClient.invalidateQueries();
     }
     setLoading(false);
   };
 
   const skipDay7Screen = () => {
     localStorage.setItem("ascend_day7_followthrough_done", "true");
+    dispatchDay7Event(true);
     setLastResult("Day 7 screen skipped → Phase 1");
     queryClient.invalidateQueries();
   };
 
   const restoreDay7Screen = () => {
     localStorage.removeItem("ascend_day7_followthrough_done");
+    dispatchDay7Event(false);
     setLastResult("Day 7 screen restored");
     queryClient.invalidateQueries();
   };

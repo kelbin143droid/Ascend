@@ -511,20 +511,34 @@ export class DatabaseStorage implements IStorage {
     await db.delete(habits).where(eq(habits.userId, id));
     await db.delete(dailyStatSnapshots).where(eq(dailyStatSnapshots.playerId, id));
 
-    await db.update(players).set({
+    await storage.updatePlayer(id, {
       level: 1,
-      xp: 0,
+      exp: 0,
+      maxExp: 100,
+      totalExp: 0,
       phase: 1,
       streak: 0,
+      consecutiveMissedDays: 0,
       onboardingCompleted: 0,
+      statXP: { strength: 0, agility: 0, sense: 0, vitality: 0 },
       stats: { strength: 1, agility: 1, sense: 1, vitality: 1 },
+      trainingScaling: {
+        strength: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+        agility: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+        vitality: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+        meditation: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+      },
       stability: {
         score: 50,
-        trend: "stable" as const,
-        lastUpdate: new Date().toISOString(),
+        habitCompletionPct: 0,
+        sleepConsistency: 50,
+        energyCompliance: 50,
+        emotionalStability: 50,
+        taskTimingAdherence: 50,
+        consecutiveLowDays: 0,
         softRegressionActive: false,
       },
-    } as any).where(eq(players.id, id));
+    } as any);
   }
 }
 
