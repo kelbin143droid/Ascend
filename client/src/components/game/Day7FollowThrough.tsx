@@ -396,7 +396,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.4 }}
-              className="space-y-6 pt-2"
+              className="space-y-8 pt-2"
             >
               {/* Action card */}
               <div
@@ -405,7 +405,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 data-testid="execution-context-card"
               >
                 <p className="text-xs" style={{ color: "rgba(156,163,175,1)" }}>
-                  Your decision yesterday
+                  Committed yesterday
                 </p>
                 <h2 className="text-lg font-semibold mt-2 tracking-wide text-white">
                   2-MINUTE RESET
@@ -422,30 +422,27 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                   </span>
                 </div>
                 <p className="text-xs mt-2" style={{ color: `${ACCENT}80` }}>
-                  Window active
+                  Time window active
                 </p>
               </div>
 
               {/* Context */}
-              <div>
-                <p className="text-lg font-medium text-white">
-                  You made a decision yesterday.
-                </p>
-                <p className="mt-3" style={{ color: "rgba(156,163,175,1)" }}>
+              <div className="pt-2">
+                <p className="text-xl font-medium text-white">
                   Now you follow through.
                 </p>
               </div>
 
               {/* Instructions */}
               <div
-                className="rounded-xl p-4 border"
+                className="rounded-xl p-4 border mt-2"
                 style={{ backgroundColor: "#0A1A26", borderColor: "rgba(255,255,255,0.05)" }}
               >
                 <p className="text-sm leading-relaxed" style={{ color: "rgba(209,213,219,1)" }}>
-                  A simple reset.
+                  Reset your state.
                 </p>
                 <p className="text-sm mt-1" style={{ color: "rgba(156,163,175,0.7)" }}>
-                  Breathe. Focus. Follow through.
+                  Breathe. Focus. Execute.
                 </p>
               </div>
             </motion.div>
