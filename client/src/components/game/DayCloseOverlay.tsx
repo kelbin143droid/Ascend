@@ -42,13 +42,13 @@ const DAY_MESSAGES: Record<number, { phase1: string; phase2: string; footer: str
     phase1: "Momentum Activated",
     phase2: "You showed up again.\nThis is how change compounds.",
     footer: "One more day to complete the cycle.",
-    button: "Continue to Day 7",
+    button: "Return Home",
   },
   7: {
-    phase1: "Power Growth Day Complete",
-    phase2: "You kept the promise\nto yourself today.",
-    footer: "Your journey continues from here.",
-    button: "Continue",
+    phase1: "Step complete.",
+    phase2: "You showed up.\nSee you tomorrow.",
+    footer: "Your next step unlocks tomorrow.",
+    button: "Return Home",
   },
 };
 
