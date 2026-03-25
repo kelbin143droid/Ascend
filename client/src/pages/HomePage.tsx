@@ -84,6 +84,7 @@ interface HomeData {
       recoveryCount: number;
     };
   } | null;
+  onboardingDayCompleted?: boolean;
 }
 
 const RECOMMENDED_HABITS = [
@@ -280,6 +281,14 @@ export default function HomePage() {
     return () => window.removeEventListener("ascend:day7done", handler);
   }, []);
 
+  // If user is in onboarding phase, clear any stale day7Done flag from previous test sessions
+  useEffect(() => {
+    if (!isOnboardingComplete && day7Done) {
+      localStorage.removeItem("ascend_day7_followthrough_done");
+      setDay7Done(false);
+    }
+  }, [isOnboardingComplete]);
+
   useEffect(() => {
     if (!homeData || onboardingDay !== 3) return;
     const today = new Date().toISOString().split("T")[0];
@@ -444,8 +453,51 @@ export default function HomePage() {
             {reflection.motivation}
           </p>
 
-          <div className="flex flex-col items-center gap-1">
-            {homeData?.completedGuidedSessionsToday?.includes(step.sessionId) ? (
+          <div className="flex flex-col items-center gap-3">
+            {homeData?.onboardingDayCompleted ? (
+              // Day is complete — show "See you tomorrow" state, do not advance yet
+              <div
+                data-testid="day-complete-card"
+                className="w-full rounded-xl px-5 py-5 flex flex-col items-center gap-3 text-center"
+                style={{
+                  backgroundColor: `${colors.primary}0a`,
+                  border: `1px solid ${colors.primary}20`,
+                }}
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${colors.primary}18` }}
+                >
+                  <CheckCircle2 size={20} style={{ color: colors.primary }} />
+                </div>
+                <div>
+                  <p
+                    className="text-sm font-display font-semibold mb-1"
+                    style={{ color: colors.text }}
+                  >
+                    Step complete.
+                  </p>
+                  <p
+                    className="text-xs leading-relaxed"
+                    style={{ color: `${colors.text}80` }}
+                  >
+                    Your next step unlocks tomorrow. Rest, reflect, return.
+                  </p>
+                </div>
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                  style={{
+                    backgroundColor: `${colors.primary}10`,
+                    border: `1px solid ${colors.primary}18`,
+                  }}
+                >
+                  <Clock size={11} style={{ color: `${colors.primary}99` }} />
+                  <span className="text-[10px] font-medium tracking-wide" style={{ color: `${colors.primary}99` }}>
+                    Day {onboardingDay} of 6 — See you tomorrow
+                  </span>
+                </div>
+              </div>
+            ) : homeData?.completedGuidedSessionsToday?.includes(step.sessionId) ? (
               <div
                 data-testid="session-completed-indicator"
                 className="w-full py-4 rounded-xl flex items-center justify-center gap-2"

@@ -1506,7 +1506,14 @@ export async function registerRoutes(
       const distinctDays = new Set(
         allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const onboardingDay = Math.min(distinctDays.size + 1, 7);
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      const completedToday = distinctDays.has(todayStr);
+      const daysCompleted = distinctDays.size;
+      // Stay on the current day if the user has already completed today's session.
+      // Only advance on the next calendar day.
+      const onboardingDay = (completedToday && daysCompleted <= 6)
+        ? Math.max(daysCompleted, 1)
+        : Math.min(daysCompleted + 1, 7);
       const isOnboardingComplete = onboardingDay >= 7 || player.onboardingCompleted === 1;
       const streak = player.streak ?? 0;
 
@@ -1839,7 +1846,13 @@ export async function registerRoutes(
           .filter(c => c.completedAt)
           .map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const onboardingDay = Math.min(distinctCompletionDays.size + 1, 7);
+      const todayDateStr = new Date().toLocaleDateString("en-CA");
+      const completedSessionToday = distinctCompletionDays.has(todayDateStr);
+      const totalDistinctDays = distinctCompletionDays.size;
+      // Stay on current day after completion; advance only on the next calendar day
+      const onboardingDay = (completedSessionToday && totalDistinctDays <= 6)
+        ? Math.max(totalDistinctDays, 1)
+        : Math.min(totalDistinctDays + 1, 7);
       const hasCompletedHabitToday = completedIds.size > 0;
       const sortedByDate = [...allCompletions]
         .filter(c => c.completedAt)
@@ -1979,6 +1992,7 @@ export async function registerRoutes(
         completedToday: completedIds.size,
         totalActive: activeHabits.length,
         onboardingDay,
+        onboardingDayCompleted: completedSessionToday,
         hasCompletedHabitToday,
         completedGuidedSessionsToday,
         lastCompletionDate,
@@ -2566,7 +2580,12 @@ export async function registerRoutes(
       const distinctDays = new Set(
         allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const onboardingDay = Math.min(distinctDays.size + 1, 7);
+      const devTodayStr = new Date().toLocaleDateString("en-CA");
+      const devCompletedToday = distinctDays.has(devTodayStr);
+      const devDaysCompleted = distinctDays.size;
+      const onboardingDay = (devCompletedToday && devDaysCompleted <= 6)
+        ? Math.max(devDaysCompleted, 1)
+        : Math.min(devDaysCompleted + 1, 7);
 
       const sortedDays = [...distinctDays].sort().reverse();
       const lastActiveDate = sortedDays[0] ?? null;
