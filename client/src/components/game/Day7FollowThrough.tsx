@@ -5,19 +5,17 @@ import inhaleUrl from "@assets/Inhale_1774271882288.mp3";
 import holdUrl from "@assets/Hold_1774271892968.mp3";
 import exhaleUrl from "@assets/Exhale_1774271901274.mp3";
 
-const ACCENT     = "#22d3ee";   // cyan-400
+const ACCENT     = "#22d3ee";
 const ACCENT_BG  = "#061018";
-const SESSION_SECONDS = 120;    // 2 min
+const SESSION_SECONDS = 120;
 
-/* ─── Breathing phases (ms, matching Day 1) ─────────────────────────── */
 const BREATHING_PHASES = [
-  { label: "Inhale",  duration: 4000 },
-  { label: "Hold",    duration: 4000 },
-  { label: "Exhale",  duration: 6000 },
+  { label: "Inhale", duration: 4000 },
+  { label: "Hold",   duration: 4000 },
+  { label: "Exhale", duration: 6000 },
 ];
 const CYCLE_MS = BREATHING_PHASES.reduce((s, p) => s + p.duration, 0);
 
-/* ─── Planned action (from Day 6 localStorage) ───────────────────────── */
 interface PlannedTime { slot: string; label: string; range: string; date: string; }
 function loadPlannedTime(): PlannedTime | null {
   try {
@@ -26,7 +24,7 @@ function loadPlannedTime(): PlannedTime | null {
   } catch { return null; }
 }
 
-/* ─── Ambient pad audio (identical to Day 1) ─────────────────────────── */
+/* ─── Ambient pad (identical to Day 1) ──────────────────────────────── */
 function createPadOscillator(
   ctx: AudioContext, freq: number, detuneCents: number,
   gainValue: number, destination: AudioNode,
@@ -46,22 +44,18 @@ function useBreathingAudio(active: boolean) {
   const audioCtxRef    = useRef<AudioContext | null>(null);
   const oscillatorsRef = useRef<OscillatorNode[]>([]);
   const lfoRef         = useRef<OscillatorNode | null>(null);
-
   useEffect(() => {
     if (!active) return;
     try {
       const ctx = new AudioContext();
       audioCtxRef.current = ctx;
-
       const masterGain = ctx.createGain();
       masterGain.gain.setValueAtTime(0, ctx.currentTime);
       masterGain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 3);
-
       const lpFilter = ctx.createBiquadFilter();
       lpFilter.type = "lowpass";
       lpFilter.frequency.setValueAtTime(600, ctx.currentTime);
       lpFilter.Q.setValueAtTime(0.7, ctx.currentTime);
-
       const lfoGain = ctx.createGain();
       lfoGain.gain.setValueAtTime(0.03, ctx.currentTime);
       const lfo = ctx.createOscillator();
@@ -70,9 +64,7 @@ function useBreathingAudio(active: boolean) {
       lfo.connect(lfoGain).connect(masterGain.gain);
       lfo.start();
       lfoRef.current = lfo;
-
       lpFilter.connect(masterGain).connect(ctx.destination);
-
       const oscs: OscillatorNode[] = [];
       oscs.push(createPadOscillator(ctx, 130.81, -4, 0.35, lpFilter));
       oscs.push(createPadOscillator(ctx, 130.81,  4, 0.35, lpFilter));
@@ -83,7 +75,6 @@ function useBreathingAudio(active: boolean) {
       oscs.push(createPadOscillator(ctx, 329.63,  0, 0.06, lpFilter));
       oscillatorsRef.current = oscs;
     } catch {}
-
     return () => {
       try {
         oscillatorsRef.current.forEach(o => { try { o.stop(); } catch {} });
@@ -97,17 +88,15 @@ function useBreathingAudio(active: boolean) {
   }, [active]);
 }
 
-/* ─── Pentatonic calm music (identical to Day 1) ─────────────────────── */
+/* ─── Pentatonic music (identical to Day 1) ─────────────────────────── */
 const CALM_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
 
 function useCalmMusic(active: boolean) {
   const ctxRef   = useRef<AudioContext | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
     if (!active) return;
     let closed = false;
-
     const playNote = (ctx: AudioContext, dest: GainNode) => {
       if (closed) return;
       const freq = CALM_NOTES[Math.floor(Math.random() * CALM_NOTES.length)];
@@ -120,21 +109,18 @@ function useCalmMusic(active: boolean) {
       g.gain.linearRampToValueAtTime(0.055, ctx.currentTime + 1.2);
       g.gain.linearRampToValueAtTime(0.03,  ctx.currentTime + 3.5);
       g.gain.linearRampToValueAtTime(0,     ctx.currentTime + 5.5);
-      osc.connect(g);
-      g.connect(dest);
+      osc.connect(g); g.connect(dest);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 6);
     };
-
     const schedule = (ctx: AudioContext, dest: GainNode) => {
       if (closed) return;
       playNote(ctx, dest);
       const delay = 2800 + Math.random() * 3200;
       timerRef.current = setTimeout(() => schedule(ctx, dest), delay);
     };
-
     try {
-      const ctx    = new AudioContext();
+      const ctx = new AudioContext();
       ctxRef.current = ctx;
       const master = ctx.createGain();
       master.gain.setValueAtTime(0, ctx.currentTime);
@@ -142,11 +128,10 @@ function useCalmMusic(active: boolean) {
       master.connect(ctx.destination);
       timerRef.current = setTimeout(() => schedule(ctx, master), 4000);
     } catch {}
-
     return () => {
       closed = true;
       if (timerRef.current) clearTimeout(timerRef.current);
-      try { ctxRef.current?.close(); } catch {};
+      try { ctxRef.current?.close(); } catch {}
       ctxRef.current = null;
     };
   }, [active]);
@@ -154,9 +139,7 @@ function useCalmMusic(active: boolean) {
 
 /* ─── Voice cues (MP3, identical to Day 1) ───────────────────────────── */
 const VOICE_MAP: Record<string, string> = {
-  Inhale: inhaleUrl,
-  Hold:   holdUrl,
-  Exhale: exhaleUrl,
+  Inhale: inhaleUrl, Hold: holdUrl, Exhale: exhaleUrl,
 };
 let activeVoiceAudio: HTMLAudioElement | null = null;
 function playVoiceClip(label: string) {
@@ -176,20 +159,16 @@ function stopVoiceClip() {
   } catch {}
 }
 
-/* ─── Breathing session visual (Day 1 style) ─────────────────────────── */
+/* ─── Breathing visual (Day 1 style) ─────────────────────────────────── */
 function BreathingSession({ elapsed }: { elapsed: number }) {
   const lastSpokenRef = useRef<string>("");
-
   useBreathingAudio(true);
   useCalmMusic(true);
 
-  const cycleLen = CYCLE_MS;
-  const posInCycle = (elapsed * 1000) % cycleLen;
-
-  let cumulative    = 0;
-  let currentPhase  = BREATHING_PHASES[0];
+  const posInCycle = (elapsed * 1000) % CYCLE_MS;
+  let cumulative = 0;
+  let currentPhase = BREATHING_PHASES[0];
   let phaseProgress = 0;
-
   for (const phase of BREATHING_PHASES) {
     if (posInCycle < cumulative + phase.duration) {
       currentPhase  = phase;
@@ -199,14 +178,12 @@ function BreathingSession({ elapsed }: { elapsed: number }) {
     cumulative += phase.duration;
   }
 
-  /* Voice cue on phase change */
   useEffect(() => {
     if (currentPhase.label !== lastSpokenRef.current) {
       lastSpokenRef.current = currentPhase.label;
       playVoiceClip(currentPhase.label);
     }
   }, [currentPhase.label]);
-
   useEffect(() => () => stopVoiceClip(), []);
 
   const scale =
@@ -240,7 +217,7 @@ function BreathingSession({ elapsed }: { elapsed: number }) {
   );
 }
 
-/* ─── Animated checkmark (completion step 1) ─────────────────────────── */
+/* ─── Animated checkmark ─────────────────────────────────────────────── */
 function AnimatedCheckmark() {
   return (
     <div className="relative flex items-center justify-center" style={{ width: 80, height: 80 }}>
@@ -273,7 +250,6 @@ function AnimatedCheckmark() {
 /* ─── Types ──────────────────────────────────────────────────────────── */
 type Mode           = "execution" | "countdown" | "active" | "completed";
 type CompletionStep = 1 | 2 | 3 | 4;
-
 export interface XpData { level: number; current: number; max: number; }
 interface Props { onComplete: () => void; onCancel?: () => void; xpData?: XpData; }
 
@@ -282,18 +258,16 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
   const [mode, setMode]                     = useState<Mode>("execution");
   const [countdown, setCountdown]           = useState(3);
   const [completionStep, setCompletionStep] = useState<CompletionStep>(1);
-  const [elapsed, setElapsed]               = useState(0);          // seconds
+  const [elapsed, setElapsed]               = useState(0);
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const stepTimerRef = useRef<ReturnType<typeof setTimeout>  | null>(null);
   const cdTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const plannedTime  = loadPlannedTime();
 
-  /* Begin session — 3-2-1 countdown first, then breathing */
   const startSession = useCallback(() => {
     if (mode !== "execution") return;
     setMode("countdown");
     setCountdown(3);
-
     let n = 3;
     cdTimerRef.current = setInterval(() => {
       n -= 1;
@@ -320,7 +294,6 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
     }, 1000);
   }, [mode]);
 
-  /* Auto-advance completion steps 1→2→3→4 */
   useEffect(() => {
     if (mode !== "completed") return;
     const delays: Record<number, number> = { 1: 1400, 2: 1400, 3: 2800 };
@@ -333,35 +306,25 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
     return () => { if (stepTimerRef.current) clearTimeout(stepTimerRef.current); };
   }, [mode, completionStep]);
 
-  /* Cleanup */
   useEffect(() => () => {
     if (intervalRef.current)  clearInterval(intervalRef.current);
     if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
     if (cdTimerRef.current)   clearInterval(cdTimerRef.current);
   }, []);
 
-  const timeLabel = plannedTime?.label ?? "Your chosen time";
-  const timeRange = plannedTime?.range ?? "Morning window";
+  const timeLabel = plannedTime?.label ?? "Morning";
+  const timeRange = plannedTime?.range ?? "6 AM – 11 AM";
   const xpPct     = xpData && xpData.max > 0
     ? Math.min(100, Math.round((xpData.current / xpData.max) * 100)) : 0;
   const progress  = Math.min(elapsed / SESSION_SECONDS, 1);
 
-  /* ── Root ────────────────────────────────────────────────────────── */
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col text-white overflow-hidden"
       style={{ backgroundColor: ACCENT_BG }}
       data-testid="day7-follow-through"
     >
-      {/* Subtle radial glow behind content — execution mode only */}
-      {mode === "execution" && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(circle at top, rgba(0,255,255,0.08), transparent 60%)" }}
-        />
-      )}
-
-      {/* Ambient video — only during active breathing */}
+      {/* Ambient video — active breathing only */}
       {mode === "active" && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <video
@@ -377,13 +340,13 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
         </div>
       )}
 
-      {/* ── HEADER ───────────────────────────────────────────────── */}
+      {/* ── HEADER ─────────────────────────────────────────────────── */}
       <div className="relative z-10 px-4 pt-6 pb-2 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <Shield size={12} style={{ color: `${ACCENT}80` }} />
-          <span className="text-[10px] uppercase tracking-[0.18em]" style={{ color: `${ACCENT}80` }}>
-            Day 7 · Follow Through
-          </span>
+          <h1 className="text-xs tracking-widest" style={{ color: ACCENT }}>
+            DAY 7 · FOLLOW THROUGH
+          </h1>
         </div>
         {mode === "execution" && onCancel && (
           <button
@@ -397,7 +360,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
         )}
       </div>
 
-      {/* ── PROGRESS BAR (active only, matches Day 1) ──────────── */}
+      {/* Progress bar — active breathing only */}
       {mode === "active" && (
         <div className="relative z-10 px-4 flex-shrink-0">
           <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
@@ -415,11 +378,11 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
         </div>
       )}
 
-      {/* ── SCROLLABLE BODY ──────────────────────────────────────── */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-40 space-y-8">
+      {/* ── SCROLLABLE BODY ─────────────────────────────────────────── */}
+      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-36 space-y-6">
         <AnimatePresence mode="wait">
 
-          {/* ═══ EXECUTION MODE ════════════════════════════════════ */}
+          {/* ═══ EXECUTION ══════════════════════════════════════════ */}
           {mode === "execution" && (
             <motion.div
               key="execution"
@@ -429,75 +392,58 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               transition={{ duration: 0.4 }}
               className="space-y-6 pt-2"
             >
-              {/* Context card — clean border only, no shadow */}
+              {/* Action card */}
               <div
                 className="rounded-2xl p-5 border"
-                style={{
-                  background: "linear-gradient(135deg, #0B1C2C 0%, #0A1622 100%)",
-                  borderColor: `${ACCENT}10`,
-                }}
+                style={{ backgroundColor: "#0B1C2C", borderColor: "rgba(34,211,238,0.10)" }}
                 data-testid="execution-context-card"
               >
-                <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.38)" }}>
+                <p className="text-xs" style={{ color: "rgba(156,163,175,1)" }}>
                   You planned this yesterday
                 </p>
-                <h2 className="text-lg font-semibold tracking-wide leading-snug text-white uppercase mt-1">
-                  2-Minute Reset
+                <h2 className="text-lg font-semibold mt-2 tracking-wide text-white">
+                  2-MINUTE RESET
                 </h2>
                 <div className="flex items-center gap-3 mt-3">
                   <span
-                    className="px-3 py-1 rounded-full text-xs font-semibold"
-                    style={{ backgroundColor: `${ACCENT}18`, color: ACCENT }}
+                    className="px-3 py-1 rounded-full text-xs"
+                    style={{ backgroundColor: "rgba(34,211,238,0.10)", color: ACCENT }}
                   >
                     {timeLabel}
                   </span>
-                  {timeRange && (
-                    <span className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
-                      {timeRange}
-                    </span>
-                  )}
+                  <span className="text-sm" style={{ color: "rgba(156,163,175,1)" }}>
+                    {timeRange}
+                  </span>
                 </div>
-
-                {/* Ready state indicator */}
-                <div className="flex items-center gap-2 mt-4" style={{ color: ACCENT }}>
-                  <div
-                    className="w-2 h-2 rounded-full animate-pulse"
-                    style={{ backgroundColor: ACCENT }}
-                  />
-                  <span className="text-sm">Ready to begin</span>
+                <div className="flex items-center gap-2 mt-4 text-sm" style={{ color: ACCENT }}>
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: ACCENT }} />
+                  Ready to begin
                 </div>
               </div>
 
-              {/* Mission message */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="px-1 space-y-1"
-              >
-                <p className="text-lg font-semibold text-white leading-snug">You placed this yesterday.</p>
-                <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+              {/* Context */}
+              <div>
+                <p className="text-lg font-medium text-white">
+                  You placed this yesterday.
+                </p>
+                <p className="mt-1" style={{ color: "rgba(156,163,175,1)" }}>
                   Now you meet yourself there.
                 </p>
-              </motion.div>
+              </div>
 
-              {/* What to expect */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-                className="rounded-xl px-4 py-3 flex items-start gap-3"
-                style={{ backgroundColor: "rgba(34,211,238,0.05)", border: "1px solid rgba(34,211,238,0.10)" }}
+              {/* Instructions */}
+              <div
+                className="rounded-xl p-4 border"
+                style={{ backgroundColor: "#0A1A26", borderColor: "rgba(255,255,255,0.05)" }}
               >
-                <div className="w-1 self-stretch rounded-full mt-0.5 flex-shrink-0" style={{ backgroundColor: `${ACCENT}60` }} />
-                <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  A 2-minute guided breathing reset. Follow the circle, clear your mind, commit to the moment.
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(209,213,219,1)" }}>
+                  A 2-minute guided breathing reset. Follow the circle, clear your mind, and commit to the moment.
                 </p>
-              </motion.div>
+              </div>
             </motion.div>
           )}
 
-          {/* ═══ COUNTDOWN MODE (3-2-1, matches Day 1) ════════════ */}
+          {/* ═══ COUNTDOWN ══════════════════════════════════════════ */}
           {mode === "countdown" && (
             <motion.div
               key="countdown"
@@ -505,7 +451,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center h-full gap-8 pt-20"
+              className="flex flex-col items-center justify-center gap-8 pt-20"
             >
               <p className="text-sm tracking-wide" style={{ color: "rgba(255,255,255,0.5)" }}>
                 Get comfortable. Starting in…
@@ -524,7 +470,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
             </motion.div>
           )}
 
-          {/* ═══ ACTIVE MODE — Day 1 breathing session ════════════ */}
+          {/* ═══ ACTIVE — breathing session ═════════════════════════ */}
           {mode === "active" && (
             <motion.div
               key="active"
@@ -538,7 +484,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
             </motion.div>
           )}
 
-          {/* ═══ COMPLETED — 4-step sequence ══════════════════════ */}
+          {/* ═══ COMPLETED — 4-step sequence ════════════════════════ */}
           {mode === "completed" && (
             <motion.div
               key="completed"
@@ -648,14 +594,10 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* ── FIXED BOTTOM CTA — above the ~60px bottom nav ───────── */}
-      <div
-        className="fixed bottom-[60px] left-0 right-0 z-40 px-4 pb-3 pt-2"
-        style={{ background: `linear-gradient(to top, ${ACCENT_BG} 65%, transparent)` }}
-      >
+      {/* ── FIXED CTA — above bottom nav ────────────────────────────── */}
+      <div className="fixed bottom-[70px] left-0 right-0 z-40 px-4">
         <AnimatePresence mode="wait">
 
-          {/* Execution CTA */}
           {mode === "execution" && (
             <motion.button
               key="start-btn"
@@ -664,23 +606,18 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.35 }}
               onClick={startSession}
-              className="w-full py-3 rounded-xl font-semibold text-sm tracking-wide transition-all active:scale-[0.97] shadow-md"
-              style={{
-                backgroundColor: ACCENT,
-                color: "#000",
-              }}
+              className="w-full py-3 rounded-xl font-semibold text-base transition active:scale-95"
+              style={{ backgroundColor: ACCENT, color: "#000" }}
               data-testid="button-begin-day7"
             >
               Start Session
             </motion.button>
           )}
 
-          {/* Countdown — no CTA */}
           {mode === "countdown" && (
-            <div key="countdown-spacer" className="w-full py-4 rounded-xl" style={{ backgroundColor: "transparent" }} />
+            <div key="cd-spacer" />
           )}
 
-          {/* Active — disabled "In Progress" pill */}
           {mode === "active" && (
             <motion.div
               key="active-indicator"
@@ -691,13 +628,10 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               className="w-full py-3 rounded-xl flex items-center justify-center gap-2"
               style={{ backgroundColor: `${ACCENT}10`, border: `1px solid ${ACCENT}25` }}
             >
-              <span className="text-sm tracking-wide" style={{ color: `${ACCENT}cc` }}>
-                Breathe…
-              </span>
+              <span className="text-sm tracking-wide" style={{ color: `${ACCENT}cc` }}>Breathe…</span>
             </motion.div>
           )}
 
-          {/* Enter Phase 1 — step 4 only */}
           {mode === "completed" && completionStep >= 4 && (
             <motion.button
               key="phase-btn"
@@ -705,21 +639,16 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.4 }}
               onClick={onComplete}
-              className="w-full py-4 rounded-xl font-bold text-base uppercase tracking-[0.12em] transition-all active:scale-[0.97]"
-              style={{
-                backgroundColor: ACCENT,
-                color: "#000",
-                boxShadow: `0 0 32px ${ACCENT}38`,
-              }}
+              className="w-full py-3 rounded-xl font-semibold text-base uppercase tracking-[0.12em] transition active:scale-95"
+              style={{ backgroundColor: ACCENT, color: "#000" }}
               data-testid="button-finish-day7"
             >
               Enter Phase 1
             </motion.button>
           )}
 
-          {/* Placeholder during completion steps 1–3 */}
           {mode === "completed" && completionStep < 4 && (
-            <div key="completed-spacer" className="w-full py-4 rounded-xl" style={{ backgroundColor: "transparent" }} />
+            <div key="completed-spacer" />
           )}
 
         </AnimatePresence>
