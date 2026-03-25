@@ -320,10 +320,16 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col text-white overflow-hidden"
-      style={{ backgroundColor: ACCENT_BG }}
+      className="fixed inset-0 z-50 flex flex-col text-white isolate"
+      style={{ backgroundColor: ACCENT_BG, overflow: "hidden" }}
       data-testid="day7-follow-through"
     >
+      {/* Hard background block — prevents any parent gradient bleeding through */}
+      <div
+        className="absolute inset-0 -z-10"
+        style={{ backgroundColor: ACCENT_BG }}
+      />
+
       {/* Ambient video — active breathing only */}
       {mode === "active" && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -394,7 +400,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
             >
               {/* Action card */}
               <div
-                className="rounded-2xl p-5 border"
+                className="rounded-2xl p-5 border !shadow-none !ring-0"
                 style={{ backgroundColor: "#0B1C2C", borderColor: "rgba(34,211,238,0.10)" }}
                 data-testid="execution-context-card"
               >
@@ -606,7 +612,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.35 }}
               onClick={startSession}
-              className="w-full py-3 rounded-xl font-semibold text-base transition active:scale-95"
+              className="w-full !py-3 !rounded-xl !bg-cyan-400 !text-black !text-base !font-semibold !shadow-none transition active:scale-95"
               style={{ backgroundColor: ACCENT, color: "#000" }}
               data-testid="button-begin-day7"
             >
@@ -639,7 +645,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.4 }}
               onClick={onComplete}
-              className="w-full py-3 rounded-xl font-semibold text-base uppercase tracking-[0.12em] transition active:scale-95"
+              className="w-full !py-3 !rounded-xl !bg-cyan-400 !text-black !text-base !font-semibold !shadow-none uppercase tracking-[0.12em] transition active:scale-95"
               style={{ backgroundColor: ACCENT, color: "#000" }}
               data-testid="button-finish-day7"
             >
