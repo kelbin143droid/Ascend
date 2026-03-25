@@ -353,6 +353,14 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
       style={{ backgroundColor: ACCENT_BG }}
       data-testid="day7-follow-through"
     >
+      {/* Subtle radial glow behind content — execution mode only */}
+      {mode === "execution" && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(circle at top, rgba(0,255,255,0.08), transparent 60%)" }}
+        />
+      )}
+
       {/* Ambient video — only during active breathing */}
       {mode === "active" && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -419,22 +427,21 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.4 }}
-              className="space-y-5 pt-2"
+              className="space-y-6 pt-2"
             >
-              {/* Context card */}
+              {/* Context card — clean border only, no shadow */}
               <div
                 className="rounded-2xl p-5 border"
                 style={{
                   background: "linear-gradient(135deg, #0B1C2C 0%, #0A1622 100%)",
-                  borderColor: `${ACCENT}28`,
-                  boxShadow: "0 0 25px rgba(0,255,255,0.05)",
+                  borderColor: `${ACCENT}10`,
                 }}
                 data-testid="execution-context-card"
               >
                 <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.38)" }}>
                   You planned this yesterday
                 </p>
-                <h2 className="text-xl font-semibold tracking-wide leading-snug text-white uppercase">
+                <h2 className="text-lg font-semibold tracking-wide leading-snug text-white uppercase mt-1">
                   2-Minute Reset
                 </h2>
                 <div className="flex items-center gap-3 mt-3">
@@ -449,6 +456,15 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                       {timeRange}
                     </span>
                   )}
+                </div>
+
+                {/* Ready state indicator */}
+                <div className="flex items-center gap-2 mt-4" style={{ color: ACCENT }}>
+                  <div
+                    className="w-2 h-2 rounded-full animate-pulse"
+                    style={{ backgroundColor: ACCENT }}
+                  />
+                  <span className="text-sm">Ready to begin</span>
                 </div>
               </div>
 
@@ -648,11 +664,10 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.35 }}
               onClick={startSession}
-              className="w-full py-4 rounded-xl font-bold text-base tracking-wide transition-all active:scale-[0.97]"
+              className="w-full py-3 rounded-xl font-semibold text-sm tracking-wide transition-all active:scale-[0.97] shadow-md"
               style={{
                 backgroundColor: ACCENT,
                 color: "#000",
-                boxShadow: `0 0 32px ${ACCENT}30`,
               }}
               data-testid="button-begin-day7"
             >
