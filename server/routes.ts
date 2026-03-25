@@ -1514,7 +1514,9 @@ export async function registerRoutes(
       const onboardingDay = (completedToday && daysCompleted <= 6)
         ? Math.max(daysCompleted, 1)
         : Math.min(daysCompleted + 1, 7);
-      const isOnboardingComplete = onboardingDay >= 7 || player.onboardingCompleted === 1;
+      // isOnboardingComplete is ONLY based on completing 7 distinct days.
+      // player.onboardingCompleted tracks the initial welcome intro, not the 7-day journey.
+      const isOnboardingComplete = onboardingDay >= 7;
       const streak = player.streak ?? 0;
 
       let languageStage: 1 | 2 | 3 | 4;
@@ -1853,6 +1855,8 @@ export async function registerRoutes(
       const onboardingDay = (completedSessionToday && totalDistinctDays <= 6)
         ? Math.max(totalDistinctDays, 1)
         : Math.min(totalDistinctDays + 1, 7);
+      // isOnboardingComplete is ONLY based on completing 7 distinct days.
+      const isOnboardingComplete = onboardingDay >= 7;
       const hasCompletedHabitToday = completedIds.size > 0;
       const sortedByDate = [...allCompletions]
         .filter(c => c.completedAt)
@@ -1916,7 +1920,6 @@ export async function registerRoutes(
         }
       }
 
-      const isOnboardingComplete = onboardingDay >= 7 || player.onboardingCompleted === 1;
       const totalCompletionDays = distinctCompletionDays.size;
       const streak = player.streak ?? 0;
 
