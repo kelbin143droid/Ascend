@@ -405,7 +405,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 data-testid="execution-context-card"
               >
                 <p className="text-xs" style={{ color: "rgba(156,163,175,1)" }}>
-                  You planned this yesterday
+                  Your decision yesterday
                 </p>
                 <h2 className="text-lg font-semibold mt-2 tracking-wide text-white">
                   2-MINUTE RESET
@@ -421,19 +421,18 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                     {timeRange}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-4 text-sm" style={{ color: ACCENT }}>
-                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: ACCENT }} />
-                  Ready to begin
-                </div>
+                <p className="text-xs mt-2" style={{ color: `${ACCENT}80` }}>
+                  Window active
+                </p>
               </div>
 
               {/* Context */}
               <div>
                 <p className="text-lg font-medium text-white">
-                  You placed this yesterday.
+                  You made a decision yesterday.
                 </p>
-                <p className="mt-1" style={{ color: "rgba(156,163,175,1)" }}>
-                  Now you meet yourself there.
+                <p className="mt-3" style={{ color: "rgba(156,163,175,1)" }}>
+                  Now you follow through.
                 </p>
               </div>
 
@@ -443,7 +442,10 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 style={{ backgroundColor: "#0A1A26", borderColor: "rgba(255,255,255,0.05)" }}
               >
                 <p className="text-sm leading-relaxed" style={{ color: "rgba(209,213,219,1)" }}>
-                  A 2-minute guided breathing reset. Follow the circle, clear your mind, and commit to the moment.
+                  A simple reset.
+                </p>
+                <p className="text-sm mt-1" style={{ color: "rgba(156,163,175,0.7)" }}>
+                  Breathe. Focus. Follow through.
                 </p>
               </div>
             </motion.div>
@@ -616,7 +618,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               style={{ backgroundColor: ACCENT, color: "#000" }}
               data-testid="button-begin-day7"
             >
-              Start Session
+              BEGIN YOUR PLANNED STEP
             </motion.button>
           )}
 
