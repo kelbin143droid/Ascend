@@ -404,10 +404,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 style={{ backgroundColor: "#0B1C2C", borderColor: "rgba(34,211,238,0.10)" }}
                 data-testid="execution-context-card"
               >
-                <p className="text-xs" style={{ color: "rgba(156,163,175,1)" }}>
-                  Committed yesterday
-                </p>
-                <h2 className="text-lg font-semibold mt-2 tracking-wide text-white">
+                <h2 className="text-lg font-semibold tracking-wide text-white">
                   2-MINUTE RESET
                 </h2>
                 <div className="flex items-center gap-3 mt-3">
@@ -424,12 +421,15 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 <p className="text-xs mt-2" style={{ color: `${ACCENT}80` }}>
                   Time window active
                 </p>
+                <p className="text-[10px] mt-3" style={{ color: "rgba(156,163,175,0.5)" }}>
+                  Committed yesterday
+                </p>
               </div>
 
               {/* Context */}
               <div className="pt-2">
                 <p className="text-xl font-medium text-white">
-                  Now you follow through.
+                  Follow through now.
                 </p>
               </div>
 
@@ -615,7 +615,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               style={{ backgroundColor: ACCENT, color: "#000" }}
               data-testid="button-begin-day7"
             >
-              BEGIN YOUR PLANNED STEP
+              BEGIN STEP
             </motion.button>
           )}
 
