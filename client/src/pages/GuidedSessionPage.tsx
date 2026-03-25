@@ -467,6 +467,26 @@ function TimerSession({ sessionId, elapsed, total, accentColor }: { sessionId: s
   );
 }
 
+/* ─── Completion beep (triple ascending tone, same pattern as training engine) */
+function playSessionCompleteBeep() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    [0, 0.14, 0.28].forEach((delay, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = [660, 880, 1100][i];
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.28, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.25);
+    });
+    setTimeout(() => { try { ctx.close(); } catch {} }, 1200);
+  } catch {}
+}
+
 export default function GuidedSessionPage() {
   const [, params] = useRoute("/guided-session/:sessionId");
   const [, setLocation] = useLocation();
@@ -485,7 +505,8 @@ export default function GuidedSessionPage() {
   const [elapsed, setElapsed] = useState(0);
   const [showDayClose, setShowDayClose] = useState(false);
   const [showDay5Expansion, setShowDay5Expansion] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+  const completeTimeoutRef = useRef<ReturnType<typeof setTimeout>  | null>(null);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean; completedToday: number }>({
     queryKey: ["home", player?.id],
@@ -499,6 +520,30 @@ export default function GuidedSessionPage() {
     staleTime: 30000,
   });
 
+  /* Helper: advance out of "completing" regardless of success/failure */
+  const advanceFromCompleting = useCallback((savedOk: boolean) => {
+    if (completeTimeoutRef.current) {
+      clearTimeout(completeTimeoutRef.current);
+      completeTimeoutRef.current = null;
+    }
+    if (savedOk) {
+      queryClient.invalidateQueries({ queryKey: ["home"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+    }
+    const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
+    const isDay5 = homeData?.onboardingDay === 5;
+    const alreadyExpanded = localStorage.getItem("ascend_day5_expansion_shown") === new Date().toISOString().split("T")[0];
+
+    if (savedOk && isFirstCompletionToday && isDay5 && !alreadyExpanded) {
+      localStorage.setItem("ascend_day5_expansion_shown", new Date().toISOString().split("T")[0]);
+      setShowDay5Expansion(true);
+    } else if (isFirstCompletionToday) {
+      setShowDayClose(true);
+    } else {
+      setState("done");
+    }
+  }, [homeData, queryClient]);
+
   const completeMutation = useMutation({
     mutationFn: async () => {
       if (!player?.id) throw new Error("No player");
@@ -509,23 +554,8 @@ export default function GuidedSessionPage() {
       });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["home"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-
-      const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
-      const isDay5 = homeData?.onboardingDay === 5;
-      const alreadyExpanded = localStorage.getItem("ascend_day5_expansion_shown") === new Date().toISOString().split("T")[0];
-
-      if (isFirstCompletionToday && isDay5 && !alreadyExpanded) {
-        localStorage.setItem("ascend_day5_expansion_shown", new Date().toISOString().split("T")[0]);
-        setShowDay5Expansion(true);
-      } else if (isFirstCompletionToday) {
-        setShowDayClose(true);
-      } else {
-        setState("done");
-      }
-    },
+    onSuccess: () => advanceFromCompleting(true),
+    onError:   () => advanceFromCompleting(false),
   });
 
   useEffect(() => {
@@ -555,6 +585,10 @@ export default function GuidedSessionPage() {
         const next = prev + 1;
         if (next >= session.durationSeconds) {
           if (intervalRef.current) clearInterval(intervalRef.current);
+          // Beep to signal timer completion (timer-type sessions only)
+          if (session.type === "timer") {
+            playSessionCompleteBeep();
+          }
           return session.durationSeconds;
         }
         return next;
@@ -576,12 +610,22 @@ export default function GuidedSessionPage() {
   const handleComplete = useCallback(() => {
     if (state !== "active") return;
     setState("completing");
+    // Failsafe: if the mutation never settles (network stall), move on after 6s
+    completeTimeoutRef.current = setTimeout(() => {
+      setState(prev => prev === "completing" ? "done" : prev);
+      completeTimeoutRef.current = null;
+    }, 6000);
     completeMutation.mutate();
   }, [state, completeMutation]);
 
   const handleInstantDone = () => {
     handleComplete();
   };
+
+  /* Cleanup failsafe timeout on unmount */
+  useEffect(() => () => {
+    if (completeTimeoutRef.current) clearTimeout(completeTimeoutRef.current);
+  }, []);
 
   if (!session) {
     setLocation("/");
