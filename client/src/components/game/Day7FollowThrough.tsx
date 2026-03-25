@@ -1,40 +1,40 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Shield } from "lucide-react";
+import { Shield, X } from "lucide-react";
 
-const ACCENT = "#3b82f6";
+const ACCENT = "#22d3ee";         // cyan-400 — mission/execution colour
+const ACCENT_BG = "#061018";
 const RESET_DURATION = 120;
 
 const BREATHING_PHASES = [
-  { label: "Inhale", seconds: 4 },
-  { label: "Hold", seconds: 4 },
-  { label: "Exhale", seconds: 6 },
+  { label: "Inhale",  seconds: 4 },
+  { label: "Hold",    seconds: 4 },
+  { label: "Exhale",  seconds: 6 },
 ];
 const CYCLE_SECONDS = BREATHING_PHASES.reduce((s, p) => s + p.seconds, 0);
 
+/* ─── Planned action from localStorage ─────────────────────────────── */
 interface PlannedTime {
   slot: string;
   label: string;
   range: string;
   date: string;
 }
-
 function loadPlannedTime(): PlannedTime | null {
   try {
     const raw = localStorage.getItem("ascend_planned_action_time");
-    if (!raw) return null;
-    return JSON.parse(raw) as PlannedTime;
+    return raw ? (JSON.parse(raw) as PlannedTime) : null;
   } catch {
     return null;
   }
 }
 
+/* ─── Breathing circle (active state) ──────────────────────────────── */
 function BreathingCircle({ elapsed }: { elapsed: number }) {
   const cyclePos = elapsed % CYCLE_SECONDS;
   let cumulative = 0;
   let currentPhase = BREATHING_PHASES[0];
   let phaseProgress = 0;
-
   for (const phase of BREATHING_PHASES) {
     if (cyclePos < cumulative + phase.seconds) {
       currentPhase = phase;
@@ -45,71 +45,72 @@ function BreathingCircle({ elapsed }: { elapsed: number }) {
   }
 
   const scale =
-    currentPhase.label === "Inhale"
-      ? 0.55 + 0.45 * phaseProgress
-      : currentPhase.label === "Exhale"
-      ? 1.0 - 0.45 * phaseProgress
-      : 1.0;
+    currentPhase.label === "Inhale"  ? 0.55 + 0.45 * phaseProgress
+    : currentPhase.label === "Exhale" ? 1.0  - 0.45 * phaseProgress
+    : 1.0;
 
-  const mins = Math.floor((RESET_DURATION - elapsed) / 60);
-  const secs = (RESET_DURATION - elapsed) % 60;
+  const remaining = RESET_DURATION - elapsed;
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
   const timeStr = `${mins}:${secs.toString().padStart(2, "0")}`;
 
   return (
-    <div className="flex flex-col items-center gap-6">
-      <div className="relative flex items-center justify-center" style={{ width: 180, height: 180 }}>
+    <div className="flex flex-col items-center gap-8 py-4">
+      <div className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
         <motion.div
           className="absolute rounded-full"
           style={{
-            width: 180, height: 180,
+            width: 200, height: 200,
             background: `radial-gradient(circle, ${ACCENT}08 0%, transparent 70%)`,
-            border: `1px solid ${ACCENT}15`,
+            border: `1px solid ${ACCENT}18`,
           }}
-          animate={{ opacity: [0.4, 0.7, 0.4] }}
+          animate={{ opacity: [0.3, 0.7, 0.3] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         />
         <div
           style={{
-            width: 120, height: 120,
+            width: 130, height: 130,
             borderRadius: "50%",
             transform: `scale(${scale})`,
             transition: `transform ${currentPhase.seconds * 0.9}s ease-in-out`,
-            background: `radial-gradient(circle, ${ACCENT}30 0%, ${ACCENT}10 55%, transparent 100%)`,
-            border: `2px solid ${ACCENT}45`,
-            boxShadow: `0 0 ${20 + scale * 20}px ${ACCENT}25`,
+            background: `radial-gradient(circle, ${ACCENT}28 0%, ${ACCENT}0a 55%, transparent 100%)`,
+            border: `2px solid ${ACCENT}50`,
+            boxShadow: `0 0 ${24 + scale * 24}px ${ACCENT}22`,
           }}
         />
         <div className="absolute flex flex-col items-center gap-1">
-          <span className="text-sm font-bold uppercase tracking-widest" style={{ color: `${ACCENT}cc` }}>
+          <span className="text-base font-bold uppercase tracking-[0.18em]" style={{ color: ACCENT }}>
             {currentPhase.label}
           </span>
         </div>
       </div>
+
       <div className="text-center space-y-1">
-        <div className="text-white/30 text-xs font-mono">{timeStr}</div>
-        <div className="text-white/20 text-[10px] uppercase tracking-widest">2-Minute Reset</div>
+        <p className="text-3xl font-mono font-light tracking-widest" style={{ color: "rgba(255,255,255,0.85)" }}>
+          {timeStr}
+        </p>
+        <p className="text-[10px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.2)" }}>
+          2-Minute Reset · Breathe and be present
+        </p>
       </div>
     </div>
   );
 }
 
+/* ─── Animated checkmark ────────────────────────────────────────────── */
 function AnimatedCheckmark() {
   return (
     <div className="relative flex items-center justify-center" style={{ width: 80, height: 80 }}>
       <motion.div
         className="absolute rounded-full"
-        style={{
-          inset: 0,
-          backgroundColor: `${ACCENT}12`,
-          border: `2px solid ${ACCENT}35`,
-        }}
+        style={{ inset: 0, backgroundColor: `${ACCENT}12`, border: `2px solid ${ACCENT}35` }}
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
       />
       <motion.div
         className="absolute rounded-full"
-        style={{ inset: -10, border: `1px solid ${ACCENT}15` }}
+        style={{ inset: -10, border: `1px solid ${ACCENT}18` }}
         animate={{ opacity: [0.5, 0.15, 0.5], scale: [1, 1.06, 1] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -130,7 +131,8 @@ function AnimatedCheckmark() {
   );
 }
 
-type ScreenPhase = "intro" | "breathing" | "complete";
+/* ─── Types ─────────────────────────────────────────────────────────── */
+type Mode = "execution" | "active" | "completed";
 type CompletionStep = 1 | 2 | 3 | 4;
 
 export interface XpData {
@@ -138,23 +140,25 @@ export interface XpData {
   current: number;
   max: number;
 }
-
 interface Props {
   onComplete: () => void;
   onCancel?: () => void;
   xpData?: XpData;
 }
 
+/* ─── Main component ────────────────────────────────────────────────── */
 export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
-  const [screenPhase, setScreenPhase] = useState<ScreenPhase>("intro");
+  const [mode, setMode]                     = useState<Mode>("execution");
   const [completionStep, setCompletionStep] = useState<CompletionStep>(1);
-  const [elapsed, setElapsed] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const plannedTime = loadPlannedTime();
+  const [elapsed, setElapsed]               = useState(0);
+  const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stepTimerRef  = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const plannedTime   = loadPlannedTime();
 
-  const startBreathing = useCallback(() => {
-    setScreenPhase("breathing");
+  /* Start the 2-minute breathing session */
+  const startSession = useCallback(() => {
+    if (mode === "active") return;
+    setMode("active");
     setElapsed(0);
     intervalRef.current = setInterval(() => {
       setElapsed(prev => {
@@ -163,7 +167,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
           clearInterval(intervalRef.current!);
           intervalRef.current = null;
           setTimeout(() => {
-            setScreenPhase("complete");
+            setMode("completed");
             setCompletionStep(1);
           }, 400);
           return RESET_DURATION;
@@ -171,197 +175,213 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
         return next;
       });
     }, 1000);
+  }, [mode]);
+
+  /* Auto-advance completion steps 1→2→3→4 */
+  useEffect(() => {
+    if (mode !== "completed") return;
+    const delays: Record<number, number> = { 1: 1400, 2: 1400, 3: 2800 };
+    const delay = delays[completionStep];
+    if (!delay) return;
+    stepTimerRef.current = setTimeout(
+      () => setCompletionStep(prev => (prev + 1) as CompletionStep),
+      delay,
+    );
+    return () => { if (stepTimerRef.current) clearTimeout(stepTimerRef.current); };
+  }, [mode, completionStep]);
+
+  /* Cleanup */
+  useEffect(() => () => {
+    if (intervalRef.current)  clearInterval(intervalRef.current);
+    if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
   }, []);
 
-  // Auto-advance through completion steps 1→2→3 with delays; step 4 waits for CTA tap
-  useEffect(() => {
-    if (screenPhase !== "complete") return;
+  const timeLabel  = plannedTime?.label ?? "Your chosen time";
+  const timeRange  = plannedTime?.range ?? "Morning window";
+  const xpPct      = xpData && xpData.max > 0
+    ? Math.min(100, Math.round((xpData.current / xpData.max) * 100)) : 0;
 
-    if (completionStep === 1) {
-      stepTimerRef.current = setTimeout(() => setCompletionStep(2), 1400);
-    } else if (completionStep === 2) {
-      stepTimerRef.current = setTimeout(() => setCompletionStep(3), 1400);
-    } else if (completionStep === 3) {
-      stepTimerRef.current = setTimeout(() => setCompletionStep(4), 2800);
-    }
-
-    return () => {
-      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
-    };
-  }, [screenPhase, completionStep]);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
-    };
-  }, []);
-
-  const timeLabel = plannedTime?.label ?? "your chosen time";
-  const timeRange = plannedTime?.range ?? "";
-
-  const xpPct = xpData && xpData.max > 0
-    ? Math.min(100, Math.round((xpData.current / xpData.max) * 100))
-    : 0;
-
+  /* ── Root container: full screen, flex-col, dark bg ─────────────── */
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: "linear-gradient(160deg, #060d1a 0%, #0a1525 60%, #060d1a 100%)" }}
+    <div
+      className="fixed inset-0 z-50 flex flex-col text-white overflow-hidden"
+      style={{ backgroundColor: ACCENT_BG }}
       data-testid="day7-follow-through"
     >
-      {screenPhase === "breathing" && (
+      {/* Ambient video only during active breathing */}
+      {mode === "active" && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <video
             src="/videos/calm-breathing.mp4"
             className="w-full h-full object-cover"
             autoPlay playsInline muted loop preload="auto"
-            style={{ opacity: 0.12 }}
+            style={{ opacity: 0.09 }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.6) 100%)" }}
+            style={{ background: "linear-gradient(to bottom, rgba(6,16,24,0.6) 0%, rgba(6,16,24,0.3) 50%, rgba(6,16,24,0.75) 100%)" }}
           />
         </div>
       )}
 
-      <div className="flex items-center justify-between px-5 pt-safe pt-5 pb-4 relative z-10">
+      {/* ── HEADER ─────────────────────────────────────────────────── */}
+      <div className="relative z-10 px-4 pt-6 pb-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <Shield size={13} style={{ color: `${ACCENT}99` }} />
           <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: `${ACCENT}99` }}>
             Day 7 · Follow-Through
           </span>
         </div>
-        {screenPhase === "intro" && onCancel && (
+        {mode === "execution" && onCancel && (
           <button
             onClick={onCancel}
             className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+            style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
             data-testid="button-cancel-day7"
           >
-            <X size={15} className="text-white/40" />
+            <X size={15} className="text-white/35" />
           </button>
         )}
       </div>
 
-      <div className="flex-1 flex flex-col px-5 pb-safe pb-8 relative z-10 overflow-hidden">
+      {/* ── SCROLLABLE BODY ────────────────────────────────────────── */}
+      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-36 space-y-5">
         <AnimatePresence mode="wait">
 
-          {/* ── INTRO ── */}
-          {screenPhase === "intro" && (
+          {/* ═══ EXECUTION MODE ═══════════════════════════════════════ */}
+          {mode === "execution" && (
             <motion.div
-              key="intro"
-              initial={{ opacity: 0, y: 18 }}
+              key="execution"
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.45 }}
-              className="flex flex-col h-full justify-between"
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-5 pt-2"
             >
-              <div className="flex flex-col gap-8 mt-4">
-                <div>
-                  <div className="text-[9px] uppercase tracking-widest mb-2 font-bold" style={{ color: `${ACCENT}80` }}>
-                    Your planned action
-                  </div>
-                  <div className="rounded-2xl p-5" style={{ backgroundColor: `${ACCENT}0e`, border: `1px solid ${ACCENT}25` }}>
-                    <div className="text-white/50 text-xs mb-1">Today — {timeLabel}</div>
-                    {timeRange && <div className="text-white/30 text-xs mb-3">{timeRange}</div>}
-                    <div className="text-white font-bold text-xl">2-Minute Reset</div>
-                  </div>
+              {/* Context card */}
+              <div
+                className="rounded-2xl p-5 border"
+                style={{ backgroundColor: "#0B1C2C", borderColor: `${ACCENT}28` }}
+                data-testid="execution-context-card"
+              >
+                <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.38)" }}>
+                  You planned this yesterday
+                </p>
+                <h2 className="text-2xl font-bold tracking-tight leading-snug text-white">
+                  2-Minute Reset
+                </h2>
+                <div className="flex items-center gap-2 mt-2">
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: `${ACCENT}18`, color: ACCENT }}
+                  >
+                    {timeLabel}
+                  </span>
+                  {timeRange && (
+                    <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                      {timeRange}
+                    </span>
+                  )}
                 </div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.5 }}
-                  className="space-y-2"
-                >
-                  <p className="text-white text-lg font-bold leading-snug">You placed this yesterday.</p>
-                  <p className="text-white/70 text-base leading-snug">Now you meet yourself there.</p>
-                </motion.div>
               </div>
 
-              <motion.button
-                initial={{ opacity: 0, y: 12 }}
+              {/* Mission message */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.4 }}
-                onClick={startBreathing}
-                className="w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-[0.1em] transition-all active:scale-[0.97]"
-                style={{ backgroundColor: ACCENT, color: "#fff" }}
-                data-testid="button-begin-day7"
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="px-1 space-y-1"
               >
-                Begin Your Planned Step
-              </motion.button>
+                <p className="text-lg font-semibold text-white leading-snug">
+                  You placed this yesterday.
+                </p>
+                <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  Now you meet yourself there.
+                </p>
+              </motion.div>
+
+              {/* What to expect */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="rounded-xl px-4 py-3 flex items-start gap-3"
+                style={{ backgroundColor: "rgba(34,211,238,0.05)", border: "1px solid rgba(34,211,238,0.10)" }}
+              >
+                <div
+                  className="w-1 self-stretch rounded-full mt-0.5 flex-shrink-0"
+                  style={{ backgroundColor: `${ACCENT}60` }}
+                />
+                <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  A 2-minute guided breathing reset. Follow the circle, clear your mind, commit to the moment.
+                </p>
+              </motion.div>
             </motion.div>
           )}
 
-          {/* ── BREATHING ── */}
-          {screenPhase === "breathing" && (
+          {/* ═══ ACTIVE MODE ══════════════════════════════════════════ */}
+          {mode === "active" && (
             <motion.div
-              key="breathing"
+              key="active"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
-              className="flex flex-col items-center justify-center h-full gap-8"
+              transition={{ duration: 0.5 }}
+              className="flex flex-col items-center justify-center pt-4 space-y-2"
             >
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-center mb-2"
+                transition={{ delay: 0.15 }}
+                className="text-sm"
+                style={{ color: "rgba(255,255,255,0.38)" }}
               >
-                <p className="text-white/50 text-sm">Breathe and be present.</p>
-              </motion.div>
+                Session in progress
+              </motion.p>
               <BreathingCircle elapsed={elapsed} />
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                className="text-center text-white/25 text-xs px-8"
+                transition={{ delay: 0.7 }}
+                className="text-center text-xs px-8 pt-2"
+                style={{ color: "rgba(255,255,255,0.2)" }}
               >
                 Follow the circle. Let everything else go.
               </motion.p>
             </motion.div>
           )}
 
-          {/* ── COMPLETE — 4-step sequence ── */}
-          {screenPhase === "complete" && (
+          {/* ═══ COMPLETED MODE — 4-step sequence ═════════════════════ */}
+          {mode === "completed" && (
             <motion.div
-              key="complete"
+              key="completed"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
-              className="flex flex-col items-center justify-center h-full gap-10 text-center px-2"
+              className="flex flex-col items-center pt-6 space-y-8 text-center"
             >
-
-              {/* STEP 1: Checkmark + "You followed through." */}
+              {/* Step 1: Checkmark + heading */}
               <AnimatedCheckmark />
 
-              <motion.div
-                key="step1-text"
+              <motion.p
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.5 }}
-                className="space-y-1"
+                className="text-2xl font-bold tracking-tight text-white"
               >
-                <p className="text-white text-2xl font-bold tracking-tight leading-snug">
-                  You followed through.
-                </p>
-              </motion.div>
+                You followed through.
+              </motion.p>
 
-              {/* STEP 2: Identity message */}
+              {/* Step 2: Identity */}
               <AnimatePresence>
                 {completionStep >= 2 && (
                   <motion.p
                     key="identity"
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="text-base leading-relaxed px-2"
-                    style={{ color: "rgba(255,255,255,0.55)" }}
+                    transition={{ duration: 0.55 }}
+                    className="text-base px-4 leading-relaxed"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
                     data-testid="identity-message"
                   >
                     This is how consistency is built.
@@ -369,15 +389,15 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 )}
               </AnimatePresence>
 
-              {/* STEP 3: XP reveal */}
+              {/* Step 3: XP bar */}
               <AnimatePresence>
                 {completionStep >= 3 && xpData && (
                   <motion.div
-                    key="xp-reveal"
-                    initial={{ opacity: 0, y: 12 }}
+                    key="xp"
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="w-full max-w-[260px] space-y-4"
+                    transition={{ duration: 0.55 }}
+                    className="w-full max-w-[260px] space-y-3"
                     data-testid="xp-reveal"
                   >
                     <div className="flex items-center justify-between">
@@ -398,10 +418,9 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                         +15 XP
                       </motion.span>
                     </div>
-
                     <div
                       className="w-full h-[3px] rounded-full overflow-hidden"
-                      style={{ backgroundColor: `${ACCENT}1a` }}
+                      style={{ backgroundColor: `${ACCENT}18` }}
                       data-testid="xp-bar-track"
                     >
                       <motion.div
@@ -413,13 +432,12 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                         data-testid="xp-bar-fill"
                       />
                     </div>
-
                     <motion.p
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 1.2, duration: 0.6 }}
-                      className="text-[11px] italic text-center"
-                      style={{ color: "rgba(255,255,255,0.22)" }}
+                      className="text-[11px] italic"
+                      style={{ color: "rgba(255,255,255,0.2)" }}
                     >
                       This is the result of what you've already done.
                     </motion.p>
@@ -427,56 +445,93 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 )}
               </AnimatePresence>
 
-              {/* STEP 4: Transition message + CTA */}
+              {/* Step 4: Foundation message */}
               <AnimatePresence>
                 {completionStep >= 4 && (
                   <motion.div
-                    key="transition"
-                    initial={{ opacity: 0, y: 14 }}
+                    key="foundation"
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.65 }}
-                    className="w-full max-w-[280px] flex flex-col items-center gap-6"
+                    transition={{ duration: 0.55 }}
+                    className="w-full max-w-[280px] rounded-2xl px-5 py-5 space-y-1 text-center"
+                    style={{ backgroundColor: `${ACCENT}08`, border: `1px solid ${ACCENT}18` }}
                     data-testid="transition-block"
                   >
-                    <div
-                      className="w-full rounded-2xl px-5 py-5 text-center space-y-2"
-                      style={{
-                        backgroundColor: `${ACCENT}08`,
-                        border: `1px solid ${ACCENT}18`,
-                      }}
-                    >
-                      <p className="text-white text-base font-bold leading-snug">
-                        Your foundation is set.
-                      </p>
-                      <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
-                        Now we build structure.
-                      </p>
-                    </div>
-
-                    <motion.button
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.4 }}
-                      onClick={onComplete}
-                      className="w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-[0.12em] transition-all active:scale-[0.97]"
-                      style={{
-                        backgroundColor: ACCENT,
-                        color: "#fff",
-                        boxShadow: `0 0 28px ${ACCENT}35`,
-                      }}
-                      data-testid="button-finish-day7"
-                    >
-                      Enter Phase 1
-                    </motion.button>
+                    <p className="text-base font-bold text-white leading-snug">
+                      Your foundation is set.
+                    </p>
+                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+                      Now we build structure.
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>
-
             </motion.div>
           )}
 
         </AnimatePresence>
       </div>
-    </motion.div>
+
+      {/* ── FIXED BOTTOM CTA ─────────────────────────────────────────── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-20 p-4 flex-shrink-0"
+        style={{
+          background: `linear-gradient(to top, ${ACCENT_BG} 60%, transparent)`,
+          paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+        }}
+      >
+        <AnimatePresence mode="wait">
+
+          {/* Execution / Active CTA */}
+          {(mode === "execution" || mode === "active") && (
+            <motion.button
+              key="start-btn"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.35 }}
+              onClick={startSession}
+              disabled={mode === "active"}
+              className="w-full py-4 rounded-xl font-bold text-base tracking-wide transition-all active:scale-[0.97] disabled:cursor-default"
+              style={{
+                backgroundColor: mode === "active" ? `${ACCENT}22` : ACCENT,
+                color: mode === "active" ? ACCENT : "#000",
+                border: mode === "active" ? `1px solid ${ACCENT}40` : "none",
+                boxShadow: mode === "active" ? "none" : `0 0 32px ${ACCENT}30`,
+              }}
+              data-testid="button-begin-day7"
+            >
+              {mode === "active" ? "In Progress…" : "Start Session"}
+            </motion.button>
+          )}
+
+          {/* Enter Phase 1 CTA — only after step 4 */}
+          {mode === "completed" && completionStep >= 4 && (
+            <motion.button
+              key="phase-btn"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.4 }}
+              onClick={onComplete}
+              className="w-full py-4 rounded-xl font-bold text-base uppercase tracking-[0.12em] transition-all active:scale-[0.97]"
+              style={{
+                backgroundColor: ACCENT,
+                color: "#000",
+                boxShadow: `0 0 32px ${ACCENT}38`,
+              }}
+              data-testid="button-finish-day7"
+            >
+              Enter Phase 1
+            </motion.button>
+          )}
+
+          {/* Placeholder during completion steps 1–3 so layout doesn't jump */}
+          {mode === "completed" && completionStep < 4 && (
+            <div className="w-full py-4 rounded-xl" style={{ backgroundColor: "transparent" }} />
+          )}
+
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }
