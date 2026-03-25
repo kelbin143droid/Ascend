@@ -5,7 +5,7 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, CheckCircle2, Eye, Zap } from "lucide-react";
+import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, CheckCircle2, Eye, Zap, Shield } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
@@ -223,6 +223,7 @@ export default function HomePage() {
   const [showDay6Reveal, setShowDay6Reveal] = useState(false);
   const [day6MeterVisible, setDay6MeterVisible] = useState(false);
   const [day7Done, setDay7Done] = useState(() => localStorage.getItem("ascend_day7_followthrough_done") === "true");
+  const [day7CompletedDate] = useState(() => localStorage.getItem("ascend_day7_completed_date") ?? null);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
   const [flowCompletedToday, setFlowCompletedToday] = useState(() => {
@@ -354,12 +355,18 @@ export default function HomePage() {
     setTimeout(() => setDay6MeterVisible(true), 300);
   };
 
+  const todayDateKey = new Date().toLocaleDateString("en-CA");
+  const day7CompletedToday = day7Done && day7CompletedDate === todayDateKey;
+
+  // Day 7 follow-through: show only until completed for the first time
   if (isOnboardingComplete && !day7Done && homeData) {
     return (
       <SystemLayout>
         <Day7FollowThrough
           onComplete={() => {
+            const today = new Date().toLocaleDateString("en-CA");
             localStorage.setItem("ascend_day7_followthrough_done", "true");
+            localStorage.setItem("ascend_day7_completed_date", today);
             setDay7Done(true);
           }}
           xpData={playerData ? {
@@ -368,6 +375,62 @@ export default function HomePage() {
             max: playerData.maxExp ?? 100,
           } : undefined}
         />
+      </SystemLayout>
+    );
+  }
+
+  // Day 7 completed today — show a quiet rest card instead of the full system
+  if (isOnboardingComplete && day7CompletedToday && homeData) {
+    return (
+      <SystemLayout>
+        <div
+          className="flex flex-col items-center justify-center min-h-[70vh] gap-8 px-6 text-center"
+          data-testid="day7-rest-card"
+        >
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{
+              background: "radial-gradient(circle, rgba(147,197,253,0.12) 0%, transparent 70%)",
+              border: "1px solid rgba(147,197,253,0.18)",
+            }}
+          >
+            <Shield size={24} style={{ color: "rgba(147,197,253,0.7)" }} />
+          </div>
+
+          <div className="space-y-3">
+            <p
+              className="text-[10px] uppercase tracking-widest font-bold"
+              style={{ color: "rgba(147,197,253,0.5)" }}
+            >
+              Onboarding complete.
+            </p>
+            <p className="text-white text-xl font-bold leading-snug">
+              You did it.
+            </p>
+            <p
+              className="text-sm leading-relaxed max-w-xs"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+            >
+              Rest tonight. Your full system unlocks tomorrow.
+            </p>
+          </div>
+
+          <div
+            className="px-4 py-2 rounded-lg flex items-center gap-2"
+            style={{
+              backgroundColor: "rgba(147,197,253,0.06)",
+              border: "1px solid rgba(147,197,253,0.12)",
+            }}
+          >
+            <Clock size={11} style={{ color: "rgba(147,197,253,0.4)" }} />
+            <span
+              className="text-[10px] tracking-wide"
+              style={{ color: "rgba(147,197,253,0.45)" }}
+            >
+              Full system unlocks tomorrow
+            </span>
+          </div>
+        </div>
       </SystemLayout>
     );
   }

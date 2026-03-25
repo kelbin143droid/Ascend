@@ -324,12 +324,18 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 transition={{ delay: 0.3, duration: 0.5 }}
                 className="space-y-3 px-4"
               >
+                <p
+                  className="text-sm uppercase tracking-widest font-bold mb-1"
+                  style={{ color: `${ACCENT}99` }}
+                >
+                  Step complete.
+                </p>
                 <p className="text-white text-xl font-bold leading-tight">
                   You followed through.
                 </p>
                 <p
                   className="text-base font-medium leading-snug"
-                  style={{ color: "rgba(255,255,255,0.65)" }}
+                  style={{ color: "rgba(255,255,255,0.5)" }}
                 >
                   Every time you meet your intention,<br />you become someone who does.
                 </p>
@@ -385,10 +391,14 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
                 transition={{ delay: 0.9, duration: 0.4 }}
                 onClick={handleFinish}
                 className="w-full max-w-xs py-4 rounded-2xl font-bold text-sm uppercase tracking-[0.08em] transition-all active:scale-[0.97]"
-                style={{ backgroundColor: ACCENT, color: "#fff" }}
+                style={{
+                  backgroundColor: "rgba(147,197,253,0.10)",
+                  border: "1px solid rgba(147,197,253,0.20)",
+                  color: "rgba(147,197,253,0.85)",
+                }}
                 data-testid="button-finish-day7"
               >
-                Enter Phase 1
+                Return Home
               </motion.button>
             </motion.div>
           )}
