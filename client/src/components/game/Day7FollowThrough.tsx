@@ -248,7 +248,7 @@ function AnimatedCheckmark() {
 }
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
-type Mode           = "execution" | "countdown" | "active" | "completed";
+type Mode           = "execution" | "countdown" | "active" | "completed" | "phase-complete" | "phase-transition";
 type CompletionStep = 1 | 2 | 3 | 4;
 export interface XpData { level: number; current: number; max: number; }
 interface Props { onComplete: () => void; onCancel?: () => void; xpData?: XpData; }
@@ -596,6 +596,116 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
             </motion.div>
           )}
 
+          {/* ═══ PHASE-COMPLETE — step complete screen ══════════════ */}
+          {mode === "phase-complete" && (
+            <motion.div
+              key="phase-complete"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.5 }}
+              className="flex flex-col items-center pt-16 space-y-6 text-center px-4"
+            >
+              <AnimatedCheckmark />
+
+              <div className="space-y-3 pt-2">
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  className="text-2xl font-bold text-white"
+                  data-testid="phase-complete-title"
+                >
+                  Step complete.
+                </motion.p>
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.5 }}
+                  className="text-base leading-relaxed"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                  data-testid="phase-complete-body"
+                >
+                  You followed through.
+                  <br />
+                  Consistency begins here.
+                </motion.p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ═══ PHASE-TRANSITION — system unlock screen ════════════ */}
+          {mode === "phase-transition" && (
+            <motion.div
+              key="phase-transition"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.55 }}
+              className="flex flex-col items-center pt-14 space-y-8 text-center px-6"
+            >
+              {/* Glow ring */}
+              <motion.div
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="w-20 h-20 rounded-full flex items-center justify-center"
+                style={{
+                  border: `2px solid ${ACCENT}50`,
+                  background: `radial-gradient(circle, ${ACCENT}18 0%, transparent 70%)`,
+                  boxShadow: `0 0 32px ${ACCENT}30`,
+                }}
+              >
+                <Shield size={28} style={{ color: ACCENT }} />
+              </motion.div>
+
+              <div className="space-y-5">
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  className="text-base leading-loose"
+                  style={{ color: "rgba(255,255,255,0.6)" }}
+                  data-testid="transition-line1"
+                >
+                  7 days ago, you started.
+                </motion.p>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.55, duration: 0.5 }}
+                  className="text-xl font-semibold text-white"
+                  data-testid="transition-line2"
+                >
+                  Now you move with intention.
+                </motion.p>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.9, duration: 0.5 }}
+                  className="text-xl font-bold"
+                  style={{ color: ACCENT }}
+                  data-testid="transition-line3"
+                >
+                  Your system is unlocked.
+                </motion.p>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.4, duration: 0.6 }}
+                className="rounded-xl px-5 py-4 w-full max-w-[300px]"
+                style={{ backgroundColor: `${ACCENT}0a`, border: `1px solid ${ACCENT}20` }}
+                data-testid="transition-subtext"
+              >
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  You now train, track, and grow through structure.
+                </p>
+              </motion.div>
+            </motion.div>
+          )}
+
         </AnimatePresence>
       </div>
 
@@ -643,17 +753,47 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.4 }}
-              onClick={onComplete}
+              onClick={() => setMode("phase-complete")}
               className="w-full !py-3 !rounded-xl !bg-cyan-400 !text-black !text-base !font-semibold !shadow-none uppercase tracking-[0.12em] transition active:scale-95"
               style={{ backgroundColor: ACCENT, color: "#000" }}
               data-testid="button-finish-day7"
             >
-              Enter Phase 1
+              Continue
             </motion.button>
           )}
 
           {mode === "completed" && completionStep < 4 && (
             <div key="completed-spacer" />
+          )}
+
+          {mode === "phase-complete" && (
+            <motion.button
+              key="phase-complete-btn"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.4 }}
+              onClick={() => setMode("phase-transition")}
+              className="w-full !py-3 !rounded-xl !bg-cyan-400 !text-black !text-base !font-semibold !shadow-none uppercase tracking-[0.12em] transition active:scale-95"
+              style={{ backgroundColor: ACCENT, color: "#000" }}
+              data-testid="button-phase-complete-continue"
+            >
+              Continue
+            </motion.button>
+          )}
+
+          {mode === "phase-transition" && (
+            <motion.button
+              key="enter-system-btn"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.8, duration: 0.4 }}
+              onClick={onComplete}
+              className="w-full !py-3 !rounded-xl !bg-cyan-400 !text-black !text-base !font-semibold !shadow-none uppercase tracking-[0.12em] transition active:scale-95"
+              style={{ backgroundColor: ACCENT, color: "#000" }}
+              data-testid="button-enter-system"
+            >
+              Enter System
+            </motion.button>
           )}
 
         </AnimatePresence>
