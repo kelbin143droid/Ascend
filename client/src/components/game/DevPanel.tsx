@@ -70,6 +70,7 @@ export function DevPanel() {
         if (data.newOnboardingDay >= 7) {
           localStorage.removeItem("ascend_day7_followthrough_done");
           localStorage.removeItem("ascend_day7_completed_date");
+          localStorage.removeItem("ascend_light_movement_completed");
           dispatchDay7Event(false);
         }
         setLastResult(`+${data.daysSimulated}d → Day ${data.newOnboardingDay}, ${data.completionsCreated} completions, streak ${data.newStreak}`);
@@ -99,6 +100,7 @@ export function DevPanel() {
         if (data.newOnboardingDay < 7) {
           localStorage.removeItem("ascend_day7_followthrough_done");
           localStorage.removeItem("ascend_day7_completed_date");
+          localStorage.removeItem("ascend_light_movement_completed");
           dispatchDay7Event(false);
         }
         setLastResult(`← Day ${data.newOnboardingDay}, removed ${data.removedCompletions} completions`);
@@ -125,6 +127,7 @@ export function DevPanel() {
       const res = await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
       localStorage.removeItem("ascend_day7_followthrough_done");
       localStorage.removeItem("ascend_day7_completed_date");
+      localStorage.removeItem("ascend_light_movement_completed");
       dispatchDay7Event(false);
       if (res.ok) {
         setLastResult("Progress reset to Day 1");
@@ -150,6 +153,7 @@ export function DevPanel() {
   const restoreDay7Screen = () => {
     localStorage.removeItem("ascend_day7_followthrough_done");
     localStorage.removeItem("ascend_day7_completed_date");
+    localStorage.removeItem("ascend_light_movement_completed");
     dispatchDay7Event(false);
     setLastResult("Day 7 screen restored");
     queryClient.invalidateQueries();

@@ -226,10 +226,12 @@ export default function HomePage() {
   const [day7CompletionDate] = useState(() => localStorage.getItem("ascend_day7_completed_date") ?? null);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
-  const [flowCompletedToday, setFlowCompletedToday] = useState(() => {
-    const today = new Date().toISOString().split("T")[0];
-    return localStorage.getItem("ascend_light_movement_completed") === today;
-  });
+  // Store the DATE the flow was completed, not a boolean.
+  // flowCompletedToday is derived by comparing this date to today, so it
+  // automatically becomes false on a new calendar day — even without remounting.
+  const [flowCompletedDate, setFlowCompletedDate] = useState(
+    () => localStorage.getItem("ascend_light_movement_completed") ?? ""
+  );
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -275,9 +277,20 @@ export default function HomePage() {
   const isTrainingMode = isOnboardingComplete;
   const isOnboardingFlow = onboardingDay <= 7 && !isTrainingMode;
 
-  // Keep day7Done state in sync when DevPanel modifies localStorage
+  // Derived fresh every render — correct across day boundaries and DevPanel resets
+  const todayStr = new Date().toISOString().split("T")[0];
+  const flowCompletedToday = flowCompletedDate === todayStr;
+
+  // Keep day7Done + flowCompletedDate in sync when DevPanel modifies localStorage
   useEffect(() => {
-    const handler = (e: Event) => setDay7Done((e as CustomEvent<{ done: boolean }>).detail.done);
+    const handler = (e: Event) => {
+      const { done } = (e as CustomEvent<{ done: boolean }>).detail;
+      setDay7Done(done);
+      // When DevPanel resets progress, also reset the daily flow state
+      if (!done) {
+        setFlowCompletedDate("");
+      }
+    };
     window.addEventListener("ascend:day7done", handler);
     return () => window.removeEventListener("ascend:day7done", handler);
   }, []);
@@ -365,6 +378,9 @@ export default function HomePage() {
             const today = new Date().toISOString().split("T")[0];
             localStorage.setItem("ascend_day7_followthrough_done", "true");
             localStorage.setItem("ascend_day7_completed_date", today);
+            // Explicitly reset Day 8 flow state — must start with 0/4
+            localStorage.removeItem("ascend_light_movement_completed");
+            setFlowCompletedDate("");
             setDay7Done(true);
           }}
           xpData={playerData ? {
@@ -614,15 +630,15 @@ export default function HomePage() {
 
   const handleFlowComplete = (completedIds: string[], _bonusAwarded: boolean) => {
     if (completedIds.length > 0) {
-      setFlowCompletedToday(true);
-      localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
+      const dateStr = new Date().toISOString().split("T")[0];
+      localStorage.setItem("ascend_light_movement_completed", dateStr);
+      setFlowCompletedDate(dateStr);
     }
     setFlowActive(false);
   };
 
   // After Day 7 transition screens, hold on "Day complete" until a new calendar day begins.
   // This prevents Day 8 daily flow from showing on the same day as Day 7 completion.
-  const todayStr = new Date().toISOString().split("T")[0];
   if (isOnboardingComplete && day7Done && day7CompletionDate === todayStr) {
     return (
       <SystemLayout>
