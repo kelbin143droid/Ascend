@@ -14,7 +14,6 @@ import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
 import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
 import { Day6SectographIntro } from "@/components/game/Day6SectographIntro";
-import { Day7FollowThrough } from "@/components/game/Day7FollowThrough";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow" | "weekly-reflection";
 
@@ -78,11 +77,11 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
   },
   "weekly-reflection": {
     id: "weekly-reflection",
-    title: "Weekly Reflection",
+    title: "Follow Through",
     stat: "sense",
-    durationSeconds: 0,
+    durationSeconds: 120,
     icon: Brain,
-    type: "instant",
+    type: "breathing",
   },
 };
 
@@ -735,38 +734,6 @@ export default function GuidedSessionPage() {
     );
   }
 
-  // Day 7 — Follow-Through: meets the planned action from Day 6
-  if (sessionId === "weekly-reflection" && player?.id) {
-    const handleDay7Complete = () => {
-      apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
-        sessionId: "weekly-reflection",
-        stat: "sense",
-        durationMinutes: 2,
-      }).then(() => queryClient.invalidateQueries({ queryKey: ["home"] })).catch(() => {});
-
-      const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
-      if (isFirstCompletionToday) {
-        setShowDayClose(true);
-      } else {
-        setLocation("/");
-      }
-    };
-
-    return (
-      <>
-        <Day7FollowThrough
-          onComplete={handleDay7Complete}
-          onCancel={() => setLocation("/")}
-        />
-        <DayCloseOverlay
-          visible={showDayClose}
-          onboardingDay={homeData?.onboardingDay ?? 2}
-          onClose={() => { setShowDayClose(false); setLocation("/"); }}
-        />
-      </>
-    );
-  }
-
   const accentColor = STAT_COLORS[session.stat] || "#3b82f6";
   const progress = session.durationSeconds > 0 ? Math.min(elapsed / session.durationSeconds, 1) : 0;
   const Icon = session.icon;
@@ -778,7 +745,7 @@ export default function GuidedSessionPage() {
       style={{ backgroundColor: backgroundTheme.colors.background }}
     >
       {/* Calm breathing ambient video background */}
-      {sessionId === "calm-breathing" && state === "active" && (
+      {(sessionId === "calm-breathing" || sessionId === "weekly-reflection") && state === "active" && (
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <video
             src="/videos/calm-breathing.mp4"

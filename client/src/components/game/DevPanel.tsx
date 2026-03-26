@@ -66,8 +66,9 @@ export function DevPanel() {
       });
       if (res.ok) {
         const data: SimulateResult = await res.json();
-        // If advancing to Day 7+, clear day7Done so the follow-through screen shows
-        if (data.newOnboardingDay >= 7) {
+        // When first reaching Day 7 (not already done), clear so the follow-through shows
+        const alreadyDone = localStorage.getItem("ascend_day7_followthrough_done") === "true";
+        if (data.newOnboardingDay >= 7 && !alreadyDone) {
           localStorage.removeItem("ascend_day7_followthrough_done");
           localStorage.removeItem("ascend_day7_completed_date");
           localStorage.removeItem("ascend_light_movement_completed");
@@ -143,11 +144,51 @@ export function DevPanel() {
     setLoading(false);
   };
 
+  const getYesterdayStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split("T")[0];
+  };
+
   const skipDay7Screen = () => {
+    const yesterday = getYesterdayStr();
     localStorage.setItem("ascend_day7_followthrough_done", "true");
+    localStorage.setItem("ascend_day7_completed_date", yesterday);
+    localStorage.removeItem("ascend_light_movement_completed");
     dispatchDay7Event(true);
-    setLastResult("Day 7 screen skipped → Phase 1");
+    setLastResult("Day 7 skipped → Day 8 home");
     queryClient.invalidateQueries();
+  };
+
+  const jumpToDay8 = async () => {
+    if (!player?.id || loading) return;
+    setLoading(true);
+    setLastResult(null);
+    try {
+      const res = await fetch(`/api/player/${player.id}/dev/status`);
+      const currentStatus: DevStatus = res.ok ? await res.json() : null;
+      const currentDay = currentStatus?.onboardingDay ?? 0;
+      if (currentDay < 7) {
+        const daysNeeded = 7 - currentDay;
+        const simRes = await fetch(`/api/player/${player.id}/dev/simulate-day`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ days: daysNeeded, completeHabits: true }),
+        });
+        if (!simRes.ok) { setLastResult("Error simulating to Day 7"); setLoading(false); return; }
+      }
+      const yesterday = getYesterdayStr();
+      localStorage.setItem("ascend_day7_followthrough_done", "true");
+      localStorage.setItem("ascend_day7_completed_date", yesterday);
+      localStorage.removeItem("ascend_light_movement_completed");
+      dispatchDay7Event(true);
+      setLastResult(`Jumped to Day 8 home`);
+      queryClient.invalidateQueries();
+      fetchStatus();
+    } catch {
+      setLastResult("Error jumping to Day 8");
+    }
+    setLoading(false);
   };
 
   const restoreDay7Screen = () => {
@@ -203,7 +244,7 @@ export function DevPanel() {
           {status && (
             <div className="space-y-1.5 mb-3">
               <div className="grid grid-cols-2 gap-1.5">
-                <StatusItem label="Day" value={`${status.onboardingDay}/7`} />
+                <StatusItem label="Day" value={String(status.onboardingDay)} />
                 <StatusItem label="Streak" value={String(status.streak)} />
                 <StatusItem label="Phase" value={String(status.phase)} />
                 <StatusItem label="Level" value={String(status.level)} />
@@ -330,6 +371,20 @@ export function DevPanel() {
                 +{daysInput}d guided only
               </button>
             </div>
+
+            <button
+              onClick={jumpToDay8}
+              disabled={loading}
+              className="w-full text-[10px] font-medium py-1.5 rounded-lg transition-colors"
+              style={{
+                backgroundColor: loading ? "rgba(34,211,238,0.04)" : "rgba(34,211,238,0.12)",
+                border: "1px solid rgba(34,211,238,0.2)",
+                color: loading ? "rgba(34,211,238,0.4)" : "rgba(34,211,238,0.9)",
+              }}
+              data-testid="button-jump-day8"
+            >
+              Jump to Day 8 →
+            </button>
 
             <div className="flex gap-2">
               <button

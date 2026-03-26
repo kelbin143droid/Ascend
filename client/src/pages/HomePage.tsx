@@ -374,6 +374,7 @@ export default function HomePage() {
     return (
       <SystemLayout>
         <Day7FollowThrough
+          initialMode="completed"
           onComplete={() => {
             const today = new Date().toISOString().split("T")[0];
             localStorage.setItem("ascend_day7_followthrough_done", "true");

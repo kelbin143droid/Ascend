@@ -251,11 +251,11 @@ function AnimatedCheckmark() {
 type Mode           = "execution" | "countdown" | "active" | "completed" | "phase-complete" | "phase-transition";
 type CompletionStep = 1 | 2 | 3 | 4;
 export interface XpData { level: number; current: number; max: number; }
-interface Props { onComplete: () => void; onCancel?: () => void; xpData?: XpData; }
+interface Props { onComplete: () => void; onCancel?: () => void; xpData?: XpData; initialMode?: Mode; }
 
 /* ─── Main component ─────────────────────────────────────────────────── */
-export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
-  const [mode, setMode]                     = useState<Mode>("execution");
+export function Day7FollowThrough({ onComplete, onCancel, xpData, initialMode }: Props) {
+  const [mode, setMode]                     = useState<Mode>(initialMode ?? "execution");
   const [countdown, setCountdown]           = useState(3);
   const [completionStep, setCompletionStep] = useState<CompletionStep>(1);
   const [elapsed, setElapsed]               = useState(0);
