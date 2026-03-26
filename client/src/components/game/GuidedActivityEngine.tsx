@@ -855,21 +855,35 @@ export function GuidedActivityEngine({
                   exerciseId={step.id}
                 />
               ) : (isBreathStep && stepPhase === "running") ? (
-                <>
-                  <BreathingVisual
-                    active={true}
-                    color={activity.color}
-                    timing={step.breathTiming!}
-                  />
-                  <div className="flex flex-col items-center gap-2">
-                    <div
-                      className="text-2xl font-bold font-mono tabular-nums"
-                      style={{ color: activity.color }}
-                    >
-                      {Math.floor(timerRemaining / 60)}:{(timerRemaining % 60).toString().padStart(2, "0")}
+                step.videoSrc ? (
+                  <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+                    <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: "300px" }}>
+                      <video
+                        key={step.videoSrc}
+                        src={step.videoSrc}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ filter: "brightness(0.45)" }}
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                        <BreathingVisual
+                          active={true}
+                          color={activity.color}
+                          timing={step.breathTiming!}
+                        />
+                        <div
+                          className="text-2xl font-bold font-mono tabular-nums drop-shadow"
+                          style={{ color: activity.color }}
+                        >
+                          {Math.floor(timerRemaining / 60)}:{(timerRemaining % 60).toString().padStart(2, "0")}
+                        </div>
+                      </div>
                     </div>
                     <div
-                      className="w-48 h-1.5 rounded-full overflow-hidden"
+                      className="w-full h-1 rounded-full overflow-hidden"
                       style={{ backgroundColor: `${activity.color}20` }}
                     >
                       <div
@@ -881,7 +895,35 @@ export function GuidedActivityEngine({
                       />
                     </div>
                   </div>
-                </>
+                ) : (
+                  <>
+                    <BreathingVisual
+                      active={true}
+                      color={activity.color}
+                      timing={step.breathTiming!}
+                    />
+                    <div className="flex flex-col items-center gap-2">
+                      <div
+                        className="text-2xl font-bold font-mono tabular-nums"
+                        style={{ color: activity.color }}
+                      >
+                        {Math.floor(timerRemaining / 60)}:{(timerRemaining % 60).toString().padStart(2, "0")}
+                      </div>
+                      <div
+                        className="w-48 h-1.5 rounded-full overflow-hidden"
+                        style={{ backgroundColor: `${activity.color}20` }}
+                      >
+                        <div
+                          className="h-full rounded-full transition-all duration-1000 ease-linear"
+                          style={{
+                            width: `${step.durationSeconds ? (1 - timerRemaining / step.durationSeconds) * 100 : 0}%`,
+                            backgroundColor: activity.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )
               ) : isCheckStep ? (
                 <div className="flex flex-col items-center gap-4 w-full max-w-sm">
                   <div

@@ -162,6 +162,7 @@ export function buildPhase1Activities(
           durationSeconds: meditationDuration,
           breathTiming: { inhaleSeconds: 4, holdSeconds: 2, exhaleSeconds: 6 },
           voiceText: "Follow the circle. Inhale for 4 seconds. Hold for 2. Exhale for 6.",
+          videoSrc: "/videos/meditation_loop.mp4",
         },
         {
           id: "meditation_done",

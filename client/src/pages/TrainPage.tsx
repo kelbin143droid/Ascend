@@ -6,7 +6,6 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { GuidedActivityEngine } from "@/components/game/GuidedActivityEngine";
 import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
-import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { buildPhase1Activities, TIER_XP_MULTIPLIERS, type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
 import { Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield, Zap, ListChecks } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -95,20 +94,12 @@ export default function TrainPage() {
     <SystemLayout>
       <AnimatePresence>
         {activeActivity && player && (
-          activeActivity.id === "phase1_agility" ? (
-            <LightMovementEngine
-              playerId={player.id}
-              onComplete={() => handleActivityComplete(activeActivity.id)}
-              onCancel={() => setActiveActivity(null)}
-            />
-          ) : (
-            <GuidedActivityEngine
-              activity={activeActivity}
-              playerId={player.id}
-              onComplete={() => handleActivityComplete(activeActivity.id)}
-              onCancel={() => setActiveActivity(null)}
-            />
-          )
+          <GuidedActivityEngine
+            activity={activeActivity}
+            playerId={player.id}
+            onComplete={() => handleActivityComplete(activeActivity.id)}
+            onCancel={() => setActiveActivity(null)}
+          />
         )}
         {flowActive && player && (
           <DailyFlowEngine
