@@ -126,13 +126,13 @@ export function buildPhase1Activities(
     ? `Jumping jacks. ${st.cardioSeconds} seconds.`
     : `Jog in place. ${st.cardioSeconds} seconds.`;
 
-  const pushUpVideo = strengthTier <= 1 ? "/videos/knee-push-ups.mp4" : "/videos/push-ups.mp4";
+  const pushUpVideo = strengthTier <= 1 ? "/videos/knee-push-ups.mp4" : "/videos/pushups-v2.mp4";
   const pushUpLabel = strengthTier <= 1 ? "Knee Push-ups" : "Push-ups";
   const pushUpInstruction = strengthTier <= 1
     ? `Knee push-ups for ${st.pushupSeconds} seconds. Control the movement.`
     : `Push-ups for ${st.pushupSeconds} seconds. Slow and steady.`;
 
-  const strengthTotal = st.cardioSeconds + st.pushupSeconds + st.plankSeconds + st.restSeconds;
+  const strengthTotal = st.cardioSeconds + st.pushupSeconds + st.pushupSeconds + st.plankSeconds + st.restSeconds;
   const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   return [
@@ -187,8 +187,8 @@ export function buildPhase1Activities(
           id: "intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: "Three exercises. Follow the animations and timer.",
-          voiceText: "Get ready. Three exercises. Follow the animations.",
+          instruction: "Four exercises. Follow the animations and timer.",
+          voiceText: "Get ready. Four exercises. Follow the animations.",
         },
         {
           id: "cardio",
@@ -209,13 +209,22 @@ export function buildPhase1Activities(
           videoSrc: pushUpVideo,
         },
         {
+          id: "abs",
+          type: "timer",
+          label: "Abs — Sit-ups",
+          instruction: `Sit-ups for ${st.pushupSeconds} seconds. Curl up slowly, lower with control.`,
+          durationSeconds: st.pushupSeconds,
+          voiceText: `Sit-ups. ${st.pushupSeconds} seconds. Core tight.`,
+          videoSrc: "/videos/situps.mp4",
+        },
+        {
           id: "plank",
           type: "timer",
           label: "Plank Hold",
           instruction: `Hold a plank for ${st.plankSeconds} seconds. Hips level, core tight.`,
           durationSeconds: st.plankSeconds,
           voiceText: `Plank hold. ${st.plankSeconds} seconds. Core tight.`,
-          videoSrc: "/videos/plank.mp4",
+          videoSrc: "/videos/plank-v2.mp4",
         },
         {
           id: "rest",
@@ -294,7 +303,7 @@ export function buildPhase1Activities(
           instruction: `Reach toward your toes and hold gently. No bouncing. ${ag.toeTouchSeconds} seconds.`,
           durationSeconds: ag.toeTouchSeconds,
           voiceText: `Toe touch hold. ${ag.toeTouchSeconds} seconds. No bouncing.`,
-          videoSrc: "/videos/toe-hold.mp4",
+          videoSrc: "/videos/holder-stretch.mp4",
         },
         {
           id: "hip_opener",

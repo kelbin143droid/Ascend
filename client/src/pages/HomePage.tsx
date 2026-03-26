@@ -16,7 +16,7 @@ import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -223,6 +223,7 @@ export default function HomePage() {
   const [showDay6Reveal, setShowDay6Reveal] = useState(false);
   const [day6MeterVisible, setDay6MeterVisible] = useState(false);
   const [day7Done, setDay7Done] = useState(() => localStorage.getItem("ascend_day7_followthrough_done") === "true");
+  const [day7CompletionDate] = useState(() => localStorage.getItem("ascend_day7_completed_date") ?? null);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
   const [flowCompletedToday, setFlowCompletedToday] = useState(() => {
@@ -355,13 +356,15 @@ export default function HomePage() {
   };
 
   // Day 7 follow-through: show the 4-step completion sequence.
-  // "Enter Phase 1" CTA calls onComplete → sets day7Done → full system renders immediately.
+  // "Enter System" CTA calls onComplete → sets day7Done + completion date → held until next calendar day.
   if (isOnboardingComplete && !day7Done && homeData) {
     return (
       <SystemLayout>
         <Day7FollowThrough
           onComplete={() => {
+            const today = new Date().toISOString().split("T")[0];
             localStorage.setItem("ascend_day7_followthrough_done", "true");
+            localStorage.setItem("ascend_day7_completed_date", today);
             setDay7Done(true);
           }}
           xpData={playerData ? {
@@ -617,6 +620,50 @@ export default function HomePage() {
     setFlowActive(false);
   };
 
+  // After Day 7 transition screens, hold on "Day complete" until a new calendar day begins.
+  // This prevents Day 8 daily flow from showing on the same day as Day 7 completion.
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (isOnboardingComplete && day7Done && day7CompletionDate === todayStr) {
+    return (
+      <SystemLayout>
+        <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 px-6 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex flex-col items-center gap-6"
+          >
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: `${colors.primary}15`, border: `1px solid ${colors.primary}30` }}
+            >
+              <CheckCircle2 size={26} style={{ color: colors.primary }} />
+            </div>
+            <div className="space-y-2">
+              <p className="text-lg font-display font-medium" style={{ color: colors.text }}>
+                Day 7 Complete.
+              </p>
+              <p className="text-sm leading-relaxed" style={{ color: colors.textMuted }}>
+                Your foundation is set.
+              </p>
+            </div>
+            <div
+              className="rounded-xl px-5 py-4 max-w-xs"
+              style={{
+                backgroundColor: `${colors.surface || colors.background}cc`,
+                border: `1px solid ${colors.surfaceBorder}`,
+              }}
+            >
+              <p className="text-[13px] leading-relaxed" style={{ color: colors.textMuted }}>
+                Your daily training system begins tomorrow. Return then to start your first full flow.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </SystemLayout>
+    );
+  }
+
   return (
     <SystemLayout>
       <AnimatePresence>
@@ -717,8 +764,11 @@ export default function HomePage() {
                   Today's Flow
                 </span>
               </div>
-              <span className="text-[10px]" style={{ color: colors.textMuted }}>
-                ~{totalMins} min
+              <span
+                className="text-[10px] font-mono"
+                style={{ color: flowCompletedToday ? "#22c55e" : colors.textMuted }}
+              >
+                {flowCompletedToday ? "4/4 complete" : `0/4 complete · ~${totalMins} min`}
               </span>
             </div>
 
@@ -762,12 +812,6 @@ export default function HomePage() {
                         {act.sublabel}
                       </span>
                     </div>
-                    <span
-                      className="text-[10px] font-mono shrink-0"
-                      style={{ color: flowCompletedToday ? "#22c55e80" : `${act.color}80` }}
-                    >
-                      {i + 1}/4
-                    </span>
                   </div>
                 );
               })}
