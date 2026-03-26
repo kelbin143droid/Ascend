@@ -126,7 +126,7 @@ export function buildPhase1Activities(
     ? `Jumping jacks. ${st.cardioSeconds} seconds.`
     : `Jog in place. ${st.cardioSeconds} seconds.`;
 
-  const pushUpVideo = strengthTier <= 1 ? "/videos/knee-push-ups.mp4" : "/videos/pushups-v2.mp4";
+  const pushUpVideo = strengthTier <= 1 ? "/videos/knee-push-ups.mp4" : "/videos/pushups_loop.mp4";
   const pushUpLabel = strengthTier <= 1 ? "Knee Push-ups" : "Push-ups";
   const pushUpInstruction = strengthTier <= 1
     ? `Knee push-ups for ${st.pushupSeconds} seconds. Control the movement.`
@@ -215,7 +215,7 @@ export function buildPhase1Activities(
           instruction: `Sit-ups for ${st.pushupSeconds} seconds. Curl up slowly, lower with control.`,
           durationSeconds: st.pushupSeconds,
           voiceText: `Sit-ups. ${st.pushupSeconds} seconds. Core tight.`,
-          videoSrc: "/videos/situps.mp4",
+          videoSrc: "/videos/abs_crunch_loop.mp4",
         },
         {
           id: "plank",
@@ -224,7 +224,7 @@ export function buildPhase1Activities(
           instruction: `Hold a plank for ${st.plankSeconds} seconds. Hips level, core tight.`,
           durationSeconds: st.plankSeconds,
           voiceText: `Plank hold. ${st.plankSeconds} seconds. Core tight.`,
-          videoSrc: "/videos/plank-v2.mp4",
+          videoSrc: "/videos/plank_hold_loop.mp4",
         },
         {
           id: "rest",
@@ -267,7 +267,7 @@ export function buildPhase1Activities(
           instruction: `Bring your left arm across your chest. Hold the stretch. ${ag.crossArmSeconds} seconds.`,
           durationSeconds: ag.crossArmSeconds,
           voiceText: `Cross arm stretch, left side. ${ag.crossArmSeconds} seconds.`,
-          videoSrc: "/videos/cross-arm-left.mp4",
+          videoSrc: "/videos/cross_arm_left.mp4",
         },
         {
           id: "cross_arm_right",
@@ -276,7 +276,7 @@ export function buildPhase1Activities(
           instruction: `Switch to your right arm across your chest. ${ag.crossArmSeconds} seconds.`,
           durationSeconds: ag.crossArmSeconds,
           voiceText: `Cross arm stretch, right side. ${ag.crossArmSeconds} seconds.`,
-          videoSrc: "/videos/cross-arm-right.mp4",
+          videoSrc: "/videos/cross_arm_right.mp4",
         },
         {
           id: "tricep_left",
@@ -285,7 +285,7 @@ export function buildPhase1Activities(
           instruction: `Raise your left arm, bend at the elbow, reach down your back. ${ag.tricepSeconds} seconds.`,
           durationSeconds: ag.tricepSeconds,
           voiceText: `Tricep stretch, left side. ${ag.tricepSeconds} seconds.`,
-          videoSrc: "/videos/tricep-stretch-left.mp4",
+          videoSrc: "/videos/tricep_left.mp4",
         },
         {
           id: "tricep_right",
@@ -294,7 +294,7 @@ export function buildPhase1Activities(
           instruction: `Switch to your right arm. Elbow up, reach down your back. ${ag.tricepSeconds} seconds.`,
           durationSeconds: ag.tricepSeconds,
           voiceText: `Tricep stretch, right side. ${ag.tricepSeconds} seconds.`,
-          videoSrc: "/videos/tricep-stretch-right.mp4",
+          videoSrc: "/videos/tricep_right.mp4",
         },
         {
           id: "toe_touch",
@@ -303,7 +303,7 @@ export function buildPhase1Activities(
           instruction: `Reach toward your toes and hold gently. No bouncing. ${ag.toeTouchSeconds} seconds.`,
           durationSeconds: ag.toeTouchSeconds,
           voiceText: `Toe touch hold. ${ag.toeTouchSeconds} seconds. No bouncing.`,
-          videoSrc: "/videos/holder-stretch.mp4",
+          videoSrc: "/videos/toe_hold.mp4",
         },
         {
           id: "hip_opener",
@@ -312,7 +312,7 @@ export function buildPhase1Activities(
           instruction: `Open your hips with a wide-stance lunge or butterfly stretch. ${ag.hipOpenerSeconds} seconds.`,
           durationSeconds: ag.hipOpenerSeconds,
           voiceText: `Hip opener stretch. ${ag.hipOpenerSeconds} seconds.`,
-          videoSrc: "/videos/hip-opener.mp4",
+          videoSrc: "/videos/holderstretch.mp4",
         },
         {
           id: "agility_done",

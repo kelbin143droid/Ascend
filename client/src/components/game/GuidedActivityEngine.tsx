@@ -261,10 +261,12 @@ function GetReadyCountdown({
   color,
   onComplete,
   exerciseName,
+  videoSrc,
 }: {
   color: string;
   onComplete: () => void;
   exerciseName: string;
+  videoSrc?: string;
 }) {
   const [count, setCount] = useState(3);
   const beep = useBeepSound();
@@ -286,6 +288,46 @@ function GetReadyCountdown({
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  if (videoSrc) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex flex-col items-center gap-3 w-full max-w-xs"
+      >
+        <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: "300px" }}>
+          <video
+            key={videoSrc}
+            src={videoSrc}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ filter: "brightness(0.55)" }}
+          />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+            <div className="text-xs uppercase tracking-widest font-bold text-white/70">
+              Get Ready
+            </div>
+            <div className="text-sm font-medium text-white/90 mb-1">{exerciseName}</div>
+            <motion.div
+              key={count}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 1.5, opacity: 0 }}
+              className="text-7xl font-bold font-mono"
+              style={{ color, textShadow: "0 0 20px rgba(0,0,0,0.8)" }}
+            >
+              {count || "GO!"}
+            </motion.div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -772,6 +814,7 @@ export function GuidedActivityEngine({
               color={activity.color}
               onComplete={handleGetReadyComplete}
               exerciseName={step.label}
+              videoSrc={step.videoSrc}
             />
           ) : step ? (
             <motion.div
