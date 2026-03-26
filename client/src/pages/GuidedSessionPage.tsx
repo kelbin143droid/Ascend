@@ -529,6 +529,11 @@ export default function GuidedSessionPage() {
       queryClient.invalidateQueries({ queryKey: ["home"] });
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
     }
+    // Mark Day 7 guided session as done so the phase-transition screen unlocks on Home
+    if (savedOk && sessionId === "weekly-reflection") {
+      localStorage.setItem("ascend_day7_session_completed", "true");
+      window.dispatchEvent(new CustomEvent("ascend:day7session"));
+    }
     const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
     const isDay5 = homeData?.onboardingDay === 5;
     const alreadyExpanded = localStorage.getItem("ascend_day5_expansion_shown") === new Date().toISOString().split("T")[0];
@@ -541,7 +546,7 @@ export default function GuidedSessionPage() {
     } else {
       setState("done");
     }
-  }, [homeData, queryClient]);
+  }, [homeData, queryClient, sessionId]);
 
   const completeMutation = useMutation({
     mutationFn: async () => {

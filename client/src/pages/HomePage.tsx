@@ -224,6 +224,7 @@ export default function HomePage() {
   const [day6MeterVisible, setDay6MeterVisible] = useState(false);
   const [day7Done, setDay7Done] = useState(() => localStorage.getItem("ascend_day7_followthrough_done") === "true");
   const [day7CompletionDate] = useState(() => localStorage.getItem("ascend_day7_completed_date") ?? null);
+  const [day7SessionCompleted, setDay7SessionCompleted] = useState(() => localStorage.getItem("ascend_day7_session_completed") === "true");
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
   // Store the DATE the flow was completed, not a boolean.
@@ -274,34 +275,53 @@ export default function HomePage() {
   const isOnboardingComplete = homeData?.isOnboardingComplete ?? false;
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
 
-  const isTrainingMode = isOnboardingComplete;
+  // Training mode only starts after the Day 7 session is actually completed by the user
+  const isTrainingMode = isOnboardingComplete && (day7Done || day7SessionCompleted);
   const isOnboardingFlow = onboardingDay <= 7 && !isTrainingMode;
 
   // Derived fresh every render — correct across day boundaries and DevPanel resets
   const todayStr = new Date().toISOString().split("T")[0];
   const flowCompletedToday = flowCompletedDate === todayStr;
 
-  // Keep day7Done + flowCompletedDate in sync when DevPanel modifies localStorage
+  // Keep day7Done + day7SessionCompleted + flowCompletedDate in sync when DevPanel modifies localStorage
   useEffect(() => {
     const handler = (e: Event) => {
       const { done } = (e as CustomEvent<{ done: boolean }>).detail;
       setDay7Done(done);
-      // When DevPanel resets progress, also reset the daily flow state
+      // When DevPanel resets progress, also reset the session + daily flow state
       if (!done) {
+        setDay7SessionCompleted(false);
         setFlowCompletedDate("");
+      } else {
+        // When DevPanel marks done (Jump to Day 8 / Skip Day 7), treat session as completed too
+        setDay7SessionCompleted(true);
       }
     };
     window.addEventListener("ascend:day7done", handler);
     return () => window.removeEventListener("ascend:day7done", handler);
   }, []);
 
-  // If user is in onboarding phase, clear any stale day7Done flag from previous test sessions
+  // Listen for Day 7 breathing session completion from GuidedSessionPage
+  useEffect(() => {
+    const handler = () => setDay7SessionCompleted(true);
+    window.addEventListener("ascend:day7session", handler);
+    return () => window.removeEventListener("ascend:day7session", handler);
+  }, []);
+
+  // If user is in onboarding phase, clear any stale day7 flags from previous test sessions
   useEffect(() => {
     if (!isOnboardingComplete && day7Done) {
       localStorage.removeItem("ascend_day7_followthrough_done");
+      localStorage.removeItem("ascend_day7_session_completed");
       setDay7Done(false);
+      setDay7SessionCompleted(false);
     }
-  }, [isOnboardingComplete]);
+    // Migration: if phase-transition was already done (existing users) but session flag missing, auto-set it
+    if (isOnboardingComplete && day7Done && !day7SessionCompleted) {
+      localStorage.setItem("ascend_day7_session_completed", "true");
+      setDay7SessionCompleted(true);
+    }
+  }, [isOnboardingComplete, day7Done, day7SessionCompleted]);
 
   useEffect(() => {
     if (!homeData || onboardingDay !== 3) return;
@@ -368,9 +388,9 @@ export default function HomePage() {
     setTimeout(() => setDay6MeterVisible(true), 300);
   };
 
-  // Day 7 follow-through: show the 4-step completion sequence.
+  // Day 7 follow-through: only show after the guided session has been completed.
   // "Enter System" CTA calls onComplete → sets day7Done + completion date → held until next calendar day.
-  if (isOnboardingComplete && !day7Done && homeData) {
+  if (isOnboardingComplete && !day7Done && day7SessionCompleted && homeData) {
     return (
       <SystemLayout>
         <Day7FollowThrough

@@ -71,6 +71,7 @@ export function DevPanel() {
         if (data.newOnboardingDay >= 7 && !alreadyDone) {
           localStorage.removeItem("ascend_day7_followthrough_done");
           localStorage.removeItem("ascend_day7_completed_date");
+          localStorage.removeItem("ascend_day7_session_completed");
           localStorage.removeItem("ascend_light_movement_completed");
           dispatchDay7Event(false);
         }
@@ -101,6 +102,7 @@ export function DevPanel() {
         if (data.newOnboardingDay < 7) {
           localStorage.removeItem("ascend_day7_followthrough_done");
           localStorage.removeItem("ascend_day7_completed_date");
+          localStorage.removeItem("ascend_day7_session_completed");
           localStorage.removeItem("ascend_light_movement_completed");
           dispatchDay7Event(false);
         }
@@ -128,6 +130,7 @@ export function DevPanel() {
       const res = await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
       localStorage.removeItem("ascend_day7_followthrough_done");
       localStorage.removeItem("ascend_day7_completed_date");
+      localStorage.removeItem("ascend_day7_session_completed");
       localStorage.removeItem("ascend_light_movement_completed");
       dispatchDay7Event(false);
       if (res.ok) {
@@ -154,6 +157,7 @@ export function DevPanel() {
     const yesterday = getYesterdayStr();
     localStorage.setItem("ascend_day7_followthrough_done", "true");
     localStorage.setItem("ascend_day7_completed_date", yesterday);
+    localStorage.setItem("ascend_day7_session_completed", "true");
     localStorage.removeItem("ascend_light_movement_completed");
     dispatchDay7Event(true);
     setLastResult("Day 7 skipped → Day 8 home");
@@ -180,6 +184,7 @@ export function DevPanel() {
       const yesterday = getYesterdayStr();
       localStorage.setItem("ascend_day7_followthrough_done", "true");
       localStorage.setItem("ascend_day7_completed_date", yesterday);
+      localStorage.setItem("ascend_day7_session_completed", "true");
       localStorage.removeItem("ascend_light_movement_completed");
       dispatchDay7Event(true);
       setLastResult(`Jumped to Day 8 home`);
@@ -194,6 +199,7 @@ export function DevPanel() {
   const restoreDay7Screen = () => {
     localStorage.removeItem("ascend_day7_followthrough_done");
     localStorage.removeItem("ascend_day7_completed_date");
+    localStorage.removeItem("ascend_day7_session_completed");
     localStorage.removeItem("ascend_light_movement_completed");
     dispatchDay7Event(false);
     setLastResult("Day 7 screen restored");
