@@ -70,41 +70,21 @@ function useBeepSound() {
   return { playBeep, playCountdownBeep, playCompleteBeep };
 }
 
-function useVoiceGuidance() {
+function useAudioEnabled() {
   const [enabled, setEnabled] = useState(() => {
-    const saved = localStorage.getItem("ascend_voice_guidance");
+    const saved = localStorage.getItem("ascend_audio_enabled");
     return saved !== "false";
   });
 
   const toggle = useCallback(() => {
     setEnabled((prev) => {
       const next = !prev;
-      localStorage.setItem("ascend_voice_guidance", String(next));
-      if (!next) window.speechSynthesis?.cancel();
+      localStorage.setItem("ascend_audio_enabled", String(next));
       return next;
     });
   }, []);
 
-  const speak = useCallback((text: string) => {
-    if (!enabled || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
-    utterance.volume = 0.85;
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(
-      (v) => v.lang.startsWith("en") && v.name.toLowerCase().includes("female")
-    ) || voices.find(
-      (v) => v.lang.startsWith("en") && v.localService
-    ) || voices.find((v) => v.lang.startsWith("en"));
-    if (preferred) utterance.voice = preferred;
-    window.speechSynthesis.speak(utterance);
-  }, [enabled]);
-
-  const stop = useCallback(() => { window.speechSynthesis?.cancel(); }, []);
-
-  return { enabled, toggle, speak, stop };
+  return { enabled, toggle };
 }
 
 function CircularTimer({
@@ -214,12 +194,19 @@ function VideoExerciseTimer({
   color: string;
 }) {
   const pct = seconds > 0 ? Math.max(0, remaining / seconds) : 0;
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.play().catch(() => {});
+  }, [src]);
 
   return (
     <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-      <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: "300px" }}>
+      <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: "380px" }}>
         <video
-          key={src}
+          ref={videoRef}
           src={src}
           autoPlay
           loop
@@ -230,13 +217,13 @@ function VideoExerciseTimer({
         <div
           className="absolute inset-0"
           style={{
-            background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 45%)",
+            background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 50%)",
           }}
         />
-        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
           <span className="text-white text-sm font-bold drop-shadow">{label}</span>
           <span
-            className="text-2xl font-bold font-mono tabular-nums drop-shadow"
+            className="text-3xl font-bold font-mono tabular-nums drop-shadow"
             style={{ color: remaining <= 3 ? "#f87171" : "white" }}
             data-testid="text-countdown"
           >
@@ -289,6 +276,13 @@ function GetReadyCountdown({
     return () => clearInterval(interval);
   }, []);
 
+  const grVideoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoSrc && grVideoRef.current) {
+      grVideoRef.current.play().catch(() => {});
+    }
+  }, [videoSrc]);
+
   if (videoSrc) {
     return (
       <motion.div
@@ -297,16 +291,16 @@ function GetReadyCountdown({
         exit={{ opacity: 0 }}
         className="flex flex-col items-center gap-3 w-full max-w-xs"
       >
-        <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: "300px" }}>
+        <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: "380px" }}>
           <video
-            key={videoSrc}
+            ref={grVideoRef}
             src={videoSrc}
             autoPlay
             loop
             muted
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ filter: "brightness(0.55)" }}
+            style={{ filter: "brightness(0.5)" }}
           />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <div className="text-xs uppercase tracking-widest font-bold text-white/70">
@@ -360,14 +354,39 @@ function BreathingVisual({
   active,
   color,
   timing,
+  audioEnabled = true,
 }: {
   active: boolean;
   color: string;
   timing: BreathTiming;
+  audioEnabled?: boolean;
 }) {
   const [phase, setPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
   const [scale, setScale] = useState(0.5);
   const cancelledRef = useRef(false);
+  const inhaleAudioRef = useRef<HTMLAudioElement | null>(null);
+  const holdAudioRef = useRef<HTMLAudioElement | null>(null);
+  const exhaleAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    inhaleAudioRef.current = new Audio("/audio/inhale.mp3");
+    holdAudioRef.current = new Audio("/audio/hold.mp3");
+    exhaleAudioRef.current = new Audio("/audio/exhale.mp3");
+    return () => {
+      [inhaleAudioRef, holdAudioRef, exhaleAudioRef].forEach((r) => {
+        if (r.current) { r.current.pause(); r.current.src = ""; }
+      });
+    };
+  }, []);
+
+  const playBreathAudio = useCallback((p: "inhale" | "hold" | "exhale") => {
+    if (!audioEnabled) return;
+    [inhaleAudioRef, holdAudioRef, exhaleAudioRef].forEach((r) => {
+      if (r.current) { r.current.pause(); r.current.currentTime = 0; }
+    });
+    const map = { inhale: inhaleAudioRef, hold: holdAudioRef, exhale: exhaleAudioRef };
+    map[p].current?.play().catch(() => {});
+  }, [audioEnabled]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -377,6 +396,7 @@ function BreathingVisual({
       const frameMs = 50;
       while (!cancelledRef.current) {
         setPhase("inhale");
+        playBreathAudio("inhale");
         const inhaleFrames = Math.floor((timing.inhaleSeconds * 1000) / frameMs);
         for (let i = 0; i <= inhaleFrames; i++) {
           if (cancelledRef.current) return;
@@ -384,6 +404,7 @@ function BreathingVisual({
           await new Promise((r) => setTimeout(r, frameMs));
         }
         setPhase("hold");
+        playBreathAudio("hold");
         const holdMs = timing.holdSeconds * 1000;
         const holdStart = Date.now();
         while (Date.now() - holdStart < holdMs) {
@@ -391,6 +412,7 @@ function BreathingVisual({
           await new Promise((r) => setTimeout(r, 100));
         }
         setPhase("exhale");
+        playBreathAudio("exhale");
         const exhaleFrames = Math.floor((timing.exhaleSeconds * 1000) / frameMs);
         for (let i = 0; i <= exhaleFrames; i++) {
           if (cancelledRef.current) return;
@@ -401,7 +423,7 @@ function BreathingVisual({
     };
     animate();
     return () => { cancelledRef.current = true; };
-  }, [active, timing.inhaleSeconds, timing.holdSeconds, timing.exhaleSeconds]);
+  }, [active, timing.inhaleSeconds, timing.holdSeconds, timing.exhaleSeconds, playBreathAudio]);
 
   if (!active) return null;
 
@@ -567,7 +589,7 @@ export function GuidedActivityEngine({
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
-  const voice = useVoiceGuidance();
+  const audio = useAudioEnabled();
   const beep = useBeepSound();
 
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
@@ -588,14 +610,7 @@ export function GuidedActivityEngine({
 
   useEffect(() => {
     setShowCheckInfo(false);
-    if (step?.voiceText && stepPhase !== "getready") {
-      voice.speak(step.voiceText);
-    }
   }, [currentStepIdx]);
-
-  useEffect(() => {
-    return () => { voice.stop(); };
-  }, []);
 
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -661,7 +676,6 @@ export function GuidedActivityEngine({
       setTimerRemaining(remaining);
       if (remaining <= 3 && remaining > 0) {
         beep.playCountdownBeep();
-        voice.speak(String(remaining));
       }
       if (remaining <= 0) {
         clearInterval(intervalRef.current!);
@@ -670,7 +684,7 @@ export function GuidedActivityEngine({
         advanceStep();
       }
     }, 1000);
-  }, [step, advanceStep, beep, voice]);
+  }, [step, advanceStep, beep]);
 
   const handleAction = useCallback(() => {
     if (!step) return;
@@ -703,8 +717,7 @@ export function GuidedActivityEngine({
     } else {
       startTimer();
     }
-    if (step?.voiceText) voice.speak(step.voiceText);
-  }, [isBreathStep, step, startTimer, advanceStep, beep, voice]);
+  }, [isBreathStep, step, startTimer, advanceStep, beep]);
 
   const handleSkip = useCallback(() => {
     if (intervalRef.current) {
@@ -765,19 +778,19 @@ export function GuidedActivityEngine({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={voice.toggle}
+            onClick={audio.toggle}
             className="p-2 rounded-lg transition-colors"
             style={{ backgroundColor: `${colors.textMuted}15` }}
             data-testid="button-toggle-voice"
           >
-            {voice.enabled ? (
+            {audio.enabled ? (
               <Volume2 size={18} style={{ color: activity.color }} />
             ) : (
               <VolumeX size={18} style={{ color: colors.textMuted }} />
             )}
           </button>
           <button
-            onClick={() => { voice.stop(); if (intervalRef.current) clearInterval(intervalRef.current); onCancel(); }}
+            onClick={() => { if (intervalRef.current) clearInterval(intervalRef.current); onCancel(); }}
             className="p-2 rounded-lg transition-colors"
             style={{ backgroundColor: `${colors.textMuted}15` }}
             data-testid="button-cancel-activity"
@@ -857,22 +870,23 @@ export function GuidedActivityEngine({
               ) : (isBreathStep && stepPhase === "running") ? (
                 step.videoSrc ? (
                   <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-                    <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: "300px" }}>
+                    <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: "380px" }}>
                       <video
-                        key={step.videoSrc}
+                        ref={(el) => { if (el) el.play().catch(() => {}); }}
                         src={step.videoSrc}
                         autoPlay
                         loop
                         muted
                         playsInline
                         className="absolute inset-0 w-full h-full object-cover"
-                        style={{ filter: "brightness(0.45)" }}
+                        style={{ filter: "brightness(0.4)" }}
                       />
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                         <BreathingVisual
                           active={true}
                           color={activity.color}
                           timing={step.breathTiming!}
+                          audioEnabled={audio.enabled}
                         />
                         <div
                           className="text-2xl font-bold font-mono tabular-nums drop-shadow"
@@ -901,6 +915,7 @@ export function GuidedActivityEngine({
                       active={true}
                       color={activity.color}
                       timing={step.breathTiming!}
+                      audioEnabled={audio.enabled}
                     />
                     <div className="flex flex-col items-center gap-2">
                       <div
