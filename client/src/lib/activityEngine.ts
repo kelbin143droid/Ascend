@@ -118,7 +118,7 @@ export function buildPhase1Activities(
 
   const useJumpingJacks = Math.random() < 0.5;
   const cardioLabel = useJumpingJacks ? "Jumping Jacks" : "Jog in Place";
-  const cardioVideo = useJumpingJacks ? "/videos/jumping-jacks.mp4" : "/videos/jogging.mp4";
+  const cardioVideo = useJumpingJacks ? "/videos/jumpingjacks_loop.mp4" : "/videos/joginplace_loop.mp4";
   const cardioInstruction = useJumpingJacks
     ? `Jumping jacks for ${st.cardioSeconds} seconds. Arms and legs in sync.`
     : `Jog in place for ${st.cardioSeconds} seconds. Knees up, stay light.`;
@@ -126,7 +126,7 @@ export function buildPhase1Activities(
     ? `Jumping jacks. ${st.cardioSeconds} seconds.`
     : `Jog in place. ${st.cardioSeconds} seconds.`;
 
-  const pushUpVideo = strengthTier <= 1 ? "/videos/knee-push-ups.mp4" : "/videos/pushups_loop.mp4";
+  const pushUpVideo = strengthTier <= 1 ? "/videos/knee_pushups_loop.mp4" : "/videos/pushups_loop.mp4";
   const pushUpLabel = strengthTier <= 1 ? "Knee Push-ups" : "Push-ups";
   const pushUpInstruction = strengthTier <= 1
     ? `Knee push-ups for ${st.pushupSeconds} seconds. Control the movement.`

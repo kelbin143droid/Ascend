@@ -22,7 +22,7 @@ const EXERCISES: Exercise[] = [
     id: "jogging",
     name: "Jog in Place",
     instruction: "Lift your knees, keep a steady rhythm. Land softly and breathe through it.",
-    video: "/videos/jumping-jacks.mp4",
+    video: "/videos/joginplace_loop.mp4",
     duration: 20,
     loop: true,
   },
@@ -30,7 +30,7 @@ const EXERCISES: Exercise[] = [
     id: "jumping_jacks",
     name: "Jumping Jacks",
     instruction: "Arms up as legs go wide, back together as they close. Keep the pace comfortable.",
-    video: "/videos/shadow-boxing.mp4",
+    video: "/videos/jumpingjacks_loop.mp4",
     duration: 15,
     loop: true,
   },
@@ -38,7 +38,7 @@ const EXERCISES: Exercise[] = [
     id: "shadow_boxing",
     name: "Shadow Boxing",
     instruction: "Alternate punches forward. Keep your core tight and move with intention.",
-    video: "/videos/cardio-bow.mp4",
+    video: "/videos/shadowbox_loop.mp4",
     duration: 20,
     loop: true,
   },
@@ -374,7 +374,7 @@ export function CardioSessionEngine({ playerId, onComplete, onCancel, noApiCall 
           >
             <video
               ref={(el) => { bowVideoRef.current = el; }}
-              src="/videos/jogging.mp4"
+              src="/videos/bow_down.mp4"
               className="w-full h-full object-cover"
               playsInline
               autoPlay
