@@ -600,7 +600,7 @@ export function Day7FollowThrough({ onComplete, onCancel, xpData }: Props) {
       </div>
 
       {/* ── FIXED CTA — above bottom nav ────────────────────────────── */}
-      <div className="fixed bottom-[70px] left-0 right-0 z-40 px-4">
+      <div className="fixed bottom-[96px] left-0 right-0 z-40 px-4">
         <AnimatePresence mode="wait">
 
           {mode === "execution" && (
