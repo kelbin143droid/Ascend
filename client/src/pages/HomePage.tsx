@@ -406,7 +406,7 @@ export default function HomePage() {
           }}
           xpData={playerData ? {
             level: playerData.level ?? 1,
-            current: playerData.exp ?? 0,
+            current: playerData.totalExp ?? playerData.exp ?? 0,
             max: playerData.maxExp ?? 100,
           } : undefined}
         />
@@ -749,9 +749,10 @@ export default function HomePage() {
 
           {/* XP Bar — revealed after onboarding as evidence of progress */}
           {(() => {
-            const currentXP = playerData?.exp ?? 0;
+            const withinLevelXP = playerData?.exp ?? 0;
             const maxXP = playerData?.maxExp ?? 100;
-            const pct = Math.min(100, Math.round((currentXP / maxXP) * 100));
+            const totalXP = playerData?.totalExp ?? 0;
+            const pct = Math.min(100, Math.round((withinLevelXP / maxXP) * 100));
             return (
               <div className="mt-4" data-testid="xp-progress-section">
                 <div className="flex items-center justify-between mb-1.5">
@@ -759,7 +760,7 @@ export default function HomePage() {
                     Level {playerData?.level ?? 1}
                   </span>
                   <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
-                    {currentXP} / {maxXP} XP
+                    {totalXP} XP total
                   </span>
                 </div>
                 <div

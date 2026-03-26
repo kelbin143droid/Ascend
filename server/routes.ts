@@ -1857,6 +1857,17 @@ export async function registerRoutes(
         : Math.min(totalDistinctDays + 1, 7);
       // isOnboardingComplete is ONLY based on completing 7 distinct days.
       const isOnboardingComplete = onboardingDay >= 7;
+
+      // Minimum XP guarantee: if Days 1-7 are complete, totalExp must be at least 21
+      const ONBOARDING_MIN_XP = 21;
+      if (isOnboardingComplete && (player.totalExp ?? 0) < ONBOARDING_MIN_XP) {
+        const deficit = ONBOARDING_MIN_XP - (player.totalExp ?? 0);
+        await storage.gainExp(req.params.id, deficit);
+        // Re-fetch player to get updated XP values
+        const refreshed = await storage.getPlayer(req.params.id);
+        if (refreshed) Object.assign(player, refreshed);
+      }
+
       const hasCompletedHabitToday = completedIds.size > 0;
       const sortedByDate = [...allCompletions]
         .filter(c => c.completedAt)
@@ -2520,8 +2531,8 @@ export async function registerRoutes(
           const habitsToComplete = activeHabits.slice(0, Math.max(1, Math.ceil(activeHabits.length * 0.7)));
           for (const habit of habitsToComplete) {
             const { getXPForActivity } = await import("./gameLogic/levelSystem");
-          const simXP = getXPForActivity(habit.baseDurationMinutes);
-          const completion = await storage.createHabitCompletion({
+            const simXP = getXPForActivity(habit.baseDurationMinutes);
+            const completion = await storage.createHabitCompletion({
               habitId: habit.id,
               userId: req.params.id,
               durationMinutes: habit.baseDurationMinutes,
@@ -2531,6 +2542,8 @@ export async function registerRoutes(
               .set({ completedAt: simulatedDate })
               .where(eq(habitCompletions.id, completion.id));
             completionsCreated.push(completion.id);
+            // Accumulate XP into player's totalExp so it carries forward
+            await storage.gainExp(req.params.id, simXP);
 
             const newTime = new Date(simulatedDate);
             newTime.setMinutes(newTime.getMinutes() + habit.baseDurationMinutes + 15);
@@ -2538,16 +2551,19 @@ export async function registerRoutes(
           }
         } else {
           // No active habits or completeHabits=false — create a guided placeholder so the day counts
+          const guidedXP = 3; // 3 XP per onboarding day minimum
           const guidedCompletion = await storage.createHabitCompletion({
             habitId: `guided_day_sim_${d}`,
             userId: req.params.id,
             durationMinutes: 2,
-            xpEarned: 5,
+            xpEarned: guidedXP,
           });
           await db.update(habitCompletions)
             .set({ completedAt: simulatedDate })
             .where(eq(habitCompletions.id, guidedCompletion.id));
           completionsCreated.push(guidedCompletion.id);
+          // Accumulate XP into player's totalExp so it carries forward
+          await storage.gainExp(req.params.id, guidedXP);
         }
       }
 
