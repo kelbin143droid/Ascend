@@ -5,9 +5,6 @@ import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { apiRequest } from "@/lib/queryClient";
-import inhaleUrl from "@assets/Inhale_1774271882288.mp3";
-import holdUrl from "@assets/Hold_1774271892968.mp3";
-import exhaleUrl from "@assets/Exhale_1774271901274.mp3";
 import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
 import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
@@ -85,11 +82,17 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
   },
 };
 
+const INHALE_URL = "/audio/inhale.mp3";
+const HOLD_URL = "/audio/hold.mp3";
+const EXHALE_URL = "/audio/exhale.mp3";
+
 const BREATHING_PHASES = [
   { label: "Inhale", duration: 4000 },
   { label: "Hold", duration: 4000 },
   { label: "Exhale", duration: 6000 },
 ];
+
+const CYCLE_MS = BREATHING_PHASES.reduce((s, p) => s + p.duration, 0); // 14000ms
 
 const MOVEMENT_PROMPTS = [
   { text: "Roll your shoulders slowly, forward and back.", at: 0 },
@@ -181,9 +184,9 @@ function useBreathingAudio(active: boolean) {
 
 // ─── Voice clips (MP3) ───────────────────────────────────────────────────────
 const VOICE_MAP: Record<string, string> = {
-  Inhale: inhaleUrl,
-  Hold: holdUrl,
-  Exhale: exhaleUrl,
+  Inhale: INHALE_URL,
+  Hold: HOLD_URL,
+  Exhale: EXHALE_URL,
 };
 
 let activeVoiceAudio: HTMLAudioElement | null = null;

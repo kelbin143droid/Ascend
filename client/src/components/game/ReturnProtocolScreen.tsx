@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { Wind, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
 
@@ -59,17 +59,44 @@ const TIER_THEMES = {
   },
 };
 
+const BREATH_AUDIO: Record<"in" | "hold" | "out", string> = {
+  in: "/audio/inhale.mp3",
+  hold: "/audio/hold.mp3",
+  out: "/audio/exhale.mp3",
+};
+let _returnBreathAudio: HTMLAudioElement | null = null;
+function playReturnBreathCue(phase: "in" | "hold" | "out") {
+  try {
+    if (_returnBreathAudio) { _returnBreathAudio.pause(); _returnBreathAudio.currentTime = 0; }
+    const a = new Audio(BREATH_AUDIO[phase]);
+    a.volume = 0.9;
+    a.play().catch(() => {});
+    _returnBreathAudio = a;
+  } catch {}
+}
+
 function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: () => void }) {
   const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
   const [timeLeft, setTimeLeft] = useState(step.durationSeconds);
   const [circleScale, setCircleScale] = useState(1);
+  const pendingDoneRef = useRef(false);
+
+  // Play first cue on mount
+  useEffect(() => { playReturnBreathCue("in"); }, []);
 
   useEffect(() => {
     const phaseTimer = setInterval(() => {
       setPhase(p => {
-        if (p === "in") { setCircleScale(1.4); return "hold"; }
-        if (p === "hold") { setCircleScale(1); return "out"; }
-        setCircleScale(1); return "in";
+        let next: "in" | "hold" | "out";
+        if (p === "in") { setCircleScale(1.4); next = "hold"; }
+        else if (p === "hold") { setCircleScale(1); next = "out"; }
+        else { setCircleScale(1); next = "in"; }
+        playReturnBreathCue(next);
+        // If time already expired and we just reached "out", complete now
+        if (pendingDoneRef.current && next === "out") {
+          setTimeout(onDone, 5500); // let exhale cue play
+        }
+        return next;
       });
     }, 4000);
 
@@ -78,7 +105,8 @@ function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: ()
         if (t <= 1) {
           clearInterval(countdownTimer);
           clearInterval(phaseTimer);
-          onDone();
+          // Don't call onDone immediately — queue it for end of next exhale
+          pendingDoneRef.current = true;
           return 0;
         }
         return t - 1;
