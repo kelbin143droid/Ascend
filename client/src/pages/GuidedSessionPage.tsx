@@ -280,51 +280,55 @@ function useCalmMusic(active: boolean) {
 }
 
 
-function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentColor: string }) {
-  const cycleLength = BREATHING_PHASES.reduce((s, p) => s + p.duration, 0);
-  const posInCycle = (elapsed * 1000) % cycleLength;
-  const lastSpokenRef = useRef<string>("");
+const BREATH_PHASE_DURATIONS: Record<"Inhale" | "Hold" | "Exhale", number> = {
+  Inhale: 4000,
+  Hold: 4000,
+  Exhale: 6000,
+};
+
+function BreathingSession({ accentColor }: { accentColor: string }) {
+  const [phase, setPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
 
   useBreathingAudio(true);
   useCalmMusic(true);
 
-  let cumulative = 0;
-  let currentPhase = BREATHING_PHASES[0];
-  let phaseProgress = 0;
-
-  for (const phase of BREATHING_PHASES) {
-    if (posInCycle < cumulative + phase.duration) {
-      currentPhase = phase;
-      phaseProgress = (posInCycle - cumulative) / phase.duration;
-      break;
-    }
-    cumulative += phase.duration;
-  }
-
+  // Play voice cue on every phase change (fires reliably as state change)
   useEffect(() => {
-    if (currentPhase.label !== lastSpokenRef.current) {
-      lastSpokenRef.current = currentPhase.label;
-      playVoiceClip(currentPhase.label);
-    }
-  }, [currentPhase.label]);
+    playVoiceClip(phase);
+  }, [phase]);
 
+  // Cleanup voice on unmount
   useEffect(() => {
     return () => { stopVoiceClip(); };
   }, []);
 
-  const scale = currentPhase.label === "Inhale"
-    ? 0.6 + 0.4 * phaseProgress
-    : currentPhase.label === "Exhale"
-      ? 1.0 - 0.4 * phaseProgress
-      : 1.0;
+  // Self-contained phase loop: Inhale 4s → Hold 4s → Exhale 6s → repeat forever
+  useEffect(() => {
+    let timerId: ReturnType<typeof setTimeout>;
+
+    const scheduleNext = (current: "Inhale" | "Hold" | "Exhale") => {
+      timerId = setTimeout(() => {
+        const next: "Inhale" | "Hold" | "Exhale" =
+          current === "Inhale" ? "Hold" : current === "Hold" ? "Exhale" : "Inhale";
+        setPhase(next);
+        scheduleNext(next);
+      }, BREATH_PHASE_DURATIONS[current]);
+    };
+
+    scheduleNext("Inhale");
+    return () => clearTimeout(timerId);
+  }, []);
+
+  const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.6;
+  const transitionDuration = phase === "Inhale" ? "4s" : phase === "Hold" ? "0.3s" : "6s";
 
   return (
     <div className="flex flex-col items-center gap-8">
       <div
-        className="w-32 h-32 rounded-full transition-transform"
+        className="w-32 h-32 rounded-full"
         style={{
           transform: `scale(${scale})`,
-          transitionDuration: "200ms",
+          transition: `transform ${transitionDuration} ease-in-out`,
           background: `radial-gradient(circle, ${accentColor}25 0%, ${accentColor}08 60%, transparent 100%)`,
           border: `2px solid ${accentColor}30`,
         }}
@@ -334,7 +338,7 @@ function BreathingSession({ elapsed, accentColor }: { elapsed: number; accentCol
         className="text-xl font-display font-medium tracking-wider"
         style={{ color: `${accentColor}cc` }}
       >
-        {currentPhase.label}
+        {phase}
       </p>
       <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.25)" }}>
         Voice guided · Ambient audio
@@ -561,7 +565,14 @@ export default function GuidedSessionPage() {
       });
       return res.json();
     },
-    onSuccess: () => advanceFromCompleting(true),
+    onSuccess: async () => {
+      // Refetch immediately so the completed state is ready when user returns home
+      await Promise.allSettled([
+        queryClient.refetchQueries({ queryKey: ["home", player?.id] }),
+        queryClient.refetchQueries({ queryKey: ["/api/player", player?.id] }),
+      ]);
+      advanceFromCompleting(true);
+    },
     onError:   () => advanceFromCompleting(false),
   });
 
@@ -841,7 +852,7 @@ export default function GuidedSessionPage() {
           </div>
         )}
         {state === "active" && session.type === "breathing" && (
-          <BreathingSession elapsed={elapsed} accentColor={accentColor} />
+          <BreathingSession accentColor={accentColor} />
         )}
         {state === "active" && session.type === "prompts" && (
           <PromptSession elapsed={elapsed} accentColor={accentColor} />
