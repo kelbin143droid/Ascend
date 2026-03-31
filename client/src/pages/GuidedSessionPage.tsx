@@ -182,32 +182,12 @@ function useBreathingAudio(active: boolean) {
   }, [active]);
 }
 
-// ─── Voice clips — preloaded once at module level so every cue plays instantly ─
-const VOICE_CLIPS: Record<"Inhale" | "Hold" | "Exhale", HTMLAudioElement> = {
-  Inhale: new Audio(INHALE_URL),
-  Hold:   new Audio(HOLD_URL),
-  Exhale: new Audio(EXHALE_URL),
+// ─── Voice clip URLs ─────────────────────────────────────────────────────────
+const VOICE_URLS: Record<"Inhale" | "Hold" | "Exhale", string> = {
+  Inhale: INHALE_URL,
+  Hold:   HOLD_URL,
+  Exhale: EXHALE_URL,
 };
-(["Inhale", "Hold", "Exhale"] as const).forEach(k => {
-  VOICE_CLIPS[k].volume = 0.9;
-  VOICE_CLIPS[k].preload = "auto";
-});
-
-function playVoiceClip(phase: "Inhale" | "Hold" | "Exhale") {
-  try {
-    // Stop every clip, then play only the requested one
-    (["Inhale", "Hold", "Exhale"] as const).forEach(k => {
-      try { VOICE_CLIPS[k].pause(); VOICE_CLIPS[k].currentTime = 0; } catch {}
-    });
-    VOICE_CLIPS[phase].play().catch(() => {});
-  } catch {}
-}
-
-function stopVoiceClip() {
-  (["Inhale", "Hold", "Exhale"] as const).forEach(k => {
-    try { VOICE_CLIPS[k].pause(); VOICE_CLIPS[k].currentTime = 0; } catch {}
-  });
-}
 
 // ─── Calm background music (pentatonic, Web Audio) ───────────────────────────
 const CALM_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25]; // C D E G A C (pentatonic)
@@ -273,12 +253,6 @@ function useCalmMusic(active: boolean) {
 }
 
 
-const BREATH_PHASE_DURATIONS: Record<"Inhale" | "Hold" | "Exhale", number> = {
-  Inhale: 4000,
-  Hold: 4000,
-  Exhale: 6000,
-};
-
 // Phase boundaries in ms within a 14-second cycle
 const BREATH_CYCLE_MS = 14000; // Inhale 4s + Hold 4s + Exhale 6s
 const BREATH_BOUNDARIES: Array<{ at: number; phase: "Inhale" | "Hold" | "Exhale" }> = [
@@ -298,15 +272,31 @@ function getBreathPhase(elapsedMs: number): "Inhale" | "Hold" | "Exhale" {
 
 function BreathingSession({ accentColor }: { accentColor: string }) {
   const [phase, setPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
+  // Tracks the currently playing voice clip so we can stop it cleanly
+  const currentClipRef = useRef<HTMLAudioElement | null>(null);
 
   useBreathingAudio(true);
   useCalmMusic(true);
 
-  // Wall-clock interval: polls every 100ms, plays audio exactly when the phase
-  // boundary is crossed. Immune to setTimeout chain bugs and React cleanup ordering.
+  // Wall-clock interval: polls every 100ms and plays a fresh Audio object the
+  // moment a phase boundary is crossed. Fresh objects avoid the browser's
+  // "interrupted play" bug that corrupts shared/module-level Audio elements when
+  // pause() is called while play() is still in-flight (React Strict Mode cleanup).
   useEffect(() => {
     const startTime = performance.now();
     let lastPhase: "Inhale" | "Hold" | "Exhale" | null = null;
+
+    const playPhase = (p: "Inhale" | "Hold" | "Exhale") => {
+      // Stop previous clip first (safe — it's already settled)
+      if (currentClipRef.current) {
+        try { currentClipRef.current.pause(); } catch {}
+        currentClipRef.current = null;
+      }
+      const a = new Audio(VOICE_URLS[p]);
+      a.volume = 0.9;
+      currentClipRef.current = a;
+      a.play().catch(() => {});
+    };
 
     const tick = () => {
       const elapsed = performance.now() - startTime;
@@ -314,7 +304,7 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
       if (current !== lastPhase) {
         lastPhase = current;
         setPhase(current);
-        playVoiceClip(current);
+        playPhase(current);
       }
     };
 
@@ -323,7 +313,10 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
 
     return () => {
       clearInterval(intervalId);
-      stopVoiceClip();
+      if (currentClipRef.current) {
+        try { currentClipRef.current.pause(); } catch {}
+        currentClipRef.current = null;
+      }
     };
   }, []);
 

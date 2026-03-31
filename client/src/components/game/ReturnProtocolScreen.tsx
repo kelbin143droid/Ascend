@@ -59,20 +59,12 @@ const TIER_THEMES = {
   },
 };
 
-// Preloaded audio — one element per cue, reused across cycles
-const RETURN_CLIPS: Record<"in" | "hold" | "out", HTMLAudioElement> = {
-  in:   Object.assign(new Audio("/audio/inhale.mp3"), { volume: 0.9, preload: "auto" }),
-  hold: Object.assign(new Audio("/audio/hold.mp3"),   { volume: 0.9, preload: "auto" }),
-  out:  Object.assign(new Audio("/audio/exhale.mp3"), { volume: 0.9, preload: "auto" }),
+// Audio URLs for each breath phase
+const RETURN_AUDIO_URLS: Record<"in" | "hold" | "out", string> = {
+  in:   "/audio/inhale.mp3",
+  hold: "/audio/hold.mp3",
+  out:  "/audio/exhale.mp3",
 };
-function playReturnBreathCue(phase: "in" | "hold" | "out") {
-  try {
-    (["in", "hold", "out"] as const).forEach(k => {
-      try { RETURN_CLIPS[k].pause(); RETURN_CLIPS[k].currentTime = 0; } catch {}
-    });
-    RETURN_CLIPS[phase].play().catch(() => {});
-  } catch {}
-}
 
 // Phase layout within a 14-second cycle
 const RETURN_CYCLE_MS = 14000;
@@ -101,13 +93,26 @@ function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: ()
   const timeExpiredRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  const currentClipRef = useRef<HTMLAudioElement | null>(null);
 
-  // Wall-clock interval: determines phase from elapsed time every 100ms.
-  // Plays audio only when the phase boundary is crossed — no chain, no drift.
+  // Wall-clock interval: plays a fresh Audio object on each phase boundary.
+  // Fresh objects prevent the "interrupted play" browser bug that causes
+  // shared Audio elements to silently fail after pause() during cleanup.
   useEffect(() => {
     const startTime = performance.now();
     let lastPhase: "in" | "hold" | "out" | null = null;
     let completionScheduled = false;
+
+    const playPhase = (p: "in" | "hold" | "out") => {
+      if (currentClipRef.current) {
+        try { currentClipRef.current.pause(); } catch {}
+        currentClipRef.current = null;
+      }
+      const a = new Audio(RETURN_AUDIO_URLS[p]);
+      a.volume = 0.9;
+      currentClipRef.current = a;
+      a.play().catch(() => {});
+    };
 
     const tick = () => {
       const elapsed = performance.now() - startTime;
@@ -117,19 +122,24 @@ function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: ()
         lastPhase = current;
         setPhase(current);
         setCircleScale(current === "hold" ? 1.4 : 1);
-        playReturnBreathCue(current);
+        playPhase(current);
 
-        // After time has expired, finish on the next "out" (exhale) boundary
         if (timeExpiredRef.current && current === "out" && !completionScheduled) {
           completionScheduled = true;
-          setTimeout(() => onDoneRef.current(), 6500); // let exhale finish first
+          setTimeout(() => onDoneRef.current(), 6500);
         }
       }
     };
 
     tick();
     const intervalId = setInterval(tick, 100);
-    return () => { clearInterval(intervalId); };
+    return () => {
+      clearInterval(intervalId);
+      if (currentClipRef.current) {
+        try { currentClipRef.current.pause(); } catch {}
+        currentClipRef.current = null;
+      }
+    };
   }, []);
 
   // Countdown timer — just tracks time, doesn't stop phase loop
