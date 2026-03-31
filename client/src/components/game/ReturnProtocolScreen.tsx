@@ -75,46 +75,63 @@ function playReturnBreathCue(phase: "in" | "hold" | "out") {
   } catch {}
 }
 
+const PHASE_DURATIONS: Record<"in" | "hold" | "out", number> = {
+  in: 4000,
+  hold: 4000,
+  out: 6000,
+};
+
 function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: () => void }) {
   const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
   const [timeLeft, setTimeLeft] = useState(step.durationSeconds);
   const [circleScale, setCircleScale] = useState(1);
-  const pendingDoneRef = useRef(false);
+  const timeExpiredRef = useRef(false);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
-  // Play first cue on mount
-  useEffect(() => { playReturnBreathCue("in"); }, []);
-
+  // Play audio whenever phase changes (including on mount for "in")
   useEffect(() => {
-    const phaseTimer = setInterval(() => {
-      setPhase(p => {
-        let next: "in" | "hold" | "out";
-        if (p === "in") { setCircleScale(1.4); next = "hold"; }
-        else if (p === "hold") { setCircleScale(1); next = "out"; }
-        else { setCircleScale(1); next = "in"; }
-        playReturnBreathCue(next);
-        // If time already expired and we just reached "out", complete now
-        if (pendingDoneRef.current && next === "out") {
-          setTimeout(onDone, 5500); // let exhale cue play
-        }
-        return next;
-      });
-    }, 4000);
+    playReturnBreathCue(phase);
+  }, [phase]);
 
-    const countdownTimer = setInterval(() => {
+  // Phase cycling — keeps running even after countdown ends so we always finish on "out"
+  useEffect(() => {
+    let phaseTimerId: ReturnType<typeof setTimeout>;
+
+    const scheduleNext = (current: "in" | "hold" | "out") => {
+      phaseTimerId = setTimeout(() => {
+        const next: "in" | "hold" | "out" =
+          current === "in" ? "hold" : current === "hold" ? "out" : "in";
+        setCircleScale(next === "in" ? 1 : next === "hold" ? 1.4 : 1);
+        setPhase(next);
+
+        if (timeExpiredRef.current && next === "out") {
+          // Session ended — let exhale voice play, then complete
+          setTimeout(() => onDoneRef.current(), 6500);
+        } else {
+          scheduleNext(next);
+        }
+      }, PHASE_DURATIONS[current]);
+    };
+
+    scheduleNext("in");
+    return () => clearTimeout(phaseTimerId);
+  }, []);
+
+  // Countdown timer — just tracks time, doesn't stop phase loop
+  useEffect(() => {
+    const timer = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
-          clearInterval(countdownTimer);
-          clearInterval(phaseTimer);
-          // Don't call onDone immediately — queue it for end of next exhale
-          pendingDoneRef.current = true;
+          clearInterval(timer);
+          timeExpiredRef.current = true;
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-
-    return () => { clearInterval(phaseTimer); clearInterval(countdownTimer); };
-  }, [step.durationSeconds, onDone]);
+    return () => clearInterval(timer);
+  }, []);
 
   const phaseLabel = phase === "in" ? "Breathe In" : phase === "hold" ? "Hold" : "Breathe Out";
 
