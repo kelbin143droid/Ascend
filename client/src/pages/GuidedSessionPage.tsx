@@ -182,11 +182,16 @@ function useBreathingAudio(active: boolean) {
   }, [active]);
 }
 
-// ─── Voice clip URLs ─────────────────────────────────────────────────────────
-const VOICE_URLS: Record<"Inhale" | "Hold" | "Exhale", string> = {
-  Inhale: INHALE_URL,
-  Hold:   HOLD_URL,
-  Exhale: EXHALE_URL,
+// ─── Voice clip phase durations & order ──────────────────────────────────────
+const VOICE_DURATIONS: Record<"Inhale" | "Hold" | "Exhale", number> = {
+  Inhale: 4000,
+  Hold:   4000,
+  Exhale: 6000,
+};
+const VOICE_NEXT: Record<"Inhale" | "Hold" | "Exhale", "Inhale" | "Hold" | "Exhale"> = {
+  Inhale: "Hold",
+  Hold:   "Exhale",
+  Exhale: "Inhale",
 };
 
 // ─── Calm background music (pentatonic, Web Audio) ───────────────────────────
@@ -253,70 +258,79 @@ function useCalmMusic(active: boolean) {
 }
 
 
-// Phase boundaries in ms within a 14-second cycle
-const BREATH_CYCLE_MS = 14000; // Inhale 4s + Hold 4s + Exhale 6s
-const BREATH_BOUNDARIES: Array<{ at: number; phase: "Inhale" | "Hold" | "Exhale" }> = [
-  { at: 0,    phase: "Inhale" },
-  { at: 4000, phase: "Hold"   },
-  { at: 8000, phase: "Exhale" },
-];
-
-function getBreathPhase(elapsedMs: number): "Inhale" | "Hold" | "Exhale" {
-  const pos = elapsedMs % BREATH_CYCLE_MS;
-  let result: "Inhale" | "Hold" | "Exhale" = "Inhale";
-  for (const b of BREATH_BOUNDARIES) {
-    if (pos >= b.at) result = b.phase;
-  }
-  return result;
-}
-
 function BreathingSession({ accentColor }: { accentColor: string }) {
   const [phase, setPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
-  // Tracks the currently playing voice clip so we can stop it cleanly
-  const currentClipRef = useRef<HTMLAudioElement | null>(null);
 
   useBreathingAudio(true);
   useCalmMusic(true);
 
-  // Wall-clock interval: polls every 100ms and plays a fresh Audio object the
-  // moment a phase boundary is crossed. Fresh objects avoid the browser's
-  // "interrupted play" bug that corrupts shared/module-level Audio elements when
-  // pause() is called while play() is still in-flight (React Strict Mode cleanup).
+  // Web Audio API voice cues: fetch → decode → AudioBufferSourceNode.
+  // Avoids every HTMLAudioElement edge-case (autoplay policy, interrupted-play
+  // bug, shared-element state corruption). Each phase plays a new SourceNode;
+  // transitions use an explicit state-machine so the Inhale→Hold→Exhale→Inhale
+  // cycle can never be skipped.
   useEffect(() => {
-    const startTime = performance.now();
-    let lastPhase: "Inhale" | "Hold" | "Exhale" | null = null;
+    let alive = true;
+    let voiceCtx: AudioContext | null = null;
+    let currentSrc: AudioBufferSourceNode | null = null;
+    let tickId: ReturnType<typeof setInterval> | undefined;
 
-    const playPhase = (p: "Inhale" | "Hold" | "Exhale") => {
-      // Stop previous clip first (safe — it's already settled)
-      if (currentClipRef.current) {
-        try { currentClipRef.current.pause(); } catch {}
-        currentClipRef.current = null;
-      }
-      const a = new Audio(VOICE_URLS[p]);
-      a.volume = 0.9;
-      currentClipRef.current = a;
-      a.play().catch(() => {});
+    const stopCurrent = () => {
+      if (currentSrc) { try { currentSrc.stop(); } catch {} currentSrc = null; }
     };
 
-    const tick = () => {
-      const elapsed = performance.now() - startTime;
-      const current = getBreathPhase(elapsed);
-      if (current !== lastPhase) {
-        lastPhase = current;
-        setPhase(current);
-        playPhase(current);
-      }
-    };
+    (async () => {
+      try {
+        voiceCtx = new AudioContext();
+        await voiceCtx.resume(); // ensure context is running after user gesture
 
-    tick(); // fire immediately so Inhale plays at t=0
-    const intervalId = setInterval(tick, 100);
+        // Load all three clips in parallel
+        const [inhBuf, hldBuf, exhBuf] = await Promise.all([
+          fetch(INHALE_URL).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
+          fetch(HOLD_URL  ).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
+          fetch(EXHALE_URL).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
+        ]);
+        if (!alive || !voiceCtx) return;
+
+        const BUF: Record<"Inhale" | "Hold" | "Exhale", AudioBuffer> = {
+          Inhale: inhBuf, Hold: hldBuf, Exhale: exhBuf,
+        };
+
+        const playBuf = (p: "Inhale" | "Hold" | "Exhale") => {
+          if (!voiceCtx || !alive) return;
+          stopCurrent();
+          const src = voiceCtx.createBufferSource();
+          src.buffer = BUF[p];
+          const gain = voiceCtx.createGain();
+          gain.gain.value = 0.9;
+          src.connect(gain).connect(voiceCtx.destination);
+          src.start();
+          currentSrc = src;
+        };
+
+        // Explicit state machine — no modulo arithmetic, no shared state
+        let curPhase: "Inhale" | "Hold" | "Exhale" = "Inhale";
+        let phaseStart = performance.now();
+        setPhase("Inhale");
+        playBuf("Inhale");
+
+        tickId = setInterval(() => {
+          if (!alive) return;
+          if (performance.now() - phaseStart >= VOICE_DURATIONS[curPhase]) {
+            curPhase = VOICE_NEXT[curPhase];
+            phaseStart = performance.now();
+            setPhase(curPhase);
+            playBuf(curPhase);
+          }
+        }, 100);
+      } catch { /* audio unavailable — degrade silently */ }
+    })();
 
     return () => {
-      clearInterval(intervalId);
-      if (currentClipRef.current) {
-        try { currentClipRef.current.pause(); } catch {}
-        currentClipRef.current = null;
-      }
+      alive = false;
+      if (tickId !== undefined) clearInterval(tickId);
+      stopCurrent();
+      voiceCtx?.close().catch(() => {});
     };
   }, []);
 

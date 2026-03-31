@@ -59,31 +59,15 @@ const TIER_THEMES = {
   },
 };
 
-// Audio URLs for each breath phase
-const RETURN_AUDIO_URLS: Record<"in" | "hold" | "out", string> = {
-  in:   "/audio/inhale.mp3",
-  hold: "/audio/hold.mp3",
-  out:  "/audio/exhale.mp3",
+// Phase durations and transition order
+const RETURN_DURATIONS: Record<"in" | "hold" | "out", number> = {
+  in: 4000, hold: 4000, out: 6000,
 };
-
-// Phase layout within a 14-second cycle
-const RETURN_CYCLE_MS = 14000;
-const RETURN_BOUNDARIES: Array<{ at: number; phase: "in" | "hold" | "out" }> = [
-  { at: 0,    phase: "in"   },
-  { at: 4000, phase: "hold" },
-  { at: 8000, phase: "out"  },
-];
-function getReturnPhase(elapsedMs: number): "in" | "hold" | "out" {
-  const pos = elapsedMs % RETURN_CYCLE_MS;
-  let result: "in" | "hold" | "out" = "in";
-  for (const b of RETURN_BOUNDARIES) { if (pos >= b.at) result = b.phase; }
-  return result;
-}
-
-const PHASE_DURATIONS: Record<"in" | "hold" | "out", number> = {
-  in: 4000,
-  hold: 4000,
-  out: 6000,
+const RETURN_NEXT: Record<"in" | "hold" | "out", "in" | "hold" | "out"> = {
+  in: "hold", hold: "out", out: "in",
+};
+const RETURN_AUDIO_URLS: Record<"in" | "hold" | "out", string> = {
+  in: "/audio/inhale.mp3", hold: "/audio/hold.mp3", out: "/audio/exhale.mp3",
 };
 
 function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: () => void }) {
@@ -93,52 +77,76 @@ function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: ()
   const timeExpiredRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
-  const currentClipRef = useRef<HTMLAudioElement | null>(null);
-
-  // Wall-clock interval: plays a fresh Audio object on each phase boundary.
-  // Fresh objects prevent the "interrupted play" browser bug that causes
-  // shared Audio elements to silently fail after pause() during cleanup.
+  // Web Audio API breathing cues — same approach as BreathingSession:
+  // fetch → decode → AudioBufferSourceNode, explicit state machine, no modulo.
   useEffect(() => {
-    const startTime = performance.now();
-    let lastPhase: "in" | "hold" | "out" | null = null;
+    let alive = true;
+    let voiceCtx: AudioContext | null = null;
+    let currentSrc: AudioBufferSourceNode | null = null;
+    let tickId: ReturnType<typeof setInterval> | undefined;
     let completionScheduled = false;
 
-    const playPhase = (p: "in" | "hold" | "out") => {
-      if (currentClipRef.current) {
-        try { currentClipRef.current.pause(); } catch {}
-        currentClipRef.current = null;
-      }
-      const a = new Audio(RETURN_AUDIO_URLS[p]);
-      a.volume = 0.9;
-      currentClipRef.current = a;
-      a.play().catch(() => {});
+    const stopCurrent = () => {
+      if (currentSrc) { try { currentSrc.stop(); } catch {} currentSrc = null; }
     };
 
-    const tick = () => {
-      const elapsed = performance.now() - startTime;
-      const current = getReturnPhase(elapsed);
+    (async () => {
+      try {
+        voiceCtx = new AudioContext();
+        await voiceCtx.resume();
 
-      if (current !== lastPhase) {
-        lastPhase = current;
-        setPhase(current);
-        setCircleScale(current === "hold" ? 1.4 : 1);
-        playPhase(current);
+        const [inBuf, holdBuf, outBuf] = await Promise.all([
+          fetch(RETURN_AUDIO_URLS.in  ).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
+          fetch(RETURN_AUDIO_URLS.hold).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
+          fetch(RETURN_AUDIO_URLS.out ).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
+        ]);
+        if (!alive || !voiceCtx) return;
 
-        if (timeExpiredRef.current && current === "out" && !completionScheduled) {
-          completionScheduled = true;
-          setTimeout(() => onDoneRef.current(), 6500);
-        }
-      }
-    };
+        const BUF: Record<"in" | "hold" | "out", AudioBuffer> = {
+          in: inBuf, hold: holdBuf, out: outBuf,
+        };
 
-    tick();
-    const intervalId = setInterval(tick, 100);
+        const playBuf = (p: "in" | "hold" | "out") => {
+          if (!voiceCtx || !alive) return;
+          stopCurrent();
+          const src = voiceCtx.createBufferSource();
+          src.buffer = BUF[p];
+          const gain = voiceCtx.createGain();
+          gain.gain.value = 0.9;
+          src.connect(gain).connect(voiceCtx.destination);
+          src.start();
+          currentSrc = src;
+        };
+
+        let curPhase: "in" | "hold" | "out" = "in";
+        let phaseStart = performance.now();
+        setPhase("in");
+        setCircleScale(1);
+        playBuf("in");
+
+        tickId = setInterval(() => {
+          if (!alive) return;
+          if (performance.now() - phaseStart >= RETURN_DURATIONS[curPhase]) {
+            curPhase = RETURN_NEXT[curPhase];
+            phaseStart = performance.now();
+            setPhase(curPhase);
+            setCircleScale(curPhase === "hold" ? 1.4 : 1);
+            playBuf(curPhase);
+
+            if (timeExpiredRef.current && curPhase === "out" && !completionScheduled) {
+              completionScheduled = true;
+              setTimeout(() => onDoneRef.current(), 6500);
+            }
+          }
+        }, 100);
+      } catch {}
+    })();
+
     return () => {
-      clearInterval(intervalId);
-      if (currentClipRef.current) {
-        try { currentClipRef.current.pause(); } catch {}
-        currentClipRef.current = null;
-      }
+      alive = false;
+      if (tickId !== undefined) clearInterval(tickId);
+      stopCurrent();
+      voiceCtx?.close().catch(() => {});
     };
   }, []);
 
