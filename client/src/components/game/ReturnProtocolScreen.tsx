@@ -89,33 +89,40 @@ function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: ()
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
-  // Play audio whenever phase changes (including on mount for "in")
+  // Phase cycling + audio driven purely by setTimeout chain (no useEffect deps on phase)
   useEffect(() => {
-    playReturnBreathCue(phase);
-  }, [phase]);
+    let timerId: ReturnType<typeof setTimeout>;
+    let active = true;
 
-  // Phase cycling — keeps running even after countdown ends so we always finish on "out"
-  useEffect(() => {
-    let phaseTimerId: ReturnType<typeof setTimeout>;
+    const NEXT: Record<"in" | "hold" | "out", "in" | "hold" | "out"> = {
+      in: "hold", hold: "out", out: "in",
+    };
 
     const scheduleNext = (current: "in" | "hold" | "out") => {
-      phaseTimerId = setTimeout(() => {
-        const next: "in" | "hold" | "out" =
-          current === "in" ? "hold" : current === "hold" ? "out" : "in";
-        setCircleScale(next === "in" ? 1 : next === "hold" ? 1.4 : 1);
+      timerId = setTimeout(() => {
+        if (!active) return;
+        const next = NEXT[current];
+        setCircleScale(next === "hold" ? 1.4 : 1);
         setPhase(next);
+        playReturnBreathCue(next);   // audio fired here, not via useEffect
 
         if (timeExpiredRef.current && next === "out") {
-          // Session ended — let exhale voice play, then complete
-          setTimeout(() => onDoneRef.current(), 6500);
+          // Session ended — let exhale play fully then complete
+          setTimeout(() => { if (active) onDoneRef.current(); }, 6500);
         } else {
           scheduleNext(next);
         }
       }, PHASE_DURATIONS[current]);
     };
 
+    // Play first cue immediately and start chain
+    playReturnBreathCue("in");
     scheduleNext("in");
-    return () => clearTimeout(phaseTimerId);
+
+    return () => {
+      active = false;
+      clearTimeout(timerId);
+    };
   }, []);
 
   // Countdown timer — just tracks time, doesn't stop phase loop

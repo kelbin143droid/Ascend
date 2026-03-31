@@ -286,37 +286,43 @@ const BREATH_PHASE_DURATIONS: Record<"Inhale" | "Hold" | "Exhale", number> = {
   Exhale: 6000,
 };
 
+const BREATH_PHASE_NEXT: Record<"Inhale" | "Hold" | "Exhale", "Inhale" | "Hold" | "Exhale"> = {
+  Inhale: "Hold",
+  Hold: "Exhale",
+  Exhale: "Inhale",
+};
+
 function BreathingSession({ accentColor }: { accentColor: string }) {
   const [phase, setPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
 
   useBreathingAudio(true);
   useCalmMusic(true);
 
-  // Play voice cue on every phase change (fires reliably as state change)
-  useEffect(() => {
-    playVoiceClip(phase);
-  }, [phase]);
-
-  // Cleanup voice on unmount
-  useEffect(() => {
-    return () => { stopVoiceClip(); };
-  }, []);
-
-  // Self-contained phase loop: Inhale 4s → Hold 4s → Exhale 6s → repeat forever
+  // Single effect: audio + phase transitions driven purely by setTimeout chain.
+  // Bypasses useEffect([phase]) dependency tracking entirely — no missed cues.
   useEffect(() => {
     let timerId: ReturnType<typeof setTimeout>;
+    let active = true;
 
     const scheduleNext = (current: "Inhale" | "Hold" | "Exhale") => {
       timerId = setTimeout(() => {
-        const next: "Inhale" | "Hold" | "Exhale" =
-          current === "Inhale" ? "Hold" : current === "Hold" ? "Exhale" : "Inhale";
+        if (!active) return;
+        const next = BREATH_PHASE_NEXT[current];
         setPhase(next);
+        playVoiceClip(next);        // play audio right here, not via useEffect
         scheduleNext(next);
       }, BREATH_PHASE_DURATIONS[current]);
     };
 
+    // Play first cue immediately and start chain
+    playVoiceClip("Inhale");
     scheduleNext("Inhale");
-    return () => clearTimeout(timerId);
+
+    return () => {
+      active = false;
+      clearTimeout(timerId);
+      stopVoiceClip();
+    };
   }, []);
 
   const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.6;
