@@ -59,20 +59,33 @@ const TIER_THEMES = {
   },
 };
 
-const BREATH_AUDIO: Record<"in" | "hold" | "out", string> = {
-  in: "/audio/inhale.mp3",
-  hold: "/audio/hold.mp3",
-  out: "/audio/exhale.mp3",
+// Preloaded audio — one element per cue, reused across cycles
+const RETURN_CLIPS: Record<"in" | "hold" | "out", HTMLAudioElement> = {
+  in:   Object.assign(new Audio("/audio/inhale.mp3"), { volume: 0.9, preload: "auto" }),
+  hold: Object.assign(new Audio("/audio/hold.mp3"),   { volume: 0.9, preload: "auto" }),
+  out:  Object.assign(new Audio("/audio/exhale.mp3"), { volume: 0.9, preload: "auto" }),
 };
-let _returnBreathAudio: HTMLAudioElement | null = null;
 function playReturnBreathCue(phase: "in" | "hold" | "out") {
   try {
-    if (_returnBreathAudio) { _returnBreathAudio.pause(); _returnBreathAudio.currentTime = 0; }
-    const a = new Audio(BREATH_AUDIO[phase]);
-    a.volume = 0.9;
-    a.play().catch(() => {});
-    _returnBreathAudio = a;
+    (["in", "hold", "out"] as const).forEach(k => {
+      try { RETURN_CLIPS[k].pause(); RETURN_CLIPS[k].currentTime = 0; } catch {}
+    });
+    RETURN_CLIPS[phase].play().catch(() => {});
   } catch {}
+}
+
+// Phase layout within a 14-second cycle
+const RETURN_CYCLE_MS = 14000;
+const RETURN_BOUNDARIES: Array<{ at: number; phase: "in" | "hold" | "out" }> = [
+  { at: 0,    phase: "in"   },
+  { at: 4000, phase: "hold" },
+  { at: 8000, phase: "out"  },
+];
+function getReturnPhase(elapsedMs: number): "in" | "hold" | "out" {
+  const pos = elapsedMs % RETURN_CYCLE_MS;
+  let result: "in" | "hold" | "out" = "in";
+  for (const b of RETURN_BOUNDARIES) { if (pos >= b.at) result = b.phase; }
+  return result;
 }
 
 const PHASE_DURATIONS: Record<"in" | "hold" | "out", number> = {
@@ -89,40 +102,34 @@ function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: ()
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
-  // Phase cycling + audio driven purely by setTimeout chain (no useEffect deps on phase)
+  // Wall-clock interval: determines phase from elapsed time every 100ms.
+  // Plays audio only when the phase boundary is crossed — no chain, no drift.
   useEffect(() => {
-    let timerId: ReturnType<typeof setTimeout>;
-    let active = true;
+    const startTime = performance.now();
+    let lastPhase: "in" | "hold" | "out" | null = null;
+    let completionScheduled = false;
 
-    const NEXT: Record<"in" | "hold" | "out", "in" | "hold" | "out"> = {
-      in: "hold", hold: "out", out: "in",
-    };
+    const tick = () => {
+      const elapsed = performance.now() - startTime;
+      const current = getReturnPhase(elapsed);
 
-    const scheduleNext = (current: "in" | "hold" | "out") => {
-      timerId = setTimeout(() => {
-        if (!active) return;
-        const next = NEXT[current];
-        setCircleScale(next === "hold" ? 1.4 : 1);
-        setPhase(next);
-        playReturnBreathCue(next);   // audio fired here, not via useEffect
+      if (current !== lastPhase) {
+        lastPhase = current;
+        setPhase(current);
+        setCircleScale(current === "hold" ? 1.4 : 1);
+        playReturnBreathCue(current);
 
-        if (timeExpiredRef.current && next === "out") {
-          // Session ended — let exhale play fully then complete
-          setTimeout(() => { if (active) onDoneRef.current(); }, 6500);
-        } else {
-          scheduleNext(next);
+        // After time has expired, finish on the next "out" (exhale) boundary
+        if (timeExpiredRef.current && current === "out" && !completionScheduled) {
+          completionScheduled = true;
+          setTimeout(() => onDoneRef.current(), 6500); // let exhale finish first
         }
-      }, PHASE_DURATIONS[current]);
+      }
     };
 
-    // Play first cue immediately and start chain
-    playReturnBreathCue("in");
-    scheduleNext("in");
-
-    return () => {
-      active = false;
-      clearTimeout(timerId);
-    };
+    tick();
+    const intervalId = setInterval(tick, 100);
+    return () => { clearInterval(intervalId); };
   }, []);
 
   // Countdown timer — just tracks time, doesn't stop phase loop

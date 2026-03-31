@@ -182,38 +182,31 @@ function useBreathingAudio(active: boolean) {
   }, [active]);
 }
 
-// ─── Voice clips (MP3) ───────────────────────────────────────────────────────
-const VOICE_MAP: Record<string, string> = {
-  Inhale: INHALE_URL,
-  Hold: HOLD_URL,
-  Exhale: EXHALE_URL,
+// ─── Voice clips — preloaded once at module level so every cue plays instantly ─
+const VOICE_CLIPS: Record<"Inhale" | "Hold" | "Exhale", HTMLAudioElement> = {
+  Inhale: new Audio(INHALE_URL),
+  Hold:   new Audio(HOLD_URL),
+  Exhale: new Audio(EXHALE_URL),
 };
+(["Inhale", "Hold", "Exhale"] as const).forEach(k => {
+  VOICE_CLIPS[k].volume = 0.9;
+  VOICE_CLIPS[k].preload = "auto";
+});
 
-let activeVoiceAudio: HTMLAudioElement | null = null;
-
-function playVoiceClip(label: string) {
+function playVoiceClip(phase: "Inhale" | "Hold" | "Exhale") {
   try {
-    const url = VOICE_MAP[label];
-    if (!url) return;
-    if (activeVoiceAudio) {
-      activeVoiceAudio.pause();
-      activeVoiceAudio.currentTime = 0;
-    }
-    const audio = new Audio(url);
-    audio.volume = 0.9;
-    audio.play().catch(() => {});
-    activeVoiceAudio = audio;
+    // Stop every clip, then play only the requested one
+    (["Inhale", "Hold", "Exhale"] as const).forEach(k => {
+      try { VOICE_CLIPS[k].pause(); VOICE_CLIPS[k].currentTime = 0; } catch {}
+    });
+    VOICE_CLIPS[phase].play().catch(() => {});
   } catch {}
 }
 
 function stopVoiceClip() {
-  try {
-    if (activeVoiceAudio) {
-      activeVoiceAudio.pause();
-      activeVoiceAudio.currentTime = 0;
-      activeVoiceAudio = null;
-    }
-  } catch {}
+  (["Inhale", "Hold", "Exhale"] as const).forEach(k => {
+    try { VOICE_CLIPS[k].pause(); VOICE_CLIPS[k].currentTime = 0; } catch {}
+  });
 }
 
 // ─── Calm background music (pentatonic, Web Audio) ───────────────────────────
@@ -286,11 +279,22 @@ const BREATH_PHASE_DURATIONS: Record<"Inhale" | "Hold" | "Exhale", number> = {
   Exhale: 6000,
 };
 
-const BREATH_PHASE_NEXT: Record<"Inhale" | "Hold" | "Exhale", "Inhale" | "Hold" | "Exhale"> = {
-  Inhale: "Hold",
-  Hold: "Exhale",
-  Exhale: "Inhale",
-};
+// Phase boundaries in ms within a 14-second cycle
+const BREATH_CYCLE_MS = 14000; // Inhale 4s + Hold 4s + Exhale 6s
+const BREATH_BOUNDARIES: Array<{ at: number; phase: "Inhale" | "Hold" | "Exhale" }> = [
+  { at: 0,    phase: "Inhale" },
+  { at: 4000, phase: "Hold"   },
+  { at: 8000, phase: "Exhale" },
+];
+
+function getBreathPhase(elapsedMs: number): "Inhale" | "Hold" | "Exhale" {
+  const pos = elapsedMs % BREATH_CYCLE_MS;
+  let result: "Inhale" | "Hold" | "Exhale" = "Inhale";
+  for (const b of BREATH_BOUNDARIES) {
+    if (pos >= b.at) result = b.phase;
+  }
+  return result;
+}
 
 function BreathingSession({ accentColor }: { accentColor: string }) {
   const [phase, setPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
@@ -298,29 +302,27 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
   useBreathingAudio(true);
   useCalmMusic(true);
 
-  // Single effect: audio + phase transitions driven purely by setTimeout chain.
-  // Bypasses useEffect([phase]) dependency tracking entirely — no missed cues.
+  // Wall-clock interval: polls every 100ms, plays audio exactly when the phase
+  // boundary is crossed. Immune to setTimeout chain bugs and React cleanup ordering.
   useEffect(() => {
-    let timerId: ReturnType<typeof setTimeout>;
-    let active = true;
+    const startTime = performance.now();
+    let lastPhase: "Inhale" | "Hold" | "Exhale" | null = null;
 
-    const scheduleNext = (current: "Inhale" | "Hold" | "Exhale") => {
-      timerId = setTimeout(() => {
-        if (!active) return;
-        const next = BREATH_PHASE_NEXT[current];
-        setPhase(next);
-        playVoiceClip(next);        // play audio right here, not via useEffect
-        scheduleNext(next);
-      }, BREATH_PHASE_DURATIONS[current]);
+    const tick = () => {
+      const elapsed = performance.now() - startTime;
+      const current = getBreathPhase(elapsed);
+      if (current !== lastPhase) {
+        lastPhase = current;
+        setPhase(current);
+        playVoiceClip(current);
+      }
     };
 
-    // Play first cue immediately and start chain
-    playVoiceClip("Inhale");
-    scheduleNext("Inhale");
+    tick(); // fire immediately so Inhale plays at t=0
+    const intervalId = setInterval(tick, 100);
 
     return () => {
-      active = false;
-      clearTimeout(timerId);
+      clearInterval(intervalId);
       stopVoiceClip();
     };
   }, []);
