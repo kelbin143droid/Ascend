@@ -308,6 +308,13 @@ export default function HomePage() {
     return () => window.removeEventListener("ascend:day7session", handler);
   }, []);
 
+  // Listen for DevPanel "Reset Today's Sessions" so the flow-completed state clears immediately
+  useEffect(() => {
+    const handler = () => setFlowCompletedDate("");
+    window.addEventListener("ascend:sessions-reset", handler);
+    return () => window.removeEventListener("ascend:sessions-reset", handler);
+  }, []);
+
   // If user is in onboarding phase, clear any stale day7 flags from previous test sessions
   useEffect(() => {
     if (!isOnboardingComplete && day7Done) {
@@ -710,6 +717,7 @@ export default function HomePage() {
             playerId={player.id}
             onComplete={handleFlowComplete}
             onCancel={() => setFlowActive(false)}
+            isOnboardingComplete={isOnboardingComplete}
           />
         )}
       </AnimatePresence>

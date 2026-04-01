@@ -493,17 +493,23 @@ function CompletionScreen({
   colors,
   xpEarned,
   onFinish,
+  onRetry,
   isPending,
+  isError,
   antiGrindMultiplier,
   dailyCapReached,
+  isOnboardingComplete,
 }: {
   activity: ActivityDefinition;
   colors: any;
   xpEarned: number | null;
   onFinish: () => void;
+  onRetry: () => void;
   isPending: boolean;
+  isError: boolean;
   antiGrindMultiplier?: number;
   dailyCapReached?: boolean;
+  isOnboardingComplete?: boolean;
 }) {
   const xpNote = dailyCapReached
     ? "Daily XP limit reached"
@@ -543,7 +549,8 @@ function CompletionScreen({
           Small actions build momentum.
         </div>
       </div>
-      {xpEarned !== null && (
+      {/* XP is only shown post-onboarding so the focus stays on building habits first */}
+      {isOnboardingComplete && xpEarned !== null && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -560,15 +567,31 @@ function CompletionScreen({
           )}
         </motion.div>
       )}
-      <button
-        className="px-10 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 mt-2"
-        style={{ backgroundColor: activity.color, color: "#fff" }}
-        onClick={onFinish}
-        disabled={isPending}
-        data-testid="button-finish-activity"
-      >
-        {isPending ? "Saving..." : "Continue"}
-      </button>
+      {isError ? (
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-sm" style={{ color: "rgba(255,100,100,0.8)" }}>
+            Couldn't save your session. Check your connection.
+          </p>
+          <button
+            className="px-8 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
+            style={{ backgroundColor: `${activity.color}20`, border: `1px solid ${activity.color}40`, color: activity.color }}
+            onClick={onRetry}
+            data-testid="button-retry-activity"
+          >
+            Retry
+          </button>
+        </div>
+      ) : (
+        <button
+          className="px-10 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 mt-2"
+          style={{ backgroundColor: activity.color, color: "#fff" }}
+          onClick={onFinish}
+          disabled={isPending}
+          data-testid="button-finish-activity"
+        >
+          {isPending ? "Saving..." : "Continue"}
+        </button>
+      )}
     </motion.div>
   );
 }
@@ -578,6 +601,7 @@ export interface GuidedActivityEngineProps {
   playerId: string;
   onComplete: (xpEarned: number) => void;
   onCancel: () => void;
+  isOnboardingComplete?: boolean;
 }
 
 export function GuidedActivityEngine({
@@ -585,6 +609,7 @@ export function GuidedActivityEngine({
   playerId,
   onComplete,
   onCancel,
+  isOnboardingComplete,
 }: GuidedActivityEngineProps) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
@@ -817,9 +842,12 @@ export function GuidedActivityEngine({
               colors={colors}
               xpEarned={xpEarned}
               onFinish={() => onComplete(xpEarned ?? 0)}
+              onRetry={() => completeMutation.mutate()}
               isPending={completeMutation.isPending}
+              isError={completeMutation.isError}
               antiGrindMultiplier={antiGrindMultiplier}
               dailyCapReached={dailyCapReached}
+              isOnboardingComplete={isOnboardingComplete}
             />
           ) : stepPhase === "getready" && step ? (
             <GetReadyCountdown

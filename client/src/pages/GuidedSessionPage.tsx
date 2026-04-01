@@ -526,6 +526,7 @@ export default function GuidedSessionPage() {
   const [elapsed, setElapsed] = useState(0);
   const [showDayClose, setShowDayClose] = useState(false);
   const [showDay5Expansion, setShowDay5Expansion] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const intervalRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const completeTimeoutRef = useRef<ReturnType<typeof setTimeout>  | null>(null);
 
@@ -541,18 +542,17 @@ export default function GuidedSessionPage() {
     staleTime: 30000,
   });
 
-  /* Helper: advance out of "completing" regardless of success/failure */
-  const advanceFromCompleting = useCallback((savedOk: boolean) => {
+  /* Advance out of "completing" — only called on confirmed server success */
+  const advanceFromCompleting = useCallback(() => {
     if (completeTimeoutRef.current) {
       clearTimeout(completeTimeoutRef.current);
       completeTimeoutRef.current = null;
     }
-    if (savedOk) {
-      queryClient.invalidateQueries({ queryKey: ["home"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-    }
+    queryClient.invalidateQueries({ queryKey: ["home"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+
     // Mark Day 7 guided session as done so the phase-transition screen unlocks on Home
-    if (savedOk && sessionId === "weekly-reflection") {
+    if (sessionId === "weekly-reflection") {
       localStorage.setItem("ascend_day7_session_completed", "true");
       window.dispatchEvent(new CustomEvent("ascend:day7session"));
     }
@@ -560,7 +560,7 @@ export default function GuidedSessionPage() {
     const isDay5 = homeData?.onboardingDay === 5;
     const alreadyExpanded = localStorage.getItem("ascend_day5_expansion_shown") === new Date().toISOString().split("T")[0];
 
-    if (savedOk && isFirstCompletionToday && isDay5 && !alreadyExpanded) {
+    if (isFirstCompletionToday && isDay5 && !alreadyExpanded) {
       localStorage.setItem("ascend_day5_expansion_shown", new Date().toISOString().split("T")[0]);
       setShowDay5Expansion(true);
     } else if (isFirstCompletionToday) {
@@ -586,9 +586,16 @@ export default function GuidedSessionPage() {
         queryClient.refetchQueries({ queryKey: ["home", player?.id] }),
         queryClient.refetchQueries({ queryKey: ["/api/player", player?.id] }),
       ]);
-      advanceFromCompleting(true);
+      advanceFromCompleting();
     },
-    onError:   () => advanceFromCompleting(false),
+    // On error: show retry UI — do NOT auto-advance, the session wasn't recorded
+    onError: () => {
+      if (completeTimeoutRef.current) {
+        clearTimeout(completeTimeoutRef.current);
+        completeTimeoutRef.current = null;
+      }
+      setSaveError(true);
+    },
   });
 
   useEffect(() => {
@@ -643,11 +650,12 @@ export default function GuidedSessionPage() {
   const handleComplete = useCallback(() => {
     if (state !== "active") return;
     setState("completing");
-    // Failsafe: if the mutation never settles (network stall), move on after 6s
+    setSaveError(false);
+    // Network-hang guard: if the mutation takes >12s, surface the retry UI instead of auto-advancing
     completeTimeoutRef.current = setTimeout(() => {
-      setState(prev => prev === "completing" ? "done" : prev);
+      setSaveError(true);
       completeTimeoutRef.current = null;
-    }, 6000);
+    }, 12000);
     completeMutation.mutate();
   }, [state, completeMutation]);
 
@@ -884,12 +892,28 @@ export default function GuidedSessionPage() {
               className="w-16 h-16 rounded-full"
               style={{
                 background: `radial-gradient(circle, ${accentColor}20 0%, transparent 70%)`,
-                animation: "gsGlowPulse 2s ease-in-out infinite",
+                animation: saveError ? "none" : "gsGlowPulse 2s ease-in-out infinite",
               }}
             />
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
-              Saving your progress...
-            </p>
+            {saveError ? (
+              <>
+                <p className="text-sm text-center" style={{ color: "rgba(255,100,100,0.8)" }}>
+                  Couldn't save your session. Check your connection.
+                </p>
+                <button
+                  data-testid="button-retry-save"
+                  onClick={() => { setSaveError(false); completeMutation.mutate(); }}
+                  className="px-6 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95"
+                  style={{ backgroundColor: `${accentColor}20`, border: `1px solid ${accentColor}40`, color: accentColor }}
+                >
+                  Retry
+                </button>
+              </>
+            ) : (
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                Saving your progress...
+              </p>
+            )}
           </div>
         )}
         {state === "done" && (

@@ -99,6 +99,7 @@ export default function TrainPage() {
             playerId={player.id}
             onComplete={() => handleActivityComplete(activeActivity.id)}
             onCancel={() => setActiveActivity(null)}
+            isOnboardingComplete={homeData?.isOnboardingComplete}
           />
         )}
         {flowActive && player && (
@@ -107,6 +108,7 @@ export default function TrainPage() {
             playerId={player.id}
             onComplete={handleFlowComplete}
             onCancel={() => setFlowActive(false)}
+            isOnboardingComplete={homeData?.isOnboardingComplete}
           />
         )}
       </AnimatePresence>

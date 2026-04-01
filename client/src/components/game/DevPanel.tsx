@@ -216,6 +216,8 @@ export function DevPanel() {
         const data = await res.json();
         localStorage.removeItem("ascend_day7_session_completed");
         localStorage.removeItem("ascend_light_movement_completed");
+        // Notify HomePage to reset its flowCompletedDate React state
+        window.dispatchEvent(new CustomEvent("ascend:sessions-reset"));
         setLastResult(`Today reset — ${data.removed} session(s) cleared`);
         queryClient.invalidateQueries();
         fetchStatus();

@@ -14,6 +14,7 @@ interface DailyFlowEngineProps {
   playerId: string;
   onComplete: (completedIds: string[], bonusAwarded: boolean) => void;
   onCancel: () => void;
+  isOnboardingComplete?: boolean;
 }
 
 export function DailyFlowEngine({
@@ -21,6 +22,7 @@ export function DailyFlowEngine({
   playerId,
   onComplete,
   onCancel,
+  isOnboardingComplete,
 }: DailyFlowEngineProps) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
@@ -129,6 +131,7 @@ export function DailyFlowEngine({
         playerId={playerId}
         onComplete={handleActivityComplete}
         onCancel={() => setRunningActivity(false)}
+        isOnboardingComplete={isOnboardingComplete}
       />
     );
   }
