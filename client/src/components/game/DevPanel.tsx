@@ -206,6 +206,28 @@ export function DevPanel() {
     queryClient.invalidateQueries();
   };
 
+  const resetToday = async () => {
+    if (!player?.id || loading) return;
+    setLoading(true);
+    setLastResult(null);
+    try {
+      const res = await fetch(`/api/player/${player.id}/dev/reset-today`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.removeItem("ascend_day7_session_completed");
+        localStorage.removeItem("ascend_light_movement_completed");
+        setLastResult(`Today reset — ${data.removed} session(s) cleared`);
+        queryClient.invalidateQueries();
+        fetchStatus();
+      } else {
+        setLastResult("Error resetting today");
+      }
+    } catch {
+      setLastResult("Error resetting today");
+    }
+    setLoading(false);
+  };
+
   if (!player?.id) return null;
 
   return (
@@ -314,6 +336,21 @@ export function DevPanel() {
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            <button
+              onClick={resetToday}
+              disabled={loading}
+              className="w-full text-[10px] font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
+              style={{
+                backgroundColor: loading ? "rgba(34,211,238,0.04)" : "rgba(34,211,238,0.1)",
+                border: "1px solid rgba(34,211,238,0.2)",
+                color: loading ? "rgba(34,211,238,0.35)" : "rgba(34,211,238,0.85)",
+              }}
+              data-testid="button-reset-today"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset Today's Sessions
+            </button>
 
             <div className="flex items-center gap-2">
               <label className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>Days:</label>

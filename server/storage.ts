@@ -14,7 +14,7 @@ import {
   PHASE_UNLOCK_DATA 
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, like, desc, sql } from "drizzle-orm";
 import { processSession, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
 import { updateStamina } from "./gameLogic/xpProgressionSystem";
 
@@ -75,6 +75,7 @@ export interface IStorage {
   
   getHabitCompletions(userId: string, since?: Date): Promise<HabitCompletion[]>;
   createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion>;
+  deleteTodayGuidedCompletions(playerId: string): Promise<number>;
   
   getBadges(userId: string): Promise<Badge[]>;
   createBadge(badge: InsertBadge): Promise<Badge>;
@@ -494,6 +495,22 @@ export class DatabaseStorage implements IStorage {
   async createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion> {
     const [newCompletion] = await db.insert(habitCompletions).values(completion).returning();
     return newCompletion;
+  }
+
+  async deleteTodayGuidedCompletions(playerId: string): Promise<number> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const result = await db
+      .delete(habitCompletions)
+      .where(
+        and(
+          eq(habitCompletions.userId, playerId),
+          gte(habitCompletions.completedAt, startOfToday),
+          like(habitCompletions.habitId, "guided_%")
+        )
+      )
+      .returning();
+    return result.length;
   }
 
   async getBadges(userId: string): Promise<Badge[]> {

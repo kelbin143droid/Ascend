@@ -2688,6 +2688,17 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/dev/reset-today", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+      const removed = await storage.deleteTodayGuidedCompletions(req.params.id);
+      res.json({ success: true, removed });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset today's sessions" });
+    }
+  });
+
   app.post("/api/player/:id/reset-progress", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);
