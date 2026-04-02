@@ -228,7 +228,7 @@ export function AccessibleReadable() {
           }}
         >
           <Play size={18} fill="#fff" aria-hidden="true" />
-          Begin Today's Reset
+          Start
         </button>
 
         {/* Accessible duration label under button */}
