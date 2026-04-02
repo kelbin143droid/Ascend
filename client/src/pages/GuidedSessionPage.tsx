@@ -273,18 +273,33 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
     let alive = true;
     let voiceCtx: AudioContext | null = null;
     let currentSrc: AudioBufferSourceNode | null = null;
-    let tickId: ReturnType<typeof setInterval> | undefined;
+    let playBuf: ((p: "Inhale" | "Hold" | "Exhale") => void) | null = null;
 
     const stopCurrent = () => {
       if (currentSrc) { try { currentSrc.stop(); } catch {} currentSrc = null; }
     };
 
+    // ── Phase cycling — always runs, independent of audio ────────────────────
+    let curPhase: "Inhale" | "Hold" | "Exhale" = "Inhale";
+    let phaseStart = performance.now();
+    setPhase("Inhale");
+
+    const tickId = setInterval(() => {
+      if (!alive) return;
+      if (performance.now() - phaseStart >= VOICE_DURATIONS[curPhase]) {
+        curPhase = VOICE_NEXT[curPhase];
+        phaseStart = performance.now();
+        setPhase(curPhase);
+        playBuf?.(curPhase);
+      }
+    }, 100);
+
+    // ── Audio loading — optional; failures are silent ─────────────────────────
     (async () => {
       try {
         voiceCtx = new AudioContext();
-        await voiceCtx.resume(); // ensure context is running after user gesture
+        await voiceCtx.resume();
 
-        // Load all three clips in parallel
         const [inhBuf, hldBuf, exhBuf] = await Promise.all([
           fetch(INHALE_URL).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
           fetch(HOLD_URL  ).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
@@ -296,7 +311,7 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
           Inhale: inhBuf, Hold: hldBuf, Exhale: exhBuf,
         };
 
-        const playBuf = (p: "Inhale" | "Hold" | "Exhale") => {
+        playBuf = (p: "Inhale" | "Hold" | "Exhale") => {
           if (!voiceCtx || !alive) return;
           stopCurrent();
           const src = voiceCtx.createBufferSource();
@@ -308,27 +323,14 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
           currentSrc = src;
         };
 
-        // Explicit state machine — no modulo arithmetic, no shared state
-        let curPhase: "Inhale" | "Hold" | "Exhale" = "Inhale";
-        let phaseStart = performance.now();
-        setPhase("Inhale");
-        playBuf("Inhale");
-
-        tickId = setInterval(() => {
-          if (!alive) return;
-          if (performance.now() - phaseStart >= VOICE_DURATIONS[curPhase]) {
-            curPhase = VOICE_NEXT[curPhase];
-            phaseStart = performance.now();
-            setPhase(curPhase);
-            playBuf(curPhase);
-          }
-        }, 100);
-      } catch { /* audio unavailable — degrade silently */ }
+        // Play the cue for whichever phase is currently active when audio loads
+        playBuf(curPhase);
+      } catch { /* audio unavailable — visual cycling continues unaffected */ }
     })();
 
     return () => {
       alive = false;
-      if (tickId !== undefined) clearInterval(tickId);
+      clearInterval(tickId);
       stopCurrent();
       voiceCtx?.close().catch(() => {});
     };
