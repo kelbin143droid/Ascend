@@ -264,25 +264,29 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
   useBreathingAudio(true);
   useCalmMusic(true);
 
-  // Web Audio API voice cues: fetch → decode → AudioBufferSourceNode.
-  // Avoids every HTMLAudioElement edge-case (autoplay policy, interrupted-play
-  // bug, shared-element state corruption). Each phase plays a new SourceNode;
-  // transitions use an explicit state-machine so the Inhale→Hold→Exhale→Inhale
-  // cycle can never be skipped.
   useEffect(() => {
     let alive = true;
-    let voiceCtx: AudioContext | null = null;
-    let currentSrc: AudioBufferSourceNode | null = null;
-    let playBuf: ((p: "Inhale" | "Hold" | "Exhale") => void) | null = null;
 
-    const stopCurrent = () => {
-      if (currentSrc) { try { currentSrc.stop(); } catch {} currentSrc = null; }
+    // ── Pre-load voice clips with HTMLAudioElement (most reliable cross-browser) ──
+    const clips: Record<"Inhale" | "Hold" | "Exhale", HTMLAudioElement> = {
+      Inhale: new Audio(INHALE_URL),
+      Hold:   new Audio(HOLD_URL),
+      Exhale: new Audio(EXHALE_URL),
+    };
+    Object.values(clips).forEach(a => { a.volume = 0.85; a.preload = "auto"; a.load(); });
+
+    const playClip = (p: "Inhale" | "Hold" | "Exhale") => {
+      // Stop any currently playing clip first
+      Object.values(clips).forEach(a => { try { a.pause(); a.currentTime = 0; } catch {} });
+      clips[p].play().catch(() => {}); // silently ignore autoplay blocks
     };
 
-    // ── Phase cycling — always runs, independent of audio ────────────────────
+    // ── Phase cycling — drives both the visual label and audio cues ──────────
     let curPhase: "Inhale" | "Hold" | "Exhale" = "Inhale";
     let phaseStart = performance.now();
     setPhase("Inhale");
+    // Play first cue immediately
+    playClip("Inhale");
 
     const tickId = setInterval(() => {
       if (!alive) return;
@@ -290,54 +294,29 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
         curPhase = VOICE_NEXT[curPhase];
         phaseStart = performance.now();
         setPhase(curPhase);
-        playBuf?.(curPhase);
+        playClip(curPhase);
       }
     }, 100);
-
-    // ── Audio loading — optional; failures are silent ─────────────────────────
-    (async () => {
-      try {
-        voiceCtx = new AudioContext();
-        await voiceCtx.resume();
-
-        const [inhBuf, hldBuf, exhBuf] = await Promise.all([
-          fetch(INHALE_URL).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
-          fetch(HOLD_URL  ).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
-          fetch(EXHALE_URL).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
-        ]);
-        if (!alive || !voiceCtx) return;
-
-        const BUF: Record<"Inhale" | "Hold" | "Exhale", AudioBuffer> = {
-          Inhale: inhBuf, Hold: hldBuf, Exhale: exhBuf,
-        };
-
-        playBuf = (p: "Inhale" | "Hold" | "Exhale") => {
-          if (!voiceCtx || !alive) return;
-          stopCurrent();
-          const src = voiceCtx.createBufferSource();
-          src.buffer = BUF[p];
-          const gain = voiceCtx.createGain();
-          gain.gain.value = 0.9;
-          src.connect(gain).connect(voiceCtx.destination);
-          src.start();
-          currentSrc = src;
-        };
-
-        // Play the cue for whichever phase is currently active when audio loads
-        playBuf(curPhase);
-      } catch { /* audio unavailable — visual cycling continues unaffected */ }
-    })();
 
     return () => {
       alive = false;
       clearInterval(tickId);
-      stopCurrent();
-      voiceCtx?.close().catch(() => {});
+      Object.values(clips).forEach(a => { try { a.pause(); a.src = ""; } catch {} });
     };
   }, []);
 
-  const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.6;
-  const transitionDuration = phase === "Inhale" ? "4s" : phase === "Hold" ? "0.3s" : "6s";
+  // Circle: small → large on inhale, stays large on hold, large → small on exhale
+  const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.5;
+  const transitionDuration =
+    phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
+    : phase === "Hold"   ? "0.2s"
+    : `${VOICE_DURATIONS.Exhale / 1000}s`;
+
+  // Duration label shown below phase name
+  const phaseHint =
+    phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
+    : phase === "Hold"   ? `${VOICE_DURATIONS.Hold / 1000}s`
+    : `${VOICE_DURATIONS.Exhale / 1000}s`;
 
   return (
     <div className="flex flex-col items-center gap-8">
@@ -346,17 +325,25 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
         style={{
           transform: `scale(${scale})`,
           transition: `transform ${transitionDuration} ease-in-out`,
-          background: `radial-gradient(circle, ${accentColor}25 0%, ${accentColor}08 60%, transparent 100%)`,
-          border: `2px solid ${accentColor}30`,
+          background: `radial-gradient(circle, ${accentColor}30 0%, ${accentColor}10 60%, transparent 100%)`,
+          border: `2px solid ${accentColor}40`,
+          boxShadow: phase === "Hold"
+            ? `0 0 40px ${accentColor}30`
+            : `0 0 20px ${accentColor}15`,
         }}
       />
-      <p
-        data-testid="breathing-phase-label"
-        className="text-xl font-display font-medium tracking-wider"
-        style={{ color: `${accentColor}cc` }}
-      >
-        {phase}
-      </p>
+      <div className="flex flex-col items-center gap-1">
+        <p
+          data-testid="breathing-phase-label"
+          className="text-xl font-display font-medium tracking-wider"
+          style={{ color: `${accentColor}cc` }}
+        >
+          {phase}
+        </p>
+        <p className="text-xs" style={{ color: `${accentColor}55` }}>
+          {phaseHint}
+        </p>
+      </div>
       <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.25)" }}>
         Voice guided · Ambient audio
       </p>
@@ -531,6 +518,18 @@ export default function GuidedSessionPage() {
   const [saveError, setSaveError] = useState(false);
   const intervalRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const completeTimeoutRef = useRef<ReturnType<typeof setTimeout>  | null>(null);
+
+  // Unlock HTMLAudioElement playback immediately on page mount for breathing sessions.
+  // The browser requires at least one .play() that traces back to a user gesture.
+  // We do this here while the mount is still close to the "Start" button click.
+  useEffect(() => {
+    if (session?.type !== "breathing") return;
+    const unlock = new Audio(INHALE_URL);
+    unlock.volume = 0;
+    unlock.play()
+      .then(() => { unlock.pause(); unlock.src = ""; })
+      .catch(() => { unlock.src = ""; });
+  }, []);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean; completedToday: number }>({
     queryKey: ["home", player?.id],
