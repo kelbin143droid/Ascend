@@ -2515,12 +2515,34 @@ export async function registerRoutes(
         .map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
         .sort();
       const latestDateStr = existingDates[existingDates.length - 1];
-      const startBase = latestDateStr ? new Date(latestDateStr + "T12:00:00") : new Date();
-      // Each simulated day is 1 day after the previous latest
+
+      // Always keep simulated dates in the past (≤ yesterday) so future-date
+      // pollution never causes the system to treat future sim days as "today".
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+      const yesterdayBase = new Date(todayMidnight);
+      yesterdayBase.setDate(yesterdayBase.getDate() - 1);
+
+      // If no existing completions, place N simulated days ending at yesterday.
+      // If there are existing completions, continue from the latest date.
+      const startBase = latestDateStr
+        ? new Date(latestDateStr + "T12:00:00")
+        : (() => {
+            const d = new Date(yesterdayBase);
+            d.setDate(d.getDate() - dayCount); // so last sim day lands on yesterday
+            return d;
+          })();
+
+      // Each simulated day is 1 day after the previous latest, clamped to ≤ yesterday
       const getSimulatedDate = (d: number) => {
         const date = new Date(startBase);
         date.setDate(date.getDate() + d + 1);
         date.setHours(9 + (d % 8), 30, 0, 0);
+        // Clamp: never allow a simulated date to reach today or the future
+        if (date >= todayMidnight) {
+          date.setTime(yesterdayBase.getTime());
+          date.setHours(9 + (d % 8), 30, 0, 0);
+        }
         return date;
       };
 
