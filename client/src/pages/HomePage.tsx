@@ -5,7 +5,7 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, CheckCircle2, Eye, Zap } from "lucide-react";
+import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, CheckCircle2, Eye, Zap, ChevronRight } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
@@ -102,44 +102,49 @@ interface OnboardingStep {
   duration: string;
   icon: typeof Wind;
   buttonLabel: string;
+  category: string;
 }
 
 const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
   1: {
     sessionId: "calm-breathing",
     name: "2-Minute Reset",
-    description: "Slow breathing to reset your system.",
+    description: "Slow breathing to reset your nervous system. This is your only task for today.",
     coachMessage: "Begin with one small action.",
     duration: "2 minutes",
     icon: Wind,
     buttonLabel: "Begin Today's Reset",
+    category: "BREATHING",
   },
   2: {
     sessionId: "light-movement",
     name: "Light Movement",
-    description: "Move your body for 3–5 minutes.",
+    description: "Move your body for 3–5 minutes. Small movement wakes everything up.",
     coachMessage: "Small movement wakes the system.",
     duration: "3–5 minutes",
     icon: Heart,
     buttonLabel: "Begin Today's Moment",
+    category: "MOVEMENT",
   },
   3: {
     sessionId: "hydration-check",
     name: "Hydration Check",
-    description: "Drink water and check in with your body.",
+    description: "Drink water and check in with your body. Small signals matter.",
     coachMessage: "Small signals matter.",
     duration: "1 minute",
     icon: Droplets,
     buttonLabel: "Begin Today's Moment",
+    category: "VITALITY",
   },
   4: {
     sessionId: "quick-reflection",
     name: "Quick Reflection",
-    description: "Answer a short reflection question.",
+    description: "Answer a short reflection question. One honest answer is enough.",
     coachMessage: "What helped you show up today?",
     duration: "1 minute",
     icon: Brain,
     buttonLabel: "Begin Today's Practice",
+    category: "REFLECTION",
   },
   5: {
     sessionId: "focus-block",
@@ -149,6 +154,7 @@ const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
     duration: "~1 minute",
     icon: Clock,
     buttonLabel: "Begin Today's Practice",
+    category: "CARDIO",
   },
   6: {
     sessionId: "plan-tomorrow",
@@ -158,6 +164,7 @@ const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
     duration: "1 minute",
     icon: Calendar,
     buttonLabel: "Begin Today's Step",
+    category: "PLANNING",
   },
   7: {
     sessionId: "weekly-reflection",
@@ -167,6 +174,7 @@ const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
     duration: "2 minutes",
     icon: BarChart3,
     buttonLabel: "Begin Your Planned Step",
+    category: "REFLECTION",
   },
 };
 
@@ -424,163 +432,329 @@ export default function HomePage() {
   if (isOnboardingFlow) {
     const step = ONBOARDING_STEPS[onboardingDay] || ONBOARDING_STEPS[1];
     const StepIcon = step.icon;
-    const reflection = DAILY_REFLECTIONS[onboardingDay] || DAILY_REFLECTIONS[1];
+    const dayComplete = homeData?.onboardingDayCompleted ?? false;
+    const sessionDone = homeData?.completedGuidedSessionsToday?.includes(step.sessionId) ?? false;
+    const isDone = dayComplete || sessionDone;
+    const nextDay = Math.min(onboardingDay + 1, 7);
+    const phaseName = homeData?.phase?.name ?? "Stabilization";
 
     return (
       <SystemLayout>
-        <style>{`
-          @keyframes fadeSlideIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-        `}</style>
-
         <div
-          className="flex flex-col gap-6 py-8 px-1 max-w-md mx-auto w-full"
+          style={{
+            minHeight: "100dvh",
+            backgroundColor: "#06060f",
+            color: "#f5f5ff",
+            fontFamily: "'Inter', system-ui, sans-serif",
+            display: "flex",
+            flexDirection: "column",
+            paddingBottom: 80,
+          }}
           data-testid="home-page"
         >
-          <div className="pt-2">
-            <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-              Day {onboardingDay}
-            </p>
-            <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
-              {reflection.subtitle}
-            </p>
-          </div>
-
-          <div
-            data-testid="onboarding-step-card"
-            className="rounded-xl px-5 py-4"
+          {/* Skip nav */}
+          <a
+            href="#main-action"
             style={{
-              backgroundColor: `${colors.primary}06`,
-              border: `1px solid ${colors.primary}12`,
-              animation: "fadeSlideIn 0.4s ease-out",
+              position: "absolute",
+              top: -40,
+              left: 0,
+              padding: "8px 16px",
+              backgroundColor: "#8b5cf6",
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+              zIndex: 100,
+              borderRadius: "0 0 8px 0",
+              transition: "top 0.2s",
             }}
+            onFocus={(e) => { (e.target as HTMLElement).style.top = "0"; }}
+            onBlur={(e) => { (e.target as HTMLElement).style.top = "-40px"; }}
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: `${colors.primary}12` }}
-              >
-                <StepIcon size={16} style={{ color: colors.primary }} />
-              </div>
+            Skip to main action
+          </a>
+
+          {/* Header */}
+          <header style={{ padding: "52px 24px 20px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 18,
+              }}
+            >
               <div>
-                <p className="text-sm font-display font-medium" style={{ color: colors.text }}>
-                  {step.name}
+                <p
+                  aria-label={`Onboarding progress: Day ${onboardingDay} of 7`}
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#a78bfa",
+                    letterSpacing: "0.06em",
+                  }}
+                  data-testid="text-day-progress"
+                >
+                  Day {onboardingDay} of 7
                 </p>
-                <p className="text-[10px]" style={{ color: colors.textMuted }}>
-                  {step.duration}
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(245,245,255,0.45)", marginTop: 2 }}>
+                  {phaseName} phase
                 </p>
+              </div>
+              {/* 7-dot progress track */}
+              <div
+                aria-label={`7-day progress: ${onboardingDay - (isDone ? 0 : 1)} days complete`}
+                style={{ display: "flex", gap: 5 }}
+                data-testid="progress-track"
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => {
+                  const isComplete = isDone ? d <= onboardingDay : d < onboardingDay;
+                  const isCurrent = !isDone && d === onboardingDay;
+                  return (
+                    <div
+                      key={d}
+                      style={{
+                        width: 22,
+                        height: 6,
+                        borderRadius: 3,
+                        backgroundColor: isComplete ? "#8b5cf6" : isCurrent ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.1)",
+                        border: isCurrent ? "1px solid #8b5cf6" : isComplete ? "none" : "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    />
+                  );
+                })}
               </div>
             </div>
-            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}aa` }}>
-              {step.description}
-            </p>
-          </div>
 
-          <div
-            data-testid="coach-insight-card"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: `${colors.primary}08`,
-              border: `1px solid ${colors.primary}15`,
-            }}
-          >
-            <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1" style={{ color: `${colors.primary}99` }}>
-              Coach
-            </p>
-            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
-              {step.coachMessage}
-            </p>
-          </div>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 28,
+                fontWeight: 800,
+                color: "#f5f5ff",
+                lineHeight: 1.2,
+                letterSpacing: "-0.5px",
+                fontFamily: "'Inter', system-ui, sans-serif",
+              }}
+            >
+              Today's practice
+            </h1>
+          </header>
 
-          <p
-            data-testid="micro-commit-text"
-            className="text-xs text-center tracking-wide"
-            style={{ color: `${colors.textMuted}99` }}
-          >
-            {reflection.motivation}
-          </p>
-
-          <div className="flex flex-col items-center gap-3">
-            {homeData?.onboardingDayCompleted ? (
-              // Day is complete — show "See you tomorrow" state, do not advance yet
+          {/* Main content */}
+          <main id="main-action" style={{ flex: 1, padding: "0 24px" }}>
+            {isDone ? (
+              /* Completed state */
               <div
                 data-testid="day-complete-card"
-                className="w-full rounded-xl px-5 py-5 flex flex-col items-center gap-3 text-center"
+                role="region"
+                aria-label="Today's practice complete"
                 style={{
-                  backgroundColor: `${colors.primary}0a`,
-                  border: `1px solid ${colors.primary}20`,
+                  backgroundColor: "rgba(139,92,246,0.1)",
+                  border: "1.5px solid rgba(139,92,246,0.35)",
+                  borderRadius: 18,
+                  padding: "32px 20px",
+                  marginBottom: 20,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 16,
+                  textAlign: "center",
                 }}
               >
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: `${colors.primary}18` }}
-                >
-                  <CheckCircle2 size={20} style={{ color: colors.primary }} />
-                </div>
-                <div>
-                  <p
-                    className="text-sm font-display font-semibold mb-1"
-                    style={{ color: colors.text }}
-                  >
-                    Step complete.
-                  </p>
-                  <p
-                    className="text-xs leading-relaxed"
-                    style={{ color: `${colors.text}80` }}
-                  >
-                    Your next step unlocks tomorrow. Rest, reflect, return.
-                  </p>
-                </div>
-                <div
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
                   style={{
-                    backgroundColor: `${colors.primary}10`,
-                    border: `1px solid ${colors.primary}18`,
+                    width: 56,
+                    height: 56,
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(139,92,246,0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  <Clock size={11} style={{ color: `${colors.primary}99` }} />
-                  <span className="text-[10px] font-medium tracking-wide" style={{ color: `${colors.primary}99` }}>
-                    Day {onboardingDay} of 6 — See you tomorrow
-                  </span>
+                  <CheckCircle2 size={26} color="#a78bfa" />
                 </div>
-              </div>
-            ) : homeData?.completedGuidedSessionsToday?.includes(step.sessionId) ? (
-              <div
-                data-testid="session-completed-indicator"
-                className="w-full py-4 rounded-xl flex items-center justify-center gap-2"
-                style={{
-                  backgroundColor: `${colors.primary}14`,
-                  border: `1px solid ${colors.primary}30`,
-                }}
-              >
-                <CheckCircle2 size={16} style={{ color: colors.primary }} />
-                <span
-                  className="text-sm font-display font-medium tracking-wide"
-                  style={{ color: colors.primary }}
+                <div>
+                  <p style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 700, color: "#f5f5ff" }}>
+                    Practice complete.
+                  </p>
+                  <p style={{ margin: 0, fontSize: 15, color: "rgba(245,245,255,0.6)", lineHeight: 1.6 }}>
+                    Your next step unlocks tomorrow.{" "}
+                    {onboardingDay < 7 ? "Rest, reflect, return." : "You've built something real."}
+                  </p>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: "#a78bfa",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                  }}
                 >
-                  Session completed today
-                </span>
+                  Day {onboardingDay} of 7 — See you tomorrow
+                </p>
               </div>
             ) : (
-              <button
-                data-testid="button-start"
-                onClick={() => setLocation(`/guided-session/${step.sessionId}`)}
-                className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
-                style={{
-                  backgroundColor: colors.primary,
-                  color: colors.background,
-                  boxShadow: `0 0 24px ${colors.primaryGlow}30`,
-                }}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <Play size={16} />
-                  {step.buttonLabel}
-                </span>
-              </button>
+              <>
+                {/* Session card */}
+                <div
+                  role="region"
+                  aria-label={`Today's session: ${step.name}`}
+                  data-testid="onboarding-step-card"
+                  style={{
+                    backgroundColor: "rgba(139,92,246,0.1)",
+                    border: "1.5px solid rgba(139,92,246,0.3)",
+                    borderRadius: 18,
+                    padding: "24px 20px",
+                    marginBottom: 16,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
+                    {/* Icon with category label */}
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 6,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: 14,
+                          backgroundColor: "rgba(139,92,246,0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <StepIcon size={24} color="#a78bfa" />
+                      </div>
+                      <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 600, letterSpacing: "0.05em" }}>
+                        {step.category}
+                      </span>
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#f5f5ff", lineHeight: 1.2, fontFamily: "'Inter', system-ui, sans-serif" }}>
+                        {step.name}
+                      </h2>
+                      <p style={{ margin: 0, fontSize: 14, color: "#a78bfa", fontWeight: 500 }}>
+                        ⏱ {step.duration}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <p
+                    style={{
+                      margin: "0 0 16px",
+                      fontSize: 16,
+                      lineHeight: 1.65,
+                      color: "rgba(245,245,255,0.72)",
+                    }}
+                  >
+                    {step.description}
+                  </p>
+
+                  {/* Coach says */}
+                  <div
+                    data-testid="coach-insight-card"
+                    style={{
+                      padding: "12px 16px",
+                      backgroundColor: "rgba(255,255,255,0.04)",
+                      borderRadius: 10,
+                      borderLeft: "3px solid rgba(139,92,246,0.5)",
+                    }}
+                  >
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      Coach says
+                    </p>
+                    <p style={{ margin: 0, fontSize: 15, color: "rgba(245,245,255,0.65)", lineHeight: 1.55 }}>
+                      {step.coachMessage}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Unlocks next day row */}
+                <div
+                  role="note"
+                  data-testid="text-unlock-note"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "14px 16px",
+                    backgroundColor: "rgba(255,255,255,0.025)",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    marginBottom: 24,
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 14, color: "rgba(245,245,255,0.45)", lineHeight: 1.45 }}>
+                    {onboardingDay < 7
+                      ? `Completing today unlocks Day ${nextDay} tomorrow.`
+                      : "Completing today finishes your first week."}
+                  </p>
+                  <ChevronRight size={18} color="rgba(245,245,255,0.2)" aria-hidden="true" />
+                </div>
+
+                {/* CTA button */}
+                <button
+                  id="start-session"
+                  data-testid="button-start"
+                  aria-label={`Begin today's ${step.duration} ${step.category.toLowerCase()} session`}
+                  onClick={() => setLocation(`/guided-session/${step.sessionId}`)}
+                  style={{
+                    width: "100%",
+                    minHeight: 56,
+                    padding: "16px 24px",
+                    borderRadius: 16,
+                    background: "#7c3aed",
+                    border: "none",
+                    color: "#fff",
+                    fontSize: 17,
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 12,
+                    boxShadow: "0 4px 24px rgba(124,58,237,0.4)",
+                    marginBottom: 8,
+                    transition: "transform 0.1s, box-shadow 0.1s",
+                  }}
+                  onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(0.98)"; }}
+                  onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+                >
+                  <Play size={18} fill="#fff" aria-hidden="true" />
+                  Start
+                </button>
+
+                {/* Duration hint */}
+                <p
+                  aria-live="polite"
+                  style={{
+                    textAlign: "center",
+                    fontSize: 13,
+                    color: "rgba(245,245,255,0.35)",
+                    margin: "6px 0 0",
+                  }}
+                >
+                  Takes about {step.duration}
+                </p>
+              </>
             )}
-          </div>
+          </main>
         </div>
 
         <Day3IntroFlow
