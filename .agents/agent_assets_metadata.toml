@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "gUaRy3kz1o7Gji1A0Kqig"
+uri = "file://ascend-os.tar.gz"
+type = "unspecified"
+title = "ascend-os.tar.gz"
