@@ -10,6 +10,7 @@ import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
 import { OnboardingCompletionScreen } from "@/components/game/OnboardingCompletionScreen";
+import { Day6SectographIntro } from "@/components/game/Day6SectographIntro";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
@@ -42,6 +43,7 @@ interface HomeData {
   completedToday: number;
   totalActive: number;
   onboardingDay: number;
+  completedDays: number[];
   hasCompletedHabitToday: boolean;
   completedGuidedSessionsToday: string[];
   lastCompletionDate: string | null;
@@ -207,6 +209,7 @@ export default function HomePage() {
   const [showDay5Intro, setShowDay5Intro] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
+  const [justCompletedDayId, setJustCompletedDayId] = useState<number | null>(null);
   // Store the DATE the flow was completed, not a boolean.
   // flowCompletedToday is derived by comparing this date to today, so it
   // automatically becomes false on a new calendar day — even without remounting.
@@ -270,6 +273,18 @@ export default function HomePage() {
     return () => window.removeEventListener("ascend:sessions-reset", handler);
   }, []);
 
+  // Read the just-completed onboarding day from sessionStorage on mount (set by GuidedSessionPage)
+  useEffect(() => {
+    const raw = sessionStorage.getItem("ascend_just_completed_day");
+    if (raw) {
+      const day = parseInt(raw, 10);
+      sessionStorage.removeItem("ascend_just_completed_day");
+      if (!isNaN(day) && day >= 1 && day <= 5) {
+        setJustCompletedDayId(day);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!homeData || onboardingDay !== 3) return;
     const today = new Date().toISOString().split("T")[0];
@@ -319,17 +334,43 @@ export default function HomePage() {
     }
   }, [homeData, onboardingDay]);
 
+  // Priority: show completion screen / Sectograph intro right after a session completes
+  if (justCompletedDayId !== null) {
+    const completedDays = homeData?.completedDays ?? [];
+    const xp = completedDays.length * 5;
+
+    if (justCompletedDayId === 5) {
+      return (
+        <SystemLayout>
+          <Day6SectographIntro
+            onComplete={() => setJustCompletedDayId(null)}
+            onCancel={() => setJustCompletedDayId(null)}
+          />
+        </SystemLayout>
+      );
+    }
+
+    return (
+      <SystemLayout>
+        <OnboardingCompletionScreen
+          day={justCompletedDayId}
+          xp={xp}
+          xpGoal={100}
+          streak={homeData?.streak ?? 0}
+        />
+      </SystemLayout>
+    );
+  }
+
   if (isOnboardingFlow) {
     const step = ONBOARDING_STEPS[onboardingDay] || ONBOARDING_STEPS[1];
     const StepIcon = step.icon;
-    const dayComplete = homeData?.onboardingDayCompleted ?? false;
-    const sessionDone = homeData?.completedGuidedSessionsToday?.includes(step.sessionId) ?? false;
-    const isDone = dayComplete || sessionDone;
+    const completedDays = homeData?.completedDays ?? [];
     const nextDay = Math.min(onboardingDay + 1, 5);
     const phaseName = homeData?.phase?.name ?? "Stabilization";
 
     // Day 1 minimal screen
-    if (onboardingDay === 1 && !isDone) {
+    if (onboardingDay === 1) {
       return (
         <SystemLayout>
           <div
@@ -442,22 +483,6 @@ export default function HomePage() {
       );
     }
 
-    // Completion screen — all days
-    if (isDone) {
-      const streak = homeData?.streak ?? 0;
-      const xp = onboardingDay * 5;
-      return (
-        <SystemLayout>
-          <OnboardingCompletionScreen
-            day={onboardingDay}
-            xp={xp}
-            xpGoal={100}
-            streak={streak}
-          />
-        </SystemLayout>
-      );
-    }
-
     return (
       <SystemLayout>
         <div
@@ -525,13 +550,13 @@ export default function HomePage() {
               </div>
               {/* 5-dot progress track */}
               <div
-                aria-label={`5-day progress: ${onboardingDay - (isDone ? 0 : 1)} days complete`}
+                aria-label={`5-day progress: ${completedDays.length} days complete`}
                 style={{ display: "flex", gap: 5 }}
                 data-testid="progress-track"
               >
                 {[1, 2, 3, 4, 5].map((d) => {
-                  const isComplete = isDone ? d <= onboardingDay : d < onboardingDay;
-                  const isCurrent = !isDone && d === onboardingDay;
+                  const isComplete = completedDays.includes(d);
+                  const isCurrent = !isComplete && d === onboardingDay;
                   return (
                     <div
                       key={d}

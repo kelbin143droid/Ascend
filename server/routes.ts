@@ -311,12 +311,24 @@ export async function registerRoutes(
 
       const baseXP = getBaseXPForCategory(category);
       const rawXP = Math.round(baseXP * tierMultiplier * antiGrindMultiplier);
-      const guidedXP = Math.min(rawXP, remainingCap);
+      let guidedXP = Math.min(rawXP, remainingCap);
+
+      // Onboarding sessions always award exactly +5 XP (first completion only) and increment streak
+      const ONBOARDING_SESSION_IDS = new Set(["calm-breathing", "light-movement", "hydration-check", "focus-block", "plan-tomorrow"]);
+      const isOnboardingSession = ONBOARDING_SESSION_IDS.has(parsed.data.sessionId);
+      let isFirstOnboardingCompletion = false;
+      if (isOnboardingSession) {
+        const allPlayerCompletions = await storage.getHabitCompletions(req.params.id);
+        isFirstOnboardingCompletion = !allPlayerCompletions.some(c => c.habitId === sessionHabitId);
+        if (isFirstOnboardingCompletion) {
+          guidedXP = 5;
+        }
+      }
 
       const updatedScaling = processSessionCompletion(scaling, category, player.phase || 1);
 
       await storage.createHabitCompletion({
-        habitId: `guided_${parsed.data.sessionId}`,
+        habitId: sessionHabitId,
         userId: req.params.id,
         durationMinutes: parsed.data.durationMinutes,
         xpEarned: guidedXP,
@@ -344,12 +356,17 @@ export async function registerRoutes(
       const newScore = Math.min(100, stabilityData.score + 2);
       const updatedStability = { ...stabilityData, score: newScore };
 
-      await storage.updatePlayer(req.params.id, {
+      const playerUpdates: Record<string, any> = {
         stability: updatedStability,
         statXP: newStatXP,
         stats: derivedStats,
         trainingScaling: updatedScaling,
-      });
+      };
+      // Increment streak for first-time onboarding session completions
+      if (isFirstOnboardingCompletion) {
+        playerUpdates.streak = (player.streak ?? 0) + 1;
+      }
+      await storage.updatePlayer(req.params.id, playerUpdates);
 
       const updatedPlayer = await storage.gainExp(req.params.id, guidedXP);
 
@@ -1849,14 +1866,30 @@ export async function registerRoutes(
           .map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
       const todayDateStr = new Date().toLocaleDateString("en-CA");
-      const completedSessionToday = distinctCompletionDays.has(todayDateStr);
-      const totalDistinctDays = distinctCompletionDays.size;
-      // Stay on current day after completion; advance only on the next calendar day
-      const onboardingDay = (completedSessionToday && totalDistinctDays <= 4)
-        ? Math.max(totalDistinctDays, 1)
-        : Math.min(totalDistinctDays + 1, 5);
-      // isOnboardingComplete is ONLY based on completing 5 distinct days.
-      const isOnboardingComplete = onboardingDay >= 5;
+
+      // Track which specific onboarding days have been permanently completed
+      // (based on their dedicated guided session habitId, not calendar days)
+      const ONBOARDING_HABIT_TO_DAY: Record<string, number> = {
+        "guided_calm-breathing": 1,
+        "guided_light-movement": 2,
+        "guided_hydration-check": 3,
+        "guided_focus-block": 4,
+        "guided_plan-tomorrow": 5,
+      };
+      const completedDays: number[] = [];
+      for (const [habitId, day] of Object.entries(ONBOARDING_HABIT_TO_DAY)) {
+        if (allCompletions.some(c => c.habitId === habitId)) {
+          completedDays.push(day);
+        }
+      }
+      completedDays.sort((a, b) => a - b);
+
+      // onboardingDay = next uncompleted day (stays at current when done, max 5)
+      const onboardingDay = completedDays.length >= 5 ? 5 : Math.min(completedDays.length + 1, 5);
+      // isOnboardingComplete only after all 5 specific sessions are done
+      const isOnboardingComplete = completedDays.length >= 5;
+      // onboardingDayCompleted = has the current onboarding day been completed?
+      const onboardingDayCompleted = completedDays.includes(onboardingDay);
 
       // Minimum XP guarantee: if Days 1-5 are complete, totalExp must be at least 21
       const ONBOARDING_MIN_XP = 21;
@@ -2006,7 +2039,8 @@ export async function registerRoutes(
         completedToday: completedIds.size,
         totalActive: activeHabits.length,
         onboardingDay,
-        onboardingDayCompleted: completedSessionToday,
+        completedDays,
+        onboardingDayCompleted,
         hasCompletedHabitToday,
         completedGuidedSessionsToday,
         lastCompletionDate,
@@ -2532,8 +2566,36 @@ export async function registerRoutes(
         return date;
       };
 
+      // Determine how many onboarding days are already done (to know which guided sessions to simulate)
+      const ONBOARDING_DAY_SESSION: Record<number, string> = {
+        1: "guided_calm-breathing",
+        2: "guided_light-movement",
+        3: "guided_hydration-check",
+        4: "guided_focus-block",
+        5: "guided_plan-tomorrow",
+      };
+      const existingOnboardingDone = Object.values(ONBOARDING_DAY_SESSION)
+        .filter(habitId => existingCompletions.some(c => c.habitId === habitId)).length;
+
       for (let d = 0; d < dayCount; d++) {
         const simulatedDate = getSimulatedDate(d);
+
+        // For each simulated day, create the corresponding onboarding guided session (if still in onboarding)
+        const onboardingDayBeingSimulated = existingOnboardingDone + d + 1;
+        const onboardingHabitId = ONBOARDING_DAY_SESSION[onboardingDayBeingSimulated];
+        if (onboardingHabitId && !existingCompletions.some(c => c.habitId === onboardingHabitId)) {
+          const onboardingCompletion = await storage.createHabitCompletion({
+            habitId: onboardingHabitId,
+            userId: req.params.id,
+            durationMinutes: 2,
+            xpEarned: 5,
+          });
+          await db.update(habitCompletions)
+            .set({ completedAt: simulatedDate })
+            .where(eq(habitCompletions.id, onboardingCompletion.id));
+          completionsCreated.push(onboardingCompletion.id);
+          await storage.gainExp(req.params.id, 5);
+        }
 
         if (completeHabits && activeHabits.length > 0) {
           const habitsToComplete = activeHabits.slice(0, Math.max(1, Math.ceil(activeHabits.length * 0.7)));
@@ -2550,7 +2612,6 @@ export async function registerRoutes(
               .set({ completedAt: simulatedDate })
               .where(eq(habitCompletions.id, completion.id));
             completionsCreated.push(completion.id);
-            // Accumulate XP into player's totalExp so it carries forward
             await storage.gainExp(req.params.id, simXP);
 
             const newTime = new Date(simulatedDate);
@@ -2558,28 +2619,25 @@ export async function registerRoutes(
             simulatedDate.setTime(newTime.getTime());
           }
         } else {
-          // No active habits or completeHabits=false — create a guided placeholder so the day counts
-          const guidedXP = 3; // 3 XP per onboarding day minimum
+          // No active habits — create a minimal placeholder for streak/date tracking
           const guidedCompletion = await storage.createHabitCompletion({
             habitId: `guided_day_sim_${d}`,
             userId: req.params.id,
             durationMinutes: 2,
-            xpEarned: guidedXP,
+            xpEarned: 0,
           });
           await db.update(habitCompletions)
             .set({ completedAt: simulatedDate })
             .where(eq(habitCompletions.id, guidedCompletion.id));
           completionsCreated.push(guidedCompletion.id);
-          // Accumulate XP into player's totalExp so it carries forward
-          await storage.gainExp(req.params.id, guidedXP);
         }
       }
 
       const allCompletions = await storage.getHabitCompletions(req.params.id);
-      const distinctDays = new Set(
-        allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
-      );
-      const newOnboardingDay = Math.min(distinctDays.size + 1, 5);
+      // Compute newOnboardingDay from specific onboarding session completions
+      const newCompletedOnboardingDays = Object.values(ONBOARDING_DAY_SESSION)
+        .filter(habitId => allCompletions.some(c => c.habitId === habitId)).length;
+      const newOnboardingDay = Math.min(newCompletedOnboardingDays + 1, 5);
 
       const newStreak = Math.min(player.streak + dayCount, 999);
       await storage.updatePlayer(req.params.id, { streak: newStreak });
