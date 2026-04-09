@@ -334,12 +334,25 @@ export default function HomePage() {
     }
   }, [homeData, onboardingDay]);
 
-  // Priority: show completion screen / Sectograph intro right after a session completes.
-  // This check runs BEFORE any homeData-dependent logic to prevent stale flashes.
-  if (justCompletedDayId !== null) {
-    // XP is cumulative: completing Day N means N × 5 XP total. Use justCompletedDayId
-    // directly rather than completedDays.length so the value is correct even if the
-    // homeData refetch hasn't resolved yet.
+  // Block all renders until homeData is loaded — prevents the Day-1 flash for
+  // returning users whose onboardingDay defaults to 1 before the first fetch.
+  if (!homeData || homeLoading) {
+    return (
+      <div
+        style={{ minHeight: "100dvh", backgroundColor: "#06060f" }}
+        data-testid="home-loading"
+      />
+    );
+  }
+
+  // Show the completion screen / Sectograph intro only when:
+  //  (a) a day was just completed this navigation
+  //  (b) the server has confirmed that day is in completedDays[]
+  // This double-guard prevents any stale or spurious completion screens.
+  if (
+    justCompletedDayId !== null &&
+    homeData.completedDays.includes(justCompletedDayId)
+  ) {
     const xp = justCompletedDayId * 5;
 
     if (justCompletedDayId === 5) {
@@ -356,33 +369,24 @@ export default function HomePage() {
     return (
       <SystemLayout>
         <OnboardingCompletionScreen
+          key={`completion-${justCompletedDayId}`}
           day={justCompletedDayId}
           xp={xp}
           xpGoal={100}
-          streak={homeData?.streak ?? 0}
+          streak={homeData.streak}
+          onClose={() => setJustCompletedDayId(null)}
         />
       </SystemLayout>
-    );
-  }
-
-  // Block onboarding/training renders until homeData is available.
-  // Without this guard a returning Day 2+ user briefly sees the Day 1 minimal
-  // screen because onboardingDay defaults to 1 before the first fetch resolves.
-  if (!homeData && homeLoading) {
-    return (
-      <div
-        style={{ minHeight: "100dvh", backgroundColor: "#06060f" }}
-        data-testid="home-loading"
-      />
     );
   }
 
   if (isOnboardingFlow) {
     const step = ONBOARDING_STEPS[onboardingDay] || ONBOARDING_STEPS[1];
     const StepIcon = step.icon;
-    const completedDays = homeData?.completedDays ?? [];
+    // homeData is guaranteed non-null here (loading guard above)
+    const completedDays = homeData.completedDays;
     const nextDay = Math.min(onboardingDay + 1, 5);
-    const phaseName = homeData?.phase?.name ?? "Stabilization";
+    const phaseName = homeData.phase?.name ?? "Stabilization";
 
     // Day 1 minimal screen
     if (onboardingDay === 1) {
@@ -565,13 +569,13 @@ export default function HomePage() {
               </div>
               {/* 5-dot progress track */}
               <div
-                aria-label={`5-day progress: ${completedDays.length} days complete`}
+                aria-label={`5-day progress: ${homeData.completedDays.length} days complete`}
                 style={{ display: "flex", gap: 5 }}
                 data-testid="progress-track"
               >
                 {[1, 2, 3, 4, 5].map((d) => {
-                  const isComplete = completedDays.includes(d);
-                  const isCurrent = !isComplete && d === onboardingDay;
+                  const isComplete = homeData.completedDays.includes(d);
+                  const isCurrent = !isComplete && d === homeData.onboardingDay;
                   return (
                     <div
                       key={d}

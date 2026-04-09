@@ -13,6 +13,7 @@ interface OnboardingCompletionScreenProps {
   xp: number;
   xpGoal: number;
   streak: number;
+  onClose?: () => void;
 }
 
 export function OnboardingCompletionScreen({
@@ -20,6 +21,7 @@ export function OnboardingCompletionScreen({
   xp,
   xpGoal,
   streak,
+  onClose: _onClose,
 }: OnboardingCompletionScreenProps) {
   const [fillWidth, setFillWidth] = useState(0);
   const [visible, setVisible] = useState(false);

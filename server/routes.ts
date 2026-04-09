@@ -1884,10 +1884,11 @@ export async function registerRoutes(
       }
       completedDays.sort((a, b) => a - b);
 
-      // onboardingDay = next uncompleted day (stays at current when done, max 5)
-      const onboardingDay = completedDays.length >= 5 ? 5 : Math.min(completedDays.length + 1, 5);
+      // onboardingDay = next uncompleted day, clamped to totalDays
+      const TOTAL_ONBOARDING_DAYS = 5;
+      const onboardingDay = Math.min(completedDays.length + 1, TOTAL_ONBOARDING_DAYS);
       // isOnboardingComplete only after all 5 specific sessions are done
-      const isOnboardingComplete = completedDays.length >= 5;
+      const isOnboardingComplete = completedDays.length >= TOTAL_ONBOARDING_DAYS;
       // onboardingDayCompleted = has the current onboarding day been completed?
       const onboardingDayCompleted = completedDays.includes(onboardingDay);
 
