@@ -9,8 +9,6 @@ import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbel
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
-import { Day6RevealModal } from "@/components/game/Day6RevealModal";
-import { Day7FollowThrough } from "@/components/game/Day7FollowThrough";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
@@ -128,53 +126,33 @@ const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
   },
   3: {
     sessionId: "hydration-check",
-    name: "Hydration Check",
-    description: "Drink water and check in with your body. Small signals matter.",
-    coachMessage: "Small signals matter.",
-    duration: "1 minute",
+    name: "Hydration + Reflection",
+    description: "Drink water, check in with your body, and note one honest observation.",
+    coachMessage: "Small signals matter. Hydration and awareness go hand in hand.",
+    duration: "1–2 minutes",
     icon: Droplets,
-    buttonLabel: "Begin Today's Moment",
+    buttonLabel: "Begin Today's Check-in",
     category: "VITALITY",
   },
   4: {
-    sessionId: "quick-reflection",
-    name: "Quick Reflection",
-    description: "Answer a short reflection question. One honest answer is enough.",
-    coachMessage: "What helped you show up today?",
-    duration: "1 minute",
-    icon: Brain,
-    buttonLabel: "Begin Today's Practice",
-    category: "REFLECTION",
-  },
-  5: {
     sessionId: "focus-block",
-    name: "Light Cardio Session",
+    name: "Light Cardio",
     description: "Three short cardio bursts — jog, jump, box. Gets your blood moving.",
     coachMessage: "Cardio sharpens focus and builds real energy.",
     duration: "~1 minute",
     icon: Clock,
-    buttonLabel: "Begin Today's Practice",
+    buttonLabel: "Begin Today's Session",
     category: "CARDIO",
   },
-  6: {
+  5: {
     sessionId: "plan-tomorrow",
-    name: "Time Placement",
-    description: "Place one action into tomorrow's timeline. See your day before it starts.",
+    name: "Plan & Reflect",
+    description: "Place one action into tomorrow's timeline. Reflect on this week's patterns.",
     coachMessage: "Deciding when to act — before the moment — is a skill.",
-    duration: "1 minute",
+    duration: "1–2 minutes",
     icon: Calendar,
     buttonLabel: "Begin Today's Step",
     category: "PLANNING",
-  },
-  7: {
-    sessionId: "weekly-reflection",
-    name: "Follow-Through",
-    description: "Return to the time you planned yesterday. Two minutes — as promised.",
-    coachMessage: "Every time you meet your intention, you become someone who does.",
-    duration: "2 minutes",
-    icon: BarChart3,
-    buttonLabel: "Begin Your Planned Step",
-    category: "REFLECTION",
   },
 };
 
@@ -203,10 +181,8 @@ const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }
   1: { subtitle: "Beginning your journey.", motivation: "Small actions build momentum." },
   2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
   3: { subtitle: "You're building a routine.", motivation: "Make it yours." },
-  4: { subtitle: "Rhythm forming", motivation: "Consistency creates structure naturally." },
-  5: { subtitle: "Momentum growing", motivation: "Growth expands naturally." },
-  6: { subtitle: "System awareness unlocked.", motivation: "Your consistency has been building all along." },
-  7: { subtitle: "First growth cycle complete.", motivation: "You've proven consistency." },
+  4: { subtitle: "Rhythm forming.", motivation: "Consistency creates structure naturally." },
+  5: { subtitle: "Foundation complete.", motivation: "You've proven you can show up." },
 };
 
 const FLOW_ACTIVITIES = [
@@ -228,11 +204,6 @@ export default function HomePage() {
   const [showReminderPrompt, setShowReminderPrompt] = useState(false);
   const [showDay4Intro, setShowDay4Intro] = useState(false);
   const [showDay5Intro, setShowDay5Intro] = useState(false);
-  const [showDay6Reveal, setShowDay6Reveal] = useState(false);
-  const [day6MeterVisible, setDay6MeterVisible] = useState(false);
-  const [day7Done, setDay7Done] = useState(() => localStorage.getItem("ascend_day7_followthrough_done") === "true");
-  const [day7CompletionDate] = useState(() => localStorage.getItem("ascend_day7_completed_date") ?? null);
-  const [day7SessionCompleted, setDay7SessionCompleted] = useState(() => localStorage.getItem("ascend_day7_session_completed") === "true");
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
   // Store the DATE the flow was completed, not a boolean.
@@ -283,38 +254,13 @@ export default function HomePage() {
   const isOnboardingComplete = homeData?.isOnboardingComplete ?? false;
   const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
 
-  // Training mode only starts after the Day 7 session is actually completed by the user
-  const isTrainingMode = isOnboardingComplete && (day7Done || day7SessionCompleted);
-  const isOnboardingFlow = onboardingDay <= 7 && !isTrainingMode;
+  // Training mode starts as soon as onboarding (5 days) is complete
+  const isTrainingMode = isOnboardingComplete;
+  const isOnboardingFlow = onboardingDay <= 5 && !isTrainingMode;
 
   // Derived fresh every render — correct across day boundaries and DevPanel resets
   const todayStr = new Date().toISOString().split("T")[0];
   const flowCompletedToday = flowCompletedDate === todayStr;
-
-  // Keep day7Done + day7SessionCompleted + flowCompletedDate in sync when DevPanel modifies localStorage
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { done } = (e as CustomEvent<{ done: boolean }>).detail;
-      setDay7Done(done);
-      // When DevPanel resets progress, also reset the session + daily flow state
-      if (!done) {
-        setDay7SessionCompleted(false);
-        setFlowCompletedDate("");
-      } else {
-        // When DevPanel marks done (Jump to Day 8 / Skip Day 7), treat session as completed too
-        setDay7SessionCompleted(true);
-      }
-    };
-    window.addEventListener("ascend:day7done", handler);
-    return () => window.removeEventListener("ascend:day7done", handler);
-  }, []);
-
-  // Listen for Day 7 breathing session completion from GuidedSessionPage
-  useEffect(() => {
-    const handler = () => setDay7SessionCompleted(true);
-    window.addEventListener("ascend:day7session", handler);
-    return () => window.removeEventListener("ascend:day7session", handler);
-  }, []);
 
   // Listen for DevPanel "Reset Today's Sessions" so the flow-completed state clears immediately
   useEffect(() => {
@@ -322,21 +268,6 @@ export default function HomePage() {
     window.addEventListener("ascend:sessions-reset", handler);
     return () => window.removeEventListener("ascend:sessions-reset", handler);
   }, []);
-
-  // If user is in onboarding phase, clear any stale day7 flags from previous test sessions
-  useEffect(() => {
-    if (!isOnboardingComplete && day7Done) {
-      localStorage.removeItem("ascend_day7_followthrough_done");
-      localStorage.removeItem("ascend_day7_session_completed");
-      setDay7Done(false);
-      setDay7SessionCompleted(false);
-    }
-    // Migration: if phase-transition was already done (existing users) but session flag missing, auto-set it
-    if (isOnboardingComplete && day7Done && !day7SessionCompleted) {
-      localStorage.setItem("ascend_day7_session_completed", "true");
-      setDay7SessionCompleted(true);
-    }
-  }, [isOnboardingComplete, day7Done, day7SessionCompleted]);
 
   useEffect(() => {
     if (!homeData || onboardingDay !== 3) return;
@@ -387,55 +318,13 @@ export default function HomePage() {
     }
   }, [homeData, onboardingDay]);
 
-  useEffect(() => {
-    if (!homeData || onboardingDay !== 6) return;
-    const seenKey = "ascend_day6_reveal_seen";
-    if (localStorage.getItem(seenKey) === "true") {
-      setDay6MeterVisible(true);
-      return;
-    }
-    setShowDay6Reveal(true);
-  }, [homeData, onboardingDay]);
-
-  const handleDay6RevealContinue = () => {
-    localStorage.setItem("ascend_day6_reveal_seen", "true");
-    setShowDay6Reveal(false);
-    setTimeout(() => setDay6MeterVisible(true), 300);
-  };
-
-  // Day 7 follow-through: only show after the guided session has been completed.
-  // "Enter System" CTA calls onComplete → sets day7Done + completion date → held until next calendar day.
-  if (isOnboardingComplete && !day7Done && day7SessionCompleted && homeData) {
-    return (
-      <SystemLayout>
-        <Day7FollowThrough
-          initialMode="completed"
-          onComplete={() => {
-            const today = new Date().toISOString().split("T")[0];
-            localStorage.setItem("ascend_day7_followthrough_done", "true");
-            localStorage.setItem("ascend_day7_completed_date", today);
-            // Explicitly reset Day 8 flow state — must start with 0/4
-            localStorage.removeItem("ascend_light_movement_completed");
-            setFlowCompletedDate("");
-            setDay7Done(true);
-          }}
-          xpData={playerData ? {
-            level: playerData.level ?? 1,
-            current: playerData.totalExp ?? playerData.exp ?? 0,
-            max: playerData.maxExp ?? 100,
-          } : undefined}
-        />
-      </SystemLayout>
-    );
-  }
-
   if (isOnboardingFlow) {
     const step = ONBOARDING_STEPS[onboardingDay] || ONBOARDING_STEPS[1];
     const StepIcon = step.icon;
     const dayComplete = homeData?.onboardingDayCompleted ?? false;
     const sessionDone = homeData?.completedGuidedSessionsToday?.includes(step.sessionId) ?? false;
     const isDone = dayComplete || sessionDone;
-    const nextDay = Math.min(onboardingDay + 1, 7);
+    const nextDay = Math.min(onboardingDay + 1, 5);
     const phaseName = homeData?.phase?.name ?? "Stabilization";
 
     return (
@@ -487,7 +376,7 @@ export default function HomePage() {
             >
               <div>
                 <p
-                  aria-label={`Onboarding progress: Day ${onboardingDay} of 7`}
+                  aria-label={`Onboarding progress: Day ${onboardingDay} of 5`}
                   style={{
                     margin: 0,
                     fontSize: 13,
@@ -497,19 +386,19 @@ export default function HomePage() {
                   }}
                   data-testid="text-day-progress"
                 >
-                  Day {onboardingDay} of 7
+                  Day {onboardingDay} of 5
                 </p>
                 <p style={{ margin: 0, fontSize: 11, color: "rgba(245,245,255,0.45)", marginTop: 2 }}>
                   {phaseName} phase
                 </p>
               </div>
-              {/* 7-dot progress track */}
+              {/* 5-dot progress track */}
               <div
-                aria-label={`7-day progress: ${onboardingDay - (isDone ? 0 : 1)} days complete`}
+                aria-label={`5-day progress: ${onboardingDay - (isDone ? 0 : 1)} days complete`}
                 style={{ display: "flex", gap: 5 }}
                 data-testid="progress-track"
               >
-                {[1, 2, 3, 4, 5, 6, 7].map((d) => {
+                {[1, 2, 3, 4, 5].map((d) => {
                   const isComplete = isDone ? d <= onboardingDay : d < onboardingDay;
                   const isCurrent = !isDone && d === onboardingDay;
                   return (
@@ -583,7 +472,7 @@ export default function HomePage() {
                   </p>
                   <p style={{ margin: 0, fontSize: 15, color: "rgba(245,245,255,0.6)", lineHeight: 1.6 }}>
                     Your next step unlocks tomorrow.{" "}
-                    {onboardingDay < 7 ? "Rest, reflect, return." : "You've built something real."}
+                    {onboardingDay < 5 ? "Rest, reflect, return." : "You've built something real."}
                   </p>
                 </div>
                 <p
@@ -595,7 +484,7 @@ export default function HomePage() {
                     letterSpacing: "0.06em",
                   }}
                 >
-                  Day {onboardingDay} of 7 — See you tomorrow
+                  Day {onboardingDay} of 5 — See you tomorrow
                 </p>
               </div>
             ) : (
@@ -700,9 +589,9 @@ export default function HomePage() {
                   }}
                 >
                   <p style={{ margin: 0, fontSize: 14, color: "rgba(245,245,255,0.45)", lineHeight: 1.45 }}>
-                    {onboardingDay < 7
+                    {onboardingDay < 5
                       ? `Completing today unlocks Day ${nextDay} tomorrow.`
-                      : "Completing today finishes your first week."}
+                      : "Completing today finishes your foundation week."}
                   </p>
                   <ChevronRight size={18} color="rgba(245,245,255,0.2)" aria-hidden="true" />
                 </div>
@@ -787,10 +676,6 @@ export default function HomePage() {
           }}
           onDismiss={() => setShowReminderPrompt(false)}
         />
-        <Day6RevealModal
-          visible={showDay6Reveal}
-          onContinue={handleDay6RevealContinue}
-        />
       </SystemLayout>
     );
   }
@@ -838,49 +723,6 @@ export default function HomePage() {
     }
     setFlowActive(false);
   };
-
-  // After Day 7 transition screens, hold on "Day complete" until a new calendar day begins.
-  // This prevents Day 8 daily flow from showing on the same day as Day 7 completion.
-  if (isOnboardingComplete && day7Done && day7CompletionDate === todayStr) {
-    return (
-      <SystemLayout>
-        <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex flex-col items-center gap-6"
-          >
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: `${colors.primary}15`, border: `1px solid ${colors.primary}30` }}
-            >
-              <CheckCircle2 size={26} style={{ color: colors.primary }} />
-            </div>
-            <div className="space-y-2">
-              <p className="text-lg font-display font-medium" style={{ color: colors.text }}>
-                Day 7 Complete.
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: colors.textMuted }}>
-                Your foundation is set.
-              </p>
-            </div>
-            <div
-              className="rounded-xl px-5 py-4 max-w-xs"
-              style={{
-                backgroundColor: `${colors.surface || colors.background}cc`,
-                border: `1px solid ${colors.surfaceBorder}`,
-              }}
-            >
-              <p className="text-[13px] leading-relaxed" style={{ color: colors.textMuted }}>
-                Your daily training system begins tomorrow. Return then to start your first full flow.
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      </SystemLayout>
-    );
-  }
 
   return (
     <SystemLayout>

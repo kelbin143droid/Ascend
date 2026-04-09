@@ -12,7 +12,7 @@ import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
 import { Day6SectographIntro } from "@/components/game/Day6SectographIntro";
 
-type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow" | "weekly-reflection";
+type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow";
 
 interface SessionConfig {
   id: SessionId;
@@ -71,14 +71,6 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
     durationSeconds: 0,
     icon: Brain,
     type: "instant",
-  },
-  "weekly-reflection": {
-    id: "weekly-reflection",
-    title: "Follow Through",
-    stat: "sense",
-    durationSeconds: 120,
-    icon: Brain,
-    type: "breathing",
   },
 };
 
@@ -389,12 +381,6 @@ const INSTANT_CONTENT: Record<string, { icon: typeof Wind; heading: string; body
     body: "Structure protects consistency. Pick a moment that works for you.",
     button: "I've chosen a time",
   },
-  "weekly-reflection": {
-    icon: Brain,
-    heading: "Review your first week.",
-    body: "You showed up for 7 days. Consistency builds strength.",
-    button: "Complete reflection",
-  },
 };
 
 function InstantSession({ sessionId, accentColor, onDone }: { sessionId: string; accentColor: string; onDone: () => void }) {
@@ -552,11 +538,6 @@ export default function GuidedSessionPage() {
     queryClient.invalidateQueries({ queryKey: ["home"] });
     queryClient.invalidateQueries({ queryKey: ["/api/player"] });
 
-    // Mark Day 7 guided session as done so the phase-transition screen unlocks on Home
-    if (sessionId === "weekly-reflection") {
-      localStorage.setItem("ascend_day7_session_completed", "true");
-      window.dispatchEvent(new CustomEvent("ascend:day7session"));
-    }
     const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
     const isDay5 = homeData?.onboardingDay === 5;
     const alreadyExpanded = localStorage.getItem("ascend_day5_expansion_shown") === new Date().toISOString().split("T")[0];
@@ -788,7 +769,7 @@ export default function GuidedSessionPage() {
       style={{ backgroundColor: backgroundTheme.colors.background }}
     >
       {/* Calm breathing ambient video background */}
-      {(sessionId === "calm-breathing" || sessionId === "weekly-reflection") && state === "active" && (
+      {sessionId === "calm-breathing" && state === "active" && (
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <video
             src="/videos/calm-breathing.mp4"

@@ -1511,16 +1511,16 @@ export async function registerRoutes(
       const daysCompleted = distinctDays.size;
       // Stay on the current day if the user has already completed today's session.
       // Only advance on the next calendar day.
-      const onboardingDay = (completedToday && daysCompleted <= 6)
+      const onboardingDay = (completedToday && daysCompleted <= 4)
         ? Math.max(daysCompleted, 1)
-        : Math.min(daysCompleted + 1, 7);
-      // isOnboardingComplete is ONLY based on completing 7 distinct days.
-      // player.onboardingCompleted tracks the initial welcome intro, not the 7-day journey.
-      const isOnboardingComplete = onboardingDay >= 7;
+        : Math.min(daysCompleted + 1, 5);
+      // isOnboardingComplete is ONLY based on completing 5 distinct days.
+      // player.onboardingCompleted tracks the initial welcome intro, not the 5-day journey.
+      const isOnboardingComplete = onboardingDay >= 5;
       const streak = player.streak ?? 0;
 
       let languageStage: 1 | 2 | 3 | 4;
-      if (!isOnboardingComplete && onboardingDay <= 7) languageStage = 1;
+      if (!isOnboardingComplete && onboardingDay <= 5) languageStage = 1;
       else if (distinctDays.size < 14 || streak < 7) languageStage = 2;
       else if (distinctDays.size >= 28 && streak >= 14) languageStage = 4;
       else languageStage = 3;
@@ -1852,13 +1852,13 @@ export async function registerRoutes(
       const completedSessionToday = distinctCompletionDays.has(todayDateStr);
       const totalDistinctDays = distinctCompletionDays.size;
       // Stay on current day after completion; advance only on the next calendar day
-      const onboardingDay = (completedSessionToday && totalDistinctDays <= 6)
+      const onboardingDay = (completedSessionToday && totalDistinctDays <= 4)
         ? Math.max(totalDistinctDays, 1)
-        : Math.min(totalDistinctDays + 1, 7);
-      // isOnboardingComplete is ONLY based on completing 7 distinct days.
-      const isOnboardingComplete = onboardingDay >= 7;
+        : Math.min(totalDistinctDays + 1, 5);
+      // isOnboardingComplete is ONLY based on completing 5 distinct days.
+      const isOnboardingComplete = onboardingDay >= 5;
 
-      // Minimum XP guarantee: if Days 1-7 are complete, totalExp must be at least 21
+      // Minimum XP guarantee: if Days 1-5 are complete, totalExp must be at least 21
       const ONBOARDING_MIN_XP = 21;
       if (isOnboardingComplete && (player.totalExp ?? 0) < ONBOARDING_MIN_XP) {
         const deficit = ONBOARDING_MIN_XP - (player.totalExp ?? 0);
@@ -1895,8 +1895,8 @@ export async function registerRoutes(
       const yesterdayStr = yesterday.toLocaleDateString("en-CA");
       const hadCompletionYesterday = distinctCompletionDays.has(yesterdayStr);
 
-      if (onboardingDay >= 7) {
-        notification = { type: "milestone", message: "First growth cycle complete. The foundation is set." };
+      if (onboardingDay >= 5) {
+        notification = { type: "milestone", message: "Foundation complete. The system is yours now." };
       } else if (onboardingDay >= 3 && distinctCompletionDays.size >= 3) {
         notification = { type: "milestone", message: "Three days of action. A pattern is forming." };
       }
@@ -1935,7 +1935,7 @@ export async function registerRoutes(
       const streak = player.streak ?? 0;
 
       let userLanguageStage: number;
-      if (!isOnboardingComplete && onboardingDay <= 7) {
+      if (!isOnboardingComplete && onboardingDay <= 5) {
         userLanguageStage = 1;
       } else if (totalCompletionDays < 14 || streak < 7) {
         userLanguageStage = 2;
@@ -2653,7 +2653,7 @@ export async function registerRoutes(
           HOME: { unlockDay: 1, unlocked: onboardingDay >= 1 },
           COACH: { unlockDay: 1, unlocked: onboardingDay >= 1 },
           HABITS: { unlockDay: 3, unlocked: onboardingDay >= 3 },
-          TRAIN: { unlockDay: 7, unlocked: onboardingDay >= 7 },
+          TRAIN: { unlockDay: 5, unlocked: onboardingDay >= 5 },
         },
       });
     } catch (error) {

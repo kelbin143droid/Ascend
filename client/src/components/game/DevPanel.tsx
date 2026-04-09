@@ -50,10 +50,6 @@ export function DevPanel() {
     if (!open) fetchStatus();
   };
 
-  const dispatchDay7Event = (done: boolean) => {
-    window.dispatchEvent(new CustomEvent("ascend:day7done", { detail: { done } }));
-  };
-
   const simulateDays = async (days: number, completeHabits: boolean) => {
     if (!player?.id || loading) return;
     setLoading(true);
@@ -66,15 +62,6 @@ export function DevPanel() {
       });
       if (res.ok) {
         const data: SimulateResult = await res.json();
-        // When first reaching Day 7 (not already done), clear so the follow-through shows
-        const alreadyDone = localStorage.getItem("ascend_day7_followthrough_done") === "true";
-        if (data.newOnboardingDay >= 7 && !alreadyDone) {
-          localStorage.removeItem("ascend_day7_followthrough_done");
-          localStorage.removeItem("ascend_day7_completed_date");
-          localStorage.removeItem("ascend_day7_session_completed");
-          localStorage.removeItem("ascend_light_movement_completed");
-          dispatchDay7Event(false);
-        }
         setLastResult(`+${data.daysSimulated}d → Day ${data.newOnboardingDay}, ${data.completionsCreated} completions, streak ${data.newStreak}`);
         queryClient.invalidateQueries();
         fetchStatus();
@@ -98,14 +85,6 @@ export function DevPanel() {
       });
       if (res.ok) {
         const data = await res.json();
-        // If going back below Day 7, restore the Day 7 screen so it shows again
-        if (data.newOnboardingDay < 7) {
-          localStorage.removeItem("ascend_day7_followthrough_done");
-          localStorage.removeItem("ascend_day7_completed_date");
-          localStorage.removeItem("ascend_day7_session_completed");
-          localStorage.removeItem("ascend_light_movement_completed");
-          dispatchDay7Event(false);
-        }
         setLastResult(`← Day ${data.newOnboardingDay}, removed ${data.removedCompletions} completions`);
         queryClient.invalidateQueries();
         fetchStatus();
@@ -128,11 +107,7 @@ export function DevPanel() {
     setLoading(true);
     try {
       const res = await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
-      localStorage.removeItem("ascend_day7_followthrough_done");
-      localStorage.removeItem("ascend_day7_completed_date");
-      localStorage.removeItem("ascend_day7_session_completed");
       localStorage.removeItem("ascend_light_movement_completed");
-      dispatchDay7Event(false);
       if (res.ok) {
         setLastResult("Progress reset to Day 1");
       } else {
@@ -147,24 +122,7 @@ export function DevPanel() {
     setLoading(false);
   };
 
-  const getYesterdayStr = () => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().split("T")[0];
-  };
-
-  const skipDay7Screen = () => {
-    const yesterday = getYesterdayStr();
-    localStorage.setItem("ascend_day7_followthrough_done", "true");
-    localStorage.setItem("ascend_day7_completed_date", yesterday);
-    localStorage.setItem("ascend_day7_session_completed", "true");
-    localStorage.removeItem("ascend_light_movement_completed");
-    dispatchDay7Event(true);
-    setLastResult("Day 7 skipped → Day 8 home");
-    queryClient.invalidateQueries();
-  };
-
-  const jumpToDay8 = async () => {
+  const jumpToDaily = async () => {
     if (!player?.id || loading) return;
     setLoading(true);
     setLastResult(null);
@@ -172,38 +130,23 @@ export function DevPanel() {
       const res = await fetch(`/api/player/${player.id}/dev/status`);
       const currentStatus: DevStatus = res.ok ? await res.json() : null;
       const currentDay = currentStatus?.onboardingDay ?? 0;
-      if (currentDay < 7) {
-        const daysNeeded = 7 - currentDay;
+      if (currentDay < 5) {
+        const daysNeeded = 5 - currentDay;
         const simRes = await fetch(`/api/player/${player.id}/dev/simulate-day`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ days: daysNeeded, completeHabits: true }),
         });
-        if (!simRes.ok) { setLastResult("Error simulating to Day 7"); setLoading(false); return; }
+        if (!simRes.ok) { setLastResult("Error simulating to Day 5"); setLoading(false); return; }
       }
-      const yesterday = getYesterdayStr();
-      localStorage.setItem("ascend_day7_followthrough_done", "true");
-      localStorage.setItem("ascend_day7_completed_date", yesterday);
-      localStorage.setItem("ascend_day7_session_completed", "true");
       localStorage.removeItem("ascend_light_movement_completed");
-      dispatchDay7Event(true);
-      setLastResult(`Jumped to Day 8 home`);
+      setLastResult("Jumped to Daily Flow home");
       queryClient.invalidateQueries();
       fetchStatus();
     } catch {
-      setLastResult("Error jumping to Day 8");
+      setLastResult("Error jumping to Daily Flow");
     }
     setLoading(false);
-  };
-
-  const restoreDay7Screen = () => {
-    localStorage.removeItem("ascend_day7_followthrough_done");
-    localStorage.removeItem("ascend_day7_completed_date");
-    localStorage.removeItem("ascend_day7_session_completed");
-    localStorage.removeItem("ascend_light_movement_completed");
-    dispatchDay7Event(false);
-    setLastResult("Day 7 screen restored");
-    queryClient.invalidateQueries();
   };
 
   const resetToday = async () => {
@@ -214,9 +157,7 @@ export function DevPanel() {
       const res = await fetch(`/api/player/${player.id}/dev/reset-today`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        localStorage.removeItem("ascend_day7_session_completed");
         localStorage.removeItem("ascend_light_movement_completed");
-        // Notify HomePage to reset its flowCompletedDate React state
         window.dispatchEvent(new CustomEvent("ascend:sessions-reset"));
         setLastResult(`Today reset — ${data.removed} session(s) cleared`);
         queryClient.invalidateQueries();
@@ -418,7 +359,7 @@ export function DevPanel() {
             </div>
 
             <button
-              onClick={jumpToDay8}
+              onClick={jumpToDaily}
               disabled={loading}
               className="w-full text-[10px] font-medium py-1.5 rounded-lg transition-colors"
               style={{
@@ -426,37 +367,10 @@ export function DevPanel() {
                 border: "1px solid rgba(34,211,238,0.2)",
                 color: loading ? "rgba(34,211,238,0.4)" : "rgba(34,211,238,0.9)",
               }}
-              data-testid="button-jump-day8"
+              data-testid="button-jump-daily-flow"
             >
-              Jump to Day 8 →
+              Jump to Daily Flow →
             </button>
-
-            <div className="flex gap-2">
-              <button
-                onClick={skipDay7Screen}
-                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
-                style={{
-                  backgroundColor: "rgba(234,179,8,0.08)",
-                  border: "1px solid rgba(234,179,8,0.15)",
-                  color: "rgba(234,179,8,0.8)",
-                }}
-                data-testid="button-skip-day7"
-              >
-                Skip Day 7
-              </button>
-              <button
-                onClick={restoreDay7Screen}
-                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
-                style={{
-                  backgroundColor: "rgba(234,179,8,0.04)",
-                  border: "1px solid rgba(234,179,8,0.1)",
-                  color: "rgba(234,179,8,0.5)",
-                }}
-                data-testid="button-restore-day7"
-              >
-                Show Day 7
-              </button>
-            </div>
 
             <button
               onClick={resetProgress}

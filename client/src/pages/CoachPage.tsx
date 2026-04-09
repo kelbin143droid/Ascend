@@ -496,8 +496,8 @@ export default function CoachPage() {
   });
 
   const onboardingDay = homeData?.onboardingDay ?? 1;
-  const isGuidedMode = onboardingDay < 6;
-  const isTrainingMode = onboardingDay >= 7;
+  const isGuidedMode = onboardingDay < 5;
+  const isTrainingMode = onboardingDay >= 5;
 
   const { data: coachData, isLoading } = useQuery<CoachData>({
     queryKey: ["/api/player", player?.id, "coach"],

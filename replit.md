@@ -73,7 +73,7 @@ Also displays Coach insight and Identity reflection cards when available. Return
 -   **Sectograph**: A unified time system page with Timeline, Calendar, and Week views. It includes a time awareness layer, behavioral anchoring markers, and active focus session management.
 
 ### Progressive Access
-Features are progressively unlocked based on `onboardingDay` (1-7) to gradually introduce complexity. This includes daily guided steps for the first 7 days, and specific reveals such as the Momentum Meter, Deep Coach View, and Schedule editing on Day 6, and a full "Power Growth" transition on Day 7.
+Features are progressively unlocked based on `onboardingDay` (1-5) to gradually introduce complexity. This includes daily guided steps for the first 5 days: Day 1=Breathing, Day 2=Light Movement, Day 3=Hydration+Reflection, Day 4=Light Cardio, Day 5=Plan & Reflect. After Day 5 is complete, `isOnboardingComplete` becomes true and the app enters Daily Flow (training) mode. TRAIN tab unlocks on Day 5. HABITS unlocks on Day 3.
 
 ## External Dependencies
 

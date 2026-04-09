@@ -45,7 +45,7 @@ export function calculateLanguageStage(
   streak: number,
   totalCompletionDays: number,
 ): LanguageStage {
-  if (!isOnboardingComplete && onboardingDay <= 7) return 1;
+  if (!isOnboardingComplete && onboardingDay <= 5) return 1;
   if (totalCompletionDays < 14 || streak < 7) return 2;
   if (totalCompletionDays >= 28 && streak >= 14) return 4;
   return 3;

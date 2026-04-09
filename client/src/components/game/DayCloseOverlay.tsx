@@ -33,22 +33,10 @@ const DAY_MESSAGES: Record<number, { phase1: string; phase2: string; footer: str
     button: "See you Day 5",
   },
   5: {
-    phase1: "Day 5 complete.",
-    phase2: "You're ready for more.\nGrowth expands naturally.",
-    footer: "Tomorrow opens new ground.",
-    button: "See you Day 6",
-  },
-  6: {
-    phase1: "Momentum Activated",
-    phase2: "You showed up again.\nThis is how change compounds.",
-    footer: "One more day to complete the cycle.",
-    button: "Return Home",
-  },
-  7: {
-    phase1: "Step complete.",
-    phase2: "You showed up.\nSee you tomorrow.",
-    footer: "Your next step unlocks tomorrow.",
-    button: "Return Home",
+    phase1: "Foundation complete.",
+    phase2: "You showed up five days in a row.\nThis is how it starts.",
+    footer: "Daily Flow unlocks tomorrow.",
+    button: "Your journey begins",
   },
 };
 
