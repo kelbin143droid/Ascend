@@ -542,6 +542,14 @@ export default function GuidedSessionPage() {
       "calm-breathing": 1, "light-movement": 2, "hydration-check": 3,
       "focus-block": 4, "plan-tomorrow": 5,
     };
+    // Explicit habitId mapping — matches what the server stores as guided_<session>
+    const ONBOARDING_SESSION_TO_HABIT: Record<string, string> = {
+      "calm-breathing": "guided_calm-breathing",
+      "light-movement": "guided_light-movement",
+      "hydration-check": "guided_hydration-check",
+      "focus-block": "guided_focus-block",
+      "plan-tomorrow": "guided_plan-tomorrow",
+    };
     const completedOnboardingDay = ONBOARDING_SESSION_TO_DAY[sessionId];
     if (completedOnboardingDay) {
       sessionStorage.setItem("ascend_just_completed_day", String(completedOnboardingDay));
@@ -558,11 +566,21 @@ export default function GuidedSessionPage() {
     }
   }, [homeData, queryClient, sessionId, setLocation]);
 
+  const ONBOARDING_SESSION_TO_HABIT: Record<string, string> = {
+    "calm-breathing": "guided_calm-breathing",
+    "light-movement": "guided_light-movement",
+    "hydration-check": "guided_hydration-check",
+    "focus-block": "guided_focus-block",
+    "plan-tomorrow": "guided_plan-tomorrow",
+  };
+
   const completeMutation = useMutation({
     mutationFn: async () => {
       if (!player?.id) throw new Error("No player");
+      const habitId = ONBOARDING_SESSION_TO_HABIT[session.id] ?? session.id;
       const res = await apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
         sessionId: session.id,
+        habitId,
         stat: session.stat,
         durationMinutes: Math.max(1, Math.ceil(session.durationSeconds / 60)),
       });

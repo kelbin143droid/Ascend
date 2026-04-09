@@ -203,10 +203,10 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
   const claimMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/player/${playerId}/complete-guided-session`, {
-        activityId: "phase1_agility",
-        xpEarned: XP_REWARD,
+        sessionId: "light-movement",
+        stat: "agility",
+        durationMinutes: 3,
         category: "agility",
-        xpMultiplier: 1.0,
       });
       return res.json();
     },

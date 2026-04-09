@@ -135,10 +135,10 @@ export function CardioSessionEngine({ playerId, onComplete, onCancel, noApiCall 
   const claimMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/player/${playerId}/complete-guided-session`, {
-        activityId: "phase1_strength",
-        xpEarned: XP_REWARD,
-        category: "strength",
-        xpMultiplier: 1.0,
+        sessionId: "focus-block",
+        stat: "sense",
+        durationMinutes: 1,
+        category: "meditation",
       });
       return res.json();
     },

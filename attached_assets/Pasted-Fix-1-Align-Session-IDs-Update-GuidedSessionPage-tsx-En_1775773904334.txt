@@ -1,0 +1,130 @@
+Fix #1: Align Session IDs
+Update GuidedSessionPage.tsx
+Ensure onboarding sessions use the correct prefixed IDs when completing a session.
+TypeScript
+const ONBOARDING_SESSION_TO_DAY: Record<string, number> = {
+  "calm-breathing": 1,
+  "light-movement": 2,
+  "hydration-check": 3,
+  "focus-block": 4,
+  "plan-tomorrow": 5,
+};
+
+const ONBOARDING_SESSION_TO_HABIT: Record<string, string> = {
+  "calm-breathing": "guided_calm-breathing",
+  "light-movement": "guided_light-movement",
+  "hydration-check": "guided_hydration-check",
+  "focus-block": "guided_focus-block",
+  "plan-tomorrow": "guided_plan-tomorrow",
+};
+When submitting a completion:
+TypeScript
+const habitId = ONBOARDING_SESSION_TO_HABIT[sessionId] ?? sessionId;
+
+await fetch(`/api/player/${player.id}/complete-guided-session`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    habitId,
+    sessionId,
+    durationMinutes,
+  }),
+});
+And ensure the completion handoff remains:
+TypeScript
+const completedDay = ONBOARDING_SESSION_TO_DAY[sessionId];
+if (completedDay) {
+  sessionStorage.setItem(
+    "ascend_just_completed_day",
+    String(completedDay)
+  );
+  setLocation("/");
+}
+✅ Fix #2: Correct Server Calculation
+In server/routes.ts, confirm that onboarding progress is derived from guided completions only:
+TypeScript
+const ONBOARDING_HABIT_TO_DAY: Record<string, number> = {
+  "guided_calm-breathing": 1,
+  "guided_light-movement": 2,
+  "guided_hydration-check": 3,
+  "guided_focus-block": 4,
+  "guided_plan-tomorrow": 5,
+};
+
+const completedDays: number[] = [];
+
+for (const [habitId, day] of Object.entries(ONBOARDING_HABIT_TO_DAY)) {
+  if (allCompletions.some(c => c.habitId === habitId)) {
+    completedDays.push(day);
+  }
+}
+
+completedDays.sort((a, b) => a - b);
+
+const onboardingDay =
+  completedDays.length >= 5
+    ? 5
+    : Math.min(completedDays.length + 1, 5);
+
+const isOnboardingComplete = completedDays.length >= 5;
+Return:
+TypeScript
+res.json({
+  onboardingDay,
+  completedDays,
+  isOnboardingComplete,
+  streak: player.streak,
+  hasCompletedHabitToday,
+});
+✅ Fix #3: Prevent Incorrect Completion Rendering
+Update the completion rendering logic in HomePage.tsx:
+TypeScript
+if (
+  justCompletedDayId !== null &&
+  homeData &&
+  homeData.completedDays.includes(justCompletedDayId)
+) {
+  const xp = justCompletedDayId * 5;
+
+  if (justCompletedDayId === 5) {
+    return (
+      <Day6SectographIntro
+        onComplete={() => setJustCompletedDayId(null)}
+        onCancel={() => setJustCompletedDayId(null)}
+      />
+    );
+  }
+
+  return (
+    <OnboardingCompletionScreen
+      key={`completion-${justCompletedDayId}`}
+      day={justCompletedDayId}
+      xp={xp}
+      xpGoal={100}
+      streak={homeData.streak}
+      onClose={() => setJustCompletedDayId(null)}
+    />
+  );
+}
+🧪 Expected Behavior After Fix
+Action
+Result
+Complete Day 1
+Shows “Day 1 Complete – 5/100 XP”
+Complete Day 2
+Shows “Day 2 Complete – 10/100 XP”
+Complete Day 3
+Shows “Day 3 Complete – 15/100 XP”
+Complete Day 4
+Shows “Day 4 Complete – 20/100 XP”
+Complete Day 5
+Launches the Sectograph Intro
+Refresh Page
+Progress persists correctly
+Progress Dots
+Reflect actual completed days
+📋 Recommended Reset for Testing
+Run this once to clear previous incorrect completions:
+Bash
+POST /api/player/:id/reset-progress
+Or use your Dev Panel’s reset feature.
