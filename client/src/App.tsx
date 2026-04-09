@@ -27,6 +27,7 @@ import CalendarPage from "@/pages/CalendarPage";
 import SectographPage from "@/pages/SectographPage";
 import HabitsPage from "@/pages/HabitsPage";
 import GuidedSessionPage from "@/pages/GuidedSessionPage";
+import FlowApp from "@/pages/FlowApp";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
 import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/habits" component={HabitsPage} />
       <Route path="/guided-session/:sessionId" component={GuidedSessionPage} />
+      <Route path="/flow" component={FlowApp} />
       <Route component={NotFound} />
     </Switch>
   );
