@@ -327,6 +327,120 @@ export default function HomePage() {
     const nextDay = Math.min(onboardingDay + 1, 5);
     const phaseName = homeData?.phase?.name ?? "Stabilization";
 
+    // Day 1 minimal screen
+    if (onboardingDay === 1 && !isDone) {
+      return (
+        <SystemLayout>
+          <div
+            data-testid="home-page"
+            style={{
+              minHeight: "100dvh",
+              backgroundColor: "#06060f",
+              fontFamily: "'Inter', system-ui, sans-serif",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 32px 80px",
+              gap: 0,
+            }}
+          >
+            {/* Breathing icon */}
+            <div
+              aria-hidden="true"
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                backgroundColor: "rgba(139,92,246,0.15)",
+                border: "1px solid rgba(139,92,246,0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 28,
+              }}
+            >
+              <Wind size={24} color="#a78bfa" />
+            </div>
+
+            {/* Title */}
+            <h1
+              style={{
+                margin: "0 0 8px",
+                fontSize: 26,
+                fontWeight: 800,
+                color: "#f5f5ff",
+                lineHeight: 1.2,
+                letterSpacing: "-0.5px",
+                textAlign: "center",
+                fontFamily: "'Inter', system-ui, sans-serif",
+              }}
+            >
+              Let's reset your system
+            </h1>
+
+            {/* Subtitle */}
+            <p
+              style={{
+                margin: "0 0 24px",
+                fontSize: 14,
+                color: "rgba(245,245,255,0.4)",
+                textAlign: "center",
+                fontFamily: "'Inter', system-ui, sans-serif",
+              }}
+            >
+              This takes less than 2 minutes
+            </p>
+
+            {/* Description */}
+            <p
+              style={{
+                margin: "0 0 40px",
+                fontSize: 16,
+                lineHeight: 1.65,
+                color: "rgba(245,245,255,0.65)",
+                textAlign: "center",
+                maxWidth: 300,
+                fontFamily: "'Inter', system-ui, sans-serif",
+              }}
+            >
+              Guided breathing to reset your nervous system. One task. That's it.
+            </p>
+
+            {/* Start button */}
+            <button
+              id="start-session"
+              data-testid="button-start"
+              aria-label="Begin today's 2-minute breathing session"
+              onClick={() => setLocation(`/guided-session/${step.sessionId}`)}
+              style={{
+                width: "100%",
+                maxWidth: 320,
+                minHeight: 58,
+                borderRadius: 18,
+                background: "#7c3aed",
+                border: "none",
+                color: "#fff",
+                fontSize: 18,
+                fontWeight: 700,
+                letterSpacing: "0.03em",
+                cursor: "pointer",
+                boxShadow: "0 4px 28px rgba(124,58,237,0.45)",
+                fontFamily: "'Inter', system-ui, sans-serif",
+                transition: "transform 0.1s, box-shadow 0.1s",
+              }}
+              onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
+              onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+              onTouchStart={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
+              onTouchEnd={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+            >
+              Start
+            </button>
+          </div>
+        </SystemLayout>
+      );
+    }
+
     return (
       <SystemLayout>
         <div
