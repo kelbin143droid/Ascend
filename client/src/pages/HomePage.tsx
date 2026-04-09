@@ -217,7 +217,7 @@ export default function HomePage() {
     () => localStorage.getItem("ascend_light_movement_completed") ?? ""
   );
 
-  const { data: homeData } = useQuery<HomeData>({
+  const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
     queryFn: async () => {
       if (!player?.id) throw new Error("No player");
@@ -334,10 +334,13 @@ export default function HomePage() {
     }
   }, [homeData, onboardingDay]);
 
-  // Priority: show completion screen / Sectograph intro right after a session completes
+  // Priority: show completion screen / Sectograph intro right after a session completes.
+  // This check runs BEFORE any homeData-dependent logic to prevent stale flashes.
   if (justCompletedDayId !== null) {
-    const completedDays = homeData?.completedDays ?? [];
-    const xp = completedDays.length * 5;
+    // XP is cumulative: completing Day N means N × 5 XP total. Use justCompletedDayId
+    // directly rather than completedDays.length so the value is correct even if the
+    // homeData refetch hasn't resolved yet.
+    const xp = justCompletedDayId * 5;
 
     if (justCompletedDayId === 5) {
       return (
@@ -359,6 +362,18 @@ export default function HomePage() {
           streak={homeData?.streak ?? 0}
         />
       </SystemLayout>
+    );
+  }
+
+  // Block onboarding/training renders until homeData is available.
+  // Without this guard a returning Day 2+ user briefly sees the Day 1 minimal
+  // screen because onboardingDay defaults to 1 before the first fetch resolves.
+  if (!homeData && homeLoading) {
+    return (
+      <div
+        style={{ minHeight: "100dvh", backgroundColor: "#06060f" }}
+        data-testid="home-loading"
+      />
     );
   }
 
