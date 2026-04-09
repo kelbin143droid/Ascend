@@ -5,10 +5,11 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, CheckCircle2, Eye, Zap, ChevronRight } from "lucide-react";
+import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, Eye, Zap, ChevronRight } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
+import { OnboardingCompletionScreen } from "@/components/game/OnboardingCompletionScreen";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
@@ -441,6 +442,22 @@ export default function HomePage() {
       );
     }
 
+    // Completion screen — all days
+    if (isDone) {
+      const streak = homeData?.streak ?? 0;
+      const xp = onboardingDay * 5;
+      return (
+        <SystemLayout>
+          <OnboardingCompletionScreen
+            day={onboardingDay}
+            xp={xp}
+            xpGoal={100}
+            streak={streak}
+          />
+        </SystemLayout>
+      );
+    }
+
     return (
       <SystemLayout>
         <div
@@ -548,61 +565,7 @@ export default function HomePage() {
 
           {/* Main content */}
           <main id="main-action" style={{ flex: 1, padding: "0 24px" }}>
-            {isDone ? (
-              /* Completed state */
-              <div
-                data-testid="day-complete-card"
-                role="region"
-                aria-label="Today's practice complete"
-                style={{
-                  backgroundColor: "rgba(139,92,246,0.1)",
-                  border: "1.5px solid rgba(139,92,246,0.35)",
-                  borderRadius: 18,
-                  padding: "32px 20px",
-                  marginBottom: 20,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 16,
-                  textAlign: "center",
-                }}
-              >
-                <div
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: "50%",
-                    backgroundColor: "rgba(139,92,246,0.2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <CheckCircle2 size={26} color="#a78bfa" />
-                </div>
-                <div>
-                  <p style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 700, color: "#f5f5ff" }}>
-                    Practice complete.
-                  </p>
-                  <p style={{ margin: 0, fontSize: 15, color: "rgba(245,245,255,0.6)", lineHeight: 1.6 }}>
-                    Your next step unlocks tomorrow.{" "}
-                    {onboardingDay < 5 ? "Rest, reflect, return." : "You've built something real."}
-                  </p>
-                </div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 13,
-                    color: "#a78bfa",
-                    fontWeight: 600,
-                    letterSpacing: "0.06em",
-                  }}
-                >
-                  Day {onboardingDay} of 5 — See you tomorrow
-                </p>
-              </div>
-            ) : (
-              <>
+            <>
                 {/* Session card */}
                 <div
                   role="region"
@@ -755,8 +718,7 @@ export default function HomePage() {
                 >
                   Takes about {step.duration}
                 </p>
-              </>
-            )}
+            </>
           </main>
         </div>
 
