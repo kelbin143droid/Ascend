@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap, RotateCcw, Info } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap, RotateCcw, Info, SkipForward } from "lucide-react";
+
+const DAY_SESSION_MAP: Record<number, { sessionId: string; stat: string; durationMinutes: number }> = {
+  1: { sessionId: "calm-breathing",  stat: "sense",   durationMinutes: 2 },
+  2: { sessionId: "light-movement",  stat: "agility", durationMinutes: 3 },
+  3: { sessionId: "hydration-check", stat: "vitality", durationMinutes: 1 },
+  4: { sessionId: "focus-block",     stat: "sense",   durationMinutes: 3 },
+  5: { sessionId: "plan-tomorrow",   stat: "vitality", durationMinutes: 1 },
+};
 
 interface DevStatus {
   onboardingDay: number;
@@ -149,6 +157,42 @@ export function DevPanel() {
     setLoading(false);
   };
 
+  const skipSession = async () => {
+    if (!player?.id || loading) return;
+    setLoading(true);
+    setLastResult(null);
+    try {
+      const currentStatus: DevStatus | null = status ?? await (async () => {
+        const r = await fetch(`/api/player/${player.id}/dev/status`);
+        return r.ok ? r.json() : null;
+      })();
+      const day = currentStatus?.onboardingDay ?? 1;
+      const sessionInfo = DAY_SESSION_MAP[day];
+      if (!sessionInfo) {
+        setLastResult(`No session to skip on Day ${day}`);
+        setLoading(false);
+        return;
+      }
+      const res = await fetch(`/api/player/${player.id}/complete-guided-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sessionInfo),
+      });
+      if (res.ok) {
+        if (day === 2) localStorage.removeItem("ascend_light_movement_completed");
+        setLastResult(`Session skipped — Day ${day} (${sessionInfo.sessionId})`);
+        queryClient.invalidateQueries();
+        fetchStatus();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setLastResult(`Skip failed: ${err.error ?? res.status}`);
+      }
+    } catch {
+      setLastResult("Error skipping session");
+    }
+    setLoading(false);
+  };
+
   const resetToday = async () => {
     if (!player?.id || loading) return;
     setLoading(true);
@@ -280,20 +324,36 @@ export function DevPanel() {
               </button>
             </div>
 
-            <button
-              onClick={resetToday}
-              disabled={loading}
-              className="w-full text-[10px] font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
-              style={{
-                backgroundColor: loading ? "rgba(34,211,238,0.04)" : "rgba(34,211,238,0.1)",
-                border: "1px solid rgba(34,211,238,0.2)",
-                color: loading ? "rgba(34,211,238,0.35)" : "rgba(34,211,238,0.85)",
-              }}
-              data-testid="button-reset-today"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Reset Today's Sessions
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={skipSession}
+                disabled={loading}
+                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
+                style={{
+                  backgroundColor: loading ? "rgba(234,179,8,0.04)" : "rgba(234,179,8,0.12)",
+                  border: "1px solid rgba(234,179,8,0.25)",
+                  color: loading ? "rgba(234,179,8,0.35)" : "rgba(234,179,8,0.9)",
+                }}
+                data-testid="button-skip-session"
+              >
+                <SkipForward className="w-3 h-3" />
+                Skip Session
+              </button>
+              <button
+                onClick={resetToday}
+                disabled={loading}
+                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
+                style={{
+                  backgroundColor: loading ? "rgba(34,211,238,0.04)" : "rgba(34,211,238,0.1)",
+                  border: "1px solid rgba(34,211,238,0.2)",
+                  color: loading ? "rgba(34,211,238,0.35)" : "rgba(34,211,238,0.85)",
+                }}
+                data-testid="button-reset-today"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Reset Today
+              </button>
+            </div>
 
             <div className="flex items-center gap-2">
               <label className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>Days:</label>
