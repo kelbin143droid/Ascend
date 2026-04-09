@@ -2508,41 +2508,27 @@ export async function registerRoutes(
       const activeHabits = habits.filter(h => h.active);
       const completionsCreated: string[] = [];
 
-      // Find the latest existing completion date so new days start AFTER it
+      // Count existing distinct active days to offset new simulated dates correctly
       const existingCompletions = await storage.getHabitCompletions(req.params.id);
       const existingDates = existingCompletions
         .filter(c => c.completedAt)
         .map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
         .sort();
-      const latestDateStr = existingDates[existingDates.length - 1];
 
-      // Always keep simulated dates in the past (≤ yesterday) so future-date
-      // pollution never causes the system to treat future sim days as "today".
+      // Place each simulated day at a unique past date by counting backwards
+      // from today. existingDistinctCount ensures no collision with existing data.
+      // d=0 is the oldest new day, d=dayCount-1 is the newest (closest to today).
       const todayMidnight = new Date();
       todayMidnight.setHours(0, 0, 0, 0);
-      const yesterdayBase = new Date(todayMidnight);
-      yesterdayBase.setDate(yesterdayBase.getDate() - 1);
+      const existingDistinctCount = new Set(existingDates).size;
 
-      // If no existing completions, place N simulated days ending at yesterday.
-      // If there are existing completions, continue from the latest date.
-      const startBase = latestDateStr
-        ? new Date(latestDateStr + "T12:00:00")
-        : (() => {
-            const d = new Date(yesterdayBase);
-            d.setDate(d.getDate() - dayCount); // so last sim day lands on yesterday
-            return d;
-          })();
-
-      // Each simulated day is 1 day after the previous latest, clamped to ≤ yesterday
       const getSimulatedDate = (d: number) => {
-        const date = new Date(startBase);
-        date.setDate(date.getDate() + d + 1);
+        const date = new Date(todayMidnight);
+        // Newest new day lands at (existingDistinctCount + 1) days ago,
+        // older days go further back — guaranteeing no overlap with existing dates.
+        const daysBack = existingDistinctCount + (dayCount - d);
+        date.setDate(date.getDate() - daysBack);
         date.setHours(9 + (d % 8), 30, 0, 0);
-        // Clamp: never allow a simulated date to reach today or the future
-        if (date >= todayMidnight) {
-          date.setTime(yesterdayBase.getTime());
-          date.setHours(9 + (d % 8), 30, 0, 0);
-        }
         return date;
       };
 
@@ -2593,7 +2579,7 @@ export async function registerRoutes(
       const distinctDays = new Set(
         allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const newOnboardingDay = Math.min(distinctDays.size + 1, 7);
+      const newOnboardingDay = Math.min(distinctDays.size + 1, 5);
 
       const newStreak = Math.min(player.streak + dayCount, 999);
       await storage.updatePlayer(req.params.id, { streak: newStreak });
@@ -2624,9 +2610,9 @@ export async function registerRoutes(
       const devTodayStr = new Date().toLocaleDateString("en-CA");
       const devCompletedToday = distinctDays.has(devTodayStr);
       const devDaysCompleted = distinctDays.size;
-      const onboardingDay = (devCompletedToday && devDaysCompleted <= 6)
+      const onboardingDay = (devCompletedToday && devDaysCompleted <= 4)
         ? Math.max(devDaysCompleted, 1)
-        : Math.min(devDaysCompleted + 1, 7);
+        : Math.min(devDaysCompleted + 1, 5);
 
       const sortedDays = [...distinctDays].sort().reverse();
       const lastActiveDate = sortedDays[0] ?? null;
@@ -2687,11 +2673,11 @@ export async function registerRoutes(
         }
 
         const remainingDays = distinctDays.length - 1;
-        const newOnboardingDay = Math.max(1, Math.min(remainingDays + 1, 7));
+        const newOnboardingDay = Math.max(1, Math.min(remainingDays + 1, 5));
         const newStreak = Math.max(0, player.streak - 1);
 
         const updates: Record<string, any> = { streak: newStreak };
-        if (newOnboardingDay < 7) {
+        if (newOnboardingDay < 5) {
           updates.onboardingCompleted = 0;
         }
 
