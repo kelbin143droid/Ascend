@@ -551,14 +551,13 @@ export default function GuidedSessionPage() {
     sessionStorage.setItem("ascend_just_completed_day", String(day));
   };
 
-  /* Advance out of "completing" — only called on confirmed server success */
+  /* Advance out of "completing" — only called on confirmed server success.
+     Note: onSuccess already awaited refetchQueries, so cache is fresh here. */
   const advanceFromCompleting = useCallback(() => {
     if (completeTimeoutRef.current) {
       clearTimeout(completeTimeoutRef.current);
       completeTimeoutRef.current = null;
     }
-    queryClient.invalidateQueries({ queryKey: ["home"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/player"] });
 
     const completedOnboardingDay = ONBOARDING_SESSION_TO_DAY[sessionId];
     if (completedOnboardingDay) {
@@ -574,7 +573,7 @@ export default function GuidedSessionPage() {
     } else {
       setState("done");
     }
-  }, [homeData, queryClient, sessionId, setLocation]);
+  }, [homeData, sessionId, setLocation]);
 
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -683,8 +682,8 @@ export default function GuidedSessionPage() {
 
   // Light Movement uses the video-guided engine instead of the generic session page
   if (sessionId === "light-movement" && player?.id) {
-    const handleLightMovementComplete = () => {
-      queryClient.invalidateQueries({ queryKey: ["home"] });
+    const handleLightMovementComplete = async () => {
+      await queryClient.refetchQueries({ queryKey: ["home", player.id] });
       recordCompletion(2);
       setLocation("/");
     };
@@ -700,8 +699,8 @@ export default function GuidedSessionPage() {
 
   // Light Cardio Session uses the video-guided cardio engine
   if (sessionId === "focus-block" && player?.id) {
-    const handleCardioComplete = () => {
-      queryClient.invalidateQueries({ queryKey: ["home"] });
+    const handleCardioComplete = async () => {
+      await queryClient.refetchQueries({ queryKey: ["home", player.id] });
       recordCompletion(4);
       setLocation("/");
     };

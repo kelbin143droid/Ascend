@@ -1,0 +1,143 @@
+. Update HomePage.tsx
+Ensure the completion screen renders only after server confirmation.
+TypeScript
+// Local state
+const [justCompletedDayId, setJustCompletedDayId] = useState<number | null>(null);
+
+// Read completion signal once
+useEffect(() => {
+  const raw = sessionStorage.getItem("ascend_just_completed_day");
+  if (!raw) return;
+
+  const day = parseInt(raw, 10);
+  sessionStorage.removeItem("ascend_just_completed_day");
+
+  if (!isNaN(day) && day >= 1 && day <= 5) {
+    setJustCompletedDayId(day);
+  }
+}, []);
+2. Block Rendering Until Data Loads
+TypeScript
+if (homeLoading || !homeData) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#06060f",
+      }}
+    />
+  );
+}
+This prevents stale or default data from triggering incorrect UI.
+3. Render the Completion Screen Safely
+TypeScript
+if (
+  justCompletedDayId !== null &&
+  homeData.completedDays.includes(justCompletedDayId)
+) {
+  const xp = justCompletedDayId * 5;
+
+  // Special handling for Day 5
+  if (justCompletedDayId === 5) {
+    return (
+      <Day6SectographIntro
+        onComplete={() => setJustCompletedDayId(null)}
+        onCancel={() => setJustCompletedDayId(null)}
+      />
+    );
+  }
+
+  return (
+    <OnboardingCompletionScreen
+      key={`completion-${justCompletedDayId}`}
+      day={justCompletedDayId}
+      xp={xp}
+      xpGoal={100}
+      streak={homeData.streak}
+      onClose={() => setJustCompletedDayId(null)}
+    />
+  );
+}
+This ensures:
+The correct completion screen appears once.
+It cannot repeat on subsequent days.
+It is always validated by backend data.
+4. Ensure Proper Session Handoff in GuidedSessionPage.tsx
+TypeScript
+const ONBOARDING_SESSION_TO_DAY: Record<string, number> = {
+  "calm-breathing": 1,
+  "light-movement": 2,
+  "hydration-check": 3,
+  "focus-block": 4,
+  "plan-tomorrow": 5,
+};
+
+const handleCompletion = async () => {
+  await queryClient.invalidateQueries({ queryKey: ["home"] });
+
+  const completedDay = ONBOARDING_SESSION_TO_DAY[sessionId];
+  if (completedDay) {
+    sessionStorage.setItem(
+      "ascend_just_completed_day",
+      String(completedDay)
+    );
+  }
+
+  setLocation("/");
+};
+5. Prevent Duplicate Triggers
+TypeScript
+const hasRecordedCompletion = useRef(false);
+
+const recordCompletion = (day: number) => {
+  if (hasRecordedCompletion.current) return;
+  hasRecordedCompletion.current = true;
+
+  sessionStorage.setItem(
+    "ascend_just_completed_day",
+    String(day)
+  );
+};
+🧪 Expected Behavior After Fix
+Action
+Result
+Complete Day 1
+Shows Day 1 Complete – 5/100 XP
+Return to Home
+Day 2 becomes available
+Complete Day 2
+Shows Day 2 Complete – 10/100 XP
+Complete Day 3
+Shows Day 3 Complete – 15/100 XP
+Complete Day 4
+Shows Day 4 Complete – 20/100 XP
+Complete Day 5
+Launches the Sectograph Intro
+Refresh Page
+No incorrect completion screens
+Progress Dots
+Reflect server data accurately
+🧹 Reset Before Testing
+Run this once in the browser console:
+JavaScript
+sessionStorage.removeItem("ascend_just_completed_day");
+localStorage.clear();
+Then reload the app.
+📋 Replit Prompt for Final Fix
+You can paste this into Replit AI:
+
+Fix the onboarding completion bug in the Solo Quest RPG app.
+
+Requirements:
+1. Show the completion screen only when:
+   - justCompletedDayId exists, and
+   - homeData.completedDays includes that day.
+2. Read and clear sessionStorage key "ascend_just_completed_day" on mount.
+3. Block rendering until homeData is fully loaded.
+4. Prevent duplicate session completion triggers.
+5. Ensure React Query invalidates the "home" query after completing a session.
+6. Display the Sectograph Intro after completing Day 5.
+7. Use completedDays as the single source of truth for progress indicators.
+8. Do not modify UI styling—only fix state and rendering logic.
+
+Return the corrected HomePage.tsx and GuidedSessionPage.tsx files.
