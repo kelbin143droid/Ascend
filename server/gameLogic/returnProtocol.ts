@@ -119,6 +119,21 @@ export function getReturnProtocol(
   player: Player,
   completions: HabitCompletion[]
 ): ReturnProtocolResult {
+  // Brand-new players have never been active — do not trigger return protocol
+  const hasEverBeenActive = completions.some(c => c.completedAt);
+  if (!hasEverBeenActive) {
+    return {
+      active: false,
+      tier: "none",
+      daysSinceLastActivity: 0,
+      coachMessage: null,
+      resetRitual: null,
+      simplifyMode: null,
+      softRestart: false,
+      hideProgress: false,
+    };
+  }
+
   const daysSince = calculateDaysSinceLastActivity(completions);
   const tier = detectAbsenceTier(daysSince);
 
