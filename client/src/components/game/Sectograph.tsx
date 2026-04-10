@@ -114,6 +114,7 @@ interface SectographProps {
   focusBlock?: ActiveFocusBlock | null;
   rhythmWindows?: RhythmWindowVisual[];
   suggestedPlacements?: SuggestedPlacement[];
+  highlightCenter?: boolean;
   onCenterClick?: () => void;
   onBlockClick?: (block: ScheduleBlock) => void;
   onFreeWindowClick?: (window: FreeWindow) => void;
@@ -128,6 +129,7 @@ export function Sectograph({
   focusBlock = null,
   rhythmWindows = [],
   suggestedPlacements = [],
+  highlightCenter = false,
   onCenterClick,
   onBlockClick,
   onFreeWindowClick,
@@ -379,18 +381,50 @@ export function Sectograph({
       </svg>
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {highlightCenter && (
+          <>
+            <style>{`
+              @keyframes sectoCenterPulse1 {
+                0%, 100% { transform: scale(1); opacity: 0.7; }
+                50% { transform: scale(1.5); opacity: 0; }
+              }
+              @keyframes sectoCenterPulse2 {
+                0%, 100% { transform: scale(1); opacity: 0.5; }
+                50% { transform: scale(1.8); opacity: 0; }
+              }
+            `}</style>
+            <div
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                width: 44, height: 44,
+                border: "2px solid #6366f1",
+                animation: "sectoCenterPulse1 1.4s ease-out infinite",
+              }}
+            />
+            <div
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                width: 44, height: 44,
+                border: "1px solid #a855f7",
+                animation: "sectoCenterPulse2 1.4s ease-out 0.35s infinite",
+              }}
+            />
+          </>
+        )}
         <button
           data-testid="button-schedule"
           onClick={onCenterClick}
           className="pointer-events-auto w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 group"
           style={{
             backgroundColor: colors.surface,
-            border: `1.5px solid ${colors.ring}`,
-            boxShadow: `0 0 18px ${colors.primaryGlow}, 0 0 6px ${colors.primaryGlow}60 inset`,
+            border: highlightCenter ? "2px solid #6366f1" : `1.5px solid ${colors.ring}`,
+            boxShadow: highlightCenter
+              ? "0 0 24px rgba(99,102,241,0.7), 0 0 8px rgba(99,102,241,0.4) inset"
+              : `0 0 18px ${colors.primaryGlow}, 0 0 6px ${colors.primaryGlow}60 inset`,
           }}
           title="Add time block"
         >
-          <svg viewBox="0 0 24 24" className="w-5 h-5 transition-colors group-hover:rotate-90" style={{ color: colors.primary, transition: "transform 0.25s ease" }} fill="none" stroke="currentColor" strokeWidth="2">
+          <svg viewBox="0 0 24 24" className="w-5 h-5 transition-colors group-hover:rotate-90" style={{ color: highlightCenter ? "#6366f1" : colors.primary, transition: "transform 0.25s ease" }} fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>

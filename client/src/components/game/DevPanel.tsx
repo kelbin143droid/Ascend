@@ -153,6 +153,7 @@ export function DevPanel() {
     localStorage.removeItem("ascend_day3_hydration_done");
     localStorage.removeItem("ascend_day5_sleep_scheduled");
     localStorage.removeItem("ascend_day5_flow_scheduled");
+    localStorage.removeItem("ascend_day5_sectograph_intro_seen");
     localStorage.removeItem("ascend_sectograph_tutorial_done");
     localStorage.removeItem("ascend_sectograph_tutorial_step");
     localStorage.removeItem("ascend_sectograph_intro_seen");
@@ -206,6 +207,7 @@ export function DevPanel() {
       localStorage.removeItem("ascend_light_movement_completed");
       localStorage.setItem("ascend_day5_sleep_scheduled", "true");
       localStorage.setItem("ascend_day5_flow_scheduled", "true");
+      localStorage.setItem("ascend_day5_sectograph_intro_seen", "true");
       localStorage.setItem("ascend_sectograph_tutorial_done", "true");
       localStorage.setItem("ascend_sectograph_tutorial_step", "3");
       setLastResult("→ Day 6 · Post-onboarding home");

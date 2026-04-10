@@ -34,7 +34,6 @@ import {
   Briefcase,
   Coffee,
   Book,
-  Sunrise,
   Gamepad2,
   Wind,
   Heart,
@@ -97,7 +96,7 @@ const BLOCK_PRESETS = [
   { id: "strength", name: "Strength", icon: Dumbbell, color: "#ef4444", defaultStart: { h: 7, m: 0 }, defaultEnd: { h: 7, m: 45 } },
   { id: "agility", name: "Agility", icon: Wind, color: "#22c55e", defaultStart: { h: 7, m: 45 }, defaultEnd: { h: 8, m: 15 } },
   { id: "vitality", name: "Vitality", icon: Heart, color: "#a855f7", defaultStart: { h: 8, m: 15 }, defaultEnd: { h: 8, m: 30 } },
-  { id: "wakeup", name: "Wake Up", icon: Sunrise, color: "#f97316", defaultStart: { h: 6, m: 0 }, defaultEnd: { h: 6, m: 30 } },
+  { id: "daily-flow", name: "Daily Flow", icon: Zap, color: "#a855f7", defaultStart: { h: 7, m: 0 }, defaultEnd: { h: 8, m: 0 } },
   { id: "meal", name: "Meal", icon: Coffee, color: "#7d9d6a", defaultStart: { h: 12, m: 0 }, defaultEnd: { h: 13, m: 0 } },
   { id: "leisure", name: "Leisure", icon: Gamepad2, color: "#8b7aa3", defaultStart: { h: 20, m: 0 }, defaultEnd: { h: 22, m: 0 } },
   { id: "custom", name: "Custom", icon: Zap, color: "#6b7280", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 10, m: 0 } },
@@ -214,7 +213,16 @@ export default function SectographPage() {
   );
   const [day5SleepDone, setDay5SleepDone] = useState(() => isDayFiveSleepScheduled());
   const [day5FlowDone, setDay5FlowDone] = useState(() => isDayFiveFlowScheduled());
-  const day5BothDone = day5SleepDone && day5FlowDone;
+  const [day5IntroSeen, setDay5IntroSeen] = useState(
+    () => localStorage.getItem("ascend_day5_sectograph_intro_seen") === "true"
+  );
+  const day5Step = useMemo(() => {
+    if (!isDay5Mode) return -1;
+    if (day5SleepDone && day5FlowDone) return 3;
+    if (day5SleepDone) return 2;
+    if (day5IntroSeen) return 1;
+    return 0;
+  }, [isDay5Mode, day5SleepDone, day5FlowDone, day5IntroSeen]);
 
   // Weekly planning state
   const { roles } = useRoles();
@@ -591,7 +599,7 @@ export default function SectographPage() {
 
 
         {/* ── DAY 5 SETUP GUIDE ──────────────────────────────────────── */}
-        {isDay5Mode && (
+        {isDay5Mode && day5Step >= 1 && day5Step < 3 && (
           <div
             className="w-full rounded-2xl p-4 space-y-3"
             style={{
@@ -650,38 +658,20 @@ export default function SectographPage() {
                 {day5FlowDone
                   ? <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
                   : day5SleepDone
-                  ? <span className="text-[10px]" style={{ color: "rgba(168,85,247,0.7)" }}>Add any block ↑</span>
+                  ? <span className="text-[10px]" style={{ color: "rgba(168,85,247,0.7)" }}>Add it ↑</span>
                   : <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>After sleep</span>
                 }
               </div>
             </div>
 
-            {day5BothDone && (
-              <button
-                data-testid="button-d5-return-complete"
-                onClick={() => navigate("/")}
-                className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] flex items-center justify-center gap-2 mt-1"
-                style={{
-                  background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                  color: "#fff",
-                  boxShadow: "0 4px 16px rgba(34,197,94,0.3)",
-                }}
-              >
-                <CheckCircle2 size={15} />
-                Return to Complete Day 5
-              </button>
-            )}
-
-            {!day5BothDone && (
-              <p
-                className="text-[10px] text-center leading-relaxed"
-                style={{ color: "rgba(245,245,255,0.35)" }}
-              >
-                {!day5SleepDone
-                  ? "Tap + in the clock center → choose Sleep to get started"
-                  : "Good! Now add one more block for your Daily Flow window"}
-              </p>
-            )}
+            <p
+              className="text-[10px] text-center leading-relaxed"
+              style={{ color: "rgba(245,245,255,0.35)" }}
+            >
+              {!day5SleepDone
+                ? "Tap + in the clock center → choose Sleep to get started"
+                : "Sleep scheduled. Now add your Daily Flow time window"}
+            </p>
           </div>
         )}
 
@@ -784,6 +774,7 @@ export default function SectographPage() {
                 focusBlock={activeFocus?.block ?? null}
                 rhythmWindows={[]}
                 suggestedPlacements={[]}
+                highlightCenter={day5Step === 1}
                 onCenterClick={() => {
                   if (!isDay5Mode && !tutorialDone && tutorialStep === 0) {
                     setSectographTutorialStep(1);
@@ -1634,13 +1625,22 @@ export default function SectographPage() {
             <div className="grid grid-cols-5 gap-2">
               {BLOCK_PRESETS.map((preset) => {
                 const Icon = preset.icon;
+                const isHighlighted =
+                  isDay5Mode &&
+                  ((day5Step === 1 && preset.id === "sleep") ||
+                   (day5Step === 2 && preset.id === "daily-flow"));
                 return (
                   <button
                     key={preset.id}
                     data-testid={`preset-${preset.id}`}
                     onClick={() => handlePresetClick(preset)}
                     className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95"
-                    style={{ backgroundColor: `${preset.color}15`, border: `1px solid ${preset.color}30` }}
+                    style={{
+                      backgroundColor: isHighlighted ? `${preset.color}25` : `${preset.color}15`,
+                      border: isHighlighted ? `2px solid ${preset.color}` : `1px solid ${preset.color}30`,
+                      boxShadow: isHighlighted ? `0 0 12px ${preset.color}60, 0 0 4px ${preset.color}30 inset` : "none",
+                      transform: isHighlighted ? "scale(1.08)" : "scale(1)",
+                    }}
                   >
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -1651,6 +1651,11 @@ export default function SectographPage() {
                     <span className="text-[9px] font-medium text-center leading-tight" style={{ color: preset.color }}>
                       {preset.name}
                     </span>
+                    {isHighlighted && (
+                      <span className="text-[7px] font-bold leading-none" style={{ color: preset.color, opacity: 0.85 }}>
+                        ← tap
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1760,6 +1765,181 @@ export default function SectographPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* ── DAY 5 · STEP 0: FULLSCREEN INTRO OVERLAY ─────────────── */}
+      {isDay5Mode && day5Step === 0 && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+          style={{ background: "rgba(5,5,20,0.97)" }}
+          data-testid="day5-intro-overlay"
+        >
+          <style>{`
+            @keyframes d5IntroFade { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+            @keyframes d5OrbitPulse { 0%,100% { opacity:0.6; transform:scale(1); } 50% { opacity:1; transform:scale(1.12); } }
+          `}</style>
+          <div style={{ animation: "d5IntroFade 0.6s ease both" }} className="flex flex-col items-center text-center gap-6 w-full max-w-xs">
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.15))",
+                border: "1.5px solid rgba(99,102,241,0.4)",
+                boxShadow: "0 0 40px rgba(99,102,241,0.25)",
+                animation: "d5OrbitPulse 2.5s ease-in-out infinite",
+              }}
+            >
+              <Moon size={36} style={{ color: "#a78bfa" }} />
+            </div>
+
+            <div className="space-y-2">
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold"
+                style={{ color: "rgba(99,102,241,0.7)" }}
+              >
+                Day 5 · Sectograph
+              </p>
+              <h2
+                className="text-2xl font-bold leading-tight"
+                style={{ color: "#f5f5ff", fontFamily: "'Orbitron', sans-serif" }}
+              >
+                Map Your<br />Foundation
+              </h2>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: "rgba(245,245,255,0.55)" }}
+              >
+                Your Sectograph holds your time. Today, lock in two anchors that shape every future day.
+              </p>
+            </div>
+
+            <div className="w-full space-y-2 mt-2">
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)" }}
+              >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(59,130,246,0.15)" }}>
+                  <Moon size={14} style={{ color: "#60a5fa" }} />
+                </div>
+                <p className="text-xs font-medium" style={{ color: "rgba(245,245,255,0.8)" }}>
+                  Schedule your Sleep window
+                </p>
+              </div>
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.2)" }}
+              >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(168,85,247,0.15)" }}>
+                  <Zap size={14} style={{ color: "#c084fc" }} />
+                </div>
+                <p className="text-xs font-medium" style={{ color: "rgba(245,245,255,0.8)" }}>
+                  Schedule your Daily Flow session
+                </p>
+              </div>
+            </div>
+
+            <button
+              data-testid="button-d5-intro-start"
+              onClick={() => {
+                localStorage.setItem("ascend_day5_sectograph_intro_seen", "true");
+                setDay5IntroSeen(true);
+              }}
+              className="w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] flex items-center justify-center gap-2 mt-2"
+              style={{
+                background: "linear-gradient(135deg, #6366f1, #a855f7)",
+                color: "#fff",
+                boxShadow: "0 4px 24px rgba(99,102,241,0.4)",
+              }}
+            >
+              <Zap size={16} />
+              Begin Mapping
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── DAY 5 · STEP 3: COMPLETION OVERLAY ────────────────────── */}
+      {isDay5Mode && day5Step === 3 && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+          style={{ background: "rgba(5,5,20,0.96)" }}
+          data-testid="day5-complete-overlay"
+        >
+          <style>{`
+            @keyframes d5CompleteFade { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+            @keyframes d5CheckBounce { 0%,100% { transform:scale(1); } 40% { transform:scale(1.3); } 70% { transform:scale(0.95); } }
+            @keyframes d5GlowPulse { 0%,100% { box-shadow: 0 0 40px rgba(34,197,94,0.3); } 50% { box-shadow: 0 0 70px rgba(34,197,94,0.5); } }
+          `}</style>
+          <div
+            style={{ animation: "d5CompleteFade 0.5s cubic-bezier(0.34,1.56,0.64,1) both" }}
+            className="flex flex-col items-center text-center gap-6 w-full max-w-xs"
+          >
+            <div
+              className="w-24 h-24 rounded-full flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, rgba(34,197,94,0.18), rgba(16,185,129,0.12))",
+                border: "2px solid rgba(34,197,94,0.4)",
+                animation: "d5GlowPulse 2.5s ease-in-out infinite",
+              }}
+            >
+              <CheckCircle2
+                size={44}
+                style={{ color: "#22c55e", animation: "d5CheckBounce 0.6s 0.2s ease both" }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold"
+                style={{ color: "rgba(34,197,94,0.7)" }}
+              >
+                Day 5 · Foundation Mapped
+              </p>
+              <h2
+                className="text-3xl font-bold leading-tight"
+                style={{ color: "#f5f5ff", fontFamily: "'Orbitron', sans-serif" }}
+              >
+                Timeline<br />Locked In
+              </h2>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: "rgba(245,245,255,0.55)" }}
+              >
+                Both anchors are set. Your behavioral foundation is now part of the system.
+              </p>
+            </div>
+
+            <div className="w-full space-y-2">
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
+              >
+                <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+                <p className="text-xs font-medium" style={{ color: "#22c55e" }}>Sleep window — scheduled</p>
+              </div>
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
+              >
+                <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+                <p className="text-xs font-medium" style={{ color: "#22c55e" }}>Daily Flow — scheduled</p>
+              </div>
+            </div>
+
+            <button
+              data-testid="button-d5-complete-return"
+              onClick={() => navigate("/")}
+              className="w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] flex items-center justify-center gap-2 mt-2"
+              style={{
+                background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                color: "#fff",
+                boxShadow: "0 4px 24px rgba(34,197,94,0.4)",
+              }}
+            >
+              <CheckCircle2 size={16} />
+              Return to Complete Day 5
+            </button>
+          </div>
+        </div>
+      )}
     </SystemLayout>
   );
 }
