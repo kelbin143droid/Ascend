@@ -72,7 +72,9 @@ function Router() {
       <Route path="/profile" component={ProfilePage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/habits" component={HabitsPage} />
-      <Route path="/guided-session/:sessionId" component={GuidedSessionPage} />
+      <Route path="/guided-session/:sessionId">
+        {(params: { sessionId?: string }) => <GuidedSessionPage key={params?.sessionId ?? "session"} />}
+      </Route>
       <Route path="/flow" component={FlowApp} />
       <Route component={NotFound} />
     </Switch>

@@ -420,8 +420,8 @@ function InstantSession({ sessionId, accentColor, onDone }: { sessionId: string;
 
 const TIMER_CONTENT: Record<string, { heading: string; body: string }> = {
   "quick-reflection": {
-    heading: "Close your eyes. Reflect on one thing you're grateful for.",
-    body: "Let thoughts settle. No need to force anything.",
+    heading: "Take a quiet moment to reflect.",
+    body: "What went well today? · What can you improve tomorrow? · How do you feel right now?",
   },
   "focus-block": {
     heading: "Focus on one thing. Let everything else go.",
@@ -900,7 +900,21 @@ export default function GuidedSessionPage() {
       </div>
 
       {state === "active" && session.type !== "instant" && (
-        <div className="px-4 pb-6 text-center">
+        <div className="px-4 pb-6 flex flex-col items-center gap-3">
+          {sessionId === "quick-reflection" && (
+            <button
+              data-testid="button-complete-reflection"
+              onClick={handleComplete}
+              className="px-8 py-3 rounded-xl text-sm font-medium tracking-wide transition-all active:scale-[0.97]"
+              style={{
+                backgroundColor: `${accentColor}18`,
+                border: `1px solid ${accentColor}35`,
+                color: `${accentColor}cc`,
+              }}
+            >
+              Complete Reflection
+            </button>
+          )}
           <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.25)" }}>
             {Math.ceil((session.durationSeconds - elapsed) / 60)} min remaining
           </p>
