@@ -1,0 +1,160 @@
+Step 1: Verify the API Response
+Open your browser’s developer console in Replit and inspect the response from:
+
+GET /api/player/:id/home
+Ensure it returns accurate onboarding data. After completing only Day 1, it should look like this:
+JSON
+{
+  "onboardingDay": 2,
+  "completedDays": [1],
+  "isOnboardingComplete": false,
+  "streak": 1,
+  "hasCompletedHabitToday": true
+}
+If you see this instead:
+JSON
+"completedDays": [1,2,3,4,5]
+Then the issue is on the backend. Reset your database or clear the completions table.
+🔧 Step 2: Ensure the Correct Habit IDs Are Saved
+Your backend expects:
+TypeScript
+const ONBOARDING_HABIT_TO_DAY = {
+  "guided_calm-breathing": 1,
+  "guided_light-movement": 2,
+  "guided_hydration-check": 3,
+  "guided_focus-block": 4,
+  "guided_plan-tomorrow": 5,
+};
+Add this debug log to server/routes.ts:
+TypeScript
+console.log("All Completions:", allCompletions);
+console.log("Derived Completed Days:", completedDays);
+Restart the server and verify that only Day 1 is recorded after the first session.
+🔧 Step 3: Fix the Completion Screen Trigger
+Update HomePage.tsx to ensure the completion screen appears only when valid and confirmed by the server.
+TypeScript
+if (
+  justCompletedDayId !== null &&
+  homeData &&
+  homeData.completedDays.includes(justCompletedDayId)
+) {
+  const xp = justCompletedDayId * 5;
+
+  if (justCompletedDayId === 5) {
+    return (
+      <Day6SectographIntro
+        onComplete={() => setJustCompletedDayId(null)}
+        onCancel={() => setJustCompletedDayId(null)}
+      />
+    );
+  }
+
+  return (
+    <OnboardingCompletionScreen
+      key={`completion-${justCompletedDayId}`}
+      day={justCompletedDayId}
+      xp={xp}
+      xpGoal={100}
+      streak={homeData.streak}
+      onClose={() => setJustCompletedDayId(null)}
+    />
+  );
+}
+This prevents Day 1 from appearing on subsequent days.
+🔧 Step 4: Prevent Duplicate Session Storage Triggers
+Ensure GuidedSessionPage.tsx writes to session storage only once.
+TypeScript
+const hasRecordedCompletion = useRef(false);
+
+const recordCompletion = (day: number) => {
+  if (hasRecordedCompletion.current) return;
+  hasRecordedCompletion.current = true;
+
+  sessionStorage.setItem(
+    "ascend_just_completed_day",
+    String(day)
+  );
+};
+Use it when completing a session:
+TypeScript
+const completedDay = ONBOARDING_SESSION_TO_DAY[sessionId];
+if (completedDay) {
+  recordCompletion(completedDay);
+  setLocation("/");
+}
+🔧 Step 5: Clear Stale React Query Cache
+Ensure fresh data is fetched after completion.
+TypeScript
+await queryClient.invalidateQueries({ queryKey: ["home"] });
+await queryClient.refetchQueries({ queryKey: ["home"] });
+🔧 Step 6: Correct Backend Onboarding Calculation
+Replace your onboarding logic in server/routes.ts with:
+TypeScript
+const TOTAL_ONBOARDING_DAYS = 5;
+
+const completedDays: number[] = [];
+
+for (const [habitId, day] of Object.entries(ONBOARDING_HABIT_TO_DAY)) {
+  if (allCompletions.some(c => c.habitId === habitId)) {
+    completedDays.push(day);
+  }
+}
+
+completedDays.sort((a, b) => a - b);
+
+const onboardingDay = Math.min(
+  completedDays.length + 1,
+  TOTAL_ONBOARDING_DAYS
+);
+
+const isOnboardingComplete =
+  completedDays.length >= TOTAL_ONBOARDING_DAYS;
+Return:
+TypeScript
+res.json({
+  onboardingDay,
+  completedDays,
+  isOnboardingComplete,
+  streak,
+  hasCompletedHabitToday,
+});
+🧪 Step 7: Reset Test Data
+Before retesting, clear stored data.
+In the browser console:
+JavaScript
+sessionStorage.removeItem("ascend_just_completed_day");
+localStorage.clear();
+If using SQLite or PostgreSQL:
+SQL
+DELETE FROM completions;
+Restart the server afterward.
+✅ Expected Behavior
+Action
+Expected Result
+Complete Day 1
+Shows "Day 1 Complete – 5/100 XP"
+Return Home
+Day 2 becomes available
+Complete Day 2
+Shows "Day 2 Complete – 10/100 XP"
+Complete Day 5
+Launches Sectograph Intro
+Refresh Page
+Progress remains accurate
+Progress Dots
+Reflect only completed days
+📋 Debug Checklist
+Check
+Status
+API returns correct completedDays
+☐
+Session IDs match backend habit IDs
+☐
+Query cache invalidates after completion
+☐
+Completion screen gated by server data
+☐
+Session storage fires only once
+☐
+Database reset performed
+☐

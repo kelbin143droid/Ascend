@@ -501,8 +501,10 @@ export default function GuidedSessionPage() {
   const [showDayClose, setShowDayClose] = useState(false);
   const [showDay5Expansion, setShowDay5Expansion] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  const intervalRef        = useRef<ReturnType<typeof setInterval> | null>(null);
-  const completeTimeoutRef = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const intervalRef             = useRef<ReturnType<typeof setInterval> | null>(null);
+  const completeTimeoutRef      = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  // Prevents duplicate sessionStorage writes if callbacks fire more than once
+  const hasRecordedCompletion   = useRef(false);
 
   // Unlock HTMLAudioElement playback immediately on page mount for breathing sessions.
   // The browser requires at least one .play() that traces back to a user gesture.
@@ -528,6 +530,27 @@ export default function GuidedSessionPage() {
     staleTime: 30000,
   });
 
+  // Single-source mappings used by advanceFromCompleting and engine callbacks
+  const ONBOARDING_SESSION_TO_DAY: Record<string, number> = {
+    "calm-breathing": 1, "light-movement": 2, "hydration-check": 3,
+    "focus-block": 4, "plan-tomorrow": 5,
+  };
+  const ONBOARDING_SESSION_TO_HABIT: Record<string, string> = {
+    "calm-breathing": "guided_calm-breathing",
+    "light-movement": "guided_light-movement",
+    "hydration-check": "guided_hydration-check",
+    "focus-block": "guided_focus-block",
+    "plan-tomorrow": "guided_plan-tomorrow",
+  };
+
+  // Write to sessionStorage exactly once per page mount — guards against
+  // duplicate calls from re-renders, retry paths, or overlapping callbacks.
+  const recordCompletion = (day: number) => {
+    if (hasRecordedCompletion.current) return;
+    hasRecordedCompletion.current = true;
+    sessionStorage.setItem("ascend_just_completed_day", String(day));
+  };
+
   /* Advance out of "completing" — only called on confirmed server success */
   const advanceFromCompleting = useCallback(() => {
     if (completeTimeoutRef.current) {
@@ -537,22 +560,9 @@ export default function GuidedSessionPage() {
     queryClient.invalidateQueries({ queryKey: ["home"] });
     queryClient.invalidateQueries({ queryKey: ["/api/player"] });
 
-    // For onboarding sessions, signal the home page to show the completion screen
-    const ONBOARDING_SESSION_TO_DAY: Record<string, number> = {
-      "calm-breathing": 1, "light-movement": 2, "hydration-check": 3,
-      "focus-block": 4, "plan-tomorrow": 5,
-    };
-    // Explicit habitId mapping — matches what the server stores as guided_<session>
-    const ONBOARDING_SESSION_TO_HABIT: Record<string, string> = {
-      "calm-breathing": "guided_calm-breathing",
-      "light-movement": "guided_light-movement",
-      "hydration-check": "guided_hydration-check",
-      "focus-block": "guided_focus-block",
-      "plan-tomorrow": "guided_plan-tomorrow",
-    };
     const completedOnboardingDay = ONBOARDING_SESSION_TO_DAY[sessionId];
     if (completedOnboardingDay) {
-      sessionStorage.setItem("ascend_just_completed_day", String(completedOnboardingDay));
+      recordCompletion(completedOnboardingDay);
       setLocation("/");
       return;
     }
@@ -565,14 +575,6 @@ export default function GuidedSessionPage() {
       setState("done");
     }
   }, [homeData, queryClient, sessionId, setLocation]);
-
-  const ONBOARDING_SESSION_TO_HABIT: Record<string, string> = {
-    "calm-breathing": "guided_calm-breathing",
-    "light-movement": "guided_light-movement",
-    "hydration-check": "guided_hydration-check",
-    "focus-block": "guided_focus-block",
-    "plan-tomorrow": "guided_plan-tomorrow",
-  };
 
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -683,7 +685,7 @@ export default function GuidedSessionPage() {
   if (sessionId === "light-movement" && player?.id) {
     const handleLightMovementComplete = () => {
       queryClient.invalidateQueries({ queryKey: ["home"] });
-      sessionStorage.setItem("ascend_just_completed_day", "2");
+      recordCompletion(2);
       setLocation("/");
     };
 
@@ -700,7 +702,7 @@ export default function GuidedSessionPage() {
   if (sessionId === "focus-block" && player?.id) {
     const handleCardioComplete = () => {
       queryClient.invalidateQueries({ queryKey: ["home"] });
-      sessionStorage.setItem("ascend_just_completed_day", "4");
+      recordCompletion(4);
       setLocation("/");
     };
 
