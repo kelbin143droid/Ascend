@@ -1,13 +1,32 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Sparkles, ArrowRight } from "lucide-react";
-import { ONBOARDING_CONFIG, TOTAL_ONBOARDING_DAYS, TOTAL_ONBOARDING_XP } from "./onboardingConfig";
+import { CheckCircle2, Sparkles, ArrowRight, Clock } from "lucide-react";
+import { ONBOARDING_CONFIG, TOTAL_ONBOARDING_DAYS, TOTAL_ONBOARDING_XP, getPostDay5LockInfo } from "./onboardingConfig";
 
 interface OnboardingCompleteScreenProps {
   streak: number;
   onEnter: () => void;
 }
 
+function formatCountdown(ms: number): string {
+  const total = Math.max(0, ms);
+  const h = Math.floor(total / 3600000);
+  const m = Math.floor((total % 3600000) / 60000);
+  const s = Math.floor((total % 60000) / 1000);
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function OnboardingCompleteScreen({ streak, onEnter }: OnboardingCompleteScreenProps) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const lockInfo = getPostDay5LockInfo();
+  const isLocked = lockInfo.locked && now < lockInfo.unlockAt;
+  const remainingMs = Math.max(0, lockInfo.unlockAt - now);
+
   return (
     <div
       data-testid="onboarding-complete-screen"
@@ -241,36 +260,82 @@ export function OnboardingCompleteScreen({ streak, onEnter }: OnboardingComplete
           })}
         </motion.div>
 
-        {/* CTA */}
-        <motion.button
-          data-testid="button-enter-ascend"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55 }}
-          onClick={onEnter}
-          style={{
-            width: "100%",
-            padding: "17px",
-            borderRadius: 18,
-            background: "linear-gradient(135deg, #8A5CFF, #EC4899)",
-            border: "none",
-            color: "#fff",
-            fontSize: 16,
-            fontWeight: 700,
-            fontFamily: "Inter, system-ui, sans-serif",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            boxShadow: "0 4px 32px rgba(138,92,255,0.4)",
-            letterSpacing: "0.03em",
-          }}
-          whileTap={{ scale: 0.97 }}
-        >
-          Enter Ascend OS
-          <ArrowRight size={18} />
-        </motion.button>
+        {/* CTA — locked or ready */}
+        {isLocked ? (
+          <motion.div
+            data-testid="lock-timer-ascend"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            style={{
+              width: "100%",
+              padding: "17px",
+              borderRadius: 18,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Clock size={18} color="rgba(245,245,255,0.4)" />
+              <span
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: "rgba(245,245,255,0.6)",
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {formatCountdown(remainingMs)}
+              </span>
+            </div>
+            <p
+              style={{
+                fontSize: 12,
+                color: "rgba(245,245,255,0.35)",
+                margin: 0,
+                fontFamily: "Inter, system-ui, sans-serif",
+                textAlign: "center",
+              }}
+            >
+              Ascend OS unlocks in a few hours.{"\n"}Let the foundation settle.
+            </p>
+          </motion.div>
+        ) : (
+          <motion.button
+            data-testid="button-enter-ascend"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            onClick={onEnter}
+            style={{
+              width: "100%",
+              padding: "17px",
+              borderRadius: 18,
+              background: "linear-gradient(135deg, #8A5CFF, #EC4899)",
+              border: "none",
+              color: "#fff",
+              fontSize: 16,
+              fontWeight: 700,
+              fontFamily: "Inter, system-ui, sans-serif",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              boxShadow: "0 4px 32px rgba(138,92,255,0.4)",
+              letterSpacing: "0.03em",
+            }}
+            whileTap={{ scale: 0.97 }}
+          >
+            Enter Ascend OS
+            <ArrowRight size={18} />
+          </motion.button>
+        )}
       </div>
     </div>
   );

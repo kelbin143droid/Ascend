@@ -313,15 +313,18 @@ export async function registerRoutes(
       const rawXP = Math.round(baseXP * tierMultiplier * antiGrindMultiplier);
       let guidedXP = Math.min(rawXP, remainingCap);
 
-      // Onboarding sessions always award exactly +5 XP (first completion only) and increment streak
-      const ONBOARDING_SESSION_IDS = new Set(["calm-breathing", "light-movement", "hydration-check", "focus-block", "plan-tomorrow"]);
+      // Onboarding sessions skip stat XP and award a fixed amount on first completion.
+      // quick-reflection is Day 3's paired second session — it's in onboarding but awards 0 XP
+      // (hydration-check already gives Day 3's 5 XP) and does not increment streak.
+      const ONBOARDING_SESSION_IDS = new Set(["calm-breathing", "light-movement", "hydration-check", "quick-reflection", "focus-block", "plan-tomorrow"]);
+      const ONBOARDING_CHAINED_IDS = new Set(["quick-reflection"]); // paired sessions: no XP, no streak
       const isOnboardingSession = ONBOARDING_SESSION_IDS.has(parsed.data.sessionId);
       let isFirstOnboardingCompletion = false;
       if (isOnboardingSession) {
         const allPlayerCompletions = await storage.getHabitCompletions(req.params.id);
         isFirstOnboardingCompletion = !allPlayerCompletions.some(c => c.habitId === sessionHabitId);
         if (isFirstOnboardingCompletion) {
-          guidedXP = 5;
+          guidedXP = ONBOARDING_CHAINED_IDS.has(parsed.data.sessionId) ? 0 : 5;
         }
       }
 
@@ -334,19 +337,6 @@ export async function registerRoutes(
         xpEarned: guidedXP,
       });
 
-      const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
-      const statKey = parsed.data.stat as keyof typeof currentStatXP;
-      const newStatXP = {
-        ...currentStatXP,
-        [statKey]: (currentStatXP[statKey] || 0) + guidedXP,
-      };
-      const derivedStats = {
-        strength: getStatLevel(newStatXP.strength).level,
-        agility: getStatLevel(newStatXP.agility).level,
-        sense: getStatLevel(newStatXP.sense).level,
-        vitality: getStatLevel(newStatXP.vitality).level,
-      };
-
       const stabilityData = player.stability || {
         score: 50, habitCompletionPct: 0, sleepConsistency: 50,
         energyCompliance: 50, emotionalStability: 50,
@@ -358,12 +348,30 @@ export async function registerRoutes(
 
       const playerUpdates: Record<string, any> = {
         stability: updatedStability,
-        statXP: newStatXP,
-        stats: derivedStats,
         trainingScaling: updatedScaling,
       };
-      // Increment streak for first-time onboarding session completions
-      if (isFirstOnboardingCompletion) {
+
+      // During active onboarding (completing an onboarding session), skip stat XP entirely.
+      // Stat progression starts only after the 5-day onboarding journey is complete.
+      if (!isOnboardingSession) {
+        const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+        const statKey = parsed.data.stat as keyof typeof currentStatXP;
+        const newStatXP = {
+          ...currentStatXP,
+          [statKey]: (currentStatXP[statKey] || 0) + guidedXP,
+        };
+        const derivedStats = {
+          strength: getStatLevel(newStatXP.strength).level,
+          agility: getStatLevel(newStatXP.agility).level,
+          sense: getStatLevel(newStatXP.sense).level,
+          vitality: getStatLevel(newStatXP.vitality).level,
+        };
+        playerUpdates.statXP = newStatXP;
+        playerUpdates.stats = derivedStats;
+      }
+
+      // Increment streak for first-time onboarding session completions (not for chained/paired sessions)
+      if (isFirstOnboardingCompletion && !ONBOARDING_CHAINED_IDS.has(parsed.data.sessionId)) {
         playerUpdates.streak = (player.streak ?? 0) + 1;
       }
       await storage.updatePlayer(req.params.id, playerUpdates);

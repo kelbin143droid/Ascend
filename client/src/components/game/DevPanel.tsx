@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap, RotateCcw, Info, SkipForward } from "lucide-react";
+import { clearOnboardingTimestamps } from "@/features/onboarding/onboardingConfig";
 
 const DAY_SESSION_MAP: Record<number, { sessionId: string; stat: string; durationMinutes: number }> = {
   1: { sessionId: "calm-breathing",  stat: "sense",   durationMinutes: 2 },
@@ -62,6 +63,8 @@ export function DevPanel() {
     if (!player?.id || loading) return;
     setLoading(true);
     setLastResult(null);
+    clearOnboardingTimestamps();
+    sessionStorage.removeItem("ascend_just_completed_day");
     try {
       const res = await fetch(`/api/player/${player.id}/dev/simulate-day`, {
         method: "POST",
@@ -86,6 +89,8 @@ export function DevPanel() {
     if (!player?.id || loading) return;
     setLoading(true);
     setLastResult(null);
+    clearOnboardingTimestamps();
+    sessionStorage.removeItem("ascend_just_completed_day");
     try {
       const res = await fetch(`/api/player/${player.id}/dev/go-back-day`, {
         method: "POST",
@@ -113,6 +118,9 @@ export function DevPanel() {
   const resetProgress = async () => {
     if (!player?.id || loading) return;
     setLoading(true);
+    clearOnboardingTimestamps();
+    sessionStorage.removeItem("ascend_just_completed_day");
+    localStorage.removeItem("ascend_day3_hydration_done");
     try {
       const res = await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
       localStorage.removeItem("ascend_light_movement_completed");
@@ -134,6 +142,9 @@ export function DevPanel() {
     if (!player?.id || loading) return;
     setLoading(true);
     setLastResult(null);
+    clearOnboardingTimestamps();
+    sessionStorage.removeItem("ascend_just_completed_day");
+    localStorage.removeItem("ascend_day3_hydration_done");
     try {
       const res = await fetch(`/api/player/${player.id}/dev/status`);
       const currentStatus: DevStatus = res.ok ? await res.json() : null;
@@ -161,6 +172,9 @@ export function DevPanel() {
     if (!player?.id || loading) return;
     setLoading(true);
     setLastResult(null);
+    clearOnboardingTimestamps();
+    sessionStorage.removeItem("ascend_just_completed_day");
+    localStorage.removeItem("ascend_day3_hydration_done");
     try {
       const currentStatus: DevStatus | null = status ?? await (async () => {
         const r = await fetch(`/api/player/${player.id}/dev/status`);

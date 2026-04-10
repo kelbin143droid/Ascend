@@ -530,9 +530,11 @@ export default function GuidedSessionPage() {
     staleTime: 30000,
   });
 
-  // Single-source mappings used by advanceFromCompleting and engine callbacks
+  // Single-source mappings used by advanceFromCompleting and engine callbacks.
+  // "hydration-check" is intentionally absent: it chains to "quick-reflection" instead
+  // of marking Day 3 complete directly.
   const ONBOARDING_SESSION_TO_DAY: Record<string, number> = {
-    "calm-breathing": 1, "light-movement": 2, "hydration-check": 3,
+    "calm-breathing": 1, "light-movement": 2, "quick-reflection": 3,
     "focus-block": 4, "plan-tomorrow": 5,
   };
   const ONBOARDING_SESSION_TO_HABIT: Record<string, string> = {
@@ -542,13 +544,20 @@ export default function GuidedSessionPage() {
     "focus-block": "guided_focus-block",
     "plan-tomorrow": "guided_plan-tomorrow",
   };
+  // Sessions that chain to the next session instead of returning home.
+  // hydration-check (Day 3 step 1) → quick-reflection (Day 3 step 2).
+  const ONBOARDING_SESSION_CHAINS: Record<string, string> = {
+    "hydration-check": "quick-reflection",
+  };
 
   // Write to sessionStorage exactly once per page mount — guards against
   // duplicate calls from re-renders, retry paths, or overlapping callbacks.
+  // Also persists a timestamp for the 8-hour inter-day lock.
   const recordCompletion = (day: number) => {
     if (hasRecordedCompletion.current) return;
     hasRecordedCompletion.current = true;
     sessionStorage.setItem("ascend_just_completed_day", String(day));
+    localStorage.setItem(`ascend_ob_day${day}_ts`, String(Date.now()));
   };
 
   /* Advance out of "completing" — only called on confirmed server success.
@@ -557,6 +566,14 @@ export default function GuidedSessionPage() {
     if (completeTimeoutRef.current) {
       clearTimeout(completeTimeoutRef.current);
       completeTimeoutRef.current = null;
+    }
+
+    // Check if this session chains to a follow-up (e.g. hydration-check → quick-reflection)
+    const chainTarget = ONBOARDING_SESSION_CHAINS[sessionId];
+    if (chainTarget) {
+      localStorage.setItem("ascend_day3_hydration_done", "true");
+      setLocation(`/guided-session/${chainTarget}`);
+      return;
     }
 
     const completedOnboardingDay = ONBOARDING_SESSION_TO_DAY[sessionId];

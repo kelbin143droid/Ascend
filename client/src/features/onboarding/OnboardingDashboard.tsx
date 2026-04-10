@@ -1,6 +1,7 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Lock, ChevronRight, Zap } from "lucide-react";
-import { ONBOARDING_CONFIG, TOTAL_ONBOARDING_DAYS } from "./onboardingConfig";
+import { CheckCircle2, Lock, ChevronRight, Zap, Clock } from "lucide-react";
+import { ONBOARDING_CONFIG, TOTAL_ONBOARDING_DAYS, getOnboardingLockInfo } from "./onboardingConfig";
 
 interface OnboardingDashboardProps {
   onboardingDay: number;
@@ -9,13 +10,30 @@ interface OnboardingDashboardProps {
   onStartDay: (day: number) => void;
 }
 
+function formatCountdown(ms: number): string {
+  const total = Math.max(0, ms);
+  const h = Math.floor(total / 3600000);
+  const m = Math.floor((total % 3600000) / 60000);
+  const s = Math.floor((total % 60000) / 1000);
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function OnboardingDashboard({
   onboardingDay,
   completedDays,
   streak,
   onStartDay,
 }: OnboardingDashboardProps) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const earnedXP = completedDays.length * 5;
+  const lockInfo = getOnboardingLockInfo(onboardingDay, completedDays);
+  const isTimeLocked = lockInfo.locked && Date.now() < lockInfo.unlockAt;
+  const remainingMs = Math.max(0, lockInfo.unlockAt - now);
 
   return (
     <div
@@ -219,15 +237,15 @@ export function OnboardingDashboard({
                               fontFamily: "Inter, system-ui, sans-serif",
                             }}
                           >
-                            Day {dayNum} · Today
+                            Day {dayNum} · {isTimeLocked ? "Locked" : "Today"}
                           </span>
                           <div
                             style={{
                               width: 6,
                               height: 6,
                               borderRadius: "50%",
-                              background: config.color,
-                              boxShadow: `0 0 6px ${config.color}`,
+                              background: isTimeLocked ? "rgba(245,245,255,0.2)" : config.color,
+                              boxShadow: isTimeLocked ? "none" : `0 0 6px ${config.color}`,
                             }}
                           />
                         </div>
@@ -262,29 +280,58 @@ export function OnboardingDashboard({
                         <Zap size={11} color="rgba(245,245,255,0.3)" />
                         +{config.xpReward} XP · {config.duration}
                       </span>
-                      <button
-                        data-testid={`button-start-day-${dayNum}`}
-                        onClick={() => onStartDay(dayNum)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "10px 18px",
-                          borderRadius: 12,
-                          background: `linear-gradient(135deg, ${config.color}, ${config.color}bb)`,
-                          border: "none",
-                          color: "#fff",
-                          fontSize: 13,
-                          fontWeight: 700,
-                          fontFamily: "Inter, system-ui, sans-serif",
-                          cursor: "pointer",
-                          boxShadow: `0 4px 16px ${config.color}40`,
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        Start Session
-                        <ChevronRight size={15} />
-                      </button>
+
+                      {isTimeLocked ? (
+                        <div
+                          data-testid={`lock-countdown-day-${dayNum}`}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "10px 14px",
+                            borderRadius: 12,
+                            background: "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                          }}
+                        >
+                          <Clock size={13} color="rgba(245,245,255,0.4)" />
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: "rgba(245,245,255,0.5)",
+                              fontFamily: "Inter, system-ui, sans-serif",
+                              letterSpacing: "0.04em",
+                            }}
+                          >
+                            {formatCountdown(remainingMs)}
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          data-testid={`button-start-day-${dayNum}`}
+                          onClick={() => onStartDay(dayNum)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "10px 18px",
+                            borderRadius: 12,
+                            background: `linear-gradient(135deg, ${config.color}, ${config.color}bb)`,
+                            border: "none",
+                            color: "#fff",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            fontFamily: "Inter, system-ui, sans-serif",
+                            cursor: "pointer",
+                            boxShadow: `0 4px 16px ${config.color}40`,
+                            letterSpacing: "0.02em",
+                          }}
+                        >
+                          Start Session
+                          <ChevronRight size={15} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -365,7 +412,9 @@ export function OnboardingDashboard({
               fontStyle: "italic",
             }}
           >
-            {completedDays.length === 0
+            {isTimeLocked
+              ? "Rest is part of the protocol. Your next session unlocks soon."
+              : completedDays.length === 0
               ? "Begin with one small action. That's enough."
               : completedDays.length < 4
               ? "Consistency is becoming your baseline."

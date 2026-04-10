@@ -4,6 +4,7 @@ export interface OnboardingDayConfig {
   title: string;
   subtitle: string;
   sessionId: string;
+  sessions: string[];
   xpReward: number;
   icon: LucideIcon;
   category: string;
@@ -17,6 +18,7 @@ export const ONBOARDING_CONFIG: Record<number, OnboardingDayConfig> = {
     title: "Reset",
     subtitle: "Breathing exercises to center yourself",
     sessionId: "calm-breathing",
+    sessions: ["calm-breathing"],
     xpReward: 5,
     icon: Wind,
     category: "BREATHING",
@@ -28,6 +30,7 @@ export const ONBOARDING_CONFIG: Record<number, OnboardingDayConfig> = {
     title: "Light Movement",
     subtitle: "Gentle stretches and mobility exercises",
     sessionId: "light-movement",
+    sessions: ["light-movement"],
     xpReward: 5,
     icon: Heart,
     category: "MOVEMENT",
@@ -39,17 +42,19 @@ export const ONBOARDING_CONFIG: Record<number, OnboardingDayConfig> = {
     title: "Hydration & Reflection",
     subtitle: "Nourish your body and mind",
     sessionId: "hydration-check",
+    sessions: ["hydration-check", "quick-reflection"],
     xpReward: 5,
     icon: Droplets,
     category: "VITALITY",
     color: "#06B6D4",
-    description: "Drink water, check in with your body, and note one honest observation.",
-    duration: "1–2 min",
+    description: "Drink water, check in with your body, then take a quiet moment to reflect on what you noticed.",
+    duration: "2–3 min",
   },
   4: {
     title: "Light Cardio",
     subtitle: "Boost your energy with light exercise",
     sessionId: "focus-block",
+    sessions: ["focus-block"],
     xpReward: 5,
     icon: Zap,
     category: "CARDIO",
@@ -61,6 +66,7 @@ export const ONBOARDING_CONFIG: Record<number, OnboardingDayConfig> = {
     title: "Sectograph Introduction",
     subtitle: "Visualize and organize your day",
     sessionId: "plan-tomorrow",
+    sessions: ["plan-tomorrow"],
     xpReward: 5,
     icon: Clock,
     category: "PLANNING",
@@ -73,3 +79,32 @@ export const ONBOARDING_CONFIG: Record<number, OnboardingDayConfig> = {
 export const TOTAL_ONBOARDING_DAYS = 5;
 export const XP_PER_DAY = 5;
 export const TOTAL_ONBOARDING_XP = TOTAL_ONBOARDING_DAYS * XP_PER_DAY;
+
+export const LOCK_HOURS = 8;
+
+export function getOnboardingLockInfo(onboardingDay: number, completedDays: number[]): {
+  locked: boolean;
+  unlockAt: number;
+} {
+  if (onboardingDay <= 1) return { locked: false, unlockAt: 0 };
+  const prevDay = onboardingDay - 1;
+  if (!completedDays.includes(prevDay)) return { locked: false, unlockAt: 0 };
+  const tsKey = `ascend_ob_day${prevDay}_ts`;
+  const ts = parseInt(localStorage.getItem(tsKey) || "0", 10);
+  if (!ts) return { locked: false, unlockAt: 0 };
+  const unlockAt = ts + LOCK_HOURS * 60 * 60 * 1000;
+  return { locked: Date.now() < unlockAt, unlockAt };
+}
+
+export function getPostDay5LockInfo(): { locked: boolean; unlockAt: number } {
+  const ts = parseInt(localStorage.getItem("ascend_ob_day5_ts") || "0", 10);
+  if (!ts) return { locked: false, unlockAt: 0 };
+  const unlockAt = ts + LOCK_HOURS * 60 * 60 * 1000;
+  return { locked: Date.now() < unlockAt, unlockAt };
+}
+
+export function clearOnboardingTimestamps(): void {
+  for (let d = 1; d <= TOTAL_ONBOARDING_DAYS; d++) {
+    localStorage.removeItem(`ascend_ob_day${d}_ts`);
+  }
+}
