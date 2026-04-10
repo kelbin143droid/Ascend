@@ -23,11 +23,23 @@ import {
   CalendarDays,
   Sparkles,
   Eye,
+  EyeOff,
   Play,
   Pause,
   X,
   Target,
   Activity,
+  Zap,
+  Moon,
+  Briefcase,
+  Coffee,
+  Book,
+  Sunrise,
+  Gamepad2,
+  Wind,
+  Heart,
+  Dumbbell,
+  Settings2,
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
 
@@ -65,6 +77,31 @@ const SEGMENT_LABELS: Record<string, { label: string; color: string }> = {
   focus: { label: "Focus", color: "#6b5b8a" },
   open: { label: "Open Time", color: "#22c55e" },
 };
+
+const BLOCK_PRESETS = [
+  { id: "sleep", name: "Sleep", icon: Moon, color: "#3b4d6b", defaultStart: { h: 22, m: 0 }, defaultEnd: { h: 6, m: 0 } },
+  { id: "work", name: "Work", icon: Briefcase, color: "#4a6fa5", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 17, m: 0 } },
+  { id: "study", name: "Study", icon: Book, color: "#5a8a72", defaultStart: { h: 18, m: 0 }, defaultEnd: { h: 20, m: 0 } },
+  { id: "strength", name: "Strength", icon: Dumbbell, color: "#ef4444", defaultStart: { h: 7, m: 0 }, defaultEnd: { h: 7, m: 45 } },
+  { id: "agility", name: "Agility", icon: Wind, color: "#22c55e", defaultStart: { h: 7, m: 45 }, defaultEnd: { h: 8, m: 15 } },
+  { id: "vitality", name: "Vitality", icon: Heart, color: "#a855f7", defaultStart: { h: 8, m: 15 }, defaultEnd: { h: 8, m: 30 } },
+  { id: "wakeup", name: "Wake Up", icon: Sunrise, color: "#f97316", defaultStart: { h: 6, m: 0 }, defaultEnd: { h: 6, m: 30 } },
+  { id: "meal", name: "Meal", icon: Coffee, color: "#7d9d6a", defaultStart: { h: 12, m: 0 }, defaultEnd: { h: 13, m: 0 } },
+  { id: "leisure", name: "Leisure", icon: Gamepad2, color: "#8b7aa3", defaultStart: { h: 20, m: 0 }, defaultEnd: { h: 22, m: 0 } },
+  { id: "custom", name: "Custom", icon: Zap, color: "#6b7280", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 10, m: 0 } },
+];
+
+interface EditingBlock {
+  id: string;
+  name: string;
+  startHour: number;
+  startMinute: number;
+  endHour: number;
+  endMinute: number;
+  color: string;
+  isSystemTask?: boolean;
+  isNew?: boolean;
+}
 
 function getAwarenessInsight(schedule: ScheduleBlock[], freeWindows: FreeWindow[]): string | null {
   const now = new Date();
@@ -127,7 +164,7 @@ export default function SectographPage() {
   const [, navigate] = useLocation();
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
-  const { player } = useGame();
+  const { player, updatePlayer } = useGame();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<ViewTab>("sectograph");
@@ -150,6 +187,15 @@ export default function SectographPage() {
   const [activeFocus, setActiveFocus] = useState<{ block: ActiveFocusBlock; endTime: number; label: string } | null>(null);
   const [focusRemaining, setFocusRemaining] = useState(0);
   const [focusPaused, setFocusPaused] = useState(false);
+
+  const [showAddBlock, setShowAddBlock] = useState(false);
+  const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
+  const [customBlockName, setCustomBlockName] = useState("");
+
+  const [showAnchors, setShowAnchors] = useState(true);
+  const [showRhythm, setShowRhythm] = useState(true);
+  const [showSuggested, setShowSuggested] = useState(true);
+  const [showInsight, setShowInsight] = useState(true);
 
   // Weekly planning state
   const { roles } = useRoles();
@@ -303,6 +349,54 @@ export default function SectographPage() {
     setActiveFocus(null);
     setFocusRemaining(0);
     setFocusPaused(false);
+  };
+
+  const handlePresetClick = (preset: typeof BLOCK_PRESETS[0]) => {
+    const existing = (player?.schedule ?? []).find((b: any) => b.id === preset.id);
+    if (existing) {
+      setEditingBlock({
+        ...existing,
+        startMinute: existing.startMinute ?? 0,
+        endMinute: existing.endMinute ?? 0,
+        isNew: false,
+      });
+    } else {
+      setEditingBlock({
+        id: preset.id === "custom" ? `custom_${Date.now()}` : `${preset.id}_${Date.now()}`,
+        name: preset.id === "custom" ? "" : preset.name,
+        startHour: preset.defaultStart.h,
+        startMinute: preset.defaultStart.m,
+        endHour: preset.defaultEnd.h,
+        endMinute: preset.defaultEnd.m,
+        color: preset.color,
+        isSystemTask: ["strength", "agility", "vitality", "work", "study"].includes(preset.id),
+        isNew: true,
+      });
+      if (preset.id === "custom") setCustomBlockName("");
+    }
+    setShowAddBlock(false);
+  };
+
+  const handleSaveBlock = () => {
+    if (!editingBlock || !player) return;
+    const name = editingBlock.id.startsWith("custom") ? (customBlockName || "Custom Block") : editingBlock.name;
+    const blockFinal = { ...editingBlock, name };
+    delete (blockFinal as any).isNew;
+    const current: ScheduleBlock[] = (player.schedule ?? []) as ScheduleBlock[];
+    const newSchedule = editingBlock.isNew
+      ? [...current, blockFinal]
+      : current.map((b: any) => b.id === blockFinal.id ? blockFinal : b);
+    updatePlayer({ schedule: newSchedule });
+    setEditingBlock(null);
+    setCustomBlockName("");
+  };
+
+  const handleDeleteBlock = () => {
+    if (!editingBlock || !player) return;
+    const current: ScheduleBlock[] = (player.schedule ?? []) as ScheduleBlock[];
+    const newSchedule = current.filter((b: any) => b.id !== editingBlock.id);
+    updatePlayer({ schedule: newSchedule });
+    setEditingBlock(null);
   };
 
   const monthKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
@@ -556,19 +650,62 @@ export default function SectographPage() {
                 schedule={activeSchedule}
                 size={300}
                 showAwareness={true}
-                anchors={behavioralAnchors}
+                anchors={showAnchors ? behavioralAnchors : []}
                 focusBlock={activeFocus?.block ?? null}
-                rhythmWindows={rhythmWindows}
-                suggestedPlacements={placementSuggestions}
-                onCenterClick={() => navigate("/schedule")}
+                rhythmWindows={showRhythm ? rhythmWindows : []}
+                suggestedPlacements={showSuggested ? placementSuggestions : []}
+                onCenterClick={() => setShowAddBlock(true)}
+                onBlockClick={(block) => {
+                  const blk = block as any;
+                  setEditingBlock({
+                    id: blk.id,
+                    name: blk.name || blk.label || "",
+                    startHour: blk.startHour,
+                    startMinute: blk.startMinute ?? 0,
+                    endHour: blk.endHour,
+                    endMinute: blk.endMinute ?? 0,
+                    color: blk.color || "#6b7280",
+                    isSystemTask: blk.isSystemTask,
+                    isNew: false,
+                  });
+                }}
                 onFreeWindowClick={(w) => {
                   setFocusDuration(Math.min(w.durationMinutes, 30));
                   setShowFocusSetup(true);
                 }}
-                onSuggestedPlacementClick={(sp) => {
+                onSuggestedPlacementClick={() => {
                   navigate("/habits");
                 }}
               />
+            </div>
+
+            {/* ── LAYER TOGGLES ─────────────────────────────────────── */}
+            <div className="w-full" data-testid="sectograph-filters">
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                <Settings2 size={11} style={{ color: colors.textMuted, opacity: 0.5 }} />
+                {[
+                  { key: "anchors", label: "Anchors", value: showAnchors, set: setShowAnchors, color: "#f59e0b" },
+                  { key: "rhythm", label: "Rhythm", value: showRhythm, set: setShowRhythm, color: "#6366f1" },
+                  { key: "suggest", label: "Suggested", value: showSuggested, set: setShowSuggested, color: "#22d3ee" },
+                  { key: "insight", label: "Insight", value: showInsight, set: setShowInsight, color: colors.primary },
+                ].map(({ key, label, value, set, color }) => (
+                  <button
+                    key={key}
+                    data-testid={`toggle-${key}`}
+                    onClick={() => set(v => !v)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-all"
+                    style={{
+                      backgroundColor: value ? `${color}20` : "transparent",
+                      border: `1px solid ${value ? color + "50" : colors.surfaceBorder}`,
+                      color: value ? color : colors.textMuted,
+                      opacity: value ? 1 : 0.55,
+                    }}
+                  >
+                    {value ? <Eye size={9} /> : <EyeOff size={9} />}
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {activeFocus && (
@@ -640,7 +777,7 @@ export default function SectographPage() {
               </button>
             )}
 
-            {awarenessInsight && (
+            {awarenessInsight && showInsight && (
               <div
                 className="w-full rounded-lg p-3 flex items-start gap-3"
                 style={{
@@ -656,7 +793,7 @@ export default function SectographPage() {
               </div>
             )}
 
-            {rhythmInsights.length > 0 && (
+            {rhythmInsights.length > 0 && showInsight && (
               <div
                 className="w-full rounded-lg p-4"
                 style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
@@ -1376,6 +1513,146 @@ export default function SectographPage() {
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── ADD BLOCK — preset picker ─────────────────────────── */}
+        <Dialog open={showAddBlock} onOpenChange={setShowAddBlock}>
+          <DialogContent className="max-w-sm border-white/10" style={{ backgroundColor: colors.surface }}>
+            <DialogHeader>
+              <DialogTitle className="text-sm font-display font-bold" style={{ color: colors.text }}>
+                Add Time Block
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-[11px] mb-3" style={{ color: colors.textMuted }}>
+              Choose a block type to add to your timeline
+            </p>
+            <div className="grid grid-cols-5 gap-2">
+              {BLOCK_PRESETS.map((preset) => {
+                const Icon = preset.icon;
+                return (
+                  <button
+                    key={preset.id}
+                    data-testid={`preset-${preset.id}`}
+                    onClick={() => handlePresetClick(preset)}
+                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95"
+                    style={{ backgroundColor: `${preset.color}15`, border: `1px solid ${preset.color}30` }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${preset.color}25` }}
+                    >
+                      <Icon size={16} style={{ color: preset.color }} />
+                    </div>
+                    <span className="text-[9px] font-medium text-center leading-tight" style={{ color: preset.color }}>
+                      {preset.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── EDIT / CONFIRM BLOCK ─────────────────────────────── */}
+        <Dialog open={editingBlock !== null} onOpenChange={(o) => !o && setEditingBlock(null)}>
+          <DialogContent className="max-w-sm border-white/10" style={{ backgroundColor: colors.surface }}>
+            <DialogHeader>
+              <DialogTitle className="text-sm font-display font-bold" style={{ color: colors.text }}>
+                {editingBlock?.isNew ? "Add Block" : "Edit Block"}
+              </DialogTitle>
+            </DialogHeader>
+            {editingBlock && (
+              <div className="space-y-4">
+                {editingBlock.id.startsWith("custom") && (
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block" style={{ color: colors.textMuted }}>
+                      Name
+                    </label>
+                    <Input
+                      value={customBlockName}
+                      onChange={(e) => setCustomBlockName(e.target.value)}
+                      placeholder="Block name…"
+                      className="bg-white/5 border-white/10 text-sm"
+                      style={{ color: colors.text }}
+                      data-testid="input-custom-block-name"
+                    />
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block" style={{ color: colors.textMuted }}>
+                      Start
+                    </label>
+                    <Input
+                      type="time"
+                      value={`${String(editingBlock.startHour).padStart(2, "0")}:${String(editingBlock.startMinute).padStart(2, "0")}`}
+                      onChange={(e) => {
+                        const [h, m] = e.target.value.split(":").map(Number);
+                        setEditingBlock({ ...editingBlock, startHour: h, startMinute: m });
+                      }}
+                      className="bg-white/5 border-white/10 text-sm"
+                      style={{ color: colors.text }}
+                      data-testid="input-block-start"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block" style={{ color: colors.textMuted }}>
+                      End
+                    </label>
+                    <Input
+                      type="time"
+                      value={`${String(editingBlock.endHour).padStart(2, "0")}:${String(editingBlock.endMinute).padStart(2, "0")}`}
+                      onChange={(e) => {
+                        const [h, m] = e.target.value.split(":").map(Number);
+                        setEditingBlock({ ...editingBlock, endHour: h, endMinute: m });
+                      }}
+                      className="bg-white/5 border-white/10 text-sm"
+                      style={{ color: colors.text }}
+                      data-testid="input-block-end"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <div
+                    className="w-5 h-5 rounded-full shrink-0 mt-0.5"
+                    style={{ backgroundColor: editingBlock.color }}
+                  />
+                  <span className="text-sm font-medium" style={{ color: colors.text }}>
+                    {editingBlock.id.startsWith("custom") ? (customBlockName || "Custom Block") : editingBlock.name}
+                  </span>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    onClick={handleSaveBlock}
+                    className="flex-1 text-sm"
+                    style={{ backgroundColor: colors.primary, color: "#fff" }}
+                    data-testid="button-save-block"
+                  >
+                    <Check size={14} className="mr-1" />
+                    {editingBlock.isNew ? "Add" : "Save"}
+                  </Button>
+                  {!editingBlock.isNew && (
+                    <Button
+                      onClick={handleDeleteBlock}
+                      variant="outline"
+                      className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      data-testid="button-delete-block"
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => setEditingBlock(null)}
+                    variant="outline"
+                    className="border-white/10"
+                    data-testid="button-cancel-block"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

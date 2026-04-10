@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   Menu,
@@ -39,6 +39,7 @@ export function SidebarMenu() {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const { player } = useGame();
+  const [, navigate] = useLocation();
 
   const { data: homeData } = useQuery<{ onboardingDay: number; isOnboardingComplete: boolean }>({
     queryKey: ["home", player?.id],
@@ -102,17 +103,16 @@ export function SidebarMenu() {
     }
 
     return (
-      <Link key={item.path} href={item.path}>
-        <button
-          data-testid={`sidebar-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-          onClick={() => setOpen(false)}
-          className="flex items-center gap-3 w-full px-5 py-3 text-left transition-colors duration-200 hover:bg-white/5"
-          style={{ color: colors.text }}
-        >
-          <item.icon size={18} style={{ color: colors.primary, opacity: 0.8 }} />
-          <span className="text-sm font-medium tracking-wide">{item.label}</span>
-        </button>
-      </Link>
+      <button
+        key={item.path}
+        data-testid={`sidebar-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+        onClick={() => { navigate(item.path); setOpen(false); }}
+        className="flex items-center gap-3 w-full px-5 py-3 text-left transition-colors duration-200 hover:bg-white/5"
+        style={{ color: colors.text }}
+      >
+        <item.icon size={18} style={{ color: colors.primary, opacity: 0.8 }} />
+        <span className="text-sm font-medium tracking-wide">{item.label}</span>
+      </button>
     );
   };
 
@@ -142,7 +142,7 @@ export function SidebarMenu() {
 
       <div
         data-testid="sidebar-menu"
-        className="fixed top-0 left-0 h-full z-50 transition-transform duration-300 ease-in-out w-72"
+        className="fixed top-0 left-0 h-full z-[60] transition-transform duration-300 ease-in-out w-72"
         style={{
           transform: open ? "translateX(0)" : "translateX(-100%)",
           backgroundColor: colors.background,
