@@ -346,12 +346,17 @@ export default function HomePage() {
   }
 
   // Show the completion screen / Sectograph intro only when:
-  //  (a) a day was just completed this navigation
-  //  (b) the server has confirmed that day is in completedDays[]
-  // This double-guard prevents any stale or spurious completion screens.
+  //  (a) a day was just completed this navigation (set by GuidedSessionPage via sessionStorage)
+  //  (b) that day is the MOST RECENTLY completed day confirmed by the server
+  // Checking against the last element (sorted ascending) — not just includes() — prevents
+  // a stale justCompletedDayId (e.g. "1" leftover) from triggering a Day 1 screen on Day 2+.
+  const lastCompletedDay = homeData.completedDays.length > 0
+    ? homeData.completedDays[homeData.completedDays.length - 1]
+    : null;
   if (
     justCompletedDayId !== null &&
-    homeData.completedDays.includes(justCompletedDayId)
+    lastCompletedDay !== null &&
+    justCompletedDayId === lastCompletedDay
   ) {
     const xp = justCompletedDayId * 5;
 
