@@ -61,6 +61,22 @@ Serves as a daily command center with Daily Status, Today's Training Flow, Sugge
 ### 5-Day Onboarding System
 A modular, futuristic onboarding flow replacing old inline logic. It defines 5 days of guided sessions with a dashboard, start screens, completion screens, and a final completion screen, using specific design elements and animations. Features are progressively unlocked based on onboarding day.
 
+### Day 6+ Home System (Post-Onboarding Dashboard)
+The post-onboarding home screen is rendered by `Day6Home.tsx` and powered by three modular client-side libraries:
+
+- **`client/src/lib/xpSystem.ts`**: Computes XP state (level, exp, maxExp, percent) from backend data. Flat 100 XP per level. Provides rank labels (E→S) and XP bar colors.
+- **`client/src/lib/statsSystem.ts`**: HP and Mana stat system persisted in localStorage (`ascend_stats_v2`). HP (Vitality) decreases 1% after 2 missed sleep checks (tracked via `ascend:sleep-check` window event). Mana (Calm Breathing/Meditation) decreases 1% after 2 consecutive missed Calm Breathing sessions. Good streaks restore 0.5% per session after 3 consecutive days.
+- **`client/src/lib/userState.ts`**: Combines flow completion tracking with stat updates. `markFlowCompleted(ids)` records date, updates breathing stats, and triggers daily decay.
+- **`client/src/components/game/Day6Home.tsx`**: Simplified home layout:
+  1. Header: player name, phase, Level chip, E-Rank label
+  2. XP bar (0/100 at Level 2)
+  3. HP bar (green→yellow→red) and Mana bar (blue→purple), with live values from localStorage
+  4. Begin Daily Flow button (full-width neon) OR "Flow completed today" state
+  5. Coach message card (from `homeData.insight`)
+  6. Show/Hide toggle for Today's Sessions (Calm Breathing, Agility Flow, Physical Circuit, Vitality Check) with completion checkmarks
+
+**Sleep check wiring**: `GuidedActivityEngine.tsx` dispatches `ascend:sleep-check` custom event (with `detail.sleptWell: boolean`) when the user answers the sleep check step. `Day6Home` listens for this event and calls `recordSleepCheck()` to update HP in real time.
+
 ### Level-Up Animation System (End of Onboarding)
 On Day 5 completion, the `OnboardingCompleteScreen` triggers a multi-phase level-up animation sequence before navigating to the home dashboard:
 - **Phase "filling-earned"**: XP bar animates 0 → 25 (earned XP during onboarding).

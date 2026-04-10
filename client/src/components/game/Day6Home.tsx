@@ -27,7 +27,7 @@ interface PlayerData {
 }
 
 interface Player {
-  id: number;
+  id: string;
 }
 
 interface ScalingData {
