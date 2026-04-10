@@ -37,6 +37,11 @@ interface SimulateResult {
   distinctActiveDays: number;
 }
 
+const POST_DAYS_KEY = (id: string) => `ascend_dev_postdays_${id}`;
+const getPostDays = (id: string) => parseInt(localStorage.getItem(POST_DAYS_KEY(id)) || "0", 10);
+const setPostDays = (id: string, n: number) => localStorage.setItem(POST_DAYS_KEY(id), String(n));
+const clearPostDays = (id: string) => localStorage.removeItem(POST_DAYS_KEY(id));
+
 export function DevPanel() {
   const { player } = useGame();
   const queryClient = useQueryClient();
@@ -45,6 +50,15 @@ export function DevPanel() {
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [daysInput, setDaysInput] = useState(1);
+  const [postOnboardingDays, setPostOnboardingDays] = useState(() =>
+    player?.id ? getPostDays(player.id) : 0
+  );
+
+  const displayDay = status
+    ? (status.onboardingCompleted
+      ? 5 + postOnboardingDays + 1
+      : status.onboardingDay)
+    : null;
 
   const fetchStatus = async () => {
     if (!player?.id) return;
@@ -73,7 +87,15 @@ export function DevPanel() {
       });
       if (res.ok) {
         const data: SimulateResult = await res.json();
-        setLastResult(`+${data.daysSimulated}d → Day ${data.newOnboardingDay}, ${data.completionsCreated} completions, streak ${data.newStreak}`);
+        const wasPostOnboarding = status?.onboardingCompleted ?? false;
+        let newPostDays = postOnboardingDays;
+        if (wasPostOnboarding) {
+          newPostDays = postOnboardingDays + data.daysSimulated;
+          setPostOnboardingDays(newPostDays);
+          setPostDays(player.id, newPostDays);
+        }
+        const shownDay = wasPostOnboarding ? 5 + newPostDays + 1 : data.newOnboardingDay;
+        setLastResult(`+${data.daysSimulated}d → Day ${shownDay}, streak ${data.newStreak}`);
         queryClient.invalidateQueries();
         fetchStatus();
       } else {
@@ -87,6 +109,14 @@ export function DevPanel() {
 
   const goBackDay = async () => {
     if (!player?.id || loading) return;
+    // If post-onboarding, just decrement our counter (no DB changes needed)
+    if (status?.onboardingCompleted && postOnboardingDays > 0) {
+      const newCount = postOnboardingDays - 1;
+      setPostOnboardingDays(newCount);
+      setPostDays(player.id, newCount);
+      setLastResult(`← Day ${5 + newCount + 1}`);
+      return;
+    }
     setLoading(true);
     setLastResult(null);
     clearOnboardingTimestamps();
@@ -121,6 +151,8 @@ export function DevPanel() {
     clearOnboardingTimestamps();
     sessionStorage.removeItem("ascend_just_completed_day");
     localStorage.removeItem("ascend_day3_hydration_done");
+    clearPostDays(player.id);
+    setPostOnboardingDays(0);
     try {
       const res = await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
       localStorage.removeItem("ascend_light_movement_completed");
@@ -145,11 +177,14 @@ export function DevPanel() {
     clearOnboardingTimestamps();
     sessionStorage.removeItem("ascend_just_completed_day");
     localStorage.removeItem("ascend_day3_hydration_done");
+    // Always reset post-onboarding counter — "Jump to Daily" means Day 6
+    clearPostDays(player.id);
+    setPostOnboardingDays(0);
     try {
-      const res = await fetch(`/api/player/${player.id}/dev/status`);
-      const currentStatus: DevStatus = res.ok ? await res.json() : null;
-      const onboardingCompleted = currentStatus?.onboardingCompleted ?? false;
-      if (!onboardingCompleted) {
+      const statusRes = await fetch(`/api/player/${player.id}/dev/status`);
+      const currentStatus: DevStatus = statusRes.ok ? await statusRes.json() : null;
+      const alreadyComplete = currentStatus?.onboardingCompleted ?? false;
+      if (!alreadyComplete) {
         const currentDay = currentStatus?.onboardingDay ?? 0;
         const daysNeeded = Math.max(0, 5 - currentDay + 1);
         if (daysNeeded > 0) {
@@ -158,11 +193,13 @@ export function DevPanel() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ days: daysNeeded, completeHabits: true }),
           });
-          if (!simRes.ok) { setLastResult("Error simulating to post-onboarding"); setLoading(false); return; }
+          if (!simRes.ok) { setLastResult("Error simulating onboarding days"); setLoading(false); return; }
         }
+        // Finalize onboarding — sets onboardingCompleted=1, level=2, XP=0
+        await fetch(`/api/player/${player.id}/onboarding-complete`, { method: "POST" });
       }
       localStorage.removeItem("ascend_light_movement_completed");
-      setLastResult("Jumped to Daily Flow home");
+      setLastResult("→ Day 6 · Post-onboarding home");
       queryClient.invalidateQueries();
       fetchStatus();
     } catch {
@@ -276,7 +313,7 @@ export function DevPanel() {
           {status && (
             <div className="space-y-1.5 mb-3">
               <div className="grid grid-cols-2 gap-1.5">
-                <StatusItem label="Day" value={String(status.onboardingDay)} />
+                <StatusItem label="Day" value={displayDay !== null ? String(displayDay) : String(status.onboardingDay)} />
                 <StatusItem label="Streak" value={String(status.streak)} />
                 <StatusItem label="Phase" value={String(status.phase)} />
                 <StatusItem label="Level" value={String(status.level)} />

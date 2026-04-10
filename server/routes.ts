@@ -174,16 +174,23 @@ export async function registerRoutes(
     try {
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
-      if (player.level >= 2) {
-        return res.json(attachDerivedStats(player, "Already leveled up"));
+      // Idempotent: if already completed, just return
+      if (player.onboardingCompleted === 1) {
+        return res.json(attachDerivedStats(player, "Already completed"));
       }
+      // Award XP to reach exactly Level 2 (100 total XP threshold)
       const LEVEL_2_THRESHOLD = 100;
       const current = player.totalExp ?? 0;
       const needed = Math.max(0, LEVEL_2_THRESHOLD - current);
-      const updated = needed > 0
-        ? await storage.gainExp(req.params.id, needed)
-        : player;
-      res.json(attachDerivedStats(updated!, "Level up! Welcome to Level 2."));
+      const afterXP = needed > 0 ? await storage.gainExp(req.params.id, needed) : player;
+      // Mark onboarding complete — reset exp to 0 at Level 2 for a clean start
+      const final = await storage.updatePlayer(req.params.id, {
+        onboardingCompleted: 1,
+        level: 2,
+        exp: 0,
+        totalExp: 100,
+      });
+      res.json(attachDerivedStats(final ?? afterXP!, "Level up! Welcome to Level 2."));
     } catch (error) {
       res.status(500).json({ error: "Failed to complete onboarding level-up" });
     }
