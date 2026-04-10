@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ChangeEvent } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
@@ -338,6 +338,126 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
       <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.25)" }}>
         Voice guided · Ambient audio
       </p>
+    </div>
+  );
+}
+
+const TIME_SLOTS = [
+  "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM",
+  "12:00 PM", "3:00 PM", "6:00 PM", "9:00 PM",
+];
+
+function PlanTomorrowSession({ accentColor, onDone }: { accentColor: string; onDone: () => void }) {
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [customTime, setCustomTime] = useState("");
+
+  const activeTime = selectedTime ?? (customTime ? customTime : null);
+
+  const handleConfirm = () => {
+    if (!activeTime) return;
+    localStorage.setItem("preferredReminderTime", activeTime);
+    onDone();
+  };
+
+  const handleCustomChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setCustomTime(e.target.value);
+    setSelectedTime(null);
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-6 px-4 w-full max-w-sm">
+      {/* Icon */}
+      <div
+        className="w-16 h-16 rounded-full flex items-center justify-center"
+        style={{ backgroundColor: `${accentColor}15` }}
+      >
+        <Brain size={28} style={{ color: accentColor }} />
+      </div>
+
+      {/* Heading */}
+      <div className="text-center space-y-2">
+        <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.85)" }}>
+          Choose a time for tomorrow's practice.
+        </p>
+        <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+          Structure protects consistency.
+        </p>
+      </div>
+
+      {/* Time slot grid */}
+      <div className="grid grid-cols-4 gap-2 w-full">
+        {TIME_SLOTS.map((slot) => {
+          const isSelected = selectedTime === slot;
+          return (
+            <button
+              key={slot}
+              data-testid={`button-time-slot-${slot.replace(/[: ]/g, "-")}`}
+              onClick={() => { setSelectedTime(slot); setCustomTime(""); }}
+              className="py-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.95]"
+              style={{
+                backgroundColor: isSelected ? `${accentColor}22` : "rgba(255,255,255,0.04)",
+                border: isSelected ? `1.5px solid ${accentColor}60` : "1px solid rgba(255,255,255,0.08)",
+                color: isSelected ? accentColor : "rgba(255,255,255,0.5)",
+                boxShadow: isSelected ? `0 0 12px ${accentColor}20` : "none",
+              }}
+            >
+              {slot}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Custom time picker */}
+      <div className="w-full flex items-center gap-3">
+        <div
+          className="h-px flex-1"
+          style={{ backgroundColor: "rgba(255,255,255,0.07)" }}
+        />
+        <span className="text-[10px] uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
+          or custom
+        </span>
+        <div
+          className="h-px flex-1"
+          style={{ backgroundColor: "rgba(255,255,255,0.07)" }}
+        />
+      </div>
+      <input
+        type="time"
+        data-testid="input-custom-time"
+        value={customTime}
+        onChange={handleCustomChange}
+        className="w-full px-4 py-2.5 rounded-xl text-sm text-center transition-all"
+        style={{
+          backgroundColor: customTime ? `${accentColor}12` : "rgba(255,255,255,0.04)",
+          border: customTime ? `1.5px solid ${accentColor}40` : "1px solid rgba(255,255,255,0.1)",
+          color: customTime ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)",
+          colorScheme: "dark",
+          outline: "none",
+        }}
+      />
+
+      {/* CTA button */}
+      <button
+        data-testid="button-confirm-time"
+        onClick={handleConfirm}
+        disabled={!activeTime}
+        className="mt-2 w-full py-3.5 rounded-xl text-sm uppercase tracking-[0.12em] font-display font-medium transition-all active:scale-[0.97]"
+        style={{
+          backgroundColor: activeTime ? `${accentColor}20` : "rgba(255,255,255,0.04)",
+          border: activeTime ? `1.5px solid ${accentColor}50` : "1px solid rgba(255,255,255,0.07)",
+          color: activeTime ? `${accentColor}ee` : "rgba(255,255,255,0.2)",
+          cursor: activeTime ? "pointer" : "not-allowed",
+          boxShadow: activeTime ? `0 0 20px ${accentColor}18` : "none",
+        }}
+      >
+        I've chosen a time
+      </button>
+
+      {activeTime && (
+        <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+          Selected: <span style={{ color: accentColor }}>{activeTime}</span>
+        </p>
+      )}
     </div>
   );
 }
@@ -835,8 +955,11 @@ export default function GuidedSessionPage() {
         {state === "active" && session.type === "prompts" && (
           <PromptSession elapsed={elapsed} accentColor={accentColor} />
         )}
-        {state === "active" && session.type === "instant" && (
+        {state === "active" && session.type === "instant" && sessionId !== "plan-tomorrow" && (
           <InstantSession sessionId={session.id} accentColor={accentColor} onDone={handleInstantDone} />
+        )}
+        {state === "active" && sessionId === "plan-tomorrow" && (
+          <PlanTomorrowSession accentColor={accentColor} onDone={handleInstantDone} />
         )}
         {state === "active" && session.type === "timer" && (
           <TimerSession sessionId={session.id} elapsed={elapsed} total={session.durationSeconds} accentColor={accentColor} />
