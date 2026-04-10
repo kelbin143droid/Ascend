@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ThemeSelector } from "./ThemeSelector";
 import { SidebarMenu } from "./SidebarMenu";
 import { DevPanel } from "./DevPanel";
+import { isSectographTutorialDone } from "@/lib/userState";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 
 interface NavItem {
@@ -19,11 +20,14 @@ interface NavItem {
   lockMessage: string;
 }
 
+const TUTORIAL_LOCK_PATHS = new Set(["/profile", "/habits", "/coach"]);
+const TUTORIAL_LOCK_MSG = "Map your timeline in the Sectograph first";
+
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/", unlockDay: 1, lockMessage: "" },
-  { icon: User, label: "PROFILE", path: "/profile", unlockDay: 1, lockMessage: "" },
+  { icon: User, label: "PROFILE", path: "/profile", unlockDay: 1, lockMessage: TUTORIAL_LOCK_MSG },
   { icon: Target, label: "HABITS", path: "/habits", unlockDay: 3, lockMessage: "Habits unlock on Day 3" },
-  { icon: Brain, label: "COACH", path: "/coach", unlockDay: 1, lockMessage: "" },
+  { icon: Brain, label: "COACH", path: "/coach", unlockDay: 1, lockMessage: TUTORIAL_LOCK_MSG },
 ];
 
 function LockedToast({ message, visible, onFade }: { message: string; visible: boolean; onFade: () => void }) {
@@ -64,6 +68,13 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState<Set<string>>(new Set());
+  const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
+
+  useEffect(() => {
+    const handler = () => setTutorialDone(true);
+    window.addEventListener("ascend:sectograph-tutorial-done", handler);
+    return () => window.removeEventListener("ascend:sectograph-tutorial-done", handler);
+  }, []);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; isOnboardingComplete: boolean }>({
     queryKey: ["home", player?.id],
@@ -96,9 +107,14 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   }, [onboardingDay]);
 
   const isTabLocked = useCallback((item: NavItem) => {
-    if (isComplete) return false;
-    return onboardingDay < item.unlockDay;
-  }, [onboardingDay, isComplete]);
+    if (!isComplete) {
+      return onboardingDay < item.unlockDay;
+    }
+    if (!tutorialDone && TUTORIAL_LOCK_PATHS.has(item.path)) {
+      return true;
+    }
+    return false;
+  }, [onboardingDay, isComplete, tutorialDone]);
 
   const handleLockedTap = useCallback((item: NavItem) => {
     setToastMessage(t(item.lockMessage));

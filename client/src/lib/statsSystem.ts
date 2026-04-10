@@ -10,9 +10,11 @@ export interface GameStats {
   consecutiveBreathingDone: number;
 }
 
+export const MANA_MAX = 50;
+
 const DEFAULT_STATS: GameStats = {
   hp: 100,
-  mana: 100,
+  mana: MANA_MAX,
   missedSleepDays: 0,
   missedBreathingDays: 0,
   lastCheckedDate: "",
@@ -60,7 +62,7 @@ export function recordBreathingSession(completed: boolean): GameStats {
     s.missedBreathingDays = 0;
     s.consecutiveBreathingDone = Math.min(s.consecutiveBreathingDone + 1, 7);
     if (s.consecutiveBreathingDone >= 3) {
-      s.mana = Math.min(100, s.mana + 0.5);
+      s.mana = Math.min(MANA_MAX, s.mana + 0.5);
     }
   } else {
     s.consecutiveBreathingDone = 0;

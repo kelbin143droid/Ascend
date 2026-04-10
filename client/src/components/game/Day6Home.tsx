@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield } from "lucide-react";
+import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, ArrowRight, Clock } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
 import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
-import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, type GameStats } from "@/lib/statsSystem";
-import { markFlowCompleted, getFlowCompletedToday } from "@/lib/userState";
+import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, MANA_MAX, type GameStats } from "@/lib/statsSystem";
+import { markFlowCompleted, getFlowCompletedToday, isSectographTutorialDone } from "@/lib/userState";
 import { computeXPState, getLevelLabel } from "@/lib/xpSystem";
 
 interface HomeData {
@@ -51,6 +52,7 @@ const SESSION_LIST = [
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
+  const [, navigate] = useLocation();
 
   const [flowActive, setFlowActive] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
@@ -58,6 +60,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     localStorage.getItem("ascend_light_movement_completed") ?? ""
   );
   const [stats, setStats] = useState<GameStats>(() => getStats());
+  const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
 
   const today = new Date().toISOString().split("T")[0];
   const flowCompletedToday = flowCompletedDate === today;
@@ -96,6 +99,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     return () => window.removeEventListener("ascend:sessions-reset", resetHandler);
   }, []);
 
+  useEffect(() => {
+    const tutorialHandler = () => setTutorialDone(true);
+    window.addEventListener("ascend:sectograph-tutorial-done", tutorialHandler);
+    return () => window.removeEventListener("ascend:sectograph-tutorial-done", tutorialHandler);
+  }, []);
+
   const handleFlowComplete = (completedIds: string[], _bonus: boolean) => {
     if (completedIds.length > 0) {
       const newStats = markFlowCompleted(completedIds);
@@ -116,7 +125,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const hpColor = getHPColor(stats.hp);
   const manaColor = getManaColor(stats.mana);
   const hpPct = Math.min(100, Math.max(0, stats.hp));
-  const manaPct = Math.min(100, Math.max(0, stats.mana));
+  const manaBarPct = Math.min(100, Math.max(0, (stats.mana / MANA_MAX) * 100));
 
   const consecutiveDays = homeData?.stability?.consecutiveActiveDays ?? homeData?.streak ?? 0;
 
@@ -214,79 +223,44 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
         </motion.div>
 
-        {/* ── STAT BARS ──────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.08 }}
-          className="rounded-xl px-4 py-3 space-y-3"
-          style={{ backgroundColor: `${colors.surface || colors.background}cc`, border: `1px solid ${colors.surfaceBorder}` }}
-          data-testid="stat-bars-card"
-        >
-          {/* HP Bar */}
-          <div data-testid="hp-bar-section">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5">
-                <Shield size={11} style={{ color: hpColor }} />
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: hpColor }}>
-                  HP
-                </span>
-                <span className="text-[9px] ml-0.5" style={{ color: colors.textMuted }}>
-                  Vitality
-                </span>
-              </div>
-              <span className="text-[10px] font-mono font-bold" style={{ color: hpColor }}>
-                {hpPct.toFixed(0)}
-              </span>
-            </div>
-            <div
-              className="w-full h-2 rounded-full overflow-hidden"
-              style={{ backgroundColor: `${hpColor}18` }}
-              data-testid="hp-bar-track"
+        {/* ── SECTOGRAPH SETUP PROMPT (shown until tutorial done) ──── */}
+        {!tutorialDone && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.06 }}
+            data-testid="sectograph-setup-prompt"
+          >
+            <button
+              onClick={() => navigate("/sectograph")}
+              className="w-full rounded-xl p-4 flex items-start gap-3 transition-all active:scale-[0.99]"
+              style={{
+                backgroundColor: "rgba(139,92,246,0.08)",
+                border: "1px solid rgba(139,92,246,0.3)",
+              }}
+              data-testid="button-go-to-sectograph"
             >
-              <motion.div
-                className="h-full rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${hpPct}%` }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                style={{ backgroundColor: hpColor, boxShadow: `0 0 6px ${hpColor}60` }}
-                data-testid="hp-bar-fill"
-              />
-            </div>
-          </div>
-
-          {/* Mana Bar */}
-          <div data-testid="mana-bar-section">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5">
-                <Zap size={11} style={{ color: manaColor }} />
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: manaColor }}>
-                  MP
-                </span>
-                <span className="text-[9px] ml-0.5" style={{ color: colors.textMuted }}>
-                  Meditation
-                </span>
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: "rgba(139,92,246,0.18)" }}
+              >
+                <Clock size={17} style={{ color: "#8b5cf6" }} />
               </div>
-              <span className="text-[10px] font-mono font-bold" style={{ color: manaColor }}>
-                {manaPct.toFixed(0)}
-              </span>
-            </div>
-            <div
-              className="w-full h-2 rounded-full overflow-hidden"
-              style={{ backgroundColor: `${manaColor}18` }}
-              data-testid="mana-bar-track"
-            >
-              <motion.div
-                className="h-full rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${manaPct}%` }}
-                transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
-                style={{ backgroundColor: manaColor, boxShadow: `0 0 6px ${manaColor}60` }}
-                data-testid="mana-bar-fill"
-              />
-            </div>
-          </div>
-        </motion.div>
+              <div className="text-left flex-1">
+                <p className="text-xs font-bold mb-0.5 uppercase tracking-wider" style={{ color: "#8b5cf6" }}>
+                  Setup Required
+                </p>
+                <p className="text-sm font-medium leading-snug" style={{ color: colors.text }}>
+                  Map your daily timeline to unlock your stats
+                </p>
+                <p className="text-[10px] mt-1" style={{ color: colors.textMuted }}>
+                  Coach: Start with your Sleep block in the Sectograph.
+                </p>
+              </div>
+              <ArrowRight size={16} style={{ color: "#8b5cf6", marginTop: 2 }} />
+            </button>
+          </motion.div>
+        )}
 
         {/* ── PRIMARY ACTION ─────────────────────────────────────────── */}
         <motion.div
@@ -458,6 +432,82 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             )}
           </AnimatePresence>
         </motion.div>
+
+        {/* ── STAT BARS (hidden until Sectograph tutorial done) ──────── */}
+        {tutorialDone && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="rounded-xl px-4 py-3 space-y-3"
+            style={{ backgroundColor: `${colors.surface || colors.background}cc`, border: `1px solid ${colors.surfaceBorder}` }}
+            data-testid="stat-bars-card"
+          >
+            {/* HP Bar */}
+            <div data-testid="hp-bar-section">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Shield size={11} style={{ color: hpColor }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: hpColor }}>
+                    HP
+                  </span>
+                  <span className="text-[9px] ml-0.5" style={{ color: colors.textMuted }}>
+                    Vitality
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono font-bold" style={{ color: hpColor }}>
+                  {hpPct.toFixed(0)} / 100
+                </span>
+              </div>
+              <div
+                className="w-full h-2 rounded-full overflow-hidden"
+                style={{ backgroundColor: `${hpColor}18` }}
+                data-testid="hp-bar-track"
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${hpPct}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  style={{ backgroundColor: hpColor, boxShadow: `0 0 6px ${hpColor}60` }}
+                  data-testid="hp-bar-fill"
+                />
+              </div>
+            </div>
+
+            {/* Mana Bar */}
+            <div data-testid="mana-bar-section">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Zap size={11} style={{ color: manaColor }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: manaColor }}>
+                    MP
+                  </span>
+                  <span className="text-[9px] ml-0.5" style={{ color: colors.textMuted }}>
+                    Meditation
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono font-bold" style={{ color: manaColor }}>
+                  {Math.round(stats.mana)} / {MANA_MAX}
+                </span>
+              </div>
+              <div
+                className="w-full h-2 rounded-full overflow-hidden"
+                style={{ backgroundColor: `${manaColor}18` }}
+                data-testid="mana-bar-track"
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${manaBarPct}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+                  style={{ backgroundColor: manaColor, boxShadow: `0 0 6px ${manaColor}60` }}
+                  data-testid="mana-bar-fill"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
     </SystemLayout>
   );

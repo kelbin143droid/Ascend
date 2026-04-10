@@ -40,8 +40,11 @@ import {
   Heart,
   Dumbbell,
   Settings2,
+  Brain,
+  CheckCircle2,
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
+import { isSectographTutorialDone, markSectographTutorialDone, getSectographTutorialStep, setSectographTutorialStep } from "@/lib/userState";
 
 type ViewTab = "sectograph" | "calendar" | "plan";
 
@@ -192,10 +195,9 @@ export default function SectographPage() {
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customBlockName, setCustomBlockName] = useState("");
 
-  const [showAnchors, setShowAnchors] = useState(true);
-  const [showRhythm, setShowRhythm] = useState(true);
-  const [showSuggested, setShowSuggested] = useState(true);
-  const [showInsight, setShowInsight] = useState(true);
+  const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
+  const [tutorialStep, setTutorialStep] = useState(() => isSectographTutorialDone() ? 99 : getSectographTutorialStep());
+  const [justCompletedTutorial, setJustCompletedTutorial] = useState(false);
 
   // Weekly planning state
   const { roles } = useRoles();
@@ -389,6 +391,16 @@ export default function SectographPage() {
     updatePlayer({ schedule: newSchedule });
     setEditingBlock(null);
     setCustomBlockName("");
+
+    const isSleepBlock = editingBlock.id.startsWith("sleep");
+    if (isSleepBlock && !tutorialDone) {
+      markSectographTutorialDone();
+      setTutorialDone(true);
+      setTutorialStep(99);
+      setJustCompletedTutorial(true);
+      window.dispatchEvent(new CustomEvent("ascend:sectograph-tutorial-done"));
+      setTimeout(() => navigate("/"), 2200);
+    }
   };
 
   const handleDeleteBlock = () => {
@@ -548,113 +560,113 @@ export default function SectographPage() {
           <div className="w-14" />
         </div>
 
-        <div
-          className="flex rounded-lg p-0.5"
-          style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
-        >
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="flex-1 py-2 text-xs font-display font-bold tracking-wider rounded-md transition-all"
-              style={{
-                backgroundColor: activeTab === tab.id ? `${colors.primary}25` : "transparent",
-                color: activeTab === tab.id ? colors.primary : colors.textMuted,
-                border: activeTab === tab.id ? `1px solid ${colors.primary}40` : "1px solid transparent",
-              }}
-              data-testid={`tab-${tab.id}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
 
-        {showIntroOverlay && (
+        {/* ── COACH TUTORIAL — step 0 fullscreen intro ─────────────── */}
+        {!tutorialDone && tutorialStep === 0 && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            style={{ backgroundColor: "rgba(0,0,0,0.85)" }}
-            onClick={dismissIntro}
-            data-testid="sectograph-intro-overlay"
+            className="fixed inset-0 z-50 flex items-end justify-center pb-8"
+            style={{ backgroundColor: "rgba(0,0,0,0.90)" }}
+            data-testid="tutorial-overlay-step0"
           >
             <div
-              className="mx-6 max-w-sm rounded-xl p-6 text-center"
+              className="mx-4 w-full max-w-sm rounded-2xl p-6"
               style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
-              onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: `${colors.primary}20` }}>
-                <Clock size={24} style={{ color: colors.primary }} />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${colors.primary}20` }}>
+                  <Brain size={20} style={{ color: colors.primary }} />
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.18em] font-bold" style={{ color: `${colors.primary}80` }}>Coach</p>
+                  <p className="text-sm font-semibold leading-tight" style={{ color: colors.text }}>Your personal timeline</p>
+                </div>
               </div>
-              <h2 className="text-lg font-display font-bold mb-2" style={{ color: colors.text }}>
-                Your Time System
-              </h2>
-              {behavioralAnchors.length > 0 ? (
-                <div className="space-y-3 mb-5">
-                  <p className="text-sm leading-relaxed" style={{ color: colors.textMuted }}>
-                    Your previous resets appear here. The system has been learning when you naturally show up.
-                  </p>
-                  <div
-                    className="rounded-lg p-3 text-left"
-                    style={{ backgroundColor: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)" }}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#f59e0b" }} />
-                      <span className="text-xs font-bold" style={{ color: "#f59e0b" }}>
-                        {behavioralAnchors.length} Reset{behavioralAnchors.length > 1 ? "s" : ""} Recorded
-                      </span>
-                    </div>
-                    {anchorClusterInsight && (
-                      <p className="text-xs leading-relaxed" style={{ color: colors.textMuted }}>
-                        {anchorClusterInsight}
-                      </p>
-                    )}
+              <p className="text-sm leading-relaxed mb-4" style={{ color: colors.textMuted }}>
+                This is your <span style={{ color: colors.primary, fontWeight: 600 }}>Sectograph</span> — a 24-hour circle that maps your entire day. Time is your most valuable resource. Let's make it visible.
+              </p>
+              <div className="space-y-2 mb-5">
+                {[
+                  { dot: "#22c55e", text: "Green dot tracks the present moment" },
+                  { dot: "#8b5cf6", text: "Colored arcs show your time blocks" },
+                  { dot: "#3b82f6", text: "Tap + in the center to add blocks" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.dot }} />
+                    <span className="text-xs" style={{ color: colors.textMuted }}>{item.text}</span>
                   </div>
-                  <p className="text-xs leading-relaxed" style={{ color: colors.textMuted, opacity: 0.7 }}>
-                    These markers connect your earlier actions to this larger time system. Your behavior was always part of the structure.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm leading-relaxed mb-4" style={{ color: colors.textMuted }}>
-                  The Sectograph maps your entire day as a 24-hour circle. Watch your schedule unfold in real time, spot free windows, and build focused sessions into your rhythm.
-                </p>
-              )}
-              <div className="space-y-2 text-left mb-5">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />
-                  <span className="text-xs" style={{ color: colors.textMuted }}>Green dot tracks present moment</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#f59e0b" }} />
-                  <span className="text-xs" style={{ color: colors.textMuted }}>Amber marks show your Reset moments</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#8b5cf6" }} />
-                  <span className="text-xs" style={{ color: colors.textMuted }}>Purple blocks are active focus sessions</span>
-                </div>
+                ))}
               </div>
               <Button
-                onClick={dismissIntro}
+                onClick={() => {
+                  const next = 1;
+                  setSectographTutorialStep(next);
+                  setTutorialStep(next);
+                }}
                 className="w-full"
                 style={{ backgroundColor: colors.primary, color: "#fff" }}
-                data-testid="button-dismiss-intro"
+                data-testid="button-tutorial-next-step0"
               >
-                Begin Observing
+                Got it — show me how
               </Button>
             </div>
           </div>
         )}
 
-        {activeTab === "sectograph" && (
-          <div className="flex flex-col items-center gap-4">
+        {/* ── COACH CARD — step 1 (add Sleep block) ────────────────── */}
+        {!tutorialDone && tutorialStep === 1 && (
+          <div
+            className="w-full rounded-xl p-4 flex items-start gap-3"
+            style={{ backgroundColor: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.25)" }}
+            data-testid="tutorial-card-step1"
+          >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(59,130,246,0.15)" }}>
+              <Brain size={15} style={{ color: "#3b82f6" }} />
+            </div>
+            <div className="flex-1">
+              <p className="text-[9px] uppercase tracking-wider font-bold mb-0.5" style={{ color: "rgba(59,130,246,0.7)" }}>Coach · Step 1</p>
+              <p className="text-sm font-medium leading-snug" style={{ color: colors.text }}>
+                Start with your <span style={{ color: "#3b4d6b", fontWeight: 700 }}>Sleep</span> block
+              </p>
+              <p className="text-[10px] mt-1 leading-relaxed" style={{ color: colors.textMuted }}>
+                Tap the <strong style={{ color: colors.primary }}>+</strong> in the center of the clock, then select Sleep and set your hours.
+              </p>
+            </div>
+            <Moon size={14} style={{ color: "#3b4d6b", marginTop: 2 }} />
+          </div>
+        )}
+
+        {/* ── TUTORIAL COMPLETE banner ─────────────────────────────── */}
+        {justCompletedTutorial && (
+          <div
+            className="w-full rounded-xl px-4 py-3 flex items-center gap-3"
+            style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
+            data-testid="tutorial-complete-banner"
+          >
+            <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
+            <div>
+              <p className="text-xs font-semibold" style={{ color: "#22c55e" }}>Timeline mapped</p>
+              <p className="text-[10px]" style={{ color: colors.textMuted }}>HP and Mana are now active on your home screen.</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center gap-4">
             <div className="flex justify-center pt-2">
               <Sectograph
                 schedule={activeSchedule}
                 size={300}
                 showAwareness={true}
-                anchors={showAnchors ? behavioralAnchors : []}
+                anchors={[]}
                 focusBlock={activeFocus?.block ?? null}
-                rhythmWindows={showRhythm ? rhythmWindows : []}
-                suggestedPlacements={showSuggested ? placementSuggestions : []}
-                onCenterClick={() => setShowAddBlock(true)}
+                rhythmWindows={[]}
+                suggestedPlacements={[]}
+                onCenterClick={() => {
+                  if (!tutorialDone && tutorialStep === 0) {
+                    setSectographTutorialStep(1);
+                    setTutorialStep(1);
+                  }
+                  setShowAddBlock(true);
+                }}
                 onBlockClick={(block) => {
                   const blk = block as any;
                   setEditingBlock({
@@ -673,39 +685,8 @@ export default function SectographPage() {
                   setFocusDuration(Math.min(w.durationMinutes, 30));
                   setShowFocusSetup(true);
                 }}
-                onSuggestedPlacementClick={() => {
-                  navigate("/habits");
-                }}
+                onSuggestedPlacementClick={() => {}}
               />
-            </div>
-
-            {/* ── LAYER TOGGLES ─────────────────────────────────────── */}
-            <div className="w-full" data-testid="sectograph-filters">
-              <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                <Settings2 size={11} style={{ color: colors.textMuted, opacity: 0.5 }} />
-                {[
-                  { key: "anchors", label: "Anchors", value: showAnchors, set: setShowAnchors, color: "#f59e0b" },
-                  { key: "rhythm", label: "Rhythm", value: showRhythm, set: setShowRhythm, color: "#6366f1" },
-                  { key: "suggest", label: "Suggested", value: showSuggested, set: setShowSuggested, color: "#22d3ee" },
-                  { key: "insight", label: "Insight", value: showInsight, set: setShowInsight, color: colors.primary },
-                ].map(({ key, label, value, set, color }) => (
-                  <button
-                    key={key}
-                    data-testid={`toggle-${key}`}
-                    onClick={() => set(v => !v)}
-                    className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-all"
-                    style={{
-                      backgroundColor: value ? `${color}20` : "transparent",
-                      border: `1px solid ${value ? color + "50" : colors.surfaceBorder}`,
-                      color: value ? color : colors.textMuted,
-                      opacity: value ? 1 : 0.55,
-                    }}
-                  >
-                    {value ? <Eye size={9} /> : <EyeOff size={9} />}
-                    {label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {activeFocus && (
@@ -777,7 +758,7 @@ export default function SectographPage() {
               </button>
             )}
 
-            {awarenessInsight && showInsight && (
+            {awarenessInsight && (
               <div
                 className="w-full rounded-lg p-3 flex items-start gap-3"
                 style={{
@@ -793,7 +774,7 @@ export default function SectographPage() {
               </div>
             )}
 
-            {rhythmInsights.length > 0 && showInsight && (
+            {rhythmInsights.length > 0 && (
               <div
                 className="w-full rounded-lg p-4"
                 style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
@@ -1005,9 +986,8 @@ export default function SectographPage() {
               )}
             </div>
           </div>
-        )}
 
-        {activeTab === "calendar" && (
+        {activeTab === "calendar-removed" && (
           <div className="flex flex-col gap-4">
             <div
               className="rounded-lg p-3"
@@ -1172,7 +1152,7 @@ export default function SectographPage() {
           </div>
         )}
 
-        {activeTab === "plan" && (
+        {activeTab === "plan-removed" && (
           <div className="flex flex-col gap-4 pb-6">
             {/* Header */}
             <div className="text-center py-2">
