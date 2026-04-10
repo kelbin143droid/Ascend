@@ -1,11 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, Eye, Zap, ChevronRight } from "lucide-react";
+import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, Eye, Zap, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
 import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
 import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
@@ -201,6 +202,7 @@ export default function HomePage() {
   const { t } = useLanguage();
   const colors = backgroundTheme.colors;
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [selectedHabitId, setSelectedHabitId] = useState(RECOMMENDED_HABITS[0].id);
   const [showDay3Intro, setShowDay3Intro] = useState(false);
   const [dismissedNotification, setDismissedNotification] = useState(false);
@@ -216,6 +218,26 @@ export default function HomePage() {
   const [flowCompletedDate, setFlowCompletedDate] = useState(
     () => localStorage.getItem("ascend_light_movement_completed") ?? ""
   );
+
+  // Marks Day 5 (plan-tomorrow) complete on the server when the user finishes
+  // or exits the Day6SectographIntro that serves as the Day 5 activity.
+  const completeDay5Mutation = useMutation({
+    mutationFn: async () => {
+      if (!player?.id) throw new Error("No player");
+      return apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
+        sessionId: "plan-tomorrow",
+        habitId: "guided_plan-tomorrow",
+        stat: "sense",
+        durationMinutes: 2,
+      });
+    },
+    onSuccess: async () => {
+      await Promise.allSettled([
+        queryClient.refetchQueries({ queryKey: ["home", player?.id] }),
+        queryClient.refetchQueries({ queryKey: ["/api/player", player?.id] }),
+      ]);
+    },
+  });
 
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -392,6 +414,25 @@ export default function HomePage() {
     const completedDays = homeData.completedDays;
     const nextDay = Math.min(onboardingDay + 1, 5);
     const phaseName = homeData.phase?.name ?? "Stabilization";
+
+    // Day 5 — Sectograph Introduction is the Day 5 activity itself.
+    // Completing or dismissing it records the plan-tomorrow session and
+    // advances onboardingDay → isOnboardingComplete = true → main dashboard.
+    if (onboardingDay === 5) {
+      const handleDay5Done = () => {
+        if (!completeDay5Mutation.isPending) {
+          completeDay5Mutation.mutate();
+        }
+      };
+      return (
+        <SystemLayout>
+          <Day6SectographIntro
+            onComplete={handleDay5Done}
+            onCancel={handleDay5Done}
+          />
+        </SystemLayout>
+      );
+    }
 
     // Day 1 minimal screen
     if (onboardingDay === 1) {
