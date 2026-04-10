@@ -30,7 +30,6 @@ import GuidedSessionPage from "@/pages/GuidedSessionPage";
 import FlowApp from "@/pages/FlowApp";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
-import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
 import { IntroWrapper } from "@/components/game/IntroWrapper";
 
 function PlanningProviders({ children }: { children: React.ReactNode }) {
@@ -92,7 +91,6 @@ function App() {
                 <PlanningGate>
                   <Router />
                 </PlanningGate>
-                <LevelUpOverlay />
                 <PhaseUnlockOverlay />
                 <Toaster />
               </IntroWrapper>

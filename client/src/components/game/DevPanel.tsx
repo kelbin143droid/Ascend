@@ -148,15 +148,18 @@ export function DevPanel() {
     try {
       const res = await fetch(`/api/player/${player.id}/dev/status`);
       const currentStatus: DevStatus = res.ok ? await res.json() : null;
-      const currentDay = currentStatus?.onboardingDay ?? 0;
-      if (currentDay < 5) {
-        const daysNeeded = 5 - currentDay;
-        const simRes = await fetch(`/api/player/${player.id}/dev/simulate-day`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ days: daysNeeded, completeHabits: true }),
-        });
-        if (!simRes.ok) { setLastResult("Error simulating to Day 5"); setLoading(false); return; }
+      const onboardingCompleted = currentStatus?.onboardingCompleted ?? false;
+      if (!onboardingCompleted) {
+        const currentDay = currentStatus?.onboardingDay ?? 0;
+        const daysNeeded = Math.max(0, 5 - currentDay + 1);
+        if (daysNeeded > 0) {
+          const simRes = await fetch(`/api/player/${player.id}/dev/simulate-day`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ days: daysNeeded, completeHabits: true }),
+          });
+          if (!simRes.ok) { setLastResult("Error simulating to post-onboarding"); setLoading(false); return; }
+        }
       }
       localStorage.removeItem("ascend_light_movement_completed");
       setLastResult("Jumped to Daily Flow home");
@@ -374,9 +377,9 @@ export function DevPanel() {
               <input
                 type="number"
                 min={1}
-                max={30}
+                max={90}
                 value={daysInput}
-                onChange={e => setDaysInput(Math.max(1, Math.min(30, parseInt(e.target.value) || 1)))}
+                onChange={e => setDaysInput(Math.max(1, Math.min(90, parseInt(e.target.value) || 1)))}
                 className="w-12 text-center text-xs rounded px-1 py-0.5"
                 style={{
                   backgroundColor: "rgba(255,255,255,0.06)",
@@ -386,7 +389,7 @@ export function DevPanel() {
                 data-testid="input-dev-days"
               />
               <div className="flex gap-1">
-                {[1, 3, 7].map(d => (
+                {[1, 3, 7, 14, 30].map(d => (
                   <button
                     key={d}
                     onClick={() => setDaysInput(d)}

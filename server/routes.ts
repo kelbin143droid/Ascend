@@ -2564,7 +2564,7 @@ export async function registerRoutes(
       if (!player) return res.status(404).json({ error: "Player not found" });
 
       const { days = 1, completeHabits = true } = req.body;
-      const dayCount = Math.min(Math.max(1, days), 30);
+      const dayCount = Math.min(Math.max(1, days), 90);
 
       const habits = await storage.getHabits(req.params.id);
       const activeHabits = habits.filter(h => h.active);
@@ -2711,7 +2711,10 @@ export async function registerRoutes(
       for (const [habitId, day] of Object.entries(STATUS_ONBOARDING_HABIT_TO_DAY)) {
         if (allCompletions.some(c => c.habitId === habitId)) statusCompletedDays.push(day);
       }
-      const onboardingDay = Math.min(statusCompletedDays.length + 1, 5);
+      const onboardingDayRaw = statusCompletedDays.length + 1;
+      const onboardingDay = player.onboardingCompleted === 1
+        ? Math.max(onboardingDayRaw, distinctDays.size + 1)
+        : Math.min(onboardingDayRaw, 5);
 
       const sortedDays = [...distinctDays].sort().reverse();
       const lastActiveDate = sortedDays[0] ?? null;
