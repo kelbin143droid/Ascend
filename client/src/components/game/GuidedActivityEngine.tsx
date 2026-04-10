@@ -1050,7 +1050,12 @@ export function GuidedActivityEngine({
                       <button
                         className="flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
                         style={{ backgroundColor: activity.color, color: "#fff" }}
-                        onClick={advanceStep}
+                        onClick={() => {
+                          if (step.id === "sleep_check") {
+                            window.dispatchEvent(new CustomEvent("ascend:sleep-check", { detail: { sleptWell: true } }));
+                          }
+                          advanceStep();
+                        }}
                         data-testid="button-meal-check-yes"
                       >
                         <Check size={16} />
@@ -1063,7 +1068,12 @@ export function GuidedActivityEngine({
                           color: activity.color,
                           border: `1px solid ${activity.color}30`,
                         }}
-                        onClick={advanceStep}
+                        onClick={() => {
+                          if (step.id === "sleep_check") {
+                            window.dispatchEvent(new CustomEvent("ascend:sleep-check", { detail: { sleptWell: false } }));
+                          }
+                          advanceStep();
+                        }}
                         data-testid="button-meal-check-not-yet"
                       >
                         <Check size={16} />
