@@ -77,9 +77,20 @@ On Day 5 completion, the `OnboardingCompleteScreen` triggers a multi-phase level
 
 ### Guided Training — Exercise Definitions
 - **Push-Ups replace Backward Shoulder Roll** in `LightMovementEngine.tsx` (Light Movement session).
-- **Plank Hold, Toe Touch Hold, Hip Opener** flagged `loop: false` in `activityEngine.ts` → video plays once (no looping) via `VideoExerciseTimer`.
+- **All Agility Flow steps flagged `loop: false`** — Cross Arm (L/R), Tricep Stretch (L/R), Toe Touch Hold, Hip Opener all play video once and hold frame (static hold UX).
+- **Plank Hold** also flagged `loop: false` in Physical Circuit.
 - **Sleep Check** step changed from `"instruction"` type to `"check"` type → renders Yes / Not yet buttons with a "Why sleep matters" info tooltip.
-- **Vitality Check** completion auto-calls `/api/player/:id/complete-guided-session` via `completeMutation` (triggered by `isCompletionStep` effect in `GuidedActivityEngine`), awards XP, then navigates to the Daily Flow finish screen → home.
+- **Vitality Check** completion auto-calls `/api/player/:id/complete-guided-session` via `completeMutation`, awards XP. After tapping Continue, the `DailyFlowEngine` flow-complete screen auto-dismisses to Home after 2.5 seconds (or user taps "Return Home" immediately).
+
+### Daily Flow Order
+Defined by `DAILY_FLOW_ORDER` constant inside `buildPhase1Activities`:
+1. Calm Breathing (meditation / sense)
+2. Agility Flow (agility / agility)
+3. Physical Circuit (strength / strength)
+4. Vitality Check (vitality / vitality)
+
+### Calm Breathing Pattern
+`breathTiming: { inhaleSeconds: 4, holdSeconds: 4, exhaleSeconds: 6 }` — the 4-4-6 rhythm.
 
 ## External Dependencies
 

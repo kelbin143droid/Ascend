@@ -136,7 +136,14 @@ export function buildPhase1Activities(
   const strengthTotal = st.cardioSeconds + st.pushupSeconds + st.pushupSeconds + st.plankSeconds + st.restSeconds;
   const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
-  return [
+  const DAILY_FLOW_ORDER = [
+    "phase1_meditation",
+    "phase1_agility",
+    "phase1_strength",
+    "phase1_vitality",
+  ];
+
+  const allActivities = [
     {
       id: "phase1_meditation",
       activityName: "Calm Breathing",
@@ -159,10 +166,10 @@ export function buildPhase1Activities(
           id: "calm_breathing",
           type: "breath",
           label: "Calm Breathing",
-          instruction: "Follow the circle. Inhale 4s → Hold 2s → Exhale 6s.",
+          instruction: "Follow the circle. Inhale 4s → Hold 4s → Exhale 6s.",
           durationSeconds: meditationDuration,
-          breathTiming: { inhaleSeconds: 4, holdSeconds: 2, exhaleSeconds: 6 },
-          voiceText: "Follow the circle. Inhale for 4 seconds. Hold for 2. Exhale for 6.",
+          breathTiming: { inhaleSeconds: 4, holdSeconds: 4, exhaleSeconds: 6 },
+          voiceText: "Follow the circle. Inhale for 4 seconds. Hold for 4. Exhale for 6.",
           videoSrc: "/videos/meditation_loop.mp4",
         },
         {
@@ -271,6 +278,7 @@ export function buildPhase1Activities(
           durationSeconds: ag.crossArmSeconds,
           voiceText: `Cross arm stretch, left side. ${ag.crossArmSeconds} seconds.`,
           videoSrc: "/videos/cross_arm_left.mp4",
+          loop: false,
         },
         {
           id: "cross_arm_right",
@@ -280,6 +288,7 @@ export function buildPhase1Activities(
           durationSeconds: ag.crossArmSeconds,
           voiceText: `Cross arm stretch, right side. ${ag.crossArmSeconds} seconds.`,
           videoSrc: "/videos/cross_arm_right.mp4",
+          loop: false,
         },
         {
           id: "tricep_left",
@@ -289,6 +298,7 @@ export function buildPhase1Activities(
           durationSeconds: ag.tricepSeconds,
           voiceText: `Tricep stretch, left side. ${ag.tricepSeconds} seconds.`,
           videoSrc: "/videos/tricep_left.mp4",
+          loop: false,
         },
         {
           id: "tricep_right",
@@ -298,6 +308,7 @@ export function buildPhase1Activities(
           durationSeconds: ag.tricepSeconds,
           voiceText: `Tricep stretch, right side. ${ag.tricepSeconds} seconds.`,
           videoSrc: "/videos/tricep_right.mp4",
+          loop: false,
         },
         {
           id: "toe_touch",
@@ -388,4 +399,8 @@ export function buildPhase1Activities(
       ],
     },
   ];
+
+  return DAILY_FLOW_ORDER
+    .map(id => allActivities.find(a => a.id === id))
+    .filter((a): a is ActivityDefinition => !!a);
 }

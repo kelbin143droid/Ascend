@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -124,6 +124,12 @@ export function DailyFlowEngine({
     onComplete(Array.from(completedIds), bonusXpAwarded);
   }, [completedIds, bonusXpAwarded, onComplete]);
 
+  useEffect(() => {
+    if (!flowFinished) return;
+    const t = setTimeout(handleFlowFinish, 2500);
+    return () => clearTimeout(t);
+  }, [flowFinished]);
+
   if (runningActivity && currentActivity) {
     return (
       <GuidedActivityEngine
@@ -233,7 +239,7 @@ export function DailyFlowEngine({
           onClick={handleFlowFinish}
           data-testid="button-finish-flow"
         >
-          Continue
+          Return Home
         </button>
       </motion.div>
     );
