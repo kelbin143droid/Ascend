@@ -2640,6 +2640,11 @@ export async function registerRoutes(
         .filter(habitId => allCompletions.some(c => c.habitId === habitId)).length;
       const newOnboardingDay = Math.min(newCompletedOnboardingDays + 1, 5);
 
+      // Count distinct active days from all completions (defined here for the response)
+      const simDistinctDays = new Set(
+        allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
+      );
+
       const newStreak = Math.min(player.streak + dayCount, 999);
       await storage.updatePlayer(req.params.id, { streak: newStreak });
 
@@ -2649,7 +2654,7 @@ export async function registerRoutes(
         completionsCreated: completionsCreated.length,
         newOnboardingDay,
         newStreak,
-        distinctActiveDays: distinctDays.size,
+        distinctActiveDays: simDistinctDays.size,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to simulate days" });
@@ -2666,12 +2671,20 @@ export async function registerRoutes(
       const distinctDays = new Set(
         allCompletions.filter(c => c.completedAt).map(c => new Date(c.completedAt!).toLocaleDateString("en-CA"))
       );
-      const devTodayStr = new Date().toLocaleDateString("en-CA");
-      const devCompletedToday = distinctDays.has(devTodayStr);
-      const devDaysCompleted = distinctDays.size;
-      const onboardingDay = (devCompletedToday && devDaysCompleted <= 4)
-        ? Math.max(devDaysCompleted, 1)
-        : Math.min(devDaysCompleted + 1, 5);
+
+      // Use the same ONBOARDING_HABIT_TO_DAY logic as the home endpoint
+      const STATUS_ONBOARDING_HABIT_TO_DAY: Record<string, number> = {
+        "guided_calm-breathing": 1,
+        "guided_light-movement": 2,
+        "guided_hydration-check": 3,
+        "guided_focus-block": 4,
+        "guided_plan-tomorrow": 5,
+      };
+      const statusCompletedDays: number[] = [];
+      for (const [habitId, day] of Object.entries(STATUS_ONBOARDING_HABIT_TO_DAY)) {
+        if (allCompletions.some(c => c.habitId === habitId)) statusCompletedDays.push(day);
+      }
+      const onboardingDay = Math.min(statusCompletedDays.length + 1, 5);
 
       const sortedDays = [...distinctDays].sort().reverse();
       const lastActiveDate = sortedDays[0] ?? null;
@@ -2711,6 +2724,14 @@ export async function registerRoutes(
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
+      const ONBOARDING_HABIT_TO_DAY_BACK: Record<string, number> = {
+        "guided_calm-breathing": 1,
+        "guided_light-movement": 2,
+        "guided_hydration-check": 3,
+        "guided_focus-block": 4,
+        "guided_plan-tomorrow": 5,
+      };
+
       const allCompletions = await storage.getHabitCompletions(req.params.id);
       const toDateStr = (d: Date) => d.toISOString().split("T")[0];
       const distinctDays = [...new Set(
@@ -2718,28 +2739,30 @@ export async function registerRoutes(
       )].sort();
 
       if (distinctDays.length === 0) {
-        return res.json({ success: true, message: "Already at Day 1", newOnboardingDay: 1, newStreak: 0 });
+        return res.json({ success: true, message: "Already at Day 1", newOnboardingDay: 1, newStreak: 0, removedCompletions: 0 });
       }
 
       const latestDay = distinctDays[distinctDays.length - 1];
       const completionsToRemove = allCompletions.filter(c =>
         c.completedAt && toDateStr(new Date(c.completedAt!)) === latestDay
       );
+      const removedIds = new Set(completionsToRemove.map(c => c.id));
 
       await db.transaction(async (tx) => {
         for (const c of completionsToRemove) {
           await tx.delete(habitCompletions).where(eq(habitCompletions.id, c.id));
         }
 
-        const remainingDays = distinctDays.length - 1;
-        const newOnboardingDay = Math.max(1, Math.min(remainingDays + 1, 5));
+        // Recalculate onboardingDay from remaining guided_* completions
+        const remainingCompletions = allCompletions.filter(c => !removedIds.has(c.id));
+        const remainingCompletedDays = Object.entries(ONBOARDING_HABIT_TO_DAY_BACK)
+          .filter(([habitId]) => remainingCompletions.some(c => c.habitId === habitId))
+          .map(([, day]) => day);
+        const newOnboardingDay = Math.min(remainingCompletedDays.length + 1, 5);
+
         const newStreak = Math.max(0, player.streak - 1);
-
         const updates: Record<string, any> = { streak: newStreak };
-        if (newOnboardingDay < 5) {
-          updates.onboardingCompleted = 0;
-        }
-
+        if (newOnboardingDay < 5) updates.onboardingCompleted = 0;
         await storage.updatePlayer(req.params.id, updates);
 
         res.json({
