@@ -151,6 +151,11 @@ export function DevPanel() {
     clearOnboardingTimestamps();
     sessionStorage.removeItem("ascend_just_completed_day");
     localStorage.removeItem("ascend_day3_hydration_done");
+    localStorage.removeItem("ascend_day5_sleep_scheduled");
+    localStorage.removeItem("ascend_day5_flow_scheduled");
+    localStorage.removeItem("ascend_sectograph_tutorial_done");
+    localStorage.removeItem("ascend_sectograph_tutorial_step");
+    localStorage.removeItem("ascend_sectograph_intro_seen");
     clearPostDays(player.id);
     setPostOnboardingDays(0);
     try {
@@ -199,6 +204,10 @@ export function DevPanel() {
         await fetch(`/api/player/${player.id}/onboarding-complete`, { method: "POST" });
       }
       localStorage.removeItem("ascend_light_movement_completed");
+      localStorage.setItem("ascend_day5_sleep_scheduled", "true");
+      localStorage.setItem("ascend_day5_flow_scheduled", "true");
+      localStorage.setItem("ascend_sectograph_tutorial_done", "true");
+      localStorage.setItem("ascend_sectograph_tutorial_step", "3");
       setLastResult("→ Day 6 · Post-onboarding home");
       queryClient.invalidateQueries();
       fetchStatus();
