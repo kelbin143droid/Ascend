@@ -28,11 +28,11 @@ const EXERCISES: Exercise[] = [
     loop: true,
   },
   {
-    id: "shoulder_backward",
-    name: "Backward Shoulder Roll",
-    instruction: "Now reverse — roll your shoulders backward. Open up the chest.",
-    video: "/videos/shoulder-roll-backward.mp4",
-    duration: 15,
+    id: "push_ups",
+    name: "Push-Ups",
+    instruction: "Lower your chest to the floor, then push back up. Keep your core tight. Use your knees if needed.",
+    video: "/videos/knee_pushups_loop.mp4",
+    duration: 20,
     loop: true,
   },
   {

@@ -186,12 +186,14 @@ function VideoExerciseTimer({
   remaining,
   label,
   color,
+  loop = true,
 }: {
   src: string;
   seconds: number;
   remaining: number;
   label: string;
   color: string;
+  loop?: boolean;
 }) {
   const pct = seconds > 0 ? Math.max(0, remaining / seconds) : 0;
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -209,7 +211,7 @@ function VideoExerciseTimer({
           ref={videoRef}
           src={src}
           autoPlay
-          loop
+          loop={loop}
           muted
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
@@ -886,6 +888,7 @@ export function GuidedActivityEngine({
                   remaining={timerRemaining}
                   label={step.label}
                   color={activity.color}
+                  loop={step.loop !== false}
                 />
               ) : (isTimerStep && stepPhase === "running") ? (
                 <CircularTimer

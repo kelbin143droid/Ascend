@@ -1,8 +1,8 @@
 const BASE_XP = 100;
-const GROWTH = 1.5;
+const GROWTH = 0;
 
 export function getXPForNextLevel(level: number): number {
-  return Math.floor(BASE_XP * Math.pow(level, GROWTH));
+  return GROWTH === 0 ? BASE_XP : Math.floor(BASE_XP * Math.pow(level, GROWTH));
 }
 
 export function getLevelFromXP(totalXP: number): { level: number; remainingXP: number; xpForNext: number } {

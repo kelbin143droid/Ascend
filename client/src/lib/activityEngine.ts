@@ -24,6 +24,7 @@ export interface ActivityStep {
   voiceText?: string;
   infoTooltip?: CheckInfoTooltip;
   videoSrc?: string;
+  loop?: boolean;
 }
 
 export interface ActivityDefinition {
@@ -226,6 +227,7 @@ export function buildPhase1Activities(
           durationSeconds: st.plankSeconds,
           voiceText: `Plank hold. ${st.plankSeconds} seconds. Core tight.`,
           videoSrc: "/videos/plank_hold_loop.mp4",
+          loop: false,
         },
         {
           id: "rest",
@@ -305,6 +307,7 @@ export function buildPhase1Activities(
           durationSeconds: ag.toeTouchSeconds,
           voiceText: `Toe touch hold. ${ag.toeTouchSeconds} seconds. No bouncing.`,
           videoSrc: "/videos/toe_hold.mp4",
+          loop: false,
         },
         {
           id: "hip_opener",
@@ -314,6 +317,7 @@ export function buildPhase1Activities(
           durationSeconds: ag.hipOpenerSeconds,
           voiceText: `Hip opener stretch. ${ag.hipOpenerSeconds} seconds.`,
           videoSrc: "/videos/holderstretch.mp4",
+          loop: false,
         },
         {
           id: "agility_done",
@@ -344,10 +348,19 @@ export function buildPhase1Activities(
         },
         {
           id: "sleep_check",
-          type: "instruction",
+          type: "check",
           label: "Sleep Check",
-          instruction: "Did you sleep at least 6 hours last night? Consistent sleep fuels recovery.",
+          instruction: "Did you sleep at least 6 hours last night?",
           voiceText: "Did you sleep at least 6 hours? Consistent sleep fuels recovery.",
+          infoTooltip: {
+            title: "Why sleep matters",
+            bullets: [
+              "Muscle repair happens during deep sleep",
+              "6–9 hours supports hormone balance",
+              "Sleep debt reduces willpower and focus",
+            ],
+            note: "Even one extra hour of sleep tonight will compound over time.",
+          },
         },
         {
           id: "meal_check",

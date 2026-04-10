@@ -66,9 +66,20 @@ On Day 5 completion, the `OnboardingCompleteScreen` triggers a multi-phase level
 - **Phase "filling-earned"**: XP bar animates 0 → 25 (earned XP during onboarding).
 - **Phase "filling-levelup"**: Bar continues 25 → 100 with gold glow, "⚡ LEVEL UP" label.
 - **Phase "showing-modal"**: `LevelUpModal` fullscreen overlay appears ("LEVEL UP! Welcome to Level 2"). Backend `POST /api/player/:id/onboarding-complete` is called to set the player to Level 2.
-- **Phase "done"**: `onEnter()` fires → navigates to the post-onboarding home dashboard at Level 2 with 0/282 XP.
+- **Phase "done"**: `onEnter()` fires → navigates to the post-onboarding home dashboard at Level 2 with 0/100 XP.
 - **New files**: `client/src/components/game/LevelUpModal.tsx`, `client/src/components/game/XPProgressBar.tsx`, `client/src/hooks/useLevelSystem.ts`.
 - **New endpoint**: `POST /api/player/:id/onboarding-complete` — idempotent; gives the remaining XP to reach Level 2 (threshold: 100 total XP). Guards against double-calling (level >= 2 check).
+
+### Level System
+- `GROWTH = 0` in `server/gameLogic/levelSystem.ts` → every level requires exactly **100 XP** (flat curve).
+- `getXPForNextLevel(any level)` returns `100` always.
+- `getTotalXPForLevel(N)` = `100 × (N-1)`.
+
+### Guided Training — Exercise Definitions
+- **Push-Ups replace Backward Shoulder Roll** in `LightMovementEngine.tsx` (Light Movement session).
+- **Plank Hold, Toe Touch Hold, Hip Opener** flagged `loop: false` in `activityEngine.ts` → video plays once (no looping) via `VideoExerciseTimer`.
+- **Sleep Check** step changed from `"instruction"` type to `"check"` type → renders Yes / Not yet buttons with a "Why sleep matters" info tooltip.
+- **Vitality Check** completion auto-calls `/api/player/:id/complete-guided-session` via `completeMutation` (triggered by `isCompletionStep` effect in `GuidedActivityEngine`), awards XP, then navigates to the Daily Flow finish screen → home.
 
 ## External Dependencies
 

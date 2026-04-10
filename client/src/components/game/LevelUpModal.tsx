@@ -175,7 +175,7 @@ export function LevelUpModal({ visible, onComplete }: LevelUpModalProps) {
           >
             {[
               { label: "Level", value: "2" },
-              { label: "XP", value: "0 / 282" },
+              { label: "XP", value: "0 / 100" },
               { label: "Phase", value: "I" },
             ].map((item) => (
               <div
