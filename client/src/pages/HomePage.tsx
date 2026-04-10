@@ -211,7 +211,18 @@ export default function HomePage() {
   const [showDay5Intro, setShowDay5Intro] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
-  const [justCompletedDayId, setJustCompletedDayId] = useState<number | null>(null);
+  // Lazy-initialize from sessionStorage so the value is correct on the VERY FIRST
+  // render — before any effects run. This prevents a brief flash of the next
+  // onboarding day's screen while the effect is still pending.
+  const [justCompletedDayId, setJustCompletedDayId] = useState<number | null>(() => {
+    const raw = sessionStorage.getItem("ascend_just_completed_day");
+    if (raw) {
+      const day = parseInt(raw, 10);
+      sessionStorage.removeItem("ascend_just_completed_day");
+      if (!isNaN(day) && day >= 1 && day <= 5) return day;
+    }
+    return null;
+  });
   // Store the DATE the flow was completed, not a boolean.
   // flowCompletedToday is derived by comparing this date to today, so it
   // automatically becomes false on a new calendar day — even without remounting.
@@ -293,18 +304,6 @@ export default function HomePage() {
     const handler = () => setFlowCompletedDate("");
     window.addEventListener("ascend:sessions-reset", handler);
     return () => window.removeEventListener("ascend:sessions-reset", handler);
-  }, []);
-
-  // Read the just-completed onboarding day from sessionStorage on mount (set by GuidedSessionPage)
-  useEffect(() => {
-    const raw = sessionStorage.getItem("ascend_just_completed_day");
-    if (raw) {
-      const day = parseInt(raw, 10);
-      sessionStorage.removeItem("ascend_just_completed_day");
-      if (!isNaN(day) && day >= 1 && day <= 5) {
-        setJustCompletedDayId(day);
-      }
-    }
   }, []);
 
   useEffect(() => {
