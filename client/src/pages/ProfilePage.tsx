@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
-import { motion } from "framer-motion";
-import { Shield, Calendar, Play, Flame, Zap, Star } from "lucide-react";
-import { PHASE_UNLOCK_DATA, PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
+import { motion, AnimatePresence } from "framer-motion";
+import { Shield, Calendar, Play, Flame, Zap, Star, User, Bell, Clock, Settings, ChevronRight } from "lucide-react";
+import { PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
 
 const PHASE_COLORS: Record<number, string> = {
   1: "#6b7280",
@@ -48,6 +49,7 @@ export default function ProfilePage() {
   const { player, isLoading, replayPhaseHistory } = useGame();
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
+  const [settingsToast, setSettingsToast] = useState<string | null>(null);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -89,26 +91,114 @@ export default function ProfilePage() {
     { key: "vitality", label: "VIT" },
   ];
 
+  const showSettingsToast = (label: string) => {
+    setSettingsToast(label);
+    setTimeout(() => setSettingsToast(null), 2400);
+  };
+
+  const withinLevelXP = (player as any).exp ?? 0;
+  const maxXP = (player as any).maxExp ?? 100;
+  const xpPct = Math.min(100, Math.round((withinLevelXP / maxXP) * 100));
+  const nameInitial = (player.name || "A").charAt(0).toUpperCase();
+
+  const SETTINGS_ITEMS = [
+    { icon: User, label: "Edit Profile", key: "edit-profile" },
+    { icon: Bell, label: "Notification Preferences", key: "notifications" },
+    { icon: Clock, label: "Sectograph Preferences", key: "sectograph" },
+    { icon: Settings, label: "App Settings", key: "app-settings" },
+  ];
+
   return (
     <SystemLayout>
       <div className="min-h-screen p-4 pb-28 space-y-5" data-testid="profile-page">
 
-        {/* Header */}
-        <div className="text-center pt-2">
-          <div className="text-[9px] tracking-[0.3em] mb-1" style={{ color: colors.textMuted }}>
-            ASCENDANT IDENTITY
+        {/* Settings toast */}
+        <AnimatePresence>
+          {settingsToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-center"
+              style={{
+                backgroundColor: "rgba(15,23,42,0.93)",
+                border: `1px solid ${colors.surfaceBorder}`,
+                backdropFilter: "blur(12px)",
+              }}
+            >
+              <p className="text-xs" style={{ color: colors.textMuted }}>
+                {settingsToast} — coming soon
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── HEADER with Avatar ─────────────────────────────────── */}
+        <div className="text-center pt-4" data-testid="profile-header">
+          {/* Avatar */}
+          <div className="relative inline-block mb-4">
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
+              style={{
+                background: `radial-gradient(circle at 35% 35%, ${rankColor}40, ${rankColor}10)`,
+                border: `2px solid ${rankColor}60`,
+                boxShadow: `0 0 24px ${rankColor}30`,
+              }}
+              data-testid="profile-avatar"
+            >
+              <span
+                className="text-3xl font-display font-bold"
+                style={{ color: rankColor }}
+              >
+                {nameInitial}
+              </span>
+            </div>
+            <div
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: rankColor, boxShadow: `0 0 8px ${rankColor}80` }}
+            >
+              <Star size={10} style={{ color: "#0a0a14" }} />
+            </div>
           </div>
-          <h1 className="text-2xl font-display font-bold" style={{ color: colors.text }}>
+
+          <h1 className="text-2xl font-display font-bold mb-1" style={{ color: colors.text }}>
             {player.name || "AWAKENED"}
           </h1>
-          <div
-            className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1 rounded-full"
-            style={{ backgroundColor: `${rankColor}18`, border: `1px solid ${rankColor}40` }}
-          >
-            <Star size={10} style={{ color: rankColor }} />
-            <span className="text-xs font-bold font-mono tracking-wider" style={{ color: rankColor }}>
-              {rank} RANK
+
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <span
+              className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full"
+              style={{ backgroundColor: `${colors.primary}15`, color: colors.primary, border: `1px solid ${colors.primary}25` }}
+            >
+              Lv {player.level}
             </span>
+            <span
+              className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full"
+              style={{ backgroundColor: `${rankColor}12`, color: rankColor, border: `1px solid ${rankColor}35` }}
+            >
+              {rank} Rank
+            </span>
+          </div>
+
+          {/* XP Progress Bar */}
+          <div className="max-w-xs mx-auto">
+            <div className="flex justify-between mb-1">
+              <span className="text-[10px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
+                Level {player.level}
+              </span>
+              <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
+                {withinLevelXP} / {maxXP} XP
+              </span>
+            </div>
+            <div
+              className="w-full h-1.5 rounded-full overflow-hidden"
+              style={{ backgroundColor: `${colors.primary}18` }}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${xpPct}%`, backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primaryGlow}` }}
+              />
+            </div>
           </div>
         </div>
 
@@ -311,7 +401,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Next phase */}
-        <div className="text-center text-xs pb-4" style={{ color: colors.textMuted }}>
+        <div className="text-center text-xs" style={{ color: colors.textMuted }}>
           <div className="mb-1.5 text-[9px] uppercase tracking-widest">Next Phase Requirements</div>
           {currentPhase === 1 && <div>Level 5 · Avg Stat 10 · 7-day streak</div>}
           {currentPhase === 2 && <div>Level 15 · Avg Stat 25 · 14-day streak</div>}
@@ -319,6 +409,48 @@ export default function ProfilePage() {
           {currentPhase === 4 && <div>Level 50 · Avg Stat 75 · 14-day streak</div>}
           {currentPhase === 5 && <div>Maximum phase achieved</div>}
         </div>
+
+        {/* ── SETTINGS ──────────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-4" style={{ backgroundColor: colors.primary }} />
+            <h2 className="text-[10px] font-display tracking-widest" style={{ color: colors.primary }}>SETTINGS</h2>
+          </div>
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{ border: `1px solid ${colors.surfaceBorder}` }}
+            data-testid="settings-section"
+          >
+            {SETTINGS_ITEMS.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.key}
+                  data-testid={`button-settings-${item.key}`}
+                  onClick={() => showSettingsToast(item.label)}
+                  className="w-full flex items-center justify-between px-4 py-3.5 transition-all active:scale-[0.99]"
+                  style={{
+                    backgroundColor: `${colors.surface}cc`,
+                    borderBottom: i < SETTINGS_ITEMS.length - 1 ? `1px solid ${colors.surfaceBorder}` : "none",
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${colors.primary}12`, border: `1px solid ${colors.primary}20` }}
+                    >
+                      <Icon size={14} style={{ color: colors.primary }} />
+                    </div>
+                    <span className="text-sm" style={{ color: colors.text }}>{item.label}</span>
+                  </div>
+                  <ChevronRight size={14} style={{ color: colors.textMuted }} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="pb-4" />
       </div>
     </SystemLayout>
   );

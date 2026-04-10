@@ -54,7 +54,7 @@ A 4-stage system that gradually introduces RPG terminology as users progress: St
 Serves as a daily command center with Daily Status, Today's Training Flow, Suggested Time Window, and Quick Progress Snapshot. It also displays Coach insights and Identity reflections.
 
 ### Navigation
--   **Bottom Nav**: HOME, TRAIN, HABITS, COACH.
+-   **Bottom Nav**: HOME, PROFILE, HABITS, COACH. (TRAIN tab removed; replaced by PROFILE tab at `/profile`, available from Day 1.)
 -   **Sidebar Menu**: Profile, Analytics, Progress History, Library, Achievements, Weekly Planning, System Tools (including Sectograph).
 -   **Sectograph**: A unified time system page with Timeline, Calendar, and Week views, including time awareness, behavioral anchoring, and focus session management.
 

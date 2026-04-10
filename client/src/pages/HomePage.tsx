@@ -285,7 +285,7 @@ export default function HomePage() {
       </AnimatePresence>
 
       <div
-        className="flex flex-col gap-5 py-6 px-1 max-w-md mx-auto w-full"
+        className="flex flex-col gap-4 py-6 px-1 max-w-md mx-auto w-full"
         data-testid="home-page"
       >
         {!dismissedNotification && homeData?.notification && (
@@ -295,67 +295,92 @@ export default function HomePage() {
           />
         )}
 
+        {/* ── HEADER ─────────────────────────────────────────────── */}
         <div className="pt-2" data-testid="daily-status-section">
-          {playerData?.name && (
-            <p className="text-[10px] uppercase tracking-[0.12em] mb-1" style={{ color: colors.textMuted }}>
-              {playerData.name}
-            </p>
-          )}
-          <div className="flex items-baseline gap-3">
-            <p className="text-lg font-display font-medium leading-relaxed" style={{ color: colors.text }}>
-              Phase: Stabilization
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.15em] mb-0.5" style={{ color: colors.textMuted }}>
+                {playerData?.name || "AWAKENED"}
+              </p>
+              <p className="text-lg font-display font-medium leading-tight" style={{ color: colors.text }}>
+                Phase: {homeData?.phase?.name ?? "Stabilization"}
+              </p>
+              <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
+                Day {consecutiveDays} of Consistency
+              </p>
+            </div>
             <span
-              className="text-xs font-mono px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: `${colors.primary}15`, color: colors.primary }}
+              className="text-sm font-mono font-bold px-3 py-1.5 rounded-xl"
+              style={{ backgroundColor: `${colors.primary}15`, color: colors.primary, border: `1px solid ${colors.primary}25` }}
               data-testid="text-player-level"
             >
               Lv {playerData?.level ?? 1}
             </span>
           </div>
-          <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
-            Day {consecutiveDays} of Consistency
-          </p>
 
-          {/* XP Bar — evidence of progress */}
+          {/* XP Bar */}
           {(() => {
             const withinLevelXP = playerData?.exp ?? 0;
             const maxXP = playerData?.maxExp ?? 100;
             const totalXP = playerData?.totalExp ?? 0;
             const pct = Math.min(100, Math.round((withinLevelXP / maxXP) * 100));
             return (
-              <div className="mt-4" data-testid="xp-progress-section">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: colors.textMuted }}>
+              <div className="mt-3" data-testid="xp-progress-section">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
                     Level {playerData?.level ?? 1}
                   </span>
                   <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
-                    {totalXP} XP total
+                    {totalXP.toLocaleString()} XP
                   </span>
                 </div>
                 <div
-                  className="w-full h-1 rounded-full overflow-hidden"
+                  className="w-full h-1.5 rounded-full overflow-hidden"
                   style={{ backgroundColor: `${colors.primary}18` }}
                   data-testid="xp-bar-track"
                 >
                   <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${pct}%`,
-                      backgroundColor: colors.primary,
-                      opacity: 0.7,
-                    }}
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%`, backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primaryGlow}` }}
                     data-testid="xp-bar-fill"
                   />
                 </div>
-                <p className="text-[10px] mt-2 italic" style={{ color: `${colors.textMuted}88` }}>
-                  This is the result of what you've already done.
-                </p>
               </div>
             );
           })()}
         </div>
 
+        {/* ── PRIMARY ACTION ─────────────────────────────────────── */}
+        {flowCompletedToday ? (
+          <div
+            className="w-full py-3.5 rounded-xl text-center text-sm font-bold"
+            style={{ backgroundColor: "#22c55e10", color: "#22c55e", border: "1px solid #22c55e28" }}
+            data-testid="text-flow-completed"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <CheckCircle2 size={16} />
+              Flow completed today
+            </span>
+          </div>
+        ) : (
+          <button
+            data-testid="button-begin-flow"
+            onClick={() => setFlowActive(true)}
+            className="w-full py-4 rounded-xl font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
+            style={{
+              backgroundColor: colors.primary,
+              color: colors.background,
+              boxShadow: `0 0 28px ${colors.primaryGlow}35`,
+            }}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Play size={16} />
+              Begin Daily Flow
+            </span>
+          </button>
+        )}
+
+        {/* ── TODAY'S FLOW ───────────────────────────────────────── */}
         <div
           data-testid="training-flow-card"
           className="rounded-xl overflow-hidden"
@@ -364,19 +389,16 @@ export default function HomePage() {
             border: `1px solid ${colors.surfaceBorder}`,
           }}
         >
-          <div className="px-4 pt-4 pb-2">
+          <div className="px-4 pt-4 pb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Zap size={14} style={{ color: colors.primary }} />
+                <Zap size={13} style={{ color: colors.primary }} />
                 <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
                   Today's Flow
                 </span>
               </div>
-              <span
-                className="text-[10px] font-mono"
-                style={{ color: flowCompletedToday ? "#22c55e" : colors.textMuted }}
-              >
-                {flowCompletedToday ? "4/4 complete" : `0/4 complete · ~${totalMins} min`}
+              <span className="text-[10px] font-mono" style={{ color: flowCompletedToday ? "#22c55e" : colors.textMuted }}>
+                {flowCompletedToday ? "4 / 4 done" : `~${totalMins} min`}
               </span>
             </div>
 
@@ -388,17 +410,11 @@ export default function HomePage() {
                     key={act.label}
                     className="flex items-center gap-3 py-2 px-2 rounded-lg"
                     data-testid={`flow-step-${i}`}
-                    style={{
-                      backgroundColor: flowCompletedToday
-                        ? "#22c55e08"
-                        : `${act.color}06`,
-                    }}
+                    style={{ backgroundColor: flowCompletedToday ? "#22c55e08" : `${act.color}06` }}
                   >
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{
-                        backgroundColor: flowCompletedToday ? "#22c55e18" : `${act.color}18`,
-                      }}
+                      style={{ backgroundColor: flowCompletedToday ? "#22c55e18" : `${act.color}18` }}
                     >
                       {flowCompletedToday ? (
                         <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
@@ -407,16 +423,10 @@ export default function HomePage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span
-                        className="text-sm block leading-tight"
-                        style={{ color: flowCompletedToday ? colors.textMuted : colors.text }}
-                      >
+                      <span className="text-sm block leading-tight" style={{ color: flowCompletedToday ? colors.textMuted : colors.text }}>
                         {act.label}
                       </span>
-                      <span
-                        className="text-[10px]"
-                        style={{ color: `${colors.textMuted}88` }}
-                      >
+                      <span className="text-[10px]" style={{ color: `${colors.textMuted}88` }}>
                         {act.sublabel}
                       </span>
                     </div>
@@ -425,50 +435,13 @@ export default function HomePage() {
               })}
             </div>
           </div>
-
-          <div className="px-4 pb-4 pt-2">
-            {flowCompletedToday ? (
-              <div
-                className="w-full py-3 rounded-xl text-center text-sm font-bold"
-                style={{
-                  backgroundColor: "#22c55e10",
-                  color: "#22c55e",
-                  border: "1px solid #22c55e25",
-                }}
-                data-testid="text-flow-completed"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <CheckCircle2 size={16} />
-                  Flow completed today
-                </span>
-              </div>
-            ) : (
-              <button
-                data-testid="button-begin-flow"
-                onClick={() => setFlowActive(true)}
-                className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-[0.15em] transition-all active:scale-[0.98]"
-                style={{
-                  backgroundColor: colors.primary,
-                  color: colors.background,
-                  boxShadow: `0 0 24px ${colors.primaryGlow}30`,
-                }}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <Play size={16} />
-                  Begin Daily Flow
-                </span>
-              </button>
-            )}
-          </div>
         </div>
 
+        {/* ── INSIGHTS ───────────────────────────────────────────── */}
         <div
-          data-testid="consistency-coach-card"
+          data-testid="coach-insight-card"
           className="rounded-xl px-4 py-3 flex items-start gap-3"
-          style={{
-            backgroundColor: `${colors.primary}08`,
-            border: `1px solid ${colors.primary}12`,
-          }}
+          style={{ backgroundColor: `${colors.primary}08`, border: `1px solid ${colors.primary}14` }}
         >
           <div
             className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
@@ -481,7 +454,7 @@ export default function HomePage() {
               Coach
             </p>
             <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
-              Consistency is becoming your baseline.
+              {homeData?.insight ?? "Consistency is becoming your baseline."}
             </p>
           </div>
         </div>
@@ -489,12 +462,9 @@ export default function HomePage() {
         <div
           data-testid="suggested-time-card"
           className="rounded-xl px-4 py-3"
-          style={{
-            backgroundColor: `${colors.primary}06`,
-            border: `1px solid ${colors.primary}12`,
-          }}
+          style={{ backgroundColor: `${colors.primary}06`, border: `1px solid ${colors.primary}12` }}
         >
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1.5">
             <Clock size={12} style={{ color: colors.primary }} />
             <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: `${colors.primary}99` }}>
               Suggested Time
@@ -514,13 +484,35 @@ export default function HomePage() {
           </button>
         </div>
 
+        {homeData?.identity?.reflection && (
+          <div
+            data-testid="identity-reflection-card"
+            className="rounded-xl px-4 py-3"
+            style={{ backgroundColor: "rgba(139,92,246,0.05)", border: "1px solid rgba(139,92,246,0.1)" }}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: "rgba(139,92,246,0.7)" }}>
+                {homeData.identity.reflection.category === "anchor" ? "Reflection" : "Identity"}
+              </p>
+              <span
+                className="text-[9px] px-1.5 py-0.5 rounded-full"
+                style={{ backgroundColor: "rgba(139,92,246,0.08)", color: "rgba(139,92,246,0.6)" }}
+                data-testid="text-identity-stage"
+              >
+                {homeData.identity.stageLabel}
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}bb` }}>
+              {homeData.identity.reflection.message}
+            </p>
+          </div>
+        )}
+
+        {/* ── STATS ──────────────────────────────────────────────── */}
         <div
           data-testid="progress-snapshot-card"
           className="rounded-xl px-4 py-4"
-          style={{
-            backgroundColor: `${colors.surface || colors.background}cc`,
-            border: `1px solid ${colors.surfaceBorder}`,
-          }}
+          style={{ backgroundColor: `${colors.surface || colors.background}cc`, border: `1px solid ${colors.surfaceBorder}` }}
         >
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 size={12} style={{ color: colors.textMuted }} />
@@ -538,10 +530,7 @@ export default function HomePage() {
                 <div
                   key={stat}
                   className="text-center p-2 rounded-lg"
-                  style={{
-                    backgroundColor: `${color}08`,
-                    border: `1px solid ${color}15`,
-                  }}
+                  style={{ backgroundColor: `${color}08`, border: `1px solid ${color}15` }}
                   data-testid={`stat-snapshot-${stat}`}
                 >
                   <Icon size={16} className="mx-auto mb-1" style={{ color }} />
@@ -556,54 +545,6 @@ export default function HomePage() {
             })}
           </div>
         </div>
-
-        {homeData?.insight && (
-          <div
-            data-testid="coach-insight-card"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: `${colors.primary}08`,
-              border: `1px solid ${colors.primary}15`,
-            }}
-          >
-            <p className="text-[10px] uppercase tracking-[0.12em] font-bold mb-1" style={{ color: `${colors.primary}99` }}>
-              Coach
-            </p>
-            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
-              {homeData.insight}
-            </p>
-          </div>
-        )}
-
-        {homeData?.identity?.reflection && (
-          <div
-            data-testid="identity-reflection-card"
-            className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: "rgba(139,92,246,0.05)",
-              border: "1px solid rgba(139,92,246,0.1)",
-            }}
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] font-bold" style={{ color: "rgba(139,92,246,0.7)" }}>
-                {homeData.identity.reflection.category === "anchor" ? "Reflection" : "Identity"}
-              </p>
-              <span
-                className="text-[9px] px-1.5 py-0.5 rounded-full"
-                style={{
-                  backgroundColor: "rgba(139,92,246,0.08)",
-                  color: "rgba(139,92,246,0.6)",
-                }}
-                data-testid="text-identity-stage"
-              >
-                {homeData.identity.stageLabel}
-              </span>
-            </div>
-            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}bb` }}>
-              {homeData.identity.reflection.message}
-            </p>
-          </div>
-        )}
       </div>
     </SystemLayout>
   );

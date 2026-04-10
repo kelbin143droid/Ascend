@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Dumbbell, Target, Brain } from "lucide-react";
+import { Home, User, Target, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
@@ -21,7 +21,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/", unlockDay: 1, lockMessage: "" },
-  { icon: Dumbbell, label: "TRAIN", path: "/train", unlockDay: 5, lockMessage: "Training unlocks on Day 5" },
+  { icon: User, label: "PROFILE", path: "/profile", unlockDay: 1, lockMessage: "" },
   { icon: Target, label: "HABITS", path: "/habits", unlockDay: 3, lockMessage: "Habits unlock on Day 3" },
   { icon: Brain, label: "COACH", path: "/coach", unlockDay: 1, lockMessage: "" },
 ];
