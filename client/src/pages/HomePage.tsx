@@ -1,23 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useLanguage } from "@/context/LanguageStageContext";
-import { SystemLayout } from "@/components/game/SystemLayout";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Play, Wind, Droplets, Brain, Heart, Clock, Calendar, BarChart3, Dumbbell, Eye, Zap, ChevronRight, CheckCircle2 } from "lucide-react";
-import { Day3IntroFlow } from "@/components/game/Day3IntroFlow";
-import { Day4IntroFlow } from "@/components/game/Day4IntroFlow";
-import { Day5IntroFlow } from "@/components/game/Day5IntroFlow";
-import { OnboardingCompletionScreen } from "@/components/game/OnboardingCompletionScreen";
-import { Day6SectographIntro } from "@/components/game/Day6SectographIntro";
+import { Play, Wind, Brain, Heart, Clock, BarChart3, Dumbbell, Eye, Zap, CheckCircle2 } from "lucide-react";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
-import { ReminderPrompt } from "@/components/game/ReminderPrompt";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
+import { SystemLayout } from "@/components/game/SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { AnimatePresence, motion } from "framer-motion";
+import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -89,77 +82,6 @@ interface HomeData {
   onboardingDayCompleted?: boolean;
 }
 
-const RECOMMENDED_HABITS = [
-  { id: "calm-breathing", name: "Calm Breathing", duration: "2 min", durationText: "2 minutes", icon: Wind, stat: "sense" },
-  { id: "light-movement", name: "Light Movement", duration: "5 min", durationText: "5 minutes", icon: Heart, stat: "agility" },
-  { id: "hydration-check", name: "Hydration Check", duration: "", durationText: "a moment", icon: Droplets, stat: "vitality" },
-  { id: "quick-reflection", name: "Quick Reflection", duration: "1 min", durationText: "1 minute", icon: Brain, stat: "sense" },
-];
-
-interface OnboardingStep {
-  sessionId: string;
-  name: string;
-  description: string;
-  coachMessage: string;
-  duration: string;
-  icon: typeof Wind;
-  buttonLabel: string;
-  category: string;
-}
-
-const ONBOARDING_STEPS: Record<number, OnboardingStep> = {
-  1: {
-    sessionId: "calm-breathing",
-    name: "2-Minute Reset",
-    description: "Slow breathing to reset your nervous system. This is your only task for today.",
-    coachMessage: "Begin with one small action.",
-    duration: "2 minutes",
-    icon: Wind,
-    buttonLabel: "Begin Today's Reset",
-    category: "BREATHING",
-  },
-  2: {
-    sessionId: "light-movement",
-    name: "Light Movement",
-    description: "Move your body for 3–5 minutes. Small movement wakes everything up.",
-    coachMessage: "Small movement wakes the system.",
-    duration: "3–5 minutes",
-    icon: Heart,
-    buttonLabel: "Begin Today's Moment",
-    category: "MOVEMENT",
-  },
-  3: {
-    sessionId: "hydration-check",
-    name: "Hydration + Reflection",
-    description: "Drink water, check in with your body, and note one honest observation.",
-    coachMessage: "Small signals matter. Hydration and awareness go hand in hand.",
-    duration: "1–2 minutes",
-    icon: Droplets,
-    buttonLabel: "Begin Today's Check-in",
-    category: "VITALITY",
-  },
-  4: {
-    sessionId: "focus-block",
-    name: "Light Cardio",
-    description: "Three short cardio bursts — jog, jump, box. Gets your blood moving.",
-    coachMessage: "Cardio sharpens focus and builds real energy.",
-    duration: "~1 minute",
-    icon: Clock,
-    buttonLabel: "Begin Today's Session",
-    category: "CARDIO",
-  },
-  5: {
-    sessionId: "plan-tomorrow",
-    name: "Plan & Reflect",
-    description: "Place one action into tomorrow's timeline. Reflect on this week's patterns.",
-    coachMessage: "Deciding when to act — before the moment — is a skill.",
-    duration: "1–2 minutes",
-    icon: Calendar,
-    buttonLabel: "Begin Today's Step",
-    category: "PLANNING",
-  },
-};
-
 const STAT_COLORS: Record<string, string> = {
   strength: "#ef4444",
   agility: "#22c55e",
@@ -181,14 +103,6 @@ const STAT_LABELS: Record<string, string> = {
   vitality: "Vitality",
 };
 
-const DAILY_REFLECTIONS: Record<number, { subtitle: string; motivation: string }> = {
-  1: { subtitle: "Beginning your journey.", motivation: "Small actions build momentum." },
-  2: { subtitle: "Consistency starts here.", motivation: "Repeat yesterday's success." },
-  3: { subtitle: "You're building a routine.", motivation: "Make it yours." },
-  4: { subtitle: "Rhythm forming.", motivation: "Consistency creates structure naturally." },
-  5: { subtitle: "Foundation complete.", motivation: "You've proven you can show up." },
-};
-
 const FLOW_ACTIVITIES = [
   { label: "Reset", sublabel: "2 min breathing", icon: Brain, color: "#3b82f6" },
   { label: "Strength", sublabel: "3–5 min circuit", icon: Dumbbell, color: "#ef4444" },
@@ -199,21 +113,16 @@ const FLOW_ACTIVITIES = [
 export default function HomePage() {
   const { player } = useGame();
   const { backgroundTheme } = useTheme();
-  const { t } = useLanguage();
   const colors = backgroundTheme.colors;
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-  const [selectedHabitId, setSelectedHabitId] = useState(RECOMMENDED_HABITS[0].id);
-  const [showDay3Intro, setShowDay3Intro] = useState(false);
+
   const [dismissedNotification, setDismissedNotification] = useState(false);
-  const [showReminderPrompt, setShowReminderPrompt] = useState(false);
-  const [showDay4Intro, setShowDay4Intro] = useState(false);
-  const [showDay5Intro, setShowDay5Intro] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   const [flowActive, setFlowActive] = useState(false);
+
   // Lazy-initialize from sessionStorage so the value is correct on the VERY FIRST
-  // render — before any effects run. This prevents a brief flash of the next
-  // onboarding day's screen while the effect is still pending.
+  // render — before any effects run. Prevents the dashboard from flashing while the
+  // onboarding completion screen should be showing.
   const [justCompletedDayId, setJustCompletedDayId] = useState<number | null>(() => {
     const raw = sessionStorage.getItem("ascend_just_completed_day");
     if (raw) {
@@ -223,32 +132,13 @@ export default function HomePage() {
     }
     return null;
   });
+
   // Store the DATE the flow was completed, not a boolean.
   // flowCompletedToday is derived by comparing this date to today, so it
   // automatically becomes false on a new calendar day — even without remounting.
   const [flowCompletedDate, setFlowCompletedDate] = useState(
     () => localStorage.getItem("ascend_light_movement_completed") ?? ""
   );
-
-  // Marks Day 5 (plan-tomorrow) complete on the server when the user finishes
-  // or exits the Day6SectographIntro that serves as the Day 5 activity.
-  const completeDay5Mutation = useMutation({
-    mutationFn: async () => {
-      if (!player?.id) throw new Error("No player");
-      return apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
-        sessionId: "plan-tomorrow",
-        habitId: "guided_plan-tomorrow",
-        stat: "sense",
-        durationMinutes: 2,
-      });
-    },
-    onSuccess: async () => {
-      await Promise.allSettled([
-        queryClient.refetchQueries({ queryKey: ["home", player?.id] }),
-        queryClient.refetchQueries({ queryKey: ["/api/player", player?.id] }),
-      ]);
-    },
-  });
 
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -289,11 +179,6 @@ export default function HomePage() {
 
   const onboardingDay = homeData?.onboardingDay ?? 1;
   const isOnboardingComplete = homeData?.isOnboardingComplete ?? false;
-  const selectedHabit = RECOMMENDED_HABITS.find(h => h.id === selectedHabitId) || RECOMMENDED_HABITS[0];
-
-  // Training mode starts as soon as onboarding (5 days) is complete
-  const isTrainingMode = isOnboardingComplete;
-  const isOnboardingFlow = onboardingDay <= 5 && !isTrainingMode;
 
   // Derived fresh every render — correct across day boundaries and DevPanel resets
   const todayStr = new Date().toISOString().split("T")[0];
@@ -306,57 +191,8 @@ export default function HomePage() {
     return () => window.removeEventListener("ascend:sessions-reset", handler);
   }, []);
 
-  useEffect(() => {
-    if (!homeData || onboardingDay !== 3) return;
-    const today = new Date().toISOString().split("T")[0];
-    const seenKey = "ascend_day3_intro_seen";
-    if (localStorage.getItem(seenKey) === today) return;
-    const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
-    if (prevCompleted && !homeData.hasCompletedHabitToday) {
-      localStorage.setItem(seenKey, today);
-      setShowDay3Intro(true);
-    }
-  }, [homeData, onboardingDay]);
-
-  useEffect(() => {
-    if (!homeData || onboardingDay !== 3 || !homeData.hasCompletedHabitToday) return;
-    const reminderPref = localStorage.getItem("ascend_reminder_preference");
-    const promptShown = localStorage.getItem("ascend_reminder_prompt_shown");
-    if (!reminderPref && !promptShown) {
-      const timer = setTimeout(() => {
-        localStorage.setItem("ascend_reminder_prompt_shown", "true");
-        setShowReminderPrompt(true);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [homeData?.hasCompletedHabitToday, onboardingDay]);
-
-  useEffect(() => {
-    if (!homeData || onboardingDay !== 4) return;
-    const today = new Date().toISOString().split("T")[0];
-    const seenKey = "ascend_day4_intro_seen";
-    if (localStorage.getItem(seenKey) === today) return;
-    const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
-    if (prevCompleted && !homeData.hasCompletedHabitToday) {
-      localStorage.setItem(seenKey, today);
-      setShowDay4Intro(true);
-    }
-  }, [homeData, onboardingDay]);
-
-  useEffect(() => {
-    if (!homeData || onboardingDay !== 5) return;
-    const today = new Date().toISOString().split("T")[0];
-    const seenKey = "ascend_day5_intro_seen";
-    if (localStorage.getItem(seenKey) === today) return;
-    const prevCompleted = homeData.lastCompletionDate && homeData.lastCompletionDate !== today;
-    if (prevCompleted && !homeData.hasCompletedHabitToday) {
-      localStorage.setItem(seenKey, today);
-      setShowDay5Intro(true);
-    }
-  }, [homeData, onboardingDay]);
-
-  // Block all renders until homeData is loaded — prevents the Day-1 flash for
-  // returning users whose onboardingDay defaults to 1 before the first fetch.
+  // Block all renders until homeData is loaded — prevents a flash of Day 1
+  // onboarding for returning users whose onboardingDay defaults to 1 before fetch.
   if (!homeData || homeLoading) {
     return (
       <div
@@ -366,485 +202,7 @@ export default function HomePage() {
     );
   }
 
-  // Show the completion screen / Sectograph intro only when:
-  //  (a) a day was just completed this navigation (set by GuidedSessionPage via sessionStorage)
-  //  (b) that day is the MOST RECENTLY completed day confirmed by the server
-  // Checking against the last element (sorted ascending) — not just includes() — prevents
-  // a stale justCompletedDayId (e.g. "1" leftover) from triggering a Day 1 screen on Day 2+.
-  const lastCompletedDay = homeData.completedDays.length > 0
-    ? homeData.completedDays[homeData.completedDays.length - 1]
-    : null;
-  if (
-    justCompletedDayId !== null &&
-    lastCompletedDay !== null &&
-    justCompletedDayId === lastCompletedDay
-  ) {
-    const xp = justCompletedDayId * 5;
-
-    if (justCompletedDayId === 5) {
-      return (
-        <SystemLayout>
-          <Day6SectographIntro
-            onComplete={() => setJustCompletedDayId(null)}
-            onCancel={() => setJustCompletedDayId(null)}
-          />
-        </SystemLayout>
-      );
-    }
-
-    return (
-      <SystemLayout>
-        <OnboardingCompletionScreen
-          key={`completion-${justCompletedDayId}`}
-          day={justCompletedDayId}
-          xp={xp}
-          xpGoal={100}
-          streak={homeData.streak}
-          onClose={() => setJustCompletedDayId(null)}
-        />
-      </SystemLayout>
-    );
-  }
-
-  if (isOnboardingFlow) {
-    const step = ONBOARDING_STEPS[onboardingDay] || ONBOARDING_STEPS[1];
-    const StepIcon = step.icon;
-    // homeData is guaranteed non-null here (loading guard above)
-    const completedDays = homeData.completedDays;
-    const nextDay = Math.min(onboardingDay + 1, 5);
-    const phaseName = homeData.phase?.name ?? "Stabilization";
-
-    // Day 5 — Sectograph Introduction is the Day 5 activity itself.
-    // Completing or dismissing it records the plan-tomorrow session and
-    // advances onboardingDay → isOnboardingComplete = true → main dashboard.
-    if (onboardingDay === 5) {
-      const handleDay5Done = () => {
-        if (!completeDay5Mutation.isPending) {
-          completeDay5Mutation.mutate();
-        }
-      };
-      return (
-        <SystemLayout>
-          <Day6SectographIntro
-            onComplete={handleDay5Done}
-            onCancel={handleDay5Done}
-          />
-        </SystemLayout>
-      );
-    }
-
-    // Day 1 minimal screen
-    if (onboardingDay === 1) {
-      return (
-        <SystemLayout>
-          <div
-            data-testid="home-page"
-            style={{
-              minHeight: "100dvh",
-              backgroundColor: "#06060f",
-              fontFamily: "'Inter', system-ui, sans-serif",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0 32px 80px",
-              gap: 0,
-            }}
-          >
-            {/* Breathing icon */}
-            <div
-              aria-hidden="true"
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: "50%",
-                backgroundColor: "rgba(139,92,246,0.15)",
-                border: "1px solid rgba(139,92,246,0.25)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 28,
-              }}
-            >
-              <Wind size={24} color="#a78bfa" />
-            </div>
-
-            {/* Title */}
-            <h1
-              style={{
-                margin: "0 0 8px",
-                fontSize: 26,
-                fontWeight: 800,
-                color: "#f5f5ff",
-                lineHeight: 1.2,
-                letterSpacing: "-0.5px",
-                textAlign: "center",
-                fontFamily: "'Inter', system-ui, sans-serif",
-              }}
-            >
-              Let's reset your system
-            </h1>
-
-            {/* Subtitle */}
-            <p
-              style={{
-                margin: "0 0 24px",
-                fontSize: 14,
-                color: "rgba(245,245,255,0.4)",
-                textAlign: "center",
-                fontFamily: "'Inter', system-ui, sans-serif",
-              }}
-            >
-              This takes less than 2 minutes
-            </p>
-
-            {/* Description */}
-            <p
-              style={{
-                margin: "0 0 40px",
-                fontSize: 16,
-                lineHeight: 1.65,
-                color: "rgba(245,245,255,0.65)",
-                textAlign: "center",
-                maxWidth: 300,
-                fontFamily: "'Inter', system-ui, sans-serif",
-              }}
-            >
-              Guided breathing to reset your nervous system. One task. That's it.
-            </p>
-
-            {/* Start button */}
-            <button
-              id="start-session"
-              data-testid="button-start"
-              aria-label="Begin today's 2-minute breathing session"
-              onClick={() => setLocation(`/guided-session/${step.sessionId}`)}
-              style={{
-                width: "100%",
-                maxWidth: 320,
-                minHeight: 58,
-                borderRadius: 18,
-                background: "#7c3aed",
-                border: "none",
-                color: "#fff",
-                fontSize: 18,
-                fontWeight: 700,
-                letterSpacing: "0.03em",
-                cursor: "pointer",
-                boxShadow: "0 4px 28px rgba(124,58,237,0.45)",
-                fontFamily: "'Inter', system-ui, sans-serif",
-                transition: "transform 0.1s, box-shadow 0.1s",
-              }}
-              onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
-              onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-              onTouchStart={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
-              onTouchEnd={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-            >
-              Start
-            </button>
-          </div>
-        </SystemLayout>
-      );
-    }
-
-    return (
-      <SystemLayout>
-        <div
-          style={{
-            minHeight: "100dvh",
-            backgroundColor: "#06060f",
-            color: "#f5f5ff",
-            fontFamily: "'Inter', system-ui, sans-serif",
-            display: "flex",
-            flexDirection: "column",
-            paddingBottom: 80,
-          }}
-          data-testid="home-page"
-        >
-          {/* Skip nav */}
-          <a
-            href="#main-action"
-            style={{
-              position: "absolute",
-              top: -40,
-              left: 0,
-              padding: "8px 16px",
-              backgroundColor: "#8b5cf6",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 600,
-              textDecoration: "none",
-              zIndex: 100,
-              borderRadius: "0 0 8px 0",
-              transition: "top 0.2s",
-            }}
-            onFocus={(e) => { (e.target as HTMLElement).style.top = "0"; }}
-            onBlur={(e) => { (e.target as HTMLElement).style.top = "-40px"; }}
-          >
-            Skip to main action
-          </a>
-
-          {/* Header */}
-          <header style={{ padding: "52px 24px 20px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 18,
-              }}
-            >
-              <div>
-                <p
-                  aria-label={`Onboarding progress: Day ${onboardingDay} of 5`}
-                  style={{
-                    margin: 0,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "#a78bfa",
-                    letterSpacing: "0.06em",
-                  }}
-                  data-testid="text-day-progress"
-                >
-                  Day {onboardingDay} of 5
-                </p>
-                <p style={{ margin: 0, fontSize: 11, color: "rgba(245,245,255,0.45)", marginTop: 2 }}>
-                  {phaseName} phase
-                </p>
-              </div>
-              {/* 5-dot progress track */}
-              <div
-                aria-label={`5-day progress: ${homeData.completedDays.length} days complete`}
-                style={{ display: "flex", gap: 5 }}
-                data-testid="progress-track"
-              >
-                {[1, 2, 3, 4, 5].map((d) => {
-                  const isComplete = homeData.completedDays.includes(d);
-                  const isCurrent = !isComplete && d === homeData.onboardingDay;
-                  return (
-                    <div
-                      key={d}
-                      style={{
-                        width: 22,
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: isComplete ? "#8b5cf6" : isCurrent ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.1)",
-                        border: isCurrent ? "1px solid #8b5cf6" : isComplete ? "none" : "1px solid rgba(255,255,255,0.08)",
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 28,
-                fontWeight: 800,
-                color: "#f5f5ff",
-                lineHeight: 1.2,
-                letterSpacing: "-0.5px",
-                fontFamily: "'Inter', system-ui, sans-serif",
-              }}
-            >
-              Today's practice
-            </h1>
-          </header>
-
-          {/* Main content */}
-          <main id="main-action" style={{ flex: 1, padding: "0 24px" }}>
-            <>
-                {/* Session card */}
-                <div
-                  role="region"
-                  aria-label={`Today's session: ${step.name}`}
-                  data-testid="onboarding-step-card"
-                  style={{
-                    backgroundColor: "rgba(139,92,246,0.1)",
-                    border: "1.5px solid rgba(139,92,246,0.3)",
-                    borderRadius: 18,
-                    padding: "24px 20px",
-                    marginBottom: 16,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
-                    {/* Icon with category label */}
-                    <div
-                      aria-hidden="true"
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 6,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: 14,
-                          backgroundColor: "rgba(139,92,246,0.2)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <StepIcon size={24} color="#a78bfa" />
-                      </div>
-                      <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 600, letterSpacing: "0.05em" }}>
-                        {step.category}
-                      </span>
-                    </div>
-
-                    <div style={{ flex: 1 }}>
-                      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#f5f5ff", lineHeight: 1.2, fontFamily: "'Inter', system-ui, sans-serif" }}>
-                        {step.name}
-                      </h2>
-                      <p style={{ margin: 0, fontSize: 14, color: "#a78bfa", fontWeight: 500 }}>
-                        ⏱ {step.duration}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p
-                    style={{
-                      margin: "0 0 16px",
-                      fontSize: 16,
-                      lineHeight: 1.65,
-                      color: "rgba(245,245,255,0.72)",
-                    }}
-                  >
-                    {step.description}
-                  </p>
-
-                  {/* Coach says */}
-                  <div
-                    data-testid="coach-insight-card"
-                    style={{
-                      padding: "12px 16px",
-                      backgroundColor: "rgba(255,255,255,0.04)",
-                      borderRadius: 10,
-                      borderLeft: "3px solid rgba(139,92,246,0.5)",
-                    }}
-                  >
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                      Coach says
-                    </p>
-                    <p style={{ margin: 0, fontSize: 15, color: "rgba(245,245,255,0.65)", lineHeight: 1.55 }}>
-                      {step.coachMessage}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Unlocks next day row */}
-                <div
-                  role="note"
-                  data-testid="text-unlock-note"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "14px 16px",
-                    backgroundColor: "rgba(255,255,255,0.025)",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    marginBottom: 24,
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: 14, color: "rgba(245,245,255,0.45)", lineHeight: 1.45 }}>
-                    {onboardingDay < 5
-                      ? `Completing today unlocks Day ${nextDay} tomorrow.`
-                      : "Completing today finishes your foundation week."}
-                  </p>
-                  <ChevronRight size={18} color="rgba(245,245,255,0.2)" aria-hidden="true" />
-                </div>
-
-                {/* CTA button */}
-                <button
-                  id="start-session"
-                  data-testid="button-start"
-                  aria-label={`Begin today's ${step.duration} ${step.category.toLowerCase()} session`}
-                  onClick={() => setLocation(`/guided-session/${step.sessionId}`)}
-                  style={{
-                    width: "100%",
-                    minHeight: 56,
-                    padding: "16px 24px",
-                    borderRadius: 16,
-                    background: "#7c3aed",
-                    border: "none",
-                    color: "#fff",
-                    fontSize: 17,
-                    fontWeight: 700,
-                    letterSpacing: "0.04em",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 12,
-                    boxShadow: "0 4px 24px rgba(124,58,237,0.4)",
-                    marginBottom: 8,
-                    transition: "transform 0.1s, box-shadow 0.1s",
-                  }}
-                  onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(0.98)"; }}
-                  onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-                >
-                  <Play size={18} fill="#fff" aria-hidden="true" />
-                  Start
-                </button>
-
-                {/* Duration hint */}
-                <p
-                  aria-live="polite"
-                  style={{
-                    textAlign: "center",
-                    fontSize: 13,
-                    color: "rgba(245,245,255,0.35)",
-                    margin: "6px 0 0",
-                  }}
-                >
-                  Takes about {step.duration}
-                </p>
-            </>
-          </main>
-        </div>
-
-        <Day3IntroFlow
-          visible={showDay3Intro}
-          lastHabitName={selectedHabit.name}
-          onComplete={(choice) => {
-            setShowDay3Intro(false);
-            if (choice === "repeat") {
-              setLocation(`/guided-session/${selectedHabitId}`);
-            }
-          }}
-        />
-        <Day4IntroFlow
-          visible={showDay4Intro}
-          lastCompletionTime={homeData?.lastCompletionTime ?? null}
-          onComplete={() => setShowDay4Intro(false)}
-          onSetReminder={(timeWindow) => {
-            localStorage.setItem("ascend_reminder_preference", timeWindow);
-          }}
-        />
-        <Day5IntroFlow
-          visible={showDay5Intro}
-          onComplete={() => setShowDay5Intro(false)}
-        />
-        <ReminderPrompt
-          visible={showReminderPrompt}
-          onSelect={(preference) => {
-            localStorage.setItem("ascend_reminder_preference", preference);
-            setShowReminderPrompt(false);
-          }}
-          onDismiss={() => setShowReminderPrompt(false)}
-        />
-      </SystemLayout>
-    );
-  }
-
+  // Return protocol takes top priority
   if (homeData?.returnProtocol && !returnProtocolDismissed) {
     return (
       <ReturnProtocolScreen
@@ -854,6 +212,30 @@ export default function HomePage() {
     );
   }
 
+  // ── Onboarding gate ─────────────────────────────────────────────────────────
+  // Render OnboardingFlow when:
+  //   (a) onboarding is not yet complete, OR
+  //   (b) a day was just finished this navigation (completion screen needed even
+  //       if isOnboardingComplete is now true after Day 5)
+  const lastCompletedDay = homeData.completedDays.length > 0
+    ? homeData.completedDays[homeData.completedDays.length - 1]
+    : null;
+  const completionScreenPending =
+    justCompletedDayId !== null &&
+    lastCompletedDay !== null &&
+    justCompletedDayId === lastCompletedDay;
+
+  if (!isOnboardingComplete || completionScreenPending) {
+    return (
+      <OnboardingFlow
+        homeData={homeData}
+        justCompletedDay={completionScreenPending ? justCompletedDayId : null}
+        onClearJustCompleted={() => setJustCompletedDayId(null)}
+      />
+    );
+  }
+
+  // ── Post-onboarding main dashboard ──────────────────────────────────────────
   const tiers: CategoryTiers = {
     strength: scalingData?.trainingScaling?.strength?.tier ?? 1,
     agility: scalingData?.trainingScaling?.agility?.tier ?? 1,
@@ -871,7 +253,6 @@ export default function HomePage() {
   };
 
   const consecutiveDays = homeData?.stability?.consecutiveActiveDays ?? homeData?.streak ?? 0;
-  const phaseName = homeData?.phase?.name ?? "Phase 1 — Stabilization";
 
   const now = new Date();
   const currentHour = now.getHours();
@@ -936,7 +317,7 @@ export default function HomePage() {
             Day {consecutiveDays} of Consistency
           </p>
 
-          {/* XP Bar — revealed after onboarding as evidence of progress */}
+          {/* XP Bar — evidence of progress */}
           {(() => {
             const withinLevelXP = playerData?.exp ?? 0;
             const maxXP = playerData?.maxExp ?? 100;
@@ -1224,7 +605,6 @@ export default function HomePage() {
           </div>
         )}
       </div>
-
     </SystemLayout>
   );
 }
