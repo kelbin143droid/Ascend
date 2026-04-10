@@ -61,6 +61,15 @@ Serves as a daily command center with Daily Status, Today's Training Flow, Sugge
 ### 5-Day Onboarding System
 A modular, futuristic onboarding flow replacing old inline logic. It defines 5 days of guided sessions with a dashboard, start screens, completion screens, and a final completion screen, using specific design elements and animations. Features are progressively unlocked based on onboarding day.
 
+### Level-Up Animation System (End of Onboarding)
+On Day 5 completion, the `OnboardingCompleteScreen` triggers a multi-phase level-up animation sequence before navigating to the home dashboard:
+- **Phase "filling-earned"**: XP bar animates 0 → 25 (earned XP during onboarding).
+- **Phase "filling-levelup"**: Bar continues 25 → 100 with gold glow, "⚡ LEVEL UP" label.
+- **Phase "showing-modal"**: `LevelUpModal` fullscreen overlay appears ("LEVEL UP! Welcome to Level 2"). Backend `POST /api/player/:id/onboarding-complete` is called to set the player to Level 2.
+- **Phase "done"**: `onEnter()` fires → navigates to the post-onboarding home dashboard at Level 2 with 0/282 XP.
+- **New files**: `client/src/components/game/LevelUpModal.tsx`, `client/src/components/game/XPProgressBar.tsx`, `client/src/hooks/useLevelSystem.ts`.
+- **New endpoint**: `POST /api/player/:id/onboarding-complete` — idempotent; gives the remaining XP to reach Level 2 (threshold: 100 total XP). Guards against double-calling (level >= 2 check).
+
 ## External Dependencies
 
 ### Database

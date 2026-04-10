@@ -170,6 +170,25 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/onboarding-complete", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+      if (player.level >= 2) {
+        return res.json(attachDerivedStats(player, "Already leveled up"));
+      }
+      const LEVEL_2_THRESHOLD = 100;
+      const current = player.totalExp ?? 0;
+      const needed = Math.max(0, LEVEL_2_THRESHOLD - current);
+      const updated = needed > 0
+        ? await storage.gainExp(req.params.id, needed)
+        : player;
+      res.json(attachDerivedStats(updated!, "Level up! Welcome to Level 2."));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete onboarding level-up" });
+    }
+  });
+
   app.post("/api/player/:id/modify-hp", async (req, res) => {
     try {
       const hpSchema = z.object({ amount: z.number() });
