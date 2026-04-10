@@ -127,10 +127,10 @@ export function buildPhase1Activities(
     ? `Jumping jacks. ${st.cardioSeconds} seconds.`
     : `Jog in place. ${st.cardioSeconds} seconds.`;
 
-  const pushUpVideo = strengthTier <= 1 ? "/videos/knee_pushups_loop.mp4" : "/videos/pushups_loop.mp4";
-  const pushUpLabel = strengthTier <= 1 ? "Knee Push-ups" : "Push-ups";
+  const pushUpVideo = "/videos/pushups_loop.mp4";
+  const pushUpLabel = strengthTier <= 1 ? "Push-Ups (Knee if needed)" : "Push-Ups";
   const pushUpInstruction = strengthTier <= 1
-    ? `Knee push-ups for ${st.pushupSeconds} seconds. Control the movement.`
+    ? `Push-ups for ${st.pushupSeconds} seconds. Use your knees if needed — control the movement.`
     : `Push-ups for ${st.pushupSeconds} seconds. Slow and steady.`;
 
   const strengthTotal = st.cardioSeconds + st.pushupSeconds + st.pushupSeconds + st.plankSeconds + st.restSeconds;
