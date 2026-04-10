@@ -382,14 +382,15 @@ export function Sectograph({
         <button
           data-testid="button-schedule"
           onClick={onCenterClick}
-          className="pointer-events-auto absolute bottom-4 right-4 w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all cursor-pointer group"
+          className="pointer-events-auto w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 group"
           style={{
             backgroundColor: colors.surface,
-            border: `1px solid ${colors.surfaceBorder}`,
-            boxShadow: `0 0 15px ${colors.primaryGlow}`,
+            border: `1.5px solid ${colors.ring}`,
+            boxShadow: `0 0 18px ${colors.primaryGlow}, 0 0 6px ${colors.primaryGlow}60 inset`,
           }}
+          title="Add time block"
         >
-          <svg viewBox="0 0 24 24" className="w-5 h-5 transition-colors" style={{ color: colors.primary }} fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg viewBox="0 0 24 24" className="w-5 h-5 transition-colors group-hover:rotate-90" style={{ color: colors.primary, transition: "transform 0.25s ease" }} fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>

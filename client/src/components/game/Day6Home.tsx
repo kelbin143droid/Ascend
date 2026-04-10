@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, ArrowRight, Clock } from "lucide-react";
+import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, ArrowRight, Clock, Lock } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
 import { SystemLayout } from "./SystemLayout";
@@ -277,7 +277,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               <CheckCircle2 size={16} />
               Flow completed today · {totalMins} min logged
             </div>
-          ) : (
+          ) : tutorialDone ? (
             <button
               data-testid="button-begin-flow"
               onClick={() => setFlowActive(true)}
@@ -294,6 +294,21 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 Begin Daily Flow
               </span>
             </button>
+          ) : (
+            <div
+              data-testid="button-begin-flow-locked"
+              className="w-full py-4 rounded-xl text-center text-sm font-bold flex items-center justify-center gap-2 select-none"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.03)",
+                color: colors.textMuted,
+                border: `1px solid rgba(255,255,255,0.07)`,
+                opacity: 0.55,
+                cursor: "not-allowed",
+              }}
+            >
+              <Lock size={13} style={{ opacity: 0.6 }} />
+              Begin Daily Flow · Setup timeline first
+            </div>
           )}
         </motion.div>
 
