@@ -853,7 +853,7 @@ export default function SectographPage() {
               </div>
             )}
 
-            {!activeFocus && (
+            {!isDay5Mode && !activeFocus && (
               <button
                 onClick={() => setShowFocusSetup(true)}
                 className="w-full rounded-lg p-3 flex items-center gap-3 transition-all hover:scale-[1.01]"
@@ -873,7 +873,7 @@ export default function SectographPage() {
               </button>
             )}
 
-            {awarenessInsight && (
+            {!isDay5Mode && awarenessInsight && (
               <div
                 className="w-full rounded-lg p-3 flex items-start gap-3"
                 style={{
@@ -889,7 +889,7 @@ export default function SectographPage() {
               </div>
             )}
 
-            {rhythmInsights.length > 0 && (
+            {!isDay5Mode && rhythmInsights.length > 0 && (
               <div
                 className="w-full rounded-lg p-4"
                 style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
@@ -942,7 +942,7 @@ export default function SectographPage() {
               </div>
             )}
 
-            {behavioralAnchors.length > 0 && (
+            {!isDay5Mode && behavioralAnchors.length > 0 && (
               <div
                 className="w-full rounded-lg p-4"
                 style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
@@ -987,7 +987,7 @@ export default function SectographPage() {
               </div>
             )}
 
-            <div
+            {!isDay5Mode && <div
               className="w-full rounded-lg p-4"
               style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
             >
@@ -1099,7 +1099,7 @@ export default function SectographPage() {
                   </p>
                 </div>
               )}
-            </div>
+            </div>}
           </div>
 
         {activeTab === "calendar-removed" && (
