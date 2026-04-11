@@ -992,6 +992,25 @@ export default function SectographPage() {
                   <span className="text-[9px]" style={{ color: colors.textMuted, opacity: 0.5 }}>
                     {hasCustomSchedule ? "Your schedule" : "Default layout"}
                   </span>
+                  {hasCustomSchedule && (
+                    <button
+                      onClick={() => {
+                        if (confirm("Remove all time blocks?")) {
+                          updatePlayer({ schedule: [] });
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium transition-all"
+                      style={{
+                        backgroundColor: "rgba(239,68,68,0.1)",
+                        color: "#ef4444",
+                        border: "1px solid rgba(239,68,68,0.25)",
+                      }}
+                      data-testid="button-clear-all-blocks"
+                    >
+                      <Trash2 size={8} />
+                      Clear all
+                    </button>
+                  )}
                   <button
                     onClick={() => setShowSegments(v => !v)}
                     className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium transition-all"

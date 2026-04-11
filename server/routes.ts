@@ -513,8 +513,9 @@ export async function registerRoutes(
         isSystemTask: true,
       };
 
-      const schedule = [...(player.schedule || []), scheduleEntry];
-      await storage.updatePlayer(req.params.id, { schedule });
+      // Do not write activity completions to player.schedule —
+      // they accumulate without a natural cleanup path and clutter the Sectograph.
+      // The Sectograph is for planned schedule blocks, not a completion log.
 
       res.json({ success: true, entry: scheduleEntry });
     } catch (error) {
