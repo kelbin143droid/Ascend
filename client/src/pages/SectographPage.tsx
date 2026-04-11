@@ -454,9 +454,7 @@ export default function SectographPage() {
 
   const handleDeleteBlock = () => {
     if (!editingBlock || !player) return;
-    const current: ScheduleBlock[] = (player.schedule ?? []) as ScheduleBlock[];
-    const newSchedule = current.filter((b: any) => b.id !== editingBlock.id);
-    updatePlayer({ schedule: newSchedule });
+    deleteScheduleBlock(editingBlock.id);
     setEditingBlock(null);
   };
 
@@ -555,11 +553,14 @@ export default function SectographPage() {
     setShowEventForm(false);
   };
 
-  const activeSchedule: ScheduleBlock[] = player?.schedule?.length
-    ? (player.schedule as ScheduleBlock[])
-    : DEFAULT_SEGMENTS;
+  const activeSchedule: ScheduleBlock[] = (player?.schedule as ScheduleBlock[]) ?? [];
 
-  const hasCustomSchedule = (player?.schedule as any[])?.length > 0;
+  const hasCustomSchedule = activeSchedule.length > 0;
+
+  const deleteScheduleBlock = (blockId: string) => {
+    const updated = activeSchedule.filter((b: any) => b.id !== blockId);
+    updatePlayer({ schedule: updated });
+  };
 
   const freeWindows = useMemo(() => detectFreeWindows(activeSchedule, 30), [activeSchedule]);
   const awarenessInsight = useMemo(() => getAwarenessInsight(activeSchedule, freeWindows), [activeSchedule, freeWindows]);
@@ -990,7 +991,7 @@ export default function SectographPage() {
                 </h3>
                 <div className="flex items-center gap-2">
                   <span className="text-[9px]" style={{ color: colors.textMuted, opacity: 0.5 }}>
-                    {hasCustomSchedule ? "Your schedule" : "Default layout"}
+                    {hasCustomSchedule ? "Your schedule" : "No blocks yet"}
                   </span>
                   {hasCustomSchedule && (
                     <button
@@ -1089,11 +1090,10 @@ export default function SectographPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            const current = (player?.schedule ?? []) as any[];
-                            updatePlayer({ schedule: current.filter((b: any) => b.id !== block.id) });
+                            deleteScheduleBlock(block.id);
                           }}
-                          className="flex-shrink-0 p-1 rounded opacity-40 hover:opacity-100 transition-opacity"
-                          style={{ color: "#ef4444" }}
+                          className="flex-shrink-0 p-1.5 rounded-md transition-all"
+                          style={{ color: "#ef4444", backgroundColor: "rgba(239,68,68,0.12)" }}
                           data-testid={`button-delete-block-${block.id}`}
                         >
                           <Trash2 size={12} />
@@ -1127,14 +1127,14 @@ export default function SectographPage() {
 
               {!hasCustomSchedule && (
                 <div
-                  className="mt-4 p-3 rounded-lg text-center"
+                  className="mt-2 p-3 rounded-lg text-center"
                   style={{ backgroundColor: "rgba(0,0,0,0.15)" }}
                   data-testid="observe-hint"
                 >
                   <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
-                    This is a default day layout. Observe how your actual day flows.
+                    No time blocks yet. Tap + to add sleep, habits, or custom blocks.
                     <br />
-                    <span style={{ opacity: 0.6 }}>Schedule editing unlocks as you build consistency.</span>
+                    <span style={{ opacity: 0.6 }}>Your schedule builds as you set it up.</span>
                   </p>
                 </div>
               )}
