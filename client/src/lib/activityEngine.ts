@@ -38,6 +38,7 @@ export interface ActivityDefinition {
   steps: ActivityStep[];
   tier?: number;
   xpMultiplier?: number;
+  autoflow?: boolean;
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -191,6 +192,7 @@ export function buildPhase1Activities(
       color: CATEGORY_COLORS.strength,
       tier: strengthTier,
       xpMultiplier: strengthMultiplier,
+      autoflow: true,
       steps: [
         {
           id: "intro",
@@ -262,6 +264,7 @@ export function buildPhase1Activities(
       color: CATEGORY_COLORS.agility,
       tier: agilityTier,
       xpMultiplier: agilityMultiplier,
+      autoflow: true,
       steps: [
         {
           id: "intro",

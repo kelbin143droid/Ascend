@@ -352,6 +352,68 @@ function GetReadyCountdown({
   );
 }
 
+function RestBreak({
+  nextExerciseName,
+  color,
+  onComplete,
+}: {
+  nextExerciseName: string;
+  color: string;
+  onComplete: () => void;
+}) {
+  const [count, setCount] = useState(5);
+  const beep = useBeepSound();
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCount((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimeout(() => onCompleteRef.current(), 200);
+          return 0;
+        }
+        if (prev <= 3) beep.playCountdownBeep();
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.1 }}
+      className="flex flex-col items-center gap-5"
+    >
+      <div
+        className="text-xs uppercase tracking-widest font-bold"
+        style={{ color: "rgba(255,255,255,0.35)" }}
+      >
+        Rest
+      </div>
+      <motion.div
+        key={count}
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 1.3, opacity: 0 }}
+        className="text-8xl font-bold font-mono"
+        style={{ color: count > 0 ? color : "white" }}
+      >
+        {count > 0 ? count : "GO!"}
+      </motion.div>
+      <div
+        className="text-sm font-medium text-center px-4"
+        style={{ color: "rgba(255,255,255,0.55)" }}
+      >
+        Next: {nextExerciseName}
+      </div>
+    </motion.div>
+  );
+}
+
 function BreathingVisual({
   active,
   color,
@@ -620,7 +682,7 @@ export function GuidedActivityEngine({
   const beep = useBeepSound();
 
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
-  const [stepPhase, setStepPhase] = useState<"ready" | "getready" | "running" | "done">("ready");
+  const [stepPhase, setStepPhase] = useState<"ready" | "getready" | "running" | "done" | "rest">("ready");
   const [stepsCompleted, setStepsCompleted] = useState<Set<number>>(new Set());
   const [xpEarned, setXpEarned] = useState<number | null>(null);
   const [antiGrindMultiplier, setAntiGrindMultiplier] = useState<number>(1.0);
@@ -684,12 +746,31 @@ export function GuidedActivityEngine({
 
     const nextIdx = currentStepIdx + 1;
     if (nextIdx < activity.steps.length) {
-      setTimeout(() => {
-        setCurrentStepIdx(nextIdx);
-        setStepPhase("ready");
-      }, 400);
+      const currentStep = activity.steps[currentStepIdx];
+      const nextStep = activity.steps[nextIdx];
+      if (activity.autoflow && currentStep?.type === "timer" && nextStep?.type === "timer") {
+        setTimeout(() => {
+          setCurrentStepIdx(nextIdx);
+          setStepPhase("rest");
+        }, 400);
+      } else if (activity.autoflow && currentStep?.type === "timer" && nextStep?.type !== "completion") {
+        setTimeout(() => {
+          setCurrentStepIdx(nextIdx);
+          setStepPhase("ready");
+        }, 400);
+      } else if (activity.autoflow && currentStep?.type === "instruction" && nextStep?.type === "timer") {
+        setTimeout(() => {
+          setCurrentStepIdx(nextIdx);
+          setStepPhase("getready");
+        }, 400);
+      } else {
+        setTimeout(() => {
+          setCurrentStepIdx(nextIdx);
+          setStepPhase("ready");
+        }, 400);
+      }
     }
-  }, [currentStepIdx, activity.steps.length]);
+  }, [currentStepIdx, activity]);
 
   const startTimer = useCallback(() => {
     if (!step?.durationSeconds) return;
@@ -759,6 +840,18 @@ export function GuidedActivityEngine({
       completeMutation.mutate();
     }
   }, [isCompletionStep]);
+
+  useEffect(() => {
+    if (
+      activity.autoflow &&
+      step?.type === "instruction" &&
+      currentStepIdx > 0 &&
+      stepPhase === "ready"
+    ) {
+      const t = setTimeout(() => advanceStep(), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [currentStepIdx, stepPhase]);
 
   useEffect(() => {
     return () => {
@@ -850,6 +943,13 @@ export function GuidedActivityEngine({
               antiGrindMultiplier={antiGrindMultiplier}
               dailyCapReached={dailyCapReached}
               isOnboardingComplete={isOnboardingComplete}
+            />
+          ) : stepPhase === "rest" && step ? (
+            <RestBreak
+              key={`rest-${currentStepIdx}`}
+              nextExerciseName={step.label}
+              color={activity.color}
+              onComplete={() => setStepPhase("getready")}
             />
           ) : stepPhase === "getready" && step ? (
             <GetReadyCountdown
@@ -1116,7 +1216,8 @@ export function GuidedActivityEngine({
                 </button>
               )}
 
-              {!isCheckStep && stepPhase === "ready" && !stepsCompleted.has(currentStepIdx) && (
+              {!isCheckStep && stepPhase === "ready" && !stepsCompleted.has(currentStepIdx) &&
+                (!activity.autoflow || currentStepIdx === 0) && (
                 <button
                   className="px-8 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
                   style={{ backgroundColor: activity.color, color: "#fff" }}
