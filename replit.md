@@ -101,11 +101,12 @@ The post-onboarding home screen is rendered by `Day6Home.tsx` and powered by thr
 ### Level-Up Animation System (End of Onboarding)
 On Day 5 completion, the `OnboardingCompleteScreen` triggers a multi-phase level-up animation sequence before navigating to the home dashboard:
 - **Phase "filling-earned"**: XP bar animates 0 → 25 (earned XP during onboarding).
-- **Phase "filling-levelup"**: Bar continues 25 → 100 with gold glow, "⚡ LEVEL UP" label.
-- **Phase "showing-modal"**: `LevelUpModal` fullscreen overlay appears ("LEVEL UP! Welcome to Level 2"). Backend `POST /api/player/:id/onboarding-complete` is called to set the player to Level 2.
-- **Phase "done"**: `onEnter()` fires → navigates to the post-onboarding home dashboard at Level 2 with 0/100 XP.
+- **Phase "filling-levelup"**: Bar continues 25 → 100 with gold glow, "⚡ LEVEL UP" label (visual only).
+- **Phase "showing-modal"**: `LevelUpModal` fullscreen overlay appears. Backend `POST /api/player/:id/onboarding-complete` is called — marks onboarding complete but **does NOT force Level 2**. Player stays at Level 1 with naturally earned XP (25 XP from 5 days × 5 XP each).
+- **Phase "done"**: `onEnter()` fires → navigates to the post-onboarding home dashboard at **Level 1 with 25/100 XP**.
 - **New files**: `client/src/components/game/LevelUpModal.tsx`, `client/src/components/game/XPProgressBar.tsx`, `client/src/hooks/useLevelSystem.ts`.
-- **New endpoint**: `POST /api/player/:id/onboarding-complete` — idempotent; gives the remaining XP to reach Level 2 (threshold: 100 total XP). Guards against double-calling (level >= 2 check).
+- **New endpoint**: `POST /api/player/:id/onboarding-complete` — idempotent; just sets `onboardingCompleted: 1`. Guards against double-calling.
+- **Dev tool**: `POST /api/player/:id/dev/fix-onboarding-xp` — resets corrupted player XP back to Level 1 / 25 XP (for players with wrong data from old logic). Accessible via "Fix XP" button in DevPanel.
 
 ### Level System
 - `GROWTH = 0` in `server/gameLogic/levelSystem.ts` → every level requires exactly **100 XP** (flat curve).

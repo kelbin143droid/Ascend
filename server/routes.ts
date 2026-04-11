@@ -179,24 +179,32 @@ export async function registerRoutes(
       if (player.onboardingCompleted === 1) {
         return res.json(attachDerivedStats(player, "Already completed"));
       }
-      // Award XP to reach exactly Level 2 (100 total XP threshold)
-      const LEVEL_2_THRESHOLD = 100;
-      const current = player.totalExp ?? 0;
-      const needed = Math.max(0, LEVEL_2_THRESHOLD - current);
-      const afterXP = needed > 0 ? await storage.gainExp(req.params.id, needed) : player;
-      // Mark onboarding complete — keep any XP earned during onboarding, just ensure level 2
-      const finalPlayer = afterXP ?? player;
-      const currentTotalXP = finalPlayer.totalExp ?? 100;
-      const expWithinLevel2 = Math.max(0, currentTotalXP - 100); // XP above the level-2 threshold
+      // Mark onboarding complete — preserve all XP earned naturally during the 5-day onboarding
+      // Player stays at Level 1 with their earned XP (e.g. 25 XP from 5 days × 5 XP)
       const final = await storage.updatePlayer(req.params.id, {
         onboardingCompleted: 1,
-        level: 2,
-        exp: expWithinLevel2,
-        totalExp: currentTotalXP,
       });
-      res.json(attachDerivedStats(final ?? afterXP!, "Level up! Welcome to Level 2."));
+      res.json(attachDerivedStats(final ?? player, "Onboarding complete. The system is yours now."));
     } catch (error) {
       res.status(500).json({ error: "Failed to complete onboarding level-up" });
+    }
+  });
+
+  app.post("/api/player/:id/dev/fix-onboarding-xp", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+      // Force player back to Level 1 with 25 XP (5 days × 5 XP = the correct onboarding total)
+      const ONBOARDING_CORRECT_XP = 25;
+      const updated = await storage.updatePlayer(req.params.id, {
+        level: 1,
+        exp: ONBOARDING_CORRECT_XP,
+        maxExp: 100,
+        totalExp: ONBOARDING_CORRECT_XP,
+      });
+      res.json({ success: true, level: 1, exp: ONBOARDING_CORRECT_XP, totalExp: ONBOARDING_CORRECT_XP });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fix XP" });
     }
   });
 
@@ -2739,19 +2747,9 @@ export async function registerRoutes(
       const playerUpdates: Record<string, unknown> = { streak: newStreak };
 
       // Auto-complete onboarding when all 5 sessions are simulated
+      // Player stays at Level 1 with naturally earned XP (5 XP × 5 days = 25 XP)
       if (newCompletedOnboardingDays >= 5 && player.onboardingCompleted !== 1) {
         playerUpdates.onboardingCompleted = 1;
-        // Ensure the player reaches level 2 (same logic as /onboarding-complete)
-        const ONBOARDING_MIN_XP = 100;
-        const currentExp = (player.totalExp ?? 0);
-        if (currentExp < ONBOARDING_MIN_XP) {
-          const xpNeeded = ONBOARDING_MIN_XP - currentExp;
-          await storage.gainExp(req.params.id, xpNeeded);
-        }
-        if ((player.level ?? 1) < 2) {
-          playerUpdates.level = 2;
-          // Do NOT reset exp — gainExp already computed the correct remainingXP
-        }
       }
 
       await storage.updatePlayer(req.params.id, playerUpdates);

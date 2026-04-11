@@ -156,6 +156,25 @@ export function DevPanel() {
     await simulateDays(1, true);
   };
 
+  const fixOnboardingXP = async () => {
+    if (!player?.id || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/player/${player.id}/dev/fix-onboarding-xp`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setLastResult(`XP fixed: Level ${data.level} · ${data.exp}/${data.totalExp} XP`);
+      } else {
+        setLastResult("Failed to fix XP");
+      }
+      queryClient.invalidateQueries();
+      fetchStatus();
+    } catch {
+      setLastResult("Error fixing XP");
+    }
+    setLoading(false);
+  };
+
   const resetProgress = async () => {
     if (!player?.id || loading) return;
     setLoading(true);
@@ -169,6 +188,7 @@ export function DevPanel() {
     localStorage.removeItem("ascend_sectograph_tutorial_step");
     localStorage.removeItem("ascend_sectograph_intro_seen");
     localStorage.removeItem(HABITS_TUTORIAL_KEY);
+    localStorage.removeItem("ascend_habits_pointer_seen");
     clearPostDays(player.id);
     setPostOnboardingDays(0);
     try {
@@ -533,6 +553,20 @@ export function DevPanel() {
                 → Day 7
               </button>
             </div>
+
+            <button
+              onClick={fixOnboardingXP}
+              disabled={loading}
+              className="w-full text-[10px] font-medium py-1.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
+              style={{
+                backgroundColor: loading ? "rgba(234,179,8,0.05)" : "rgba(234,179,8,0.08)",
+                border: "1px solid rgba(234,179,8,0.2)",
+                color: loading ? "rgba(234,179,8,0.4)" : "rgba(234,179,8,0.85)",
+              }}
+              data-testid="button-fix-xp"
+            >
+              Fix XP → Level 1 · 25/100 XP
+            </button>
 
             <button
               onClick={resetProgress}
