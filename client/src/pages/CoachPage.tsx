@@ -8,7 +8,6 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Brain,
   Sparkles,
-  Clock,
   Smile,
   Frown,
   Meh,
@@ -16,11 +15,16 @@ import {
   Zap,
   Send,
   MessageCircle,
+  TrendingUp,
+  Shield,
+  ShieldOff,
+  ChevronRight,
   Lock,
+  RotateCcw,
 } from "lucide-react";
 
 interface CoachMessage {
-  type: "celebration" | "warning" | "suggestion" | "motivation" | "check_in" | "recovery" | "insight" | "regression" | "stability";
+  type: string;
   title: string;
   message: string;
   priority: number;
@@ -28,19 +32,10 @@ interface CoachMessage {
   action?: string;
 }
 
-interface HabitSuggestion {
-  habitId: string;
-  habitName: string;
-  suggested: number;
-  reason: string;
-  momentum: number;
-  momentumTier: { tier: string; label: string; color: string };
-}
-
 interface CoachData {
   messages: CoachMessage[];
   nudge: string;
-  habitSuggestions: HabitSuggestion[];
+  habitSuggestions: unknown[];
 }
 
 interface ChatMessage {
@@ -49,7 +44,7 @@ interface ChatMessage {
   suggestions?: string[];
 }
 
-const typeColors: Record<string, string> = {
+const TYPE_COLORS: Record<string, string> = {
   celebration: "#22c55e",
   warning: "#f59e0b",
   suggestion: "#3b82f6",
@@ -61,623 +56,250 @@ const typeColors: Record<string, string> = {
   stability: "#06b6d4",
 };
 
-const moodEmojis = [
-  { icon: Zap, label: "Energized", value: "energized" },
-  { icon: Smile, label: "Happy", value: "happy" },
-  { icon: Meh, label: "Okay", value: "okay" },
-  { icon: Frown, label: "Low", value: "low" },
-  { icon: Heart, label: "Grateful", value: "grateful" },
+const MOOD_OPTIONS = [
+  { icon: Zap, label: "Energized", value: "energized", color: "#22c55e" },
+  { icon: Smile, label: "Good", value: "happy", color: "#06b6d4" },
+  { icon: Meh, label: "Okay", value: "okay", color: "#f59e0b" },
+  { icon: Frown, label: "Low", value: "low", color: "#ef4444" },
+  { icon: Heart, label: "Grateful", value: "grateful", color: "#a855f7" },
 ];
 
-const GUIDED_MESSAGE_TYPES: Set<string> = new Set([
-  "celebration", "suggestion", "motivation", "check_in", "recovery",
-]);
-
-const DEEP_MESSAGE_TYPES: Set<string> = new Set([
-  "insight", "regression", "stability", "warning",
-]);
-
-const GUIDED_STARTER_QUESTIONS = [
-  "What should I do today?",
-  "I'm struggling",
-  "How can I stay consistent?",
+const QUICK_QUESTIONS = [
+  { label: "What should I do today?", icon: Sparkles, color: "#22d3ee" },
+  { label: "Help me build a new habit", icon: Shield, color: "#22c55e" },
+  { label: "I want to break a bad habit", icon: ShieldOff, color: "#ef4444" },
+  { label: "I'm struggling to stay consistent", icon: TrendingUp, color: "#f59e0b" },
+  { label: "How does the habit loop work?", icon: Brain, color: "#a855f7" },
+  { label: "I need motivation", icon: Zap, color: "#f97316" },
 ];
 
-const DEEP_STARTER_QUESTIONS = [
-  "How do phases work?",
-  "What should I do today?",
-  "I'm struggling",
-  "Give me a plan",
-];
-
-interface GuidedCoachViewProps {
-  colors: Record<string, string>;
-  coachData: CoachData | undefined;
-  isLoading: boolean;
-  selectedMood: string | null;
-  setSelectedMood: (mood: string | null) => void;
-  setActiveTab: (tab: "insights" | "chat") => void;
-  setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-  chatMutation: ReturnType<typeof useMutation<any, Error, string>>;
-  onboardingDay: number;
-}
-
-function GuidedCoachView({
-  colors,
-  coachData,
-  isLoading,
-  selectedMood,
-  setSelectedMood,
-  setActiveTab,
-  setChatMessages,
-  chatMutation,
-  onboardingDay,
-}: GuidedCoachViewProps) {
-  const guidedMessages = coachData?.messages
-    ?.filter((msg) => GUIDED_MESSAGE_TYPES.has(msg.type))
-    .sort((a, b) => b.priority - a.priority) ?? [];
-
-  return (
-    <div className="space-y-4">
-      <div
-        data-testid="guided-coach-badge"
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full w-fit"
-        style={{
-          backgroundColor: `${colors.primary}12`,
-          border: `1px solid ${colors.primary}25`,
-        }}
-      >
-        <Sparkles size={12} style={{ color: colors.primary }} />
-        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: colors.primary }}>
-          Guided Coach · Day {onboardingDay}
-        </span>
-      </div>
-
-      {isLoading && (
-        <div
-          data-testid="text-coach-loading"
-          className="text-center py-8 text-sm"
-          style={{ color: colors.textMuted }}
-        >
-          Analyzing your progress...
-        </div>
-      )}
-
-      <div
-        className="rounded-lg p-4"
-        style={{
-          backgroundColor: `${colors.background}cc`,
-          border: `1px solid ${colors.surfaceBorder}`,
-        }}
-        data-testid="section-emotional-checkin"
-      >
-        <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: colors.textMuted }}>
-          How are you feeling?
-        </div>
-        <div className="flex justify-between gap-2">
-          {moodEmojis.map((mood) => (
-            <button
-              key={mood.value}
-              data-testid={`button-mood-${mood.value}`}
-              onClick={() => {
-                setSelectedMood(mood.value);
-                if (mood.value === "low" || mood.value === "okay") {
-                  setActiveTab("chat");
-                  setChatMessages((prev) => [
-                    ...prev,
-                    { role: "user", text: `I'm feeling ${mood.label.toLowerCase()} today` },
-                  ]);
-                  chatMutation.mutate(`I'm feeling ${mood.label.toLowerCase()} today`);
-                }
-              }}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-lg transition-all flex-1"
-              style={{
-                backgroundColor: selectedMood === mood.value ? `${colors.primary}25` : `${colors.primary}08`,
-                border: `1px solid ${selectedMood === mood.value ? colors.primary : colors.surfaceBorder}`,
-              }}
-            >
-              <mood.icon size={22} style={{ color: selectedMood === mood.value ? colors.primary : colors.textMuted }} />
-              <span className="text-[10px] font-bold" style={{ color: colors.textMuted }}>
-                {mood.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {guidedMessages.map((msg, i) => (
-        <div
-          key={i}
-          data-testid={`card-coach-message-${i}`}
-          className="rounded-lg p-4"
-          style={{
-            backgroundColor: `${typeColors[msg.type]}10`,
-            border: `1px solid ${colors.surfaceBorder}`,
-            borderLeftWidth: "4px",
-            borderLeftColor: typeColors[msg.type],
-          }}
-        >
-          <div className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: typeColors[msg.type] }}>
-            {msg.title}
-          </div>
-          <div className="text-sm leading-relaxed" style={{ color: colors.text }}>
-            {msg.message}
-          </div>
-          {msg.action && (
-            <div className="mt-2 text-xs font-semibold" style={{ color: typeColors[msg.type] }}>
-              → {msg.action}
-            </div>
-          )}
-        </div>
-      ))}
-
-      {coachData?.nudge && (
-        <div
-          data-testid="card-nudge"
-          className="rounded-lg p-4"
-          style={{
-            backgroundColor: `${colors.primary}10`,
-            border: `1px solid ${colors.surfaceBorder}`,
-          }}
-        >
-          <div className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: colors.primary }}>
-            <Sparkles size={12} className="inline mr-1" />
-            Nudge
-          </div>
-          <div className="text-sm italic" style={{ color: colors.textMuted }}>
-            "{coachData.nudge}"
-          </div>
-        </div>
-      )}
-
-      <div
-        data-testid="soft-lock-coach"
-        className="rounded-xl px-5 py-4 text-center"
-        style={{
-          backgroundColor: "rgba(147,197,253,0.04)",
-          border: "1px solid rgba(147,197,253,0.08)",
-        }}
-      >
-        <Lock className="w-4 h-4 mx-auto mb-2" style={{ color: "rgba(147,197,253,0.25)" }} />
-        <p className="text-sm leading-relaxed" style={{ color: "rgba(147,197,253,0.7)" }}>
-          Advanced system insights unlock after Day 6.
-        </p>
-        <p className="text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-          Focus on building momentum first.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-interface DeepCoachViewProps {
-  colors: Record<string, string>;
-  coachData: CoachData | undefined;
-  isLoading: boolean;
-  selectedMood: string | null;
-  setSelectedMood: (mood: string | null) => void;
-  setActiveTab: (tab: "insights" | "chat") => void;
-  setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-  chatMutation: ReturnType<typeof useMutation<any, Error, string>>;
-}
-
-function DeepCoachView({
-  colors,
-  coachData,
-  isLoading,
-  selectedMood,
-  setSelectedMood,
-  setActiveTab,
-  setChatMessages,
-  chatMutation,
-}: DeepCoachViewProps) {
-  const { t } = useLanguage();
-  const sortedMessages = coachData?.messages?.sort((a, b) => b.priority - a.priority) ?? [];
-  const [insightSeen] = useState(() => localStorage.getItem("ascend_deep_coach_seen") === "true");
-
-  if (!insightSeen) {
-    localStorage.setItem("ascend_deep_coach_seen", "true");
-  }
-
-  return (
-    <div className="space-y-4">
-      {!insightSeen && (
-        <div
-          data-testid="system-insight-header"
-          className="rounded-xl px-4 py-3 flex items-center gap-3"
-          style={{
-            backgroundColor: `${colors.primary}08`,
-            border: `1px solid ${colors.primary}15`,
-          }}
-        >
-          <Sparkles size={16} style={{ color: colors.primary }} />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary }}>
-              System Insight Unlocked
-            </p>
-            <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
-              You now have access to deeper growth analysis.
-            </p>
-          </div>
-        </div>
-      )}
-
-      <div
-        data-testid="momentum-explanation"
-        className="rounded-lg p-4 space-y-3"
-        style={{
-          backgroundColor: `${colors.background}cc`,
-          border: `1px solid ${colors.surfaceBorder}`,
-        }}
-      >
-        <div className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary }}>
-          {t("Understanding Momentum")}
-        </div>
-        <p className="text-[11px] leading-relaxed" style={{ color: colors.text }}>
-          Momentum builds each day you show up. It reflects your consistency, not perfection.
-        </p>
-        <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
-          Small actions compound. A 3-minute session today adds to the same momentum as a longer one.
-        </p>
-        <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
-          Missing a day reduces momentum slightly, but returning quickly recovers it. The system rewards showing up.
-        </p>
-      </div>
-
-      {isLoading && (
-        <div
-          data-testid="text-coach-loading"
-          className="text-center py-8 text-sm"
-          style={{ color: colors.textMuted }}
-        >
-          Analyzing your progress...
-        </div>
-      )}
-
-      <div
-        className="rounded-lg p-4"
-        style={{
-          backgroundColor: `${colors.background}cc`,
-          border: `1px solid ${colors.surfaceBorder}`,
-        }}
-        data-testid="section-emotional-checkin"
-      >
-        <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: colors.textMuted }}>
-          How are you feeling?
-        </div>
-        <div className="flex justify-between gap-2">
-          {moodEmojis.map((mood) => (
-            <button
-              key={mood.value}
-              data-testid={`button-mood-${mood.value}`}
-              onClick={() => {
-                setSelectedMood(mood.value);
-                if (mood.value === "low" || mood.value === "okay") {
-                  setActiveTab("chat");
-                  setChatMessages((prev) => [
-                    ...prev,
-                    { role: "user", text: `I'm feeling ${mood.label.toLowerCase()} today` },
-                  ]);
-                  chatMutation.mutate(`I'm feeling ${mood.label.toLowerCase()} today`);
-                }
-              }}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-lg transition-all flex-1"
-              style={{
-                backgroundColor: selectedMood === mood.value ? `${colors.primary}25` : `${colors.primary}08`,
-                border: `1px solid ${selectedMood === mood.value ? colors.primary : colors.surfaceBorder}`,
-              }}
-            >
-              <mood.icon size={22} style={{ color: selectedMood === mood.value ? colors.primary : colors.textMuted }} />
-              <span className="text-[10px] font-bold" style={{ color: colors.textMuted }}>
-                {mood.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {sortedMessages.map((msg, i) => (
-        <div
-          key={i}
-          data-testid={`card-coach-message-${i}`}
-          className="rounded-lg p-4"
-          style={{
-            backgroundColor: `${typeColors[msg.type]}10`,
-            border: `1px solid ${colors.surfaceBorder}`,
-            borderLeftWidth: "4px",
-            borderLeftColor: typeColors[msg.type],
-          }}
-        >
-          <div className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: typeColors[msg.type] }}>
-            {msg.title}
-          </div>
-          <div className="text-sm leading-relaxed" style={{ color: colors.text }}>
-            {msg.message}
-          </div>
-          {msg.action && (
-            <div className="mt-2 text-xs font-semibold" style={{ color: typeColors[msg.type] }}>
-              → {msg.action}
-            </div>
-          )}
-        </div>
-      ))}
-
-      {coachData?.nudge && (
-        <div
-          data-testid="card-nudge"
-          className="rounded-lg p-4"
-          style={{
-            backgroundColor: `${colors.primary}10`,
-            border: `1px solid ${colors.surfaceBorder}`,
-          }}
-        >
-          <div className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: colors.primary }}>
-            <Sparkles size={12} className="inline mr-1" />
-            Nudge
-          </div>
-          <div className="text-sm italic" style={{ color: colors.textMuted }}>
-            "{coachData.nudge}"
-          </div>
-        </div>
-      )}
-
-      {coachData?.habitSuggestions && coachData.habitSuggestions.length > 0 && (
-        <div
-          data-testid="section-habit-suggestions"
-          className="rounded-lg p-4"
-          style={{
-            backgroundColor: `${colors.background}cc`,
-            border: `1px solid ${colors.surfaceBorder}`,
-          }}
-        >
-          <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: colors.textMuted }}>
-            {t("Habit Insights")}
-          </div>
-          <div className="space-y-2">
-            {coachData.habitSuggestions.map((s) => (
-              <div
-                key={s.habitId}
-                data-testid={`card-habit-suggestion-${s.habitId}`}
-                className="rounded-lg p-3 flex items-start gap-3"
-                style={{
-                  backgroundColor: `${s.momentumTier?.color || colors.primary}08`,
-                  border: `1px solid ${colors.surfaceBorder}`,
-                }}
-              >
-                <Clock size={16} className="mt-0.5 shrink-0" style={{ color: s.momentumTier?.color || colors.primary }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold" style={{ color: colors.text }}>
-                      {s.habitName}
-                    </span>
-                    <span
-                      className="text-[9px] px-1.5 py-0.5 rounded font-bold"
-                      style={{
-                        backgroundColor: `${s.momentumTier?.color || "#666"}20`,
-                        color: s.momentumTier?.color || "#666",
-                      }}
-                    >
-                      {s.momentumTier?.label || "—"}
-                    </span>
-                  </div>
-                  <div className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                    {s.suggested} min · {s.reason}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+const WELCOME_MESSAGE: ChatMessage = {
+  role: "coach",
+  text: "I'm your Ascend Coach. I track your habits, patterns, and growth — and I'm here to guide you forward. What's on your mind?",
+  suggestions: [
+    "What should I do today?",
+    "Help me build a new habit",
+    "I'm struggling",
+  ],
+};
 
 export default function CoachPage() {
   const { player } = useGame();
-  const { backgroundTheme } = useTheme();
+  const { theme } = useTheme();
+  const colors = theme.colors;
   const { t } = useLanguage();
-  const colors = backgroundTheme.colors;
-  const [activeTab, setActiveTab] = useState<"insights" | "chat">("insights");
+
+  const [activeTab, setActiveTab] = useState<"chat" | "insights">("chat");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [inputText, setInputText] = useState("");
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  const { data: homeData } = useQuery<{ onboardingDay: number }>({
-    queryKey: ["home", player?.id],
-    queryFn: async () => {
-      if (!player?.id) throw new Error("No player");
-      const res = await fetch(`/api/player/${player.id}/home`);
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    enabled: !!player?.id,
-    staleTime: 30000,
-  });
-
-  const onboardingDay = homeData?.onboardingDay ?? 1;
-  const isGuidedMode = onboardingDay < 5;
-  const isTrainingMode = onboardingDay >= 5;
-
-  const { data: coachData, isLoading } = useQuery<CoachData>({
-    queryKey: ["/api/player", player?.id, "coach"],
-    queryFn: async () => {
-      if (!player?.id) throw new Error("No player");
-      const res = await fetch(`/api/player/${player.id}/coach`);
-      if (!res.ok) throw new Error("Failed to fetch coach data");
-      return res.json();
-    },
-    enabled: !!player?.id,
-    refetchInterval: 5 * 60 * 1000,
-    staleTime: 2 * 60 * 1000,
-  });
-
-  const chatMutation = useMutation({
-    mutationFn: async (message: string) => {
-      const res = await apiRequest("POST", `/api/player/${player!.id}/coach/chat`, { message });
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "coach", text: data.reply, suggestions: data.suggestions },
-      ]);
-    },
-  });
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  const handleSendChat = () => {
-    if (!chatInput.trim() || chatMutation.isPending) return;
-    const msg = chatInput.trim();
-    setChatMessages((prev) => [...prev, { role: "user", text: msg }]);
-    setChatInput("");
-    chatMutation.mutate(msg);
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setChatMessages((prev) => [...prev, { role: "user", text: suggestion }]);
-    chatMutation.mutate(suggestion);
-  };
-
-  const starterQuestions = isGuidedMode ? GUIDED_STARTER_QUESTIONS : DEEP_STARTER_QUESTIONS;
-
   if (!player) return null;
 
-  const sharedInsightProps = {
-    colors,
-    coachData,
-    isLoading,
-    selectedMood,
-    setSelectedMood,
-    setActiveTab,
-    setChatMessages,
-    chatMutation,
-  };
+  const { data: coachData, isLoading } = useQuery<CoachData>({
+    queryKey: ["/api/player", player.id, "coach"],
+    queryFn: () =>
+      apiRequest("GET", `/api/player/${player.id}/coach`).then((r) => r.json()),
+  });
+
+  const chatMutation = useMutation<
+    { response: string; suggestions?: string[]; coachTone?: string; stabilityState?: string },
+    Error,
+    string
+  >({
+    mutationFn: (message: string) =>
+      apiRequest("POST", `/api/player/${player.id}/coach/chat`, { message }).then((r) =>
+        r.json()
+      ),
+    onSuccess: (data, message) => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "coach",
+          text: data.response || "I'm here with you. Keep going.",
+          suggestions: data.suggestions,
+        },
+      ]);
+    },
+    onError: () => {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "coach", text: "Something shifted. Try again in a moment." },
+      ]);
+    },
+  });
+
+  function sendMessage(text: string) {
+    if (!text.trim() || chatMutation.isPending) return;
+    setChatMessages((prev) => [...prev, { role: "user", text: text.trim() }]);
+    chatMutation.mutate(text.trim());
+    setInputText("");
+  }
+
+  function handleMoodSelect(mood: typeof MOOD_OPTIONS[number]) {
+    setSelectedMood(mood.value);
+    sendMessage(`I'm feeling ${mood.label.toLowerCase()} today`);
+  }
+
+  function resetChat() {
+    setChatMessages([WELCOME_MESSAGE]);
+    setSelectedMood(null);
+  }
+
+  const sortedMessages = (coachData?.messages ?? []).sort((a, b) => b.priority - a.priority);
 
   return (
     <SystemLayout>
-      <div className="p-4 space-y-4 max-w-4xl mx-auto pb-24">
-        <div className="flex items-center gap-3 mb-2">
-          <Brain className="w-5 h-5" style={{ color: colors.primary }} />
-          <h1
-            className="text-lg font-bold font-orbitron tracking-wide"
-            style={{ color: colors.text }}
-            data-testid="text-coach-title"
-          >
-            Coach
-          </h1>
-        </div>
-
-        {isTrainingMode && (
-          <div
-            data-testid="training-guidance-header"
-            className="rounded-lg px-4 py-3 flex items-center gap-2"
-            style={{
-              backgroundColor: `${colors.primary}08`,
-              border: `1px solid ${colors.primary}15`,
-            }}
-          >
-            <Sparkles size={14} style={{ color: colors.primary }} />
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary }}>
-              {t("Phase 1 Power Growth Guidance")}
-            </span>
-          </div>
-        )}
-
-        <div className="flex gap-2 mb-4">
-          {(["insights", "chat"] as const).map((tab) => (
-            <button
-              key={tab}
-              data-testid={`tab-coach-${tab}`}
-              onClick={() => setActiveTab(tab)}
-              className="px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-bold transition-all"
-              style={{
-                backgroundColor: activeTab === tab ? `${colors.primary}25` : `${colors.background}cc`,
-                color: activeTab === tab ? colors.primary : colors.textMuted,
-                border: `1px solid ${activeTab === tab ? colors.primary + "60" : colors.surfaceBorder}`,
-              }}
+      <div className="flex flex-col h-[calc(100vh-8rem)]">
+        {/* Header + Tabs */}
+        <div className="px-4 pt-4 pb-2 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h1
+                className="text-lg font-bold text-white"
+                style={{ fontFamily: "'Orbitron', monospace" }}
+                data-testid="text-coach-title"
+              >
+                {t("Coach")}
+              </h1>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                Your AI growth partner
+              </p>
+            </div>
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center border border-gray-700"
+              style={{ backgroundColor: `${colors.primary}15` }}
             >
-              {tab}
+              <Brain className="w-4 h-4" style={{ color: colors.primary }} />
+            </div>
+          </div>
+
+          <div className="flex rounded-lg overflow-hidden border border-gray-800">
+            <button
+              onClick={() => setActiveTab("chat")}
+              className="flex-1 py-2 text-xs font-semibold tracking-wider uppercase transition-colors flex items-center justify-center gap-1.5"
+              style={{
+                backgroundColor: activeTab === "chat" ? `${colors.primary}20` : "transparent",
+                color: activeTab === "chat" ? colors.primary : "#6b7280",
+                borderRight: "1px solid #1f2937",
+              }}
+              data-testid="tab-coach-chat"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Chat
             </button>
-          ))}
+            <button
+              onClick={() => setActiveTab("insights")}
+              className="flex-1 py-2 text-xs font-semibold tracking-wider uppercase transition-colors flex items-center justify-center gap-1.5"
+              style={{
+                backgroundColor: activeTab === "insights" ? `${colors.primary}20` : "transparent",
+                color: activeTab === "insights" ? colors.primary : "#6b7280",
+              }}
+              data-testid="tab-coach-insights"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Insights
+            </button>
+          </div>
         </div>
 
-        {activeTab === "insights" ? (
-          isGuidedMode ? (
-            <GuidedCoachView {...sharedInsightProps} onboardingDay={onboardingDay} />
-          ) : (
-            <DeepCoachView {...sharedInsightProps} />
-          )
-        ) : (
-          <div
-            className="rounded-lg flex flex-col"
-            style={{
-              backgroundColor: `${colors.background}cc`,
-              border: `1px solid ${colors.surfaceBorder}`,
-              minHeight: "60vh",
-            }}
-          >
-            <div className="flex-1 p-4 space-y-3 overflow-y-auto">
-              {chatMessages.length === 0 && (
-                <div className="text-center py-12">
-                  <MessageCircle size={32} className="mx-auto mb-3" style={{ color: colors.textMuted }} />
-                  <div className="text-sm mb-1" style={{ color: colors.text }}>
-                    {isGuidedMode ? "Ask your Coach for guidance" : "Chat with your AI Coach"}
-                  </div>
-                  <div className="text-xs mb-4" style={{ color: colors.textMuted }}>
-                    {isGuidedMode
-                      ? "Ask about today's focus, how to stay consistent, or what to do next."
-                      : "Ask about your progress, daily habits, phases, or how to improve."}
-                  </div>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {starterQuestions.map((q) => (
+        {/* ── CHAT TAB ── */}
+        {activeTab === "chat" && (
+          <>
+            {/* Message area */}
+            <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 min-h-0">
+              {/* Mood row — shown only if no mood selected yet */}
+              {!selectedMood && chatMessages.length <= 1 && (
+                <div
+                  className="rounded-lg p-3 border border-gray-800"
+                  style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
+                  data-testid="section-mood-check"
+                >
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
+                    How are you feeling right now?
+                  </p>
+                  <div className="flex gap-1.5">
+                    {MOOD_OPTIONS.map((mood) => (
                       <button
-                        key={q}
-                        data-testid={`button-starter-${q.slice(0, 10)}`}
-                        onClick={() => handleSuggestionClick(q)}
-                        className="text-xs px-3 py-1.5 rounded-full transition-all"
-                        style={{
-                          backgroundColor: `${colors.primary}15`,
-                          color: colors.primary,
-                          border: `1px solid ${colors.primary}30`,
-                        }}
+                        key={mood.value}
+                        onClick={() => handleMoodSelect(mood)}
+                        className="flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border border-gray-800 hover:border-gray-600 transition-colors"
+                        style={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+                        data-testid={`button-mood-${mood.value}`}
                       >
-                        {q}
+                        <mood.icon className="w-4 h-4" style={{ color: mood.color }} />
+                        <span className="text-[9px] text-gray-500">{mood.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* Quick questions — shown initially */}
+              {chatMessages.length <= 1 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-2">
+                    Quick questions
+                  </p>
+                  <div className="space-y-1.5">
+                    {QUICK_QUESTIONS.map((q, i) => (
+                      <button
+                        key={i}
+                        onClick={() => sendMessage(q.label)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors text-left"
+                        style={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+                        data-testid={`button-quick-q-${i}`}
+                      >
+                        <q.icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: q.color }} />
+                        <span className="text-[12px] text-gray-300">{q.label}</span>
+                        <ChevronRight className="w-3 h-3 text-gray-600 ml-auto flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Chat messages */}
               {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className="max-w-[85%] rounded-lg px-4 py-3 text-sm whitespace-pre-wrap"
-                    data-testid={`chat-message-${i}`}
-                    style={{
-                      backgroundColor: msg.role === "user" ? `${colors.primary}20` : `${colors.surfaceBorder}40`,
-                      color: colors.text,
-                      borderBottomRightRadius: msg.role === "user" ? "4px" : undefined,
-                      borderBottomLeftRadius: msg.role === "coach" ? "4px" : undefined,
-                    }}
-                  >
-                    {msg.text}
-                    {msg.suggestions && msg.suggestions.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
+                <div
+                  key={i}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  data-testid={`chat-message-${i}`}
+                >
+                  {msg.role === "coach" && (
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 mr-2"
+                      style={{ backgroundColor: `${colors.primary}20`, border: `1px solid ${colors.primary}40` }}
+                    >
+                      <Brain className="w-3 h-3" style={{ color: colors.primary }} />
+                    </div>
+                  )}
+                  <div className="max-w-[82%]">
+                    <div
+                      className="rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed"
+                      style={
+                        msg.role === "user"
+                          ? { backgroundColor: `${colors.primary}25`, color: "#ffffff" }
+                          : { backgroundColor: "rgba(255,255,255,0.06)", color: "#e5e7eb", border: "1px solid rgba(255,255,255,0.08)" }
+                      }
+                    >
+                      {msg.text}
+                    </div>
+                    {/* Suggestion chips */}
+                    {msg.role === "coach" && msg.suggestions && msg.suggestions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
                         {msg.suggestions.map((s, j) => (
                           <button
                             key={j}
-                            onClick={() => handleSuggestionClick(s)}
-                            className="text-[10px] px-2 py-0.5 rounded-full transition-all"
-                            style={{
-                              backgroundColor: `${colors.primary}15`,
-                              color: colors.primary,
-                              border: `1px solid ${colors.primary}30`,
-                            }}
+                            onClick={() => sendMessage(s)}
+                            className="text-[11px] px-2.5 py-1 rounded-full border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+                            style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                            data-testid={`suggestion-chip-${i}-${j}`}
                           >
                             {s}
                           </button>
@@ -688,47 +310,213 @@ export default function CoachPage() {
                 </div>
               ))}
 
+              {/* Typing indicator */}
               {chatMutation.isPending && (
-                <div className="flex justify-start">
-                  <div
-                    className="rounded-lg px-4 py-3 text-sm"
-                    style={{ backgroundColor: `${colors.surfaceBorder}40`, color: colors.textMuted }}
+                <div className="flex justify-start items-center gap-2" data-testid="coach-typing">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: `${colors.primary}20`, border: `1px solid ${colors.primary}40` }}
                   >
-                    Thinking...
+                    <Brain className="w-3 h-3" style={{ color: colors.primary }} />
+                  </div>
+                  <div
+                    className="rounded-2xl px-3.5 py-2.5 flex gap-1"
+                    style={{ backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    {[0, 1, 2].map((j) => (
+                      <span
+                        key={j}
+                        className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce"
+                        style={{ animationDelay: `${j * 0.15}s` }}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
+
               <div ref={chatEndRef} />
             </div>
 
-            <div className="p-3 shrink-0" style={{ borderTop: `1px solid ${colors.surfaceBorder}` }}>
-              <div className="flex gap-2">
+            {/* Input area */}
+            <div
+              className="flex-shrink-0 px-4 pb-4 pt-2 border-t border-gray-800"
+              style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+            >
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={resetChat}
+                  className="w-8 h-9 flex items-center justify-center text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
+                  title="New conversation"
+                  data-testid="button-reset-chat"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
                 <input
-                  data-testid="input-coach-chat"
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
-                  placeholder="Ask me anything..."
-                  className="flex-1 bg-transparent border rounded-lg px-3 py-2 text-sm outline-none"
-                  style={{
-                    borderColor: colors.surfaceBorder,
-                    color: colors.text,
+                  ref={inputRef}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage(inputText);
+                    }
                   }}
+                  placeholder="Ask your coach anything..."
+                  className="flex-1 h-9 bg-gray-900 border border-gray-700 rounded-full px-4 text-[13px] text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 transition-colors"
+                  data-testid="input-coach-message"
                 />
                 <button
-                  data-testid="button-send-chat"
-                  onClick={handleSendChat}
-                  disabled={!chatInput.trim() || chatMutation.isPending}
-                  className="w-10 h-10 rounded-lg flex items-center justify-center transition-all"
+                  onClick={() => sendMessage(inputText)}
+                  disabled={!inputText.trim() || chatMutation.isPending}
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
                   style={{
-                    backgroundColor: chatInput.trim() ? colors.primary : `${colors.primary}30`,
-                    color: colors.background,
+                    backgroundColor: inputText.trim() ? colors.primary : "rgba(255,255,255,0.05)",
+                    opacity: !inputText.trim() || chatMutation.isPending ? 0.5 : 1,
                   }}
+                  data-testid="button-send-message"
                 >
-                  <Send size={16} />
+                  <Send className="w-3.5 h-3.5 text-white" />
                 </button>
               </div>
+            </div>
+          </>
+        )}
+
+        {/* ── INSIGHTS TAB ── */}
+        {activeTab === "insights" && (
+          <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 pb-6">
+            {isLoading && (
+              <div className="text-center py-8 text-sm text-gray-500" data-testid="text-insights-loading">
+                Analyzing your progress...
+              </div>
+            )}
+
+            {/* Coach nudge */}
+            {coachData?.nudge && (
+              <div
+                className="rounded-lg p-3 border"
+                style={{
+                  borderColor: `${colors.primary}30`,
+                  backgroundColor: `${colors.primary}08`,
+                }}
+                data-testid="card-coach-nudge"
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Sparkles className="w-3.5 h-3.5" style={{ color: colors.primary }} />
+                  <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: colors.primary }}>
+                    Today's Focus
+                  </span>
+                </div>
+                <p className="text-[13px] text-gray-300 italic leading-relaxed">
+                  "{coachData.nudge}"
+                </p>
+              </div>
+            )}
+
+            {/* Coach messages */}
+            {sortedMessages.length === 0 && !isLoading && (
+              <div className="text-center py-8 text-gray-600 text-sm">
+                No insights yet. Complete some habits to unlock them.
+              </div>
+            )}
+
+            {sortedMessages.map((msg, i) => {
+              const color = TYPE_COLORS[msg.type] ?? colors.primary;
+              return (
+                <div
+                  key={i}
+                  className="rounded-lg p-3 border"
+                  style={{
+                    borderColor: `${color}30`,
+                    borderLeftWidth: "3px",
+                    borderLeftColor: color,
+                    backgroundColor: `${color}06`,
+                  }}
+                  data-testid={`insight-card-${i}`}
+                >
+                  <div
+                    className="text-[10px] font-bold uppercase tracking-wider mb-1"
+                    style={{ color }}
+                  >
+                    {msg.title}
+                  </div>
+                  <p className="text-[13px] text-gray-300 leading-relaxed">{msg.message}</p>
+                  {msg.action && (
+                    <div className="mt-2 flex items-center gap-1" style={{ color }}>
+                      <ChevronRight className="w-3 h-3" />
+                      <span className="text-[11px] font-semibold">{msg.action}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Habit coaching guidance */}
+            <div
+              className="rounded-lg p-3 border border-gray-800"
+              style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
+              data-testid="card-habit-guidance"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[10px] uppercase tracking-wider font-bold text-cyan-400">
+                  Habit Loop Science
+                </span>
+              </div>
+              <div className="space-y-1.5 text-[11px] text-gray-500">
+                <div className="flex gap-2">
+                  <span className="text-cyan-600 font-bold w-16 flex-shrink-0">Cue</span>
+                  <span>The trigger that starts the behavior</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-purple-500 font-bold w-16 flex-shrink-0">Craving</span>
+                  <span>The motivation or desire behind it</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-green-500 font-bold w-16 flex-shrink-0">Response</span>
+                  <span>The habit or behavior itself</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-amber-500 font-bold w-16 flex-shrink-0">Reward</span>
+                  <span>The benefit that reinforces it</span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setActiveTab("chat");
+                  sendMessage("Explain how to use the habit loop to build better habits");
+                }}
+                className="mt-2.5 text-[11px] text-cyan-500 hover:text-cyan-300 transition-colors"
+                data-testid="button-learn-habit-loop"
+              >
+                → Ask coach to explain →
+              </button>
+            </div>
+
+            {/* Bad habit section */}
+            <div
+              className="rounded-lg p-3 border border-red-900/30"
+              style={{ backgroundColor: "rgba(127,29,29,0.08)" }}
+              data-testid="card-bad-habit-guidance"
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <ShieldOff className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-[10px] uppercase tracking-wider font-bold text-red-400">
+                  Breaking Bad Habits
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+                Bad habits can't be erased — they need to be replaced. Identify the cue and craving, then swap the routine with something healthier.
+              </p>
+              <button
+                onClick={() => {
+                  setActiveTab("chat");
+                  sendMessage("I want to break a bad habit. How do I start?");
+                }}
+                className="text-[11px] text-red-500 hover:text-red-300 transition-colors"
+                data-testid="button-chat-bad-habit"
+              >
+                → Get personalized guidance →
+              </button>
             </div>
           </div>
         )}

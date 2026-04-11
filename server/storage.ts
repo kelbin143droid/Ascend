@@ -1,6 +1,6 @@
 import { 
   players, dailyStatSnapshots, roles, weeklyGoals, tasks, trials, calendarEvents,
-  habits, habitCompletions, badges,
+  habits, habitCompletions, badges, badHabits,
   type Player, type InsertPlayer, type UpdatePlayer, type Stats, type StatName, 
   type FatigueData, type PhaseHistoryEntry, type DailyStatSnapshot, type InsertSnapshot, 
   type Role, type InsertRole, type UpdateRole,
@@ -11,6 +11,7 @@ import {
   type Habit, type InsertHabit, type UpdateHabit,
   type HabitCompletion, type InsertHabitCompletion,
   type Badge, type InsertBadge,
+  type BadHabit, type InsertBadHabit, type UpdateBadHabit,
   PHASE_UNLOCK_DATA 
 } from "@shared/schema";
 import { db } from "./db";
@@ -80,6 +81,13 @@ export interface IStorage {
   getBadges(userId: string): Promise<Badge[]>;
   createBadge(badge: InsertBadge): Promise<Badge>;
   resetPlayerProgress(id: string): Promise<void>;
+
+  getBadHabits(userId: string): Promise<BadHabit[]>;
+  getBadHabit(id: string): Promise<BadHabit | undefined>;
+  createBadHabit(badHabit: InsertBadHabit): Promise<BadHabit>;
+  updateBadHabit(id: string, updates: UpdateBadHabit): Promise<BadHabit | undefined>;
+  deleteBadHabit(id: string): Promise<boolean>;
+  markBadHabitAvoided(id: string): Promise<BadHabit | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -522,10 +530,54 @@ export class DatabaseStorage implements IStorage {
     return newBadge;
   }
 
+  async getBadHabits(userId: string): Promise<BadHabit[]> {
+    return db.select().from(badHabits).where(eq(badHabits.userId, userId));
+  }
+
+  async getBadHabit(id: string): Promise<BadHabit | undefined> {
+    const [bh] = await db.select().from(badHabits).where(eq(badHabits.id, id));
+    return bh || undefined;
+  }
+
+  async createBadHabit(badHabit: InsertBadHabit): Promise<BadHabit> {
+    const [newBH] = await db.insert(badHabits).values(badHabit as any).returning();
+    return newBH;
+  }
+
+  async updateBadHabit(id: string, updates: UpdateBadHabit): Promise<BadHabit | undefined> {
+    const [bh] = await db.update(badHabits).set(updates as any).where(eq(badHabits.id, id)).returning();
+    return bh || undefined;
+  }
+
+  async deleteBadHabit(id: string): Promise<boolean> {
+    const result = await db.delete(badHabits).where(eq(badHabits.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async markBadHabitAvoided(id: string): Promise<BadHabit | undefined> {
+    const bh = await this.getBadHabit(id);
+    if (!bh) return undefined;
+    const today = getTodayDateString();
+    const alreadyAvoided = bh.lastAvoidedDate === today;
+    if (alreadyAvoided) return bh;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    const newStreak = bh.lastAvoidedDate === yesterdayStr ? bh.currentStreak + 1 : 1;
+    const [updated] = await db.update(badHabits).set({
+      currentStreak: newStreak,
+      longestStreak: Math.max(bh.longestStreak, newStreak),
+      totalDaysAvoided: bh.totalDaysAvoided + 1,
+      lastAvoidedDate: today,
+    }).where(eq(badHabits.id, id)).returning();
+    return updated || undefined;
+  }
+
   async resetPlayerProgress(id: string): Promise<void> {
     await db.delete(habitCompletions).where(eq(habitCompletions.userId, id));
     await db.delete(badges).where(eq(badges.userId, id));
     await db.delete(habits).where(eq(habits.userId, id));
+    await db.delete(badHabits).where(eq(badHabits.userId, id));
     await db.delete(dailyStatSnapshots).where(eq(dailyStatSnapshots.playerId, id));
 
     await storage.updatePlayer(id, {

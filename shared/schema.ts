@@ -482,6 +482,13 @@ export const habits = pgTable("habits", {
   difficultyLevel: integer("difficulty_level").notNull().default(1),
   momentum: real("momentum").notNull().default(0),
   active: boolean("active").notNull().default(true),
+  cue: text("cue"),
+  craving: text("craving"),
+  response: text("response"),
+  reward: text("reward"),
+  scheduledHour: integer("scheduled_hour"),
+  scheduledMinute: integer("scheduled_minute"),
+  description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -490,6 +497,29 @@ export const updateHabitSchema = createInsertSchema(habits).partial().omit({ id:
 export type InsertHabit = z.infer<typeof insertHabitSchema>;
 export type UpdateHabit = z.infer<typeof updateHabitSchema>;
 export type Habit = typeof habits.$inferSelect;
+
+export const badHabits = pgTable("bad_habits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  trigger: text("trigger"),
+  craving: text("craving"),
+  replacementHabit: text("replacement_habit"),
+  replacementCue: text("replacement_cue"),
+  category: text("category").notNull().default("general"),
+  currentStreak: integer("current_streak").notNull().default(0),
+  longestStreak: integer("longest_streak").notNull().default(0),
+  totalDaysAvoided: integer("total_days_avoided").notNull().default(0),
+  lastAvoidedDate: text("last_avoided_date"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBadHabitSchema = createInsertSchema(badHabits).omit({ id: true, createdAt: true });
+export const updateBadHabitSchema = createInsertSchema(badHabits).partial().omit({ id: true, createdAt: true });
+export type InsertBadHabit = z.infer<typeof insertBadHabitSchema>;
+export type UpdateBadHabit = z.infer<typeof updateBadHabitSchema>;
+export type BadHabit = typeof badHabits.$inferSelect;
 
 export const habitCompletions = pgTable("habit_completions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

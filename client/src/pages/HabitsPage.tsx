@@ -20,21 +20,24 @@ import {
   Pencil,
   Trash2,
   Check,
-  SkipForward,
   Trophy,
-  Link2,
-  Target,
-  Sparkles,
-  Award,
-  ChevronRight,
   X,
   Clock,
-  MapPin,
+  Shield,
+  ShieldOff,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Eye,
+  Lock,
+  Unlock,
+  AlertCircle,
+  CheckCircle2,
+  TrendingUp,
+  SkipForward,
 } from "lucide-react";
-import type { Habit, Badge } from "@shared/schema";
-import { TaskCompletionBurst, StabilityShift } from "@/components/game/MicroRewards";
-import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
-import { useLocation } from "wouter";
+import type { Habit, Badge, BadHabit } from "@shared/schema";
+import { TaskCompletionBurst } from "@/components/game/MicroRewards";
 
 const STAT_COLORS: Record<string, string> = {
   strength: "#ef4444",
@@ -43,25 +46,24 @@ const STAT_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
-const STAT_LABELS: Record<string, string> = {
-  strength: "STR",
-  agility: "AGI",
-  sense: "SEN",
-  vitality: "VIT",
+const STAT_ICONS: Record<string, string> = {
+  strength: "💪",
+  agility: "⚡",
+  sense: "🧘",
+  vitality: "❤️",
 };
 
 const DIFFICULTY_LABELS = ["", "Micro", "Light", "Standard", "Intense", "Master"];
 
-interface PlacementSuggestionData {
-  id: string;
-  suggestedHour: number;
-  suggestedMinute: number;
-  durationMinutes: number;
-  rhythmActionType: string;
-  confidenceScore: number;
-  reason: string;
-  rhythmLabel: string;
-}
+const BAD_HABIT_CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "substance", label: "Substance" },
+  { value: "digital", label: "Digital / Screen" },
+  { value: "food", label: "Food & Eating" },
+  { value: "procrastination", label: "Procrastination" },
+  { value: "social", label: "Social Patterns" },
+  { value: "sleep", label: "Sleep Disruption" },
+];
 
 interface CompletionResult {
   habit: Habit;
@@ -76,565 +78,597 @@ interface CompletionResult {
     auraPulseColor: string;
     celebrationLevel: "minimal" | "moderate" | "epic";
   };
-  stability?: {
-    score: number;
-    previousScore?: number;
-    tier: string;
-  };
+  stability?: { score: number; delta: number; state: string };
 }
 
-interface StackSuggestion {
-  habitIds: string[];
-  reason: string;
+function formatScheduledTime(hour: number | null | undefined, minute: number | null | undefined): string {
+  if (hour == null) return "";
+  const h = hour % 12 === 0 ? 12 : hour % 12;
+  const m = String(minute ?? 0).padStart(2, "0");
+  const ampm = hour < 12 ? "AM" : "PM";
+  return `${h}:${m} ${ampm}`;
+}
+
+function HabitLoopBadge({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="flex gap-1.5 items-start">
+      <span
+        className="text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5"
+        style={{ backgroundColor: `${color}20`, color }}
+      >
+        {label}
+      </span>
+      <span className="text-[11px] text-gray-300">{value}</span>
+    </div>
+  );
+}
+
+function StreakBadge({ streak }: { streak: number }) {
+  const color = streak >= 21 ? "#f59e0b" : streak >= 7 ? "#22c55e" : streak >= 3 ? "#3b82f6" : "#6b7280";
+  return (
+    <div className="flex items-center gap-1" style={{ color }}>
+      <Flame className="w-3 h-3" />
+      <span className="text-[11px] font-bold">{streak}</span>
+    </div>
+  );
 }
 
 export default function HabitsPage() {
   const { player } = useGame();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const playerId = player?.id ?? "";
+
+  const [activeTab, setActiveTab] = useState<"build" | "break">("build");
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [formName, setFormName] = useState("");
+  const [formStat, setFormStat] = useState("strength");
+  const [formDuration, setFormDuration] = useState("3");
+  const [formStackAfter, setFormStackAfter] = useState("none");
+  const [formCue, setFormCue] = useState("");
+  const [formCraving, setFormCraving] = useState("");
+  const [formResponse, setFormResponse] = useState("");
+  const [formReward, setFormReward] = useState("");
+  const [formScheduledHour, setFormScheduledHour] = useState("");
+  const [formScheduledMinute, setFormScheduledMinute] = useState("0");
+  const [showLoopFields, setShowLoopFields] = useState(false);
+
+  const [showBadHabitForm, setShowBadHabitForm] = useState(false);
+  const [editingBadHabit, setEditingBadHabit] = useState<BadHabit | null>(null);
+  const [bhName, setBhName] = useState("");
+  const [bhTrigger, setBhTrigger] = useState("");
+  const [bhCraving, setBhCraving] = useState("");
+  const [bhReplacement, setBhReplacement] = useState("");
+  const [bhReplacementCue, setBhReplacementCue] = useState("");
+  const [bhCategory, setBhCategory] = useState("general");
+
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
+  const [showBurst, setShowBurst] = useState(false);
   const [showDayClose, setShowDayClose] = useState(false);
 
-  const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean; stability?: { habitLimit?: number; state?: string; recoveryModeActive?: boolean } }>({
-    queryKey: ["home", player?.id],
-    queryFn: async () => {
-      if (!player?.id) throw new Error("No player");
-      const res = await fetch(`/api/player/${player.id}/home`);
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    enabled: !!player?.id,
-    staleTime: 30000,
+  const [expandedHabit, setExpandedHabit] = useState<string | null>(null);
+  const [expandedBadHabit, setExpandedBadHabit] = useState<string | null>(null);
+  const [avoidedToday, setAvoidedToday] = useState<Set<string>>(new Set());
+
+  const { data: habits = [] } = useQuery<Habit[]>({
+    queryKey: ["/api/player", playerId, "habits"],
+    queryFn: () => apiRequest("GET", `/api/player/${playerId}/habits`).then((r) => r.json()),
+    enabled: !!playerId,
   });
 
-  const { data: habits = [], isLoading } = useQuery<Habit[]>({
-    queryKey: ["habits", player?.id],
-    queryFn: async () => {
-      if (!player?.id) return [];
-      const res = await fetch(`/api/habits/${player.id}`);
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!player?.id,
+  const { data: badHabits = [] } = useQuery<BadHabit[]>({
+    queryKey: ["/api/player", playerId, "bad-habits"],
+    queryFn: () => apiRequest("GET", `/api/player/${playerId}/bad-habits`).then((r) => r.json()),
+    enabled: !!playerId,
   });
-
-  const onboardingDay = homeData?.onboardingDay ?? 1;
-  const habitCreationLocked = onboardingDay < 3;
-  const habitLimit = homeData?.stability?.habitLimit ?? 10;
-  const activeHabitCount = habits.filter(h => h.active).length;
-  const habitLimitReached = activeHabitCount >= habitLimit;
-  const isRecoveryMode = homeData?.stability?.recoveryModeActive ?? false;
-  const stabilityState = homeData?.stability?.state ?? "stabilizing";
-
-  const [formName, setFormName] = useState("");
-  const [formStat, setFormStat] = useState<string>("strength");
-  const [formDuration, setFormDuration] = useState("3");
-  const [formStackAfter, setFormStackAfter] = useState<string>("");
-  const [acceptedSuggestion, setAcceptedSuggestion] = useState<PlacementSuggestionData | null>(null);
-  const [showSuggestionBanner, setShowSuggestionBanner] = useState(false);
-
-  const [burstVisible, setBurstVisible] = useState(false);
-  const [burstStat, setBurstStat] = useState("strength");
-  const [burstXP, setBurstXP] = useState(0);
-  const [burstLevel, setBurstLevel] = useState<"minimal" | "moderate" | "epic">("minimal");
-  const [stabilityShift, setStabilityShift] = useState<{ direction: "up" | "down" | null; amount: number; visible: boolean }>({ direction: null, amount: 0, visible: false });
-  const [burstTriggerCount, setBurstTriggerCount] = useState(0);
-  const [burstColor, setBurstColor] = useState("#ffffff");
 
   const { data: badges = [] } = useQuery<Badge[]>({
-    queryKey: ["badges", player?.id],
-    queryFn: async () => {
-      if (!player?.id) return [];
-      const res = await fetch(`/api/badges/${player.id}`);
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!player?.id,
+    queryKey: ["/api/player", playerId, "badges"],
+    queryFn: () => apiRequest("GET", `/api/player/${playerId}/badges`).then((r) => r.json()),
+    enabled: !!playerId,
   });
 
-  const { data: stackSuggestions = [] } = useQuery<StackSuggestion[]>({
-    queryKey: ["habit-stacks", player?.id],
-    queryFn: async () => {
-      if (!player?.id) return [];
-      const res = await fetch(`/api/habits/${player.id}/stacks`);
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!player?.id,
-  });
-
-  const { data: placementData } = useQuery<{ suggestions: PlacementSuggestionData[]; coachComment: string | null }>({
-    queryKey: ["habit-placement", player?.id, formStat, formDuration],
-    queryFn: async () => {
-      if (!player?.id) return { suggestions: [], coachComment: null };
-      const res = await fetch(`/api/player/${player.id}/habit-placement-suggestions?stat=${formStat}&duration=${parseInt(formDuration) || 3}`);
-      if (!res.ok) return { suggestions: [], coachComment: null };
-      return res.json();
-    },
-    enabled: !!player?.id && showAddForm && !editingHabit,
-    staleTime: 30000,
-  });
-
-  const placementSuggestions = placementData?.suggestions ?? [];
-  const placementCoachComment = placementData?.coachComment ?? null;
-
-  const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: ["habits"] });
-    queryClient.invalidateQueries({ queryKey: ["badges"] });
-    queryClient.invalidateQueries({ queryKey: ["habit-stacks"] });
-  };
-
-  const createMutation = useMutation({
-    mutationFn: async (data: Record<string, unknown>) => {
-      const res = await apiRequest("POST", "/api/habits", data);
-      return res.json();
-    },
+  const createHabitMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) =>
+      apiRequest("POST", `/api/player/${playerId}/habits`, data).then((r) => r.json()),
     onSuccess: () => {
-      invalidateAll();
-      setShowAddForm(false);
-      resetForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "habits"] });
+      closeHabitForm();
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
-      const res = await apiRequest("PATCH", `/api/habits/${id}`, data);
-      return res.json();
-    },
+  const updateHabitMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      apiRequest("PATCH", `/api/habits/${id}`, data).then((r) => r.json()),
     onSuccess: () => {
-      invalidateAll();
-      setEditingHabit(null);
-      setShowAddForm(false);
-      resetForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "habits"] });
+      closeHabitForm();
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/habits/${id}`);
-    },
-    onSuccess: invalidateAll,
+  const deleteHabitMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/habits/${id}`).then((r) => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "habits"] }),
   });
 
-  const completeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest("POST", `/api/habits/${id}/complete`);
-      return res.json() as Promise<CompletionResult>;
-    },
-    onSuccess: (data) => {
-      invalidateAll();
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-      queryClient.invalidateQueries({ queryKey: ["visuals"] });
-      queryClient.invalidateQueries({ queryKey: ["home"] });
-
-      if (!homeData?.hasCompletedHabitToday) {
-        setShowDayClose(true);
-        return;
-      }
-
+  const completeHabitMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest("POST", `/api/habits/${id}/complete`).then((r) => r.json()),
+    onSuccess: (data: CompletionResult) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "habits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
       setCompletionResult(data);
-
-      if (data.visuals) {
-        setBurstStat(data.habit?.stat || "strength");
-        setBurstXP(data.xpEarned);
-        setBurstLevel(data.visuals.celebrationLevel);
-        setBurstColor(data.visuals.auraPulseColor);
-        setBurstVisible(true);
-        setBurstTriggerCount(c => c + 1);
-      }
-
-      if (data.stability?.previousScore !== undefined) {
-        const diff = data.stability.score - data.stability.previousScore;
-        if (diff !== 0) {
-          setStabilityShift({
-            direction: diff > 0 ? "up" : "down",
-            amount: Math.abs(Math.round(diff)),
-            visible: true,
-          });
-        }
-      }
+      setShowBurst(true);
+      setTimeout(() => setShowBurst(false), 1200);
     },
   });
 
-  const skipMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest("POST", `/api/habits/${id}/skip`);
-      return res.json();
-    },
-    onSuccess: invalidateAll,
+  const skipHabitMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest("POST", `/api/habits/${id}/skip`).then((r) => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "habits"] }),
   });
 
-  const resetForm = () => {
+  const createBadHabitMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) =>
+      apiRequest("POST", `/api/player/${playerId}/bad-habits`, data).then((r) => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "bad-habits"] });
+      closeBadHabitForm();
+    },
+  });
+
+  const updateBadHabitMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      apiRequest("PATCH", `/api/bad-habits/${id}`, data).then((r) => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "bad-habits"] });
+      closeBadHabitForm();
+    },
+  });
+
+  const deleteBadHabitMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/bad-habits/${id}`).then((r) => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "bad-habits"] }),
+  });
+
+  const avoidBadHabitMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest("POST", `/api/bad-habits/${id}/avoided`).then((r) => r.json()),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "bad-habits"] });
+      setAvoidedToday((prev) => new Set(prev).add(id));
+    },
+  });
+
+  if (!player) return null;
+
+  function openAddHabit() {
+    setEditingHabit(null);
     setFormName("");
     setFormStat("strength");
     setFormDuration("3");
-    setFormStackAfter("");
-    setAcceptedSuggestion(null);
-    setShowSuggestionBanner(false);
-  };
+    setFormStackAfter("none");
+    setFormCue("");
+    setFormCraving("");
+    setFormResponse("");
+    setFormReward("");
+    setFormScheduledHour("");
+    setFormScheduledMinute("0");
+    setShowLoopFields(false);
+    setShowAddForm(true);
+  }
 
-  const openAddForm = () => {
-    if (habitLimitReached) return;
-    resetForm();
+  function openEditHabit(h: Habit) {
+    setEditingHabit(h);
+    setFormName(h.name);
+    setFormStat(h.stat);
+    setFormDuration(String(h.baseDurationMinutes));
+    setFormStackAfter(h.stackAfterHabitId ?? "none");
+    setFormCue(h.cue ?? "");
+    setFormCraving(h.craving ?? "");
+    setFormResponse(h.response ?? "");
+    setFormReward(h.reward ?? "");
+    setFormScheduledHour(h.scheduledHour != null ? String(h.scheduledHour) : "");
+    setFormScheduledMinute(h.scheduledMinute != null ? String(h.scheduledMinute) : "0");
+    setShowLoopFields(!!(h.cue || h.craving || h.response || h.reward));
+    setShowAddForm(true);
+  }
+
+  function closeHabitForm() {
+    setShowAddForm(false);
     setEditingHabit(null);
-    setShowAddForm(true);
-    setShowSuggestionBanner(true);
-  };
+  }
 
-  const openEditForm = (habit: Habit) => {
-    setFormName(habit.name);
-    setFormStat(habit.stat);
-    setFormDuration(String(habit.baseDurationMinutes));
-    setFormStackAfter(habit.stackAfterHabitId || "");
-    setEditingHabit(habit);
-    setShowAddForm(true);
-  };
-
-  const handleSave = () => {
-    if (!formName.trim() || !player?.id) return;
-    const dur = parseInt(formDuration) || 3;
-    const data: Record<string, unknown> = {
-      userId: player.id,
+  function submitHabitForm() {
+    if (!formName.trim()) return;
+    const scheduledHour = formScheduledHour !== "" ? parseInt(formScheduledHour) : undefined;
+    const scheduledMinute = formScheduledHour !== "" ? parseInt(formScheduledMinute) : undefined;
+    const data = {
       name: formName.trim(),
       stat: formStat,
-      baseDurationMinutes: dur,
-      currentDurationMinutes: dur,
+      baseDurationMinutes: parseInt(formDuration) || 3,
+      currentDurationMinutes: parseInt(formDuration) || 3,
+      stackAfterHabitId: formStackAfter === "none" ? undefined : formStackAfter,
+      cue: formCue.trim() || undefined,
+      craving: formCraving.trim() || undefined,
+      response: formResponse.trim() || undefined,
+      reward: formReward.trim() || undefined,
+      scheduledHour,
+      scheduledMinute,
+      userId: playerId,
     };
-    if (formStackAfter) data.stackAfterHabitId = formStackAfter;
-
     if (editingHabit) {
-      updateMutation.mutate({ id: editingHabit.id, data });
+      updateHabitMutation.mutate({ id: editingHabit.id, data });
     } else {
-      createMutation.mutate(data);
+      createHabitMutation.mutate(data);
     }
-  };
+  }
 
-  const buildStacks = (): Habit[][] => {
-    const byId = new Map(habits.map((h) => [h.id, h]));
-    const childOf = new Map<string, string>();
-    habits.forEach((h) => {
-      if (h.stackAfterHabitId) childOf.set(h.stackAfterHabitId, h.id);
-    });
-    const roots = habits.filter((h) => !h.stackAfterHabitId);
-    const chains: Habit[][] = [];
-    const visited = new Set<string>();
+  function openAddBadHabit() {
+    setEditingBadHabit(null);
+    setBhName("");
+    setBhTrigger("");
+    setBhCraving("");
+    setBhReplacement("");
+    setBhReplacementCue("");
+    setBhCategory("general");
+    setShowBadHabitForm(true);
+  }
 
-    for (const root of roots) {
-      const chain: Habit[] = [root];
-      visited.add(root.id);
-      let current = root.id;
-      while (childOf.has(current)) {
-        const nextId = childOf.get(current)!;
-        const next = byId.get(nextId);
-        if (!next || visited.has(nextId)) break;
-        chain.push(next);
-        visited.add(nextId);
-        current = nextId;
-      }
-      chains.push(chain);
+  function openEditBadHabit(bh: BadHabit) {
+    setEditingBadHabit(bh);
+    setBhName(bh.name);
+    setBhTrigger(bh.trigger ?? "");
+    setBhCraving(bh.craving ?? "");
+    setBhReplacement(bh.replacementHabit ?? "");
+    setBhReplacementCue(bh.replacementCue ?? "");
+    setBhCategory(bh.category);
+    setShowBadHabitForm(true);
+  }
+
+  function closeBadHabitForm() {
+    setShowBadHabitForm(false);
+    setEditingBadHabit(null);
+  }
+
+  function submitBadHabitForm() {
+    if (!bhName.trim()) return;
+    const data = {
+      name: bhName.trim(),
+      trigger: bhTrigger.trim() || undefined,
+      craving: bhCraving.trim() || undefined,
+      replacementHabit: bhReplacement.trim() || undefined,
+      replacementCue: bhReplacementCue.trim() || undefined,
+      category: bhCategory,
+      userId: playerId,
+    };
+    if (editingBadHabit) {
+      updateBadHabitMutation.mutate({ id: editingBadHabit.id, data });
+    } else {
+      createBadHabitMutation.mutate(data);
     }
+  }
 
-    habits.forEach((h) => {
-      if (!visited.has(h.id)) chains.push([h]);
-    });
-    return chains;
-  };
+  const today = new Date().toLocaleDateString("en-CA");
+  const activeHabits = habits.filter((h) => h.active);
+  const completedTodayIds = new Set(
+    activeHabits.filter((h) => h.lastCompletedDate === today).map((h) => h.id)
+  );
 
-  const stacks = buildStacks();
+  const activeBadHabits = badHabits.filter((b) => b.active);
+  const totalBadStreakDays = activeBadHabits.reduce((s, b) => s + b.currentStreak, 0);
+  const topBadStreak = activeBadHabits.reduce((max, b) => Math.max(max, b.currentStreak), 0);
+
+  const completedCount = completedTodayIds.size;
+  const totalCount = activeHabits.length;
+  const allDone = totalCount > 0 && completedCount === totalCount;
 
   return (
     <SystemLayout>
-      <TaskCompletionBurst
-        stat={burstStat}
-        xpEarned={burstXP}
-        celebrationLevel={burstLevel}
-        visible={burstVisible}
-        onComplete={() => setBurstVisible(false)}
-      />
-      <StabilityShift
-        direction={stabilityShift.direction}
-        amount={stabilityShift.amount}
-        visible={stabilityShift.visible}
-        onComplete={() => setStabilityShift({ direction: null, amount: 0, visible: false })}
-      />
-      <div className="p-4 space-y-6 max-w-4xl mx-auto pb-24">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <Target className="w-5 h-5 text-cyan-400" />
-            <h1 className="text-lg font-bold text-white font-orbitron tracking-wide">
-              {t("Daily Habits")}
+      <div className="p-4 space-y-4 pb-24">
+        <TaskCompletionBurst
+          stat={completionResult?.habit?.stat ?? "strength"}
+          xpEarned={completionResult?.xpEarned ?? 0}
+          celebrationLevel={(completionResult?.visuals?.celebrationLevel) ?? "minimal"}
+          visible={showBurst}
+          onComplete={() => setShowBurst(false)}
+        />
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1
+              className="text-lg font-bold text-white"
+              style={{ fontFamily: "'Orbitron', monospace" }}
+            >
+              {t("Habits")}
             </h1>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Build good. Break bad. Level up.
+            </p>
           </div>
-          <Button
-            size="sm"
-            onClick={(habitCreationLocked || habitLimitReached) ? undefined : openAddForm}
-            className={(habitCreationLocked || habitLimitReached) ? "bg-gray-700 text-gray-400 cursor-default" : "bg-cyan-600 hover:bg-cyan-700 text-white"}
-            disabled={habitCreationLocked || habitLimitReached}
+          <button
+            onClick={activeTab === "build" ? openAddHabit : openAddBadHabit}
+            className="w-9 h-9 rounded-full flex items-center justify-center border border-gray-700 hover:border-cyan-500 transition-colors"
+            style={{ backgroundColor: "rgba(6,182,212,0.1)" }}
             data-testid="button-add-habit"
-            title={habitLimitReached ? `Habit limit reached (${activeHabitCount}/${habitLimit})` : ""}
           >
-            <Plus className="w-4 h-4 mr-1" />
-            {habitLimitReached ? `${activeHabitCount}/${habitLimit}` : t("Add Habit")}
-          </Button>
+            <Plus className="w-4 h-4 text-cyan-400" />
+          </button>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-gray-500">Loading habits...</div>
-          </div>
-        ) : (
+        {/* Tabs */}
+        <div className="flex rounded-lg overflow-hidden border border-gray-800">
+          <button
+            onClick={() => setActiveTab("build")}
+            className="flex-1 py-2 text-xs font-semibold tracking-wider uppercase transition-colors flex items-center justify-center gap-1.5"
+            style={{
+              backgroundColor: activeTab === "build" ? "rgba(6,182,212,0.15)" : "transparent",
+              color: activeTab === "build" ? "#22d3ee" : "#6b7280",
+              borderRight: "1px solid #1f2937",
+            }}
+            data-testid="tab-build-habits"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            Build ({activeHabits.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("break")}
+            className="flex-1 py-2 text-xs font-semibold tracking-wider uppercase transition-colors flex items-center justify-center gap-1.5"
+            style={{
+              backgroundColor: activeTab === "break" ? "rgba(239,68,68,0.12)" : "transparent",
+              color: activeTab === "break" ? "#f87171" : "#6b7280",
+            }}
+            data-testid="tab-break-habits"
+          >
+            <ShieldOff className="w-3.5 h-3.5" />
+            Break ({activeBadHabits.length})
+          </button>
+        </div>
+
+        {/* ── BUILD HABITS TAB ── */}
+        {activeTab === "build" && (
           <>
-            {stacks.map((chain, si) => (
+            {/* Daily progress bar */}
+            {totalCount > 0 && (
               <div
-                key={si}
-                className="bg-gray-900/60 border border-gray-800 rounded-lg overflow-hidden"
-                data-testid={`habit-stack-${si}`}
+                className="rounded-lg p-3 border border-gray-800"
+                style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+                data-testid="daily-progress"
               >
-                {chain.length > 1 && (
-                  <div className="px-3 py-1.5 bg-gray-800/50 flex items-center gap-2 text-xs text-gray-400">
-                    <Link2 className="w-3 h-3" />
-                    <span>Stacked Chain ({chain.length} habits)</span>
-                  </div>
-                )}
-                {chain.map((habit, hi) => (
-                  <div
-                    key={habit.id}
-                    className={`p-3 ${hi > 0 ? "border-t border-gray-800/50" : ""}`}
-                    data-testid={`habit-item-${habit.id}`}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+                    Today's Progress
+                  </span>
+                  <span
+                    className="text-[11px] font-bold"
+                    style={{ color: allDone ? "#22c55e" : "#22d3ee" }}
+                    data-testid="progress-count"
                   >
-                    <div className="flex items-start gap-3">
-                      {chain.length > 1 && (
-                        <div className="flex flex-col items-center pt-1">
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: STAT_COLORS[habit.stat] }}
-                          />
-                          {hi < chain.length - 1 && (
-                            <div className="w-0.5 h-8 bg-gray-700 mt-0.5" />
+                    {completedCount}/{totalCount}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${totalCount ? (completedCount / totalCount) * 100 : 0}%`,
+                      backgroundColor: allDone ? "#22c55e" : "#22d3ee",
+                    }}
+                  />
+                </div>
+                {allDone && (
+                  <p className="text-[10px] text-green-400 mt-1.5 font-semibold">
+                    ✓ All habits complete today!
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Habit list */}
+            {activeHabits.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-3">🌱</div>
+                <p className="text-gray-400 text-sm mb-1">No habits yet</p>
+                <p className="text-gray-600 text-xs">Tap + to create your first daily habit</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {activeHabits.map((habit) => {
+                  const done = completedTodayIds.has(habit.id);
+                  const expanded = expandedHabit === habit.id;
+                  const hasLoop = !!(habit.cue || habit.craving || habit.response || habit.reward);
+                  const hasSchedule = habit.scheduledHour != null;
+                  const statColor = STAT_COLORS[habit.stat] ?? "#6b7280";
+
+                  return (
+                    <div
+                      key={habit.id}
+                      className="rounded-lg border overflow-hidden transition-all"
+                      style={{
+                        borderColor: done ? `${statColor}40` : "#1f2937",
+                        backgroundColor: done ? `${statColor}08` : "rgba(0,0,0,0.3)",
+                      }}
+                      data-testid={`habit-card-${habit.id}`}
+                    >
+                      <div className="p-3">
+                        <div className="flex items-center gap-3">
+                          {/* Complete button */}
+                          <button
+                            onClick={() => !done && completeHabitMutation.mutate(habit.id)}
+                            disabled={done || completeHabitMutation.isPending}
+                            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all"
+                            style={{
+                              borderColor: done ? statColor : "#374151",
+                              backgroundColor: done ? `${statColor}20` : "transparent",
+                            }}
+                            data-testid={`button-complete-habit-${habit.id}`}
+                          >
+                            {done ? (
+                              <Check className="w-4 h-4" style={{ color: statColor }} />
+                            ) : (
+                              <span style={{ color: statColor, fontSize: 16 }}>
+                                {STAT_ICONS[habit.stat]}
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-sm font-semibold truncate ${done ? "line-through" : ""}`}
+                                style={{ color: done ? "#6b7280" : "#ffffff" }}
+                                data-testid={`habit-name-${habit.id}`}
+                              >
+                                {habit.name}
+                              </span>
+                              {hasSchedule && (
+                                <span className="text-[9px] text-gray-500 flex items-center gap-0.5 flex-shrink-0">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  {formatScheduledTime(habit.scheduledHour, habit.scheduledMinute)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span
+                                className="text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded"
+                                style={{ backgroundColor: `${statColor}20`, color: statColor }}
+                              >
+                                {habit.stat}
+                              </span>
+                              <span className="text-[10px] text-gray-500">
+                                {habit.currentDurationMinutes}m
+                              </span>
+                              {habit.difficultyLevel > 0 && (
+                                <span className="text-[10px] text-gray-600">
+                                  {DIFFICULTY_LABELS[habit.difficultyLevel] ?? ""}
+                                </span>
+                              )}
+                              <StreakBadge streak={habit.currentStreak} />
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {!done && (
+                              <button
+                                onClick={() => skipHabitMutation.mutate(habit.id)}
+                                className="w-7 h-7 rounded flex items-center justify-center text-gray-600 hover:text-gray-400 transition-colors"
+                                title="Skip today"
+                                data-testid={`button-skip-habit-${habit.id}`}
+                              >
+                                <SkipForward className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setExpandedHabit(expanded ? null : habit.id)}
+                              className="w-7 h-7 rounded flex items-center justify-center text-gray-600 hover:text-gray-400 transition-colors"
+                              data-testid={`button-expand-habit-${habit.id}`}
+                            >
+                              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded details */}
+                      {expanded && (
+                        <div
+                          className="px-3 pb-3 space-y-2 border-t"
+                          style={{ borderColor: "#1f2937" }}
+                        >
+                          {/* Habit Loop */}
+                          {hasLoop && (
+                            <div className="mt-2 space-y-1.5">
+                              <p className="text-[9px] uppercase tracking-wider text-gray-600 font-semibold">
+                                Habit Loop
+                              </p>
+                              <div className="space-y-1">
+                                {habit.cue && (
+                                  <HabitLoopBadge label="Cue" value={habit.cue} color="#22d3ee" />
+                                )}
+                                {habit.craving && (
+                                  <HabitLoopBadge label="Craving" value={habit.craving} color="#a78bfa" />
+                                )}
+                                {habit.response && (
+                                  <HabitLoopBadge label="Response" value={habit.response} color="#34d399" />
+                                )}
+                                {habit.reward && (
+                                  <HabitLoopBadge label="Reward" value={habit.reward} color="#fbbf24" />
+                                )}
+                              </div>
+                            </div>
                           )}
+
+                          {/* Stats row */}
+                          <div className="flex gap-3 mt-2">
+                            <div className="text-center">
+                              <div className="text-xs font-bold text-white">{habit.currentStreak}</div>
+                              <div className="text-[9px] text-gray-600">streak</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs font-bold text-white">{habit.longestStreak}</div>
+                              <div className="text-[9px] text-gray-600">best</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs font-bold text-white">{habit.totalCompletions}</div>
+                              <div className="text-[9px] text-gray-600">total</div>
+                            </div>
+                            <div className="flex-1" />
+                            <button
+                              onClick={() => openEditHabit(habit)}
+                              className="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors flex items-center gap-1"
+                              data-testid={`button-edit-habit-${habit.id}`}
+                            >
+                              <Pencil className="w-3 h-3" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteHabitMutation.mutate(habit.id)}
+                              className="text-[10px] text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1"
+                              data-testid={`button-delete-habit-${habit.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       )}
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className="text-sm font-bold"
-                            data-testid={`habit-name-${habit.id}`}
-                          >
-                            {habit.name}
-                          </span>
-                          <span
-                            className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase"
-                            style={{
-                              backgroundColor: `${STAT_COLORS[habit.stat]}20`,
-                              color: STAT_COLORS[habit.stat],
-                            }}
-                            data-testid={`habit-stat-${habit.id}`}
-                          >
-                            {STAT_LABELS[habit.stat]}
-                          </span>
-                          {habit.currentStreak > 0 && (
-                            <span
-                              className="flex items-center gap-0.5 text-[10px] text-orange-400"
-                              data-testid={`habit-streak-${habit.id}`}
-                            >
-                              <Flame className="w-3 h-3" />
-                              {habit.currentStreak}
-                            </span>
-                          )}
-                          <span
-                            className="text-[10px] text-gray-500"
-                            data-testid={`habit-difficulty-${habit.id}`}
-                          >
-                            Lv.{habit.difficultyLevel}{" "}
-                            {DIFFICULTY_LABELS[habit.difficultyLevel] || ""}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-1.5">
-                          <span data-testid={`habit-duration-${habit.id}`}>
-                            {habit.currentDurationMinutes} min
-                          </span>
-                          <span>
-                            {habit.totalCompletions}x done
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden"
-                            data-testid={`habit-momentum-${habit.id}`}
-                          >
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, (habit.momentum || 0) * 100)}%`,
-                                backgroundColor: STAT_COLORS[habit.stat],
-                              }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-gray-500">
-                            {Math.round((habit.momentum || 0) * 100)}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30"
-                          onClick={() => completeMutation.mutate(habit.id)}
-                          disabled={completeMutation.isPending}
-                          data-testid={`button-complete-habit-${habit.id}`}
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/30"
-                          onClick={() => skipMutation.mutate(habit.id)}
-                          disabled={skipMutation.isPending}
-                          data-testid={`button-skip-habit-${habit.id}`}
-                        >
-                          <SkipForward className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-300 hover:bg-gray-800"
-                          onClick={() => openEditForm(habit)}
-                          data-testid={`button-edit-habit-${habit.id}`}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
-                          onClick={() => deleteMutation.mutate(habit.id)}
-                          disabled={deleteMutation.isPending}
-                          data-testid={`button-delete-habit-${habit.id}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            {habitLimitReached && !habitCreationLocked && (
-              <div
-                data-testid="habit-limit-banner"
-                className="rounded-xl px-5 py-4 text-center"
-                style={{
-                  backgroundColor: isRecoveryMode ? "rgba(168,85,247,0.04)" : "rgba(234,179,8,0.04)",
-                  border: `1px solid ${isRecoveryMode ? "rgba(168,85,247,0.12)" : "rgba(234,179,8,0.12)"}`,
-                }}
-              >
-                <p className="text-sm leading-relaxed" style={{ color: isRecoveryMode ? "rgba(168,85,247,0.8)" : "rgba(234,179,8,0.8)" }}>
-                  {isRecoveryMode
-                    ? `Recovery mode active — focus on ${habitLimit} key habits right now.`
-                    : `You've reached your current habit limit (${activeHabitCount}/${habitLimit}). Strengthen existing habits to unlock more.`}
-                </p>
+                  );
+                })}
               </div>
             )}
 
-            {habitCreationLocked && (
-              <div
-                data-testid="soft-lock-habits"
-                className="rounded-xl px-5 py-4 text-center"
-                style={{
-                  backgroundColor: "rgba(147,197,253,0.04)",
-                  border: "1px solid rgba(147,197,253,0.08)",
-                }}
-              >
-                <p className="text-sm leading-relaxed" style={{ color: "rgba(147,197,253,0.7)" }}>
-                  Custom daily habits unlock as your hunter path develops.
-                </p>
-                <p className="text-[11px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-                  Complete guided sessions from Home to build your foundation.
-                </p>
-              </div>
-            )}
-
-            {habits.length === 0 && !habitCreationLocked && (
-              <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-8 text-center">
-                <Target className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm">No habits yet. Create your first habit to start building streaks!</p>
-              </div>
-            )}
-
-            {stackSuggestions.length > 0 && (
-              <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="stack-suggestions">
-                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  Stack Suggestions
-                </h2>
-                <div className="space-y-2">
-                  {stackSuggestions.map((suggestion, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 p-2 rounded bg-gray-800/40 text-xs text-gray-300"
-                      data-testid={`stack-suggestion-${i}`}
-                    >
-                      <ChevronRight className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {suggestion.habitIds.map((hid, j) => {
-                          const h = habits.find((x) => x.id === hid);
-                          return (
-                            <span key={hid}>
-                              {j > 0 && (
-                                <span className="text-gray-600 mx-1">→</span>
-                              )}
-                              <span
-                                className="px-1.5 py-0.5 rounded"
-                                style={{
-                                  backgroundColor: `${STAT_COLORS[h?.stat || "strength"]}15`,
-                                  color: STAT_COLORS[h?.stat || "strength"],
-                                }}
-                              >
-                                {h?.name || hid}
-                              </span>
-                            </span>
-                          );
-                        })}
-                      </div>
-                      <span className="text-gray-500 ml-auto flex-shrink-0">{suggestion.reason}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            {/* Badges section */}
             {badges.length > 0 && (
-              <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-4" data-testid="badge-showcase">
-                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-amber-400" />
-                  Badges Earned ({badges.length})
+              <div
+                className="rounded-lg p-3 border border-gray-800"
+                style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
+                data-testid="badge-showcase"
+              >
+                <h2 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  Badges ({badges.length})
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   {badges.map((badge) => (
                     <div
                       key={badge.id}
-                      className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-800/40 border border-gray-700/50"
+                      className="flex items-center gap-2 p-2 rounded-lg border border-gray-700/50"
+                      style={{ backgroundColor: "rgba(251,191,36,0.05)" }}
                       data-testid={`badge-item-${badge.id}`}
                     >
-                      <Award className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                      <span className="text-base flex-shrink-0">🏅</span>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-white truncate" data-testid={`badge-name-${badge.id}`}>
+                        <div className="text-[11px] font-bold text-white truncate" data-testid={`badge-name-${badge.id}`}>
                           {badge.name}
                         </div>
-                        <div className="text-[10px] text-gray-500 truncate">
-                          {badge.description}
-                        </div>
+                        <div className="text-[9px] text-gray-500 truncate">{badge.description}</div>
                       </div>
                     </div>
                   ))}
@@ -644,294 +678,522 @@ export default function HabitsPage() {
           </>
         )}
 
-        <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-          <DialogContent className="bg-gray-950 border-gray-800 max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="font-orbitron text-sm text-white">
-                {editingHabit ? t("Edit Habit") : t("New Daily Habit")}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                  Name
-                </label>
-                <Input
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Morning Pushups"
-                  className="h-9 bg-black/50 border-gray-700 text-sm text-white"
-                  data-testid="input-habit-name"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                  Stat
-                </label>
-                <Select value={formStat} onValueChange={setFormStat}>
-                  <SelectTrigger
-                    className="h-9 bg-black/50 border-gray-700 text-sm text-white"
-                    data-testid="select-habit-stat"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-700">
-                    <SelectItem value="strength">Strength</SelectItem>
-                    <SelectItem value="agility">Agility</SelectItem>
-                    <SelectItem value="sense">Sense</SelectItem>
-                    <SelectItem value="vitality">Vitality</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                  Starting Duration (minutes)
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formDuration}
-                  onChange={(e) => setFormDuration(e.target.value)}
-                  className="h-9 bg-black/50 border-gray-700 text-sm text-white"
-                  data-testid="input-habit-duration"
-                />
-                <div className="text-[9px] text-gray-600 mt-1">
-                  Duration scales automatically with your consistency
+        {/* ── BREAK BAD HABITS TAB ── */}
+        {activeTab === "break" && (
+          <>
+            {/* Stats overview */}
+            {activeBadHabits.length > 0 && (
+              <div
+                className="rounded-lg p-3 border border-red-900/30 grid grid-cols-3 gap-2"
+                style={{ backgroundColor: "rgba(127,29,29,0.1)" }}
+              >
+                <div className="text-center">
+                  <div className="text-base font-bold text-red-400">{activeBadHabits.length}</div>
+                  <div className="text-[9px] text-gray-500">tracking</div>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                  Stack After (optional)
-                </label>
-                <Select value={formStackAfter} onValueChange={setFormStackAfter}>
-                  <SelectTrigger
-                    className="h-9 bg-black/50 border-gray-700 text-sm text-white"
-                    data-testid="select-habit-stack-after"
-                  >
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-700">
-                    <SelectItem value="none">None</SelectItem>
-                    {habits
-                      .filter((h) => h.id !== editingHabit?.id)
-                      .map((h) => (
-                        <SelectItem key={h.id} value={h.id}>
-                          {h.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {!editingHabit && showSuggestionBanner && placementSuggestions.length > 0 && (
-                <div
-                  className="rounded-lg overflow-hidden"
-                  style={{ border: "1px solid rgba(34,211,238,0.2)", backgroundColor: "rgba(34,211,238,0.04)" }}
-                  data-testid="placement-suggestions"
-                >
-                  <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(34,211,238,0.1)" }}>
-                    <MapPin size={11} style={{ color: "rgba(34,211,238,0.7)" }} />
-                    <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: "rgba(34,211,238,0.7)" }}>
-                      Suggested Times
-                    </span>
-                    <button
-                      onClick={() => setShowSuggestionBanner(false)}
-                      className="ml-auto"
-                      data-testid="button-dismiss-suggestions"
-                    >
-                      <X size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
-                    </button>
-                  </div>
-                  <div className="p-2 space-y-1.5">
-                    {placementSuggestions.map((s) => {
-                      const h = s.suggestedHour % 12 || 12;
-                      const ampm = s.suggestedHour < 12 ? "AM" : "PM";
-                      const timeStr = `${h}:${String(s.suggestedMinute).padStart(2, "0")} ${ampm}`;
-                      const isAccepted = acceptedSuggestion?.id === s.id;
-                      return (
-                        <button
-                          key={s.id}
-                          onClick={() => {
-                            if (isAccepted) {
-                              setAcceptedSuggestion(null);
-                            } else {
-                              setAcceptedSuggestion(s);
-                            }
-                          }}
-                          className="w-full text-left rounded-md px-3 py-2.5 transition-all"
-                          style={{
-                            backgroundColor: isAccepted ? "rgba(34,211,238,0.12)" : "rgba(255,255,255,0.02)",
-                            border: isAccepted ? "1px solid rgba(34,211,238,0.35)" : "1px solid transparent",
-                          }}
-                          data-testid={`button-accept-suggestion-${s.id}`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2">
-                              <Clock size={10} style={{ color: "rgba(34,211,238,0.6)" }} />
-                              <span className="text-xs font-mono font-bold" style={{ color: "rgba(34,211,238,0.9)" }}>
-                                {timeStr}
-                              </span>
-                              <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(34,211,238,0.1)", color: "rgba(34,211,238,0.6)" }}>
-                                {s.rhythmLabel}
-                              </span>
-                            </div>
-                            {isAccepted && (
-                              <Check size={12} style={{ color: "rgba(34,211,238,0.8)" }} />
-                            )}
-                          </div>
-                          <p className="text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
-                            {s.reason}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <div className="h-1 rounded-full flex-1" style={{ backgroundColor: "rgba(34,211,238,0.1)" }}>
-                              <div className="h-full rounded-full" style={{ width: `${Math.round(s.confidenceScore * 100)}%`, backgroundColor: "rgba(34,211,238,0.4)" }} />
-                            </div>
-                            <span className="text-[8px] font-mono" style={{ color: "rgba(255,255,255,0.3)" }}>
-                              {Math.round(s.confidenceScore * 100)}% match
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {placementCoachComment && (
-                    <div className="px-3 pb-2.5">
-                      <div className="flex items-start gap-2 px-2.5 py-2 rounded-md" style={{ backgroundColor: "rgba(34,211,238,0.03)" }}>
-                        <Sparkles size={10} className="flex-shrink-0 mt-0.5" style={{ color: "rgba(34,211,238,0.5)" }} />
-                        <p className="text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-                          {placementCoachComment}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {acceptedSuggestion && (
-                    <div className="px-3 pb-2.5">
-                      <p className="text-[9px] text-center" style={{ color: "rgba(34,211,238,0.5)" }}>
-                        Placement accepted — this habit will be linked to your rhythm.
-                      </p>
-                    </div>
-                  )}
+                <div className="text-center">
+                  <div className="text-base font-bold text-amber-400">{topBadStreak}</div>
+                  <div className="text-[9px] text-gray-500">best streak</div>
                 </div>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                <Button
-                  onClick={handleSave}
-                  className="flex-1 bg-cyan-600 hover:bg-cyan-700"
-                  disabled={!formName.trim() || createMutation.isPending || updateMutation.isPending}
-                  data-testid="button-save-habit"
-                >
-                  {editingHabit ? "Update" : "Create"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setEditingHabit(null);
-                    resetForm();
-                  }}
-                  className="border-gray-700 text-gray-400"
-                  data-testid="button-cancel-habit"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={!!completionResult}
-          onOpenChange={(open) => !open && setCompletionResult(null)}
-        >
-          <DialogContent className="bg-gray-950 border-gray-800 max-w-sm" data-testid="completion-dialog">
-            <DialogHeader>
-              <DialogTitle className="font-orbitron text-sm text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-400" />
-                Habit Complete!
-              </DialogTitle>
-            </DialogHeader>
-            {completionResult && (
-              <div className="space-y-3">
-                <div className="text-center py-2">
-                  <div className="text-3xl font-bold text-cyan-400 font-orbitron" data-testid="text-xp-earned">
-                    +{completionResult.xpEarned} XP
-                  </div>
-                  {completionResult.bonusXP > 0 && (
-                    <div className="text-sm text-amber-400" data-testid="text-bonus-xp">
-                      +{completionResult.bonusXP} Bonus XP
-                    </div>
-                  )}
-                  {completionResult.dailyBonus > 0 && (
-                    <div className="text-xs text-green-400">
-                      Daily bonus: +{completionResult.dailyBonus}
-                    </div>
-                  )}
-                  {completionResult.weeklyBonus > 0 && (
-                    <div className="text-xs text-purple-400">
-                      Weekly bonus: +{completionResult.weeklyBonus}
-                    </div>
-                  )}
+                <div className="text-center">
+                  <div className="text-base font-bold text-green-400">{totalBadStreakDays}</div>
+                  <div className="text-[9px] text-gray-500">days avoided</div>
                 </div>
-
-                <div className="flex items-center justify-center gap-4 text-sm">
-                  <div className="text-center" data-testid="text-streak-info">
-                    <Flame className="w-5 h-5 text-orange-400 mx-auto mb-1" />
-                    <div className="text-white font-bold">{completionResult.streakInfo.current}</div>
-                    <div className="text-[10px] text-gray-500">Current</div>
-                  </div>
-                  <div className="text-center">
-                    <Trophy className="w-5 h-5 text-amber-400 mx-auto mb-1" />
-                    <div className="text-white font-bold">{completionResult.streakInfo.longest}</div>
-                    <div className="text-[10px] text-gray-500">Best</div>
-                  </div>
-                </div>
-
-                {completionResult.newBadges.length > 0 && (
-                  <div className="space-y-2" data-testid="new-badges">
-                    <div className="text-xs text-amber-400 uppercase tracking-wide font-bold text-center">
-                      New Badges Unlocked!
-                    </div>
-                    {completionResult.newBadges.map((badge) => (
-                      <div
-                        key={badge.id}
-                        className="flex items-center gap-2 p-2 rounded bg-amber-900/20 border border-amber-700/30"
-                        data-testid={`new-badge-${badge.id}`}
-                      >
-                        <Award className="w-5 h-5 text-amber-400" />
-                        <div>
-                          <div className="text-xs font-bold text-white">{badge.name}</div>
-                          <div className="text-[10px] text-gray-400">{badge.description}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <Button
-                  className="w-full bg-cyan-600 hover:bg-cyan-700"
-                  onClick={() => setCompletionResult(null)}
-                  data-testid="button-close-completion"
-                >
-                  Continue
-                </Button>
               </div>
             )}
-          </DialogContent>
-        </Dialog>
-        <DayCloseOverlay
-          visible={showDayClose}
-          onboardingDay={homeData?.onboardingDay ?? 1}
-          onClose={() => {
-            setShowDayClose(false);
-            setLocation("/");
-          }}
-        />
+
+            {activeBadHabits.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-3">🛡️</div>
+                <p className="text-gray-400 text-sm mb-1">No bad habits tracked</p>
+                <p className="text-gray-600 text-xs">Add patterns you want to break and build replacements</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {activeBadHabits.map((bh) => {
+                  const expanded = expandedBadHabit === bh.id;
+                  const hasAvoided = avoidedToday.has(bh.id) || bh.lastAvoidedDate === new Date().toLocaleDateString("en-CA");
+                  const hasReplacement = !!(bh.replacementHabit);
+                  const streakColor = bh.currentStreak >= 21 ? "#f59e0b" : bh.currentStreak >= 7 ? "#22c55e" : bh.currentStreak >= 3 ? "#3b82f6" : "#ef4444";
+
+                  return (
+                    <div
+                      key={bh.id}
+                      className="rounded-lg border overflow-hidden transition-all"
+                      style={{
+                        borderColor: hasAvoided ? "#16a34a40" : "#3f1515",
+                        backgroundColor: hasAvoided ? "rgba(22,163,74,0.05)" : "rgba(127,29,29,0.08)",
+                      }}
+                      data-testid={`bad-habit-card-${bh.id}`}
+                    >
+                      <div className="p-3">
+                        <div className="flex items-center gap-3">
+                          {/* Avoid button */}
+                          <button
+                            onClick={() => !hasAvoided && avoidBadHabitMutation.mutate(bh.id)}
+                            disabled={hasAvoided || avoidBadHabitMutation.isPending}
+                            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all"
+                            style={{
+                              borderColor: hasAvoided ? "#16a34a" : "#7f1d1d",
+                              backgroundColor: hasAvoided ? "rgba(22,163,74,0.15)" : "transparent",
+                            }}
+                            data-testid={`button-avoid-bad-habit-${bh.id}`}
+                          >
+                            {hasAvoided ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-400" />
+                            ) : (
+                              <ShieldOff className="w-4 h-4 text-red-400" />
+                            )}
+                          </button>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="text-sm font-semibold text-white truncate"
+                                data-testid={`bad-habit-name-${bh.id}`}
+                              >
+                                {bh.name}
+                              </span>
+                              {hasReplacement && (
+                                <span className="text-[9px] text-green-500 flex-shrink-0">→ has plan</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span
+                                className="text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded"
+                                style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#f87171" }}
+                              >
+                                {bh.category}
+                              </span>
+                              <div className="flex items-center gap-1" style={{ color: streakColor }}>
+                                <Flame className="w-3 h-3" />
+                                <span className="text-[11px] font-bold">{bh.currentStreak}d</span>
+                              </div>
+                              <span className="text-[10px] text-gray-600">
+                                {bh.totalDaysAvoided} total
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => setExpandedBadHabit(expanded ? null : bh.id)}
+                            className="w-7 h-7 flex items-center justify-center text-gray-600 hover:text-gray-400"
+                            data-testid={`button-expand-bad-habit-${bh.id}`}
+                          >
+                            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+
+                        {hasAvoided && (
+                          <div className="mt-2 text-[10px] text-green-500 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Marked avoided today
+                          </div>
+                        )}
+                      </div>
+
+                      {expanded && (
+                        <div
+                          className="px-3 pb-3 space-y-2 border-t"
+                          style={{ borderColor: "#2d1515" }}
+                        >
+                          {/* Habit loop details */}
+                          {(bh.trigger || bh.craving) && (
+                            <div className="mt-2 space-y-1.5">
+                              <p className="text-[9px] uppercase tracking-wider text-gray-600 font-semibold">
+                                Pattern
+                              </p>
+                              {bh.trigger && (
+                                <HabitLoopBadge label="Trigger" value={bh.trigger} color="#f87171" />
+                              )}
+                              {bh.craving && (
+                                <HabitLoopBadge label="Craving" value={bh.craving} color="#fb923c" />
+                              )}
+                            </div>
+                          )}
+                          {(bh.replacementHabit || bh.replacementCue) && (
+                            <div className="space-y-1.5">
+                              <p className="text-[9px] uppercase tracking-wider text-gray-600 font-semibold">
+                                Replacement Plan
+                              </p>
+                              {bh.replacementCue && (
+                                <HabitLoopBadge label="When" value={bh.replacementCue} color="#34d399" />
+                              )}
+                              {bh.replacementHabit && (
+                                <HabitLoopBadge label="Do Instead" value={bh.replacementHabit} color="#22d3ee" />
+                              )}
+                            </div>
+                          )}
+                          {!bh.replacementHabit && (
+                            <div className="flex items-center gap-1.5 text-[10px] text-amber-500">
+                              <AlertCircle className="w-3 h-3" />
+                              Add a replacement habit for better results
+                            </div>
+                          )}
+
+                          {/* Stats + actions */}
+                          <div className="flex gap-3 mt-1 items-center">
+                            <div className="text-center">
+                              <div className="text-xs font-bold text-white">{bh.currentStreak}</div>
+                              <div className="text-[9px] text-gray-600">streak</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs font-bold text-white">{bh.longestStreak}</div>
+                              <div className="text-[9px] text-gray-600">best</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs font-bold text-white">{bh.totalDaysAvoided}</div>
+                              <div className="text-[9px] text-gray-600">days</div>
+                            </div>
+                            <div className="flex-1" />
+                            <button
+                              onClick={() => openEditBadHabit(bh)}
+                              className="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors flex items-center gap-1"
+                              data-testid={`button-edit-bad-habit-${bh.id}`}
+                            >
+                              <Pencil className="w-3 h-3" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteBadHabitMutation.mutate(bh.id)}
+                              className="text-[10px] text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1"
+                              data-testid={`button-delete-bad-habit-${bh.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Info card */}
+            <div
+              className="rounded-lg p-3 border border-gray-800"
+              style={{ backgroundColor: "rgba(0,0,0,0.3)" }}
+            >
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-1.5">
+                How It Works
+              </p>
+              <div className="space-y-1.5 text-[11px] text-gray-500">
+                <p>• Track each day you avoid the pattern — builds a streak</p>
+                <p>• Add a replacement habit to redirect the craving</p>
+                <p>• Log the trigger to understand when it happens</p>
+                <p>• Ask your Coach for personalized strategies</p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* ── ADD / EDIT HABIT MODAL ── */}
+      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+        <DialogContent className="bg-gray-950 border-gray-800 max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "'Orbitron', monospace", fontSize: 13, color: "white" }}>
+              {editingHabit ? "Edit Habit" : "New Daily Habit"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {/* Name */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">Name</label>
+              <Input
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="e.g. Morning Pushups"
+                className="h-9 bg-black/50 border-gray-700 text-sm text-white"
+                data-testid="input-habit-name"
+              />
+            </div>
+
+            {/* Stat */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">Stat</label>
+              <Select value={formStat} onValueChange={setFormStat}>
+                <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-sm text-white" data-testid="select-habit-stat">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-700">
+                  <SelectItem value="strength">💪 Strength</SelectItem>
+                  <SelectItem value="agility">⚡ Agility</SelectItem>
+                  <SelectItem value="sense">🧘 Sense</SelectItem>
+                  <SelectItem value="vitality">❤️ Vitality</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Duration */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
+                Starting Duration (minutes)
+              </label>
+              <Input
+                type="number"
+                min="1"
+                max="10"
+                value={formDuration}
+                onChange={(e) => setFormDuration(e.target.value)}
+                className="h-9 bg-black/50 border-gray-700 text-sm text-white"
+                data-testid="input-habit-duration"
+              />
+              <div className="text-[9px] text-gray-600 mt-1">Scales automatically with consistency</div>
+            </div>
+
+            {/* Scheduled time */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
+                Scheduled Time (optional)
+              </label>
+              <div className="flex gap-2">
+                <Select value={formScheduledHour} onValueChange={setFormScheduledHour}>
+                  <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-xs text-white flex-1" data-testid="select-scheduled-hour">
+                    <SelectValue placeholder="Hour" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-700 max-h-48 overflow-y-auto">
+                    <SelectItem value="">No time</SelectItem>
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const label = i === 0 ? "12 AM" : i < 12 ? `${i} AM` : i === 12 ? "12 PM" : `${i - 12} PM`;
+                      return <SelectItem key={i} value={String(i)}>{label}</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+                {formScheduledHour !== "" && (
+                  <Select value={formScheduledMinute} onValueChange={setFormScheduledMinute}>
+                    <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-xs text-white w-20" data-testid="select-scheduled-minute">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-700">
+                      <SelectItem value="0">:00</SelectItem>
+                      <SelectItem value="15">:15</SelectItem>
+                      <SelectItem value="30">:30</SelectItem>
+                      <SelectItem value="45">:45</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+
+            {/* Stack After */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
+                Stack After (optional)
+              </label>
+              <Select value={formStackAfter} onValueChange={setFormStackAfter}>
+                <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-sm text-white" data-testid="select-habit-stack-after">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-700">
+                  <SelectItem value="none">None</SelectItem>
+                  {habits.filter((h) => h.id !== editingHabit?.id).map((h) => (
+                    <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Habit Loop toggle */}
+            <button
+              type="button"
+              onClick={() => setShowLoopFields(!showLoopFields)}
+              className="w-full flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-500 hover:text-cyan-400 transition-colors py-1"
+              data-testid="button-toggle-habit-loop"
+            >
+              <span className="flex items-center gap-1.5">
+                <Zap className="w-3 h-3" />
+                Habit Loop (cue → craving → response → reward)
+              </span>
+              {showLoopFields ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showLoopFields && (
+              <div className="space-y-2 pl-2 border-l-2 border-cyan-900">
+                <div>
+                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#22d3ee" }}>
+                    Cue — What triggers it?
+                  </label>
+                  <Input
+                    value={formCue}
+                    onChange={(e) => setFormCue(e.target.value)}
+                    placeholder="e.g. After morning alarm"
+                    className="h-8 bg-black/50 border-gray-700 text-xs text-white"
+                    data-testid="input-habit-cue"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#a78bfa" }}>
+                    Craving — What feeling do you want?
+                  </label>
+                  <Input
+                    value={formCraving}
+                    onChange={(e) => setFormCraving(e.target.value)}
+                    placeholder="e.g. Feel energized and alert"
+                    className="h-8 bg-black/50 border-gray-700 text-xs text-white"
+                    data-testid="input-habit-craving"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#34d399" }}>
+                    Response — What's the habit exactly?
+                  </label>
+                  <Input
+                    value={formResponse}
+                    onChange={(e) => setFormResponse(e.target.value)}
+                    placeholder={formName || "e.g. 10 pushups, no phone"}
+                    className="h-8 bg-black/50 border-gray-700 text-xs text-white"
+                    data-testid="input-habit-response"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#fbbf24" }}>
+                    Reward — How will you feel after?
+                  </label>
+                  <Input
+                    value={formReward}
+                    onChange={(e) => setFormReward(e.target.value)}
+                    placeholder="e.g. Proud, accomplished, strong"
+                    className="h-8 bg-black/50 border-gray-700 text-xs text-white"
+                    data-testid="input-habit-reward"
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={submitHabitForm}
+              disabled={!formName.trim() || createHabitMutation.isPending || updateHabitMutation.isPending}
+              className="w-full h-10 text-sm font-semibold"
+              style={{ backgroundColor: "#0e7490", color: "white" }}
+              data-testid="button-submit-habit"
+            >
+              {editingHabit ? "Save Changes" : "Add Habit"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── ADD / EDIT BAD HABIT MODAL ── */}
+      <Dialog open={showBadHabitForm} onOpenChange={setShowBadHabitForm}>
+        <DialogContent className="bg-gray-950 border-gray-800 max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "'Orbitron', monospace", fontSize: 13, color: "white" }}>
+              {editingBadHabit ? "Edit Bad Habit" : "Track Bad Habit"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div
+              className="text-[11px] text-amber-400/80 bg-amber-900/10 border border-amber-900/20 rounded-lg p-2.5"
+            >
+              Identify the pattern, understand the craving, build a replacement.
+            </div>
+
+            <div>
+              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
+                Habit / Pattern Name
+              </label>
+              <Input
+                value={bhName}
+                onChange={(e) => setBhName(e.target.value)}
+                placeholder="e.g. Late night phone scrolling"
+                className="h-9 bg-black/50 border-gray-700 text-sm text-white"
+                data-testid="input-bad-habit-name"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
+                Category
+              </label>
+              <Select value={bhCategory} onValueChange={setBhCategory}>
+                <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-sm text-white" data-testid="select-bad-habit-category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-700">
+                  {BAD_HABIT_CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#f87171" }}>
+                Trigger — When does it happen?
+              </label>
+              <Input
+                value={bhTrigger}
+                onChange={(e) => setBhTrigger(e.target.value)}
+                placeholder="e.g. When I'm bored, after dinner"
+                className="h-8 bg-black/50 border-gray-700 text-xs text-white"
+                data-testid="input-bad-habit-trigger"
+              />
+            </div>
+
+            <div>
+              <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#fb923c" }}>
+                Craving — What need is it fulfilling?
+              </label>
+              <Input
+                value={bhCraving}
+                onChange={(e) => setBhCraving(e.target.value)}
+                placeholder="e.g. Escape, stimulation, comfort"
+                className="h-8 bg-black/50 border-gray-700 text-xs text-white"
+                data-testid="input-bad-habit-craving"
+              />
+            </div>
+
+            <div
+              className="rounded-lg p-2 border border-green-900/30"
+              style={{ backgroundColor: "rgba(22,163,74,0.05)" }}
+            >
+              <p className="text-[9px] uppercase tracking-wider text-green-600 font-semibold mb-2">
+                Replacement Plan
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#34d399" }}>
+                    When the trigger hits, do:
+                  </label>
+                  <Input
+                    value={bhReplacementCue}
+                    onChange={(e) => setBhReplacementCue(e.target.value)}
+                    placeholder="e.g. When I reach for phone after dinner..."
+                    className="h-8 bg-black/50 border-green-900/30 text-xs text-white"
+                    data-testid="input-bad-habit-replacement-cue"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#22d3ee" }}>
+                    Do this instead:
+                  </label>
+                  <Input
+                    value={bhReplacement}
+                    onChange={(e) => setBhReplacement(e.target.value)}
+                    placeholder="e.g. Read 10 pages, take a 5-min walk"
+                    className="h-8 bg-black/50 border-green-900/30 text-xs text-white"
+                    data-testid="input-bad-habit-replacement"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={submitBadHabitForm}
+              disabled={!bhName.trim() || createBadHabitMutation.isPending || updateBadHabitMutation.isPending}
+              className="w-full h-10 text-sm font-semibold"
+              style={{ backgroundColor: "#7f1d1d", color: "white" }}
+              data-testid="button-submit-bad-habit"
+            >
+              {editingBadHabit ? "Save Changes" : "Start Tracking"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </SystemLayout>
   );
 }

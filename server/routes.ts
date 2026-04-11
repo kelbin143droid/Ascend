@@ -11,6 +11,7 @@ import {
   insertTaskSchema, updateTaskSchema, quadrantEnum,
   insertCalendarEventSchema, updateCalendarEventSchema,
   insertHabitSchema, updateHabitSchema,
+  insertBadHabitSchema, updateBadHabitSchema,
   type EffortTier
 } from "@shared/schema";
 import { suggestHabitStacks } from "./gameLogic/habitProgression";
@@ -1259,6 +1260,58 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete habit" });
+    }
+  });
+
+  app.get("/api/player/:id/bad-habits", async (req, res) => {
+    try {
+      const bhs = await storage.getBadHabits(req.params.id);
+      res.json(bhs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bad habits" });
+    }
+  });
+
+  app.post("/api/player/:id/bad-habits", async (req, res) => {
+    try {
+      const parsed = insertBadHabitSchema.safeParse({ ...req.body, userId: req.params.id });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      const bh = await storage.createBadHabit(parsed.data);
+      res.json(bh);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create bad habit" });
+    }
+  });
+
+  app.patch("/api/bad-habits/:id", async (req, res) => {
+    try {
+      const parsed = updateBadHabitSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      const bh = await storage.updateBadHabit(req.params.id, parsed.data);
+      if (!bh) return res.status(404).json({ error: "Bad habit not found" });
+      res.json(bh);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update bad habit" });
+    }
+  });
+
+  app.delete("/api/bad-habits/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteBadHabit(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Bad habit not found" });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete bad habit" });
+    }
+  });
+
+  app.post("/api/bad-habits/:id/avoided", async (req, res) => {
+    try {
+      const bh = await storage.markBadHabitAvoided(req.params.id);
+      if (!bh) return res.status(404).json({ error: "Bad habit not found" });
+      res.json(bh);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark bad habit avoided" });
     }
   });
 
