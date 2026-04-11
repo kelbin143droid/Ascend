@@ -146,7 +146,6 @@ export default function HabitsPage() {
 
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
   const [showBurst, setShowBurst] = useState(false);
-  const [showDayClose, setShowDayClose] = useState(false);
 
   const [expandedHabit, setExpandedHabit] = useState<string | null>(null);
   const [expandedBadHabit, setExpandedBadHabit] = useState<string | null>(null);

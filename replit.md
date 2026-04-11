@@ -13,7 +13,8 @@ Ascend OS is built around modular, interconnected systems:
 -   **Phase System**: Manages user progression through 5 phases based on stability, streaks, and ritual completion.
 -   **Stability Score**: A dynamic score (0-100) reflecting daily ritual completion and well-being, influencing progression and visuals.
 -   **Quest Engine**: Processes daily ritual completions, awarding XP and badges, and adjusting durations.
--   **AI Coach**: A rule-based coach with a calm, observant, non-judgmental, concise, and supportive personality, following an Acknowledge → Reframe → Suggest pattern.
+-   **AI Coach**: A rule-based coach with a calm, observant, non-judgmental, concise, and supportive personality, following an Acknowledge → Reframe → Suggest pattern. Includes enhanced chat UI with mood check-in, quick question chips, habit loop education, and bad habit guidance.
+-   **Bad Habits System**: Users can track negative patterns they want to break. Each bad habit stores trigger, craving, category, replacement habit, and replacement cue. A daily "avoided" check-in builds a streak. Backed by the `bad_habits` DB table with full CRUD via `/api/player/:id/bad-habits` and `/api/bad-habits/:id`.
 -   **Visual Evolution**: Adapts in-game visuals (environment, avatar auras, feedback) based on user phase and stability.
 -   **Notifications**: Delivers positively framed alerts for milestones, phase changes, and warnings.
 -   **Rewards**: Implements behavior-tied rewards like momentum-driven XP, streak bonuses, and badges.
@@ -57,6 +58,20 @@ Serves as a daily command center with Daily Status, Today's Training Flow, Sugge
 -   **Bottom Nav**: HOME, PROFILE, HABITS, COACH. (TRAIN tab removed; replaced by PROFILE tab at `/profile`, available from Day 1.)
 -   **Sidebar Menu**: Profile, Analytics, Progress History, Library, Achievements, Weekly Planning, System Tools (including Sectograph).
 -   **Sectograph**: A unified time system page with Timeline, Calendar, and Week views, including time awareness, behavioral anchoring, and focus session management.
+
+### Habits Page (Upgraded)
+Two-tab layout:
+- **Build tab**: Active habits with daily progress bar, expandable habit loop details (cue/craving/response/reward), scheduled time, streak stats, edit/delete.
+- **Break tab**: Bad habits tracking — each card shows trigger, craving, replacement plan, current streak, and daily "avoided" button. Stats overview: total tracked, best streak, total days avoided.
+- **Add Habit Modal**: Includes habit name, stat, starting duration, optional scheduled time (hour:minute picker), optional stack-after, and collapsible Habit Loop section (cue/craving/response/reward).
+- **Add Bad Habit Modal**: Name, category, trigger, craving, replacement plan (when + do instead).
+- Habit loop fields stored in DB: `cue`, `craving`, `response`, `reward`, `scheduledHour`, `scheduledMinute`, `description` (all nullable).
+
+### Coach Page (Upgraded)
+Two-tab layout:
+- **Chat tab**: Full conversational AI chat with bubble UI, mood check-in (energized/good/okay/low/grateful), quick question chips, suggestion chips in coach replies, typing indicator, new-conversation reset.
+- **Insights tab**: Coach messages with priority sorting, nudge card, Habit Loop Science explainer, Breaking Bad Habits explainer with direct chat links.
+- Chat route: `POST /api/player/:id/coach/chat` with full context (habits, completions, rhythm, identity, return protocol, stability tone modifiers).
 
 ### 5-Day Onboarding System
 A modular, futuristic onboarding flow replacing old inline logic. It defines 5 days of guided sessions with a dashboard, start screens, completion screens, and a final completion screen, using specific design elements and animations. Features are progressively unlocked based on onboarding day.
