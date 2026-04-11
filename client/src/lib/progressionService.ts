@@ -112,4 +112,19 @@ export function markStatIntroSeen(): void {
   try { localStorage.setItem(STAT_INTRO_KEY, "true"); } catch {}
 }
 
+const GAME_UNLOCK_KEY = "ascend_game_section_unlocked";
+export const GAME_UNLOCK_EVENT = "ascend:game-section-unlocked";
+
+export function isGameUnlocked(): boolean {
+  try { return localStorage.getItem(GAME_UNLOCK_KEY) === "true"; } catch { return false; }
+}
+
+export function markGameUnlocked(): void {
+  try {
+    localStorage.setItem(GAME_UNLOCK_KEY, "true");
+    localStorage.setItem(STAT_INTRO_KEY, "true");
+    window.dispatchEvent(new CustomEvent(GAME_UNLOCK_EVENT));
+  } catch {}
+}
+
 export const STAT_POINT_COST = 1;

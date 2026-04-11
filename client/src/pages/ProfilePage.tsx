@@ -8,8 +8,8 @@ import { GameIntroModal } from "@/components/game/GameIntroModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Calendar, Play, Flame, Zap, Star, User, Bell, Clock, Settings, ChevronRight, Sparkles, PlusCircle } from "lucide-react";
 import { PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
-import { isStatIntroSeen, syncPlayerToCache } from "@/lib/progressionService";
-import { STAT_COLORS as MAP_STAT_COLORS, STAT_EMOJIS } from "@/lib/habitStatMap";
+import { isGameUnlocked, syncPlayerToCache } from "@/lib/progressionService";
+import { STAT_EMOJIS } from "@/lib/habitStatMap";
 import type { StatName } from "@shared/schema";
 
 const PHASE_COLORS: Record<number, string> = {
@@ -73,7 +73,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (player) {
       syncPlayerToCache(player as any);
-      if (!isStatIntroSeen() && player.onboardingCompleted === 1) {
+      if (!isGameUnlocked() && player.onboardingCompleted === 1) {
         const timer = setTimeout(() => setShowIntroModal(true), 800);
         return () => clearTimeout(timer);
       }

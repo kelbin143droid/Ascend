@@ -11,9 +11,11 @@ import {
   Gamepad2,
   Clock,
   Lock,
+  ChevronRight,
 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
+import { isGameUnlocked, GAME_UNLOCK_EVENT } from "@/lib/progressionService";
 
 interface MenuItem {
   icon: any;
@@ -22,6 +24,7 @@ interface MenuItem {
   section?: string;
   unlockDay?: number;
   lockMessage?: string;
+  isGame?: boolean;
 }
 
 const menuItems: MenuItem[] = [
@@ -30,7 +33,7 @@ const menuItems: MenuItem[] = [
   { icon: BookOpen, label: "Library", path: "/library" },
   { icon: Trophy, label: "Achievements", path: "/inventory" },
   { icon: Clock, label: "Sectograph", path: "/sectograph", section: "system", unlockDay: 1, lockMessage: "Sectograph unlocks once your rhythm begins." },
-  { icon: Gamepad2, label: "Future Game", path: "/game3d" },
+  { icon: Gamepad2, label: "Future Game", path: "/game3d", section: "game", isGame: true },
 ];
 
 export function SidebarMenu() {
@@ -40,6 +43,19 @@ export function SidebarMenu() {
   const colors = backgroundTheme.colors;
   const { player } = useGame();
   const [, navigate] = useLocation();
+
+  const [gameUnlocked, setGameUnlocked] = useState(() => isGameUnlocked());
+  const [gameJustUnlocked, setGameJustUnlocked] = useState(false);
+
+  useEffect(() => {
+    const handler = () => {
+      setGameUnlocked(true);
+      setGameJustUnlocked(true);
+      setTimeout(() => setGameJustUnlocked(false), 4000);
+    };
+    window.addEventListener(GAME_UNLOCK_EVENT, handler);
+    return () => window.removeEventListener(GAME_UNLOCK_EVENT, handler);
+  }, []);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; isOnboardingComplete: boolean }>({
     queryKey: ["home", player?.id],
@@ -57,6 +73,7 @@ export function SidebarMenu() {
   const isComplete = homeData?.isOnboardingComplete ?? false;
 
   const isLocked = (item: MenuItem) => {
+    if (item.isGame) return !gameUnlocked;
     if (!item.unlockDay) return false;
     if (isComplete) return false;
     return onboardingDay < item.unlockDay;
@@ -82,22 +99,33 @@ export function SidebarMenu() {
 
   const regularItems = menuItems.filter(i => !i.section);
   const systemItems = menuItems.filter(i => i.section === "system");
+  const gameItems = menuItems.filter(i => i.section === "game");
 
   const renderItem = (item: MenuItem) => {
     const locked = isLocked(item);
+    const isNewlyUnlocked = item.isGame && gameJustUnlocked;
 
     if (locked) {
       return (
         <button
           key={item.path}
           data-testid={`sidebar-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-          onClick={() => setLockToast(item.lockMessage || "Locked")}
+          onClick={() => setLockToast(
+            item.isGame
+              ? "Complete the AI Coach tutorial to unlock the Game Section"
+              : (item.lockMessage || "Locked")
+          )}
           className="flex items-center gap-3 w-full px-5 py-3 text-left transition-colors duration-200"
           style={{ color: colors.textMuted, opacity: 0.4 }}
         >
           <item.icon size={18} style={{ color: colors.textMuted }} />
           <span className="text-sm font-medium tracking-wide flex-1">{item.label}</span>
-          <Lock size={12} style={{ color: colors.textMuted }} />
+          <div className="flex items-center gap-1.5">
+            <span className="text-[8px] font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(255,255,255,0.05)", color: colors.textMuted }}>
+              Day 8
+            </span>
+            <Lock size={12} style={{ color: colors.textMuted }} />
+          </div>
         </button>
       );
     }
@@ -107,11 +135,49 @@ export function SidebarMenu() {
         key={item.path}
         data-testid={`sidebar-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
         onClick={() => { navigate(item.path); setOpen(false); }}
-        className="flex items-center gap-3 w-full px-5 py-3 text-left transition-colors duration-200 hover:bg-white/5"
+        className="flex items-center gap-3 w-full px-5 py-3 text-left transition-colors duration-200 hover:bg-white/5 relative"
         style={{ color: colors.text }}
       >
-        <item.icon size={18} style={{ color: colors.primary, opacity: 0.8 }} />
-        <span className="text-sm font-medium tracking-wide">{item.label}</span>
+        {/* Glow on newly unlocked game item */}
+        {isNewlyUnlocked && (
+          <div
+            className="absolute inset-0 rounded-lg pointer-events-none"
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(34,211,238,0.08), transparent)",
+              animation: "gameUnlockGlow 2s ease-in-out infinite",
+            }}
+          />
+        )}
+        <item.icon
+          size={18}
+          style={{
+            color: item.isGame ? "#22d3ee" : colors.primary,
+            opacity: 0.9,
+            filter: item.isGame && gameUnlocked ? "drop-shadow(0 0 4px rgba(34,211,238,0.6))" : undefined,
+          }}
+        />
+        <span className="text-sm font-medium tracking-wide flex-1" style={{ color: item.isGame ? "#22d3ee" : colors.text }}>
+          {item.label}
+        </span>
+        {item.isGame && gameUnlocked && (
+          <>
+            {isNewlyUnlocked ? (
+              <div
+                className="flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: "rgba(34,211,238,0.15)",
+                  color: "#22d3ee",
+                  border: "1px solid rgba(34,211,238,0.4)",
+                  animation: "gamePointerPulse 1.4s ease-in-out infinite",
+                }}
+              >
+                ✦ NEW
+              </div>
+            ) : (
+              <ChevronRight size={12} style={{ color: "#22d3ee", opacity: 0.6 }} />
+            )}
+          </>
+        )}
       </button>
     );
   };
@@ -130,6 +196,17 @@ export function SidebarMenu() {
         aria-label="Open menu"
       >
         <Menu size={22} />
+        {/* Badge on toggle button if game just unlocked */}
+        {gameJustUnlocked && (
+          <div
+            className="absolute -top-1 -right-1 w-3 h-3 rounded-full"
+            style={{
+              backgroundColor: "#22d3ee",
+              boxShadow: "0 0 6px rgba(34,211,238,0.8)",
+              animation: "gamePointerPulse 1.2s ease-in-out infinite",
+            }}
+          />
+        )}
       </button>
 
       {open && (
@@ -180,6 +257,19 @@ export function SidebarMenu() {
               {systemItems.map(renderItem)}
             </>
           )}
+
+          {/* Game section */}
+          <div className="px-5 pt-4 pb-1 flex items-center gap-2">
+            <span className="text-[9px] font-mono uppercase tracking-[0.2em]" style={{ color: gameUnlocked ? "#22d3ee" : colors.textMuted, opacity: gameUnlocked ? 0.8 : 0.5 }}>
+              Game
+            </span>
+            {!gameUnlocked && (
+              <span className="text-[8px] font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(255,255,255,0.04)", color: colors.textMuted, opacity: 0.5 }}>
+                Unlocks Day 8
+              </span>
+            )}
+          </div>
+          {gameItems.map(renderItem)}
         </nav>
 
         <div
@@ -194,7 +284,7 @@ export function SidebarMenu() {
 
       {lockToast && (
         <div
-          className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg text-xs font-medium"
+          className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg text-xs font-medium max-w-[260px] text-center"
           style={{
             backgroundColor: colors.surface,
             border: `1px solid ${colors.surfaceBorder}`,
@@ -212,6 +302,14 @@ export function SidebarMenu() {
         @keyframes fadeInDown {
           from { opacity: 0; transform: translate(-50%, -12px); }
           to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        @keyframes gameUnlockGlow {
+          0%, 100% { opacity: 0; }
+          50% { opacity: 1; }
+        }
+        @keyframes gamePointerPulse {
+          0%, 100% { opacity: 0.7; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.1); }
         }
       `}</style>
     </>
