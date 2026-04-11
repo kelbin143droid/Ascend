@@ -1228,6 +1228,58 @@ export async function registerRoutes(
     }
   });
 
+  // Player-scoped habit routes (used by HabitsPage)
+  app.get("/api/player/:id/habits", async (req, res) => {
+    try {
+      const habits = await storage.getHabits(req.params.id);
+      res.json(habits);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch habits" });
+    }
+  });
+
+  app.post("/api/player/:id/habits", async (req, res) => {
+    try {
+      const parsed = insertHabitSchema.safeParse({ ...req.body, userId: req.params.id });
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const habit = await storage.createHabit(parsed.data);
+
+      // Auto-add to Sectograph timeline if a scheduled time was given
+      if (habit.scheduledHour !== null && habit.scheduledHour !== undefined) {
+        const player = await storage.getPlayer(req.params.id);
+        if (player) {
+          const startH = habit.scheduledHour;
+          const startM = habit.scheduledMinute ?? 0;
+          const totalMins = startH * 60 + startM + (habit.baseDurationMinutes ?? 5);
+          const endH = Math.floor(totalMins / 60) % 24;
+          const endM = totalMins % 60;
+          const statColors: Record<string, string> = {
+            strength: "#ef4444", agility: "#22c55e", sense: "#3b82f6", vitality: "#f59e0b",
+          };
+          const habitBlock = {
+            id: `habit_${habit.id}`,
+            name: habit.name,
+            startHour: startH,
+            startMinute: startM,
+            endHour: endH,
+            endMinute: endM,
+            color: statColors[habit.stat] || "#8b5cf6",
+            segment: "work",
+          };
+          // Remove old entry for this habit then append (dedup)
+          const existing = ((player.schedule ?? []) as any[]).filter((b: any) => b.id !== `habit_${habit.id}`);
+          await storage.updatePlayer(req.params.id, { schedule: [...existing, habitBlock] });
+        }
+      }
+
+      res.status(201).json(habit);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create habit" });
+    }
+  });
+
   app.get("/api/habits/:userId", async (req, res) => {
     try {
       const userHabits = await storage.getHabits(req.params.userId);

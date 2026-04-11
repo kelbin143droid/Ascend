@@ -7,6 +7,7 @@ import { SystemLayout } from "@/components/game/SystemLayout";
 import { Day7HabitsTutorial } from "@/components/game/Day7HabitsTutorial";
 import { isHabitsTutorialDone } from "@/lib/progressionService";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { AddHabitModal } from "@/components/game/AddHabitModal";
 import { BreakHabitModal } from "@/components/game/BreakHabitModal";
 import {
@@ -103,6 +104,7 @@ export default function HabitsPage() {
   const { player } = useGame();
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const playerId = player?.id ?? "";
 
   const [showTutorial, setShowTutorial] = useState(() => !isHabitsTutorialDone());
@@ -146,9 +148,17 @@ export default function HabitsPage() {
   const createHabitMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       apiRequest("POST", `/api/player/${playerId}/habits`, data).then((r) => r.json()),
-    onSuccess: () => {
+    onSuccess: (habit: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "habits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
       closeHabitForm();
+      toast({
+        title: "Habit added",
+        description: habit?.scheduledHour != null
+          ? `${habit.name} scheduled — block added to your Sectograph.`
+          : `${habit?.name ?? "New habit"} is now tracking.`,
+        duration: 3000,
+      });
     },
   });
 
@@ -157,7 +167,9 @@ export default function HabitsPage() {
       apiRequest("PATCH", `/api/habits/${id}`, data).then((r) => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "habits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
       closeHabitForm();
+      toast({ title: "Habit updated", duration: 2500 });
     },
   });
 
@@ -187,9 +199,14 @@ export default function HabitsPage() {
   const createBadHabitMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       apiRequest("POST", `/api/player/${playerId}/bad-habits`, data).then((r) => r.json()),
-    onSuccess: () => {
+    onSuccess: (bh: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/player", playerId, "bad-habits"] });
       closeBadHabitForm();
+      toast({
+        title: "Replacement plan created",
+        description: `Tracking "${bh?.name ?? "habit"}" — daily check-in is live.`,
+        duration: 3000,
+      });
     },
   });
 

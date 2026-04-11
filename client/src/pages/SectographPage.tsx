@@ -202,6 +202,7 @@ export default function SectographPage() {
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customBlockName, setCustomBlockName] = useState("");
+  const [showSegments, setShowSegments] = useState(true);
 
   const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
   const [tutorialStep, setTutorialStep] = useState(() => isSectographTutorialDone() ? 99 : getSectographTutorialStep());
@@ -410,8 +411,19 @@ export default function SectographPage() {
     const blockFinal = { ...editingBlock, name };
     delete (blockFinal as any).isNew;
     const current: ScheduleBlock[] = (player.schedule ?? []) as ScheduleBlock[];
+    // System preset IDs that should be deduplicated (only one per type allowed)
+    const SYSTEM_PRESET_PREFIXES = ["sleep", "daily", "work", "study", "exercise", "meal", "morning", "evening"];
+    const blockTypePrefix = blockFinal.id.split("_")[0];
+    const isSystemPreset = SYSTEM_PRESET_PREFIXES.includes(blockTypePrefix);
     const newSchedule = editingBlock.isNew
-      ? [...current, blockFinal]
+      ? [
+          // For system presets: remove existing block of same type before adding
+          // For custom/habit blocks: just append (allow multiples)
+          ...(isSystemPreset
+            ? current.filter((b: any) => b.id.split("_")[0] !== blockTypePrefix)
+            : current),
+          blockFinal,
+        ]
       : current.map((b: any) => b.id === blockFinal.id ? blockFinal : b);
     updatePlayer({ schedule: newSchedule });
     setEditingBlock(null);
@@ -995,14 +1007,27 @@ export default function SectographPage() {
                 <h3 className="text-xs font-display font-bold tracking-wider" style={{ color: colors.textMuted }}>
                   TIME SEGMENTS
                 </h3>
-                <div className="flex items-center gap-1">
-                  <Eye size={10} style={{ color: colors.textMuted, opacity: 0.5 }} />
+                <div className="flex items-center gap-2">
                   <span className="text-[9px]" style={{ color: colors.textMuted, opacity: 0.5 }}>
                     {hasCustomSchedule ? "Your schedule" : "Default layout"}
                   </span>
+                  <button
+                    onClick={() => setShowSegments(v => !v)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium transition-all"
+                    style={{
+                      backgroundColor: showSegments ? `${colors.primary}18` : "rgba(0,0,0,0.2)",
+                      color: showSegments ? colors.primary : colors.textMuted,
+                      border: `1px solid ${showSegments ? colors.primary + "30" : "transparent"}`,
+                    }}
+                    data-testid="toggle-segments"
+                  >
+                    {showSegments ? <Eye size={8} /> : <EyeOff size={8} />}
+                    {showSegments ? "Hide" : "Show"}
+                  </button>
                 </div>
               </div>
 
+              {showSegments && <>
               <div className="flex flex-wrap gap-2 mb-4">
                 {Array.from(usedSegments).map(seg => {
                   const info = SEGMENT_LABELS[seg];
@@ -1085,6 +1110,7 @@ export default function SectographPage() {
                   </div>
                 ))}
               </div>
+              </>}
 
               {!hasCustomSchedule && (
                 <div
