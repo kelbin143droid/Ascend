@@ -202,7 +202,8 @@ export default function SectographPage() {
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customBlockName, setCustomBlockName] = useState("");
-  const [showSegments, setShowSegments] = useState(true);
+  const [showSegments, setShowSegments] = useState(false);
+  const [showResetMarkers, setShowResetMarkers] = useState(false);
 
   const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
   const [tutorialStep, setTutorialStep] = useState(() => isSectographTutorialDone() ? 99 : getSectographTutorialStep());
@@ -555,9 +556,9 @@ export default function SectographPage() {
     setShowEventForm(false);
   };
 
-  const activeSchedule: ScheduleBlock[] = player?.schedule?.length
+  const activeSchedule: ScheduleBlock[] = (player?.schedule?.length
     ? (player.schedule as ScheduleBlock[])
-    : DEFAULT_SEGMENTS;
+    : []) as ScheduleBlock[];
 
   const hasCustomSchedule = (player?.schedule as any[])?.length > 0;
 
@@ -865,25 +866,6 @@ export default function SectographPage() {
               </div>
             )}
 
-            {!isDay5Mode && !activeFocus && (
-              <button
-                onClick={() => setShowFocusSetup(true)}
-                className="w-full rounded-lg p-3 flex items-center gap-3 transition-all hover:scale-[1.01]"
-                style={{
-                  backgroundColor: "rgba(139,92,246,0.08)",
-                  border: "1px solid rgba(139,92,246,0.2)",
-                }}
-                data-testid="button-start-focus"
-              >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(139,92,246,0.15)" }}>
-                  <Target size={14} style={{ color: "#8b5cf6" }} />
-                </div>
-                <div className="text-left">
-                  <span className="text-sm font-medium block" style={{ color: colors.text }}>Start Focus Session</span>
-                  <span className="text-[10px]" style={{ color: colors.textMuted }}>Block time on your timeline</span>
-                </div>
-              </button>
-            )}
 
             {!isDay5Mode && awarenessInsight && (
               <div
@@ -960,10 +942,25 @@ export default function SectographPage() {
                 style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
                 data-testid="anchors-card"
               >
-                <h3 className="text-xs font-display font-bold tracking-wider mb-2" style={{ color: "#f59e0b" }}>
-                  RESET MARKERS
-                </h3>
-                {anchorClusterInsight && (
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-display font-bold tracking-wider" style={{ color: "#f59e0b" }}>
+                    RESET MARKERS
+                  </h3>
+                  <button
+                    onClick={() => setShowResetMarkers(v => !v)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium transition-all"
+                    style={{
+                      backgroundColor: showResetMarkers ? "rgba(245,158,11,0.12)" : "rgba(0,0,0,0.2)",
+                      color: showResetMarkers ? "#f59e0b" : colors.textMuted,
+                      border: `1px solid ${showResetMarkers ? "rgba(245,158,11,0.3)" : "transparent"}`,
+                    }}
+                    data-testid="toggle-reset-markers"
+                  >
+                    {showResetMarkers ? <Eye size={8} /> : <EyeOff size={8} />}
+                    {showResetMarkers ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {showResetMarkers && anchorClusterInsight && (
                   <div
                     className="rounded-lg px-3 py-2 mb-3 flex items-start gap-2"
                     style={{ backgroundColor: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)" }}
@@ -975,6 +972,7 @@ export default function SectographPage() {
                     </p>
                   </div>
                 )}
+                {showResetMarkers && <>
                 <div className="space-y-1.5">
                   {behavioralAnchors.slice(-5).map((a, i) => (
                     <div key={i} className="flex items-center gap-3 px-2 py-1.5 rounded" style={{ backgroundColor: "rgba(245,158,11,0.06)" }}>
@@ -996,6 +994,7 @@ export default function SectographPage() {
                     As more resets accumulate, patterns will emerge.
                   </p>
                 )}
+                </>}
               </div>
             )}
 
