@@ -8,7 +8,7 @@ import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, MANA_MAX, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted, getFlowCompletedToday, isSectographTutorialDone } from "@/lib/userState";
-import { computeXPState, getLevelLabel } from "@/lib/xpSystem";
+import { computeXPState } from "@/lib/xpSystem";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -121,7 +121,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
 
   const displayLevel = playerData?.level ?? 2;
-  const rank = getLevelLabel(displayLevel);
   const hpColor = getHPColor(stats.hp);
   const manaColor = getManaColor(stats.mana);
   const hpPct = Math.min(100, Math.max(0, stats.hp));
@@ -157,18 +156,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         >
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p
-                className="text-[10px] uppercase tracking-[0.18em] mb-0.5"
-                style={{ color: colors.textMuted }}
-              >
-                {playerData?.name ?? "Awakened"}
-              </p>
-              <p
-                className="text-base font-bold leading-tight"
-                style={{ color: colors.text, fontFamily: "system-ui, sans-serif" }}
-              >
-                {homeData.phase.name}
-              </p>
               {consecutiveDays > 0 && (
                 <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
                   Day {consecutiveDays} streak
@@ -186,12 +173,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 data-testid="text-player-level"
               >
                 Lv {displayLevel}
-              </span>
-              <span
-                className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: `${colors.primary}10`, color: `${colors.primary}90` }}
-              >
-                {rank}
               </span>
             </div>
           </div>

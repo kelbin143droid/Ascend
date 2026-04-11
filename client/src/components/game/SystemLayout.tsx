@@ -6,7 +6,6 @@ import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { useQuery } from "@tanstack/react-query";
-import { ThemeSelector } from "./ThemeSelector";
 import { SidebarMenu } from "./SidebarMenu";
 import { DevPanel } from "./DevPanel";
 import { isSectographTutorialDone } from "@/lib/userState";
@@ -209,8 +208,6 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 90%)'
         }}
       />
-
-      {location === "/" && <ThemeSelector />}
 
       <SidebarMenu />
 

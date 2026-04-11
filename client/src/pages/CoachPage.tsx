@@ -271,6 +271,7 @@ function DeepCoachView({
   setChatMessages,
   chatMutation,
 }: DeepCoachViewProps) {
+  const { t } = useLanguage();
   const sortedMessages = coachData?.messages?.sort((a, b) => b.priority - a.priority) ?? [];
   const [insightSeen] = useState(() => localStorage.getItem("ascend_deep_coach_seen") === "true");
 

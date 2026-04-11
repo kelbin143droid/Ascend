@@ -111,6 +111,17 @@ export default function HabitsPage() {
     staleTime: 30000,
   });
 
+  const { data: habits = [], isLoading } = useQuery<Habit[]>({
+    queryKey: ["habits", player?.id],
+    queryFn: async () => {
+      if (!player?.id) return [];
+      const res = await fetch(`/api/habits/${player.id}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!player?.id,
+  });
+
   const onboardingDay = homeData?.onboardingDay ?? 1;
   const habitCreationLocked = onboardingDay < 3;
   const habitLimit = homeData?.stability?.habitLimit ?? 10;
@@ -133,17 +144,6 @@ export default function HabitsPage() {
   const [stabilityShift, setStabilityShift] = useState<{ direction: "up" | "down" | null; amount: number; visible: boolean }>({ direction: null, amount: 0, visible: false });
   const [burstTriggerCount, setBurstTriggerCount] = useState(0);
   const [burstColor, setBurstColor] = useState("#ffffff");
-
-  const { data: habits = [], isLoading } = useQuery<Habit[]>({
-    queryKey: ["habits", player?.id],
-    queryFn: async () => {
-      if (!player?.id) return [];
-      const res = await fetch(`/api/habits/${player.id}`);
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!player?.id,
-  });
 
   const { data: badges = [] } = useQuery<Badge[]>({
     queryKey: ["badges", player?.id],
