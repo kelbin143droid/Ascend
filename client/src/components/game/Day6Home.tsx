@@ -469,8 +469,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </AnimatePresence>
         </motion.div>
 
-        {/* ── STAT BARS (hidden until Sectograph tutorial done) ──────── */}
-        {tutorialDone && (
+        {/* ── STAT BARS (hidden until Day 8) ──────────────────────── */}
+        {displayDay >= 8 && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

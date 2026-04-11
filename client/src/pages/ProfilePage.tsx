@@ -8,7 +8,7 @@ import { GameIntroModal } from "@/components/game/GameIntroModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Calendar, Play, Flame, Zap, Star, User, Bell, Clock, Settings, ChevronRight, Sparkles, PlusCircle } from "lucide-react";
 import { PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
-import { isGameUnlocked, syncPlayerToCache } from "@/lib/progressionService";
+import { isGameUnlocked, syncPlayerToCache, getDisplayDay } from "@/lib/progressionService";
 import { STAT_EMOJIS } from "@/lib/habitStatMap";
 import type { StatName } from "@shared/schema";
 
@@ -70,15 +70,19 @@ export default function ProfilePage() {
     staleTime: 30000,
   });
 
+  const onboardingDay = homeData?.onboardingDay ?? 1;
+  const isComplete = homeData?.isOnboardingComplete ?? false;
+  const displayDay = getDisplayDay(player?.id ?? "", onboardingDay, isComplete);
+
   useEffect(() => {
     if (player) {
       syncPlayerToCache(player as any);
-      if (!isGameUnlocked() && player.onboardingCompleted === 1) {
+      if (!isGameUnlocked() && displayDay >= 8) {
         const timer = setTimeout(() => setShowIntroModal(true), 800);
         return () => clearTimeout(timer);
       }
     }
-  }, [player?.id]);
+  }, [player?.id, displayDay]);
 
   if (isLoading || !player) {
     return (
