@@ -766,6 +766,18 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/allocate-stat", async (req, res) => {
+    try {
+      const schema = z.object({ stat: z.enum(["strength", "agility", "sense", "vitality"]), amount: z.number().int().min(1).max(50) });
+      const { stat, amount } = schema.parse(req.body);
+      const player = await storage.allocateStat(req.params.id, stat as any, amount);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+      res.json(attachDerivedStats(player));
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to allocate stat" });
+    }
+  });
+
   app.post("/api/player/:id/confirm-phase-unlock", async (req, res) => {
     try {
       const player = await storage.confirmPhaseUnlock(req.params.id);

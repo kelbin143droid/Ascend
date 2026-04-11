@@ -31,6 +31,7 @@ export interface IStorage {
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayer(id: string, updates: UpdatePlayer): Promise<Player | undefined>;
   gainExp(id: string, amount: number): Promise<Player | undefined>;
+  allocateStat(id: string, stat: StatName, amount: number): Promise<Player | undefined>;
   modifyHp(id: string, amount: number): Promise<Player | undefined>;
   modifyMp(id: string, amount: number): Promise<Player | undefined>;
   completeSession(id: string, input: CompleteSessionInput): Promise<{ player: Player; result: SessionResult } | undefined>;
@@ -161,9 +162,25 @@ export class DatabaseStorage implements IStorage {
       updates.hp = updates.maxHp;
       updates.mp = updates.maxMp;
       updates.rank = getRankFromLevel(newLevel);
+      const levelsGained = newLevel - oldLevel;
+      updates.statPoints = (player.statPoints ?? 0) + levelsGained * 5;
     }
 
     return this.updatePlayer(id, updates);
+  }
+
+  async allocateStat(id: string, stat: StatName, amount: number): Promise<Player | undefined> {
+    const player = await this.getPlayer(id);
+    if (!player) return undefined;
+    const available = player.statPoints ?? 0;
+    const cost = Math.max(1, Math.abs(amount));
+    if (available < cost) return player;
+    const bonusStats = { ...((player.bonusStats as any) ?? { strength: 0, agility: 0, sense: 0, vitality: 0 }) };
+    bonusStats[stat] = (bonusStats[stat] ?? 0) + cost;
+    return this.updatePlayer(id, {
+      bonusStats,
+      statPoints: available - cost,
+    });
   }
 
   async confirmPhaseUnlock(id: string): Promise<Player | undefined> {

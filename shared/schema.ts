@@ -305,6 +305,8 @@ export const players = pgTable("players", {
   planningMode: text("planning_mode").notNull().default("basic"),
   dailyStatProgress: jsonb("daily_stat_progress").$type<DailyStatProgress[]>().notNull().default([]),
   statXP: jsonb("stat_xp").$type<StatXP>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0 }),
+  statPoints: integer("stat_points").notNull().default(0),
+  bonusStats: jsonb("bonus_stats").$type<Stats>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0 }),
   streak: integer("streak").notNull().default(0),
   consecutiveMissedDays: integer("consecutive_missed_days").notNull().default(0),
   stamina: integer("stamina").notNull().default(1),

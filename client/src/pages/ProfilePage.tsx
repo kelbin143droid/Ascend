@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
+import { StatAllocationModal } from "@/components/game/StatAllocationModal";
+import { GameIntroModal } from "@/components/game/GameIntroModal";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Calendar, Play, Flame, Zap, Star, User, Bell, Clock, Settings, ChevronRight } from "lucide-react";
+import { Shield, Calendar, Play, Flame, Zap, Star, User, Bell, Clock, Settings, ChevronRight, Sparkles, PlusCircle } from "lucide-react";
 import { PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
+import { isStatIntroSeen, syncPlayerToCache } from "@/lib/progressionService";
+import { STAT_COLORS as MAP_STAT_COLORS, STAT_EMOJIS } from "@/lib/habitStatMap";
+import type { StatName } from "@shared/schema";
 
 const PHASE_COLORS: Record<number, string> = {
   1: "#6b7280",
@@ -50,6 +55,8 @@ export default function ProfilePage() {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const [settingsToast, setSettingsToast] = useState<string | null>(null);
+  const [showAllocModal, setShowAllocModal] = useState(false);
+  const [showIntroModal, setShowIntroModal] = useState(false);
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -62,6 +69,16 @@ export default function ProfilePage() {
     enabled: !!player?.id,
     staleTime: 30000,
   });
+
+  useEffect(() => {
+    if (player) {
+      syncPlayerToCache(player as any);
+      if (!isStatIntroSeen() && player.onboardingCompleted === 1) {
+        const timer = setTimeout(() => setShowIntroModal(true), 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [player?.id]);
 
   if (isLoading || !player) {
     return (
@@ -82,6 +99,8 @@ export default function ProfilePage() {
   const growthState = homeData?.growthState || "Beginning";
   const streak = homeData?.streak ?? player.streak ?? 0;
   const totalExp = player.totalExp || 0;
+  const statPoints = (player as any).statPoints ?? 0;
+  const bonusStats = ((player as any).bonusStats as Record<StatName, number> | null) ?? { strength: 0, agility: 0, sense: 0, vitality: 0 };
 
   const statLevels = (player as any).statLevels as Record<string, { level: number; currentXP: number; xpForNext: number }> | undefined;
   const stats = [
@@ -111,6 +130,10 @@ export default function ProfilePage() {
   return (
     <SystemLayout>
       <div className="min-h-screen p-4 pb-28 space-y-5" data-testid="profile-page">
+
+        {/* Modals */}
+        <StatAllocationModal open={showAllocModal} onClose={() => setShowAllocModal(false)} />
+        <GameIntroModal open={showIntroModal} onClose={() => setShowIntroModal(false)} playerName={player.name} />
 
         {/* Settings toast */}
         <AnimatePresence>
@@ -146,10 +169,7 @@ export default function ProfilePage() {
               }}
               data-testid="profile-avatar"
             >
-              <span
-                className="text-3xl font-display font-bold"
-                style={{ color: rankColor }}
-              >
+              <span className="text-3xl font-display font-bold" style={{ color: rankColor }}>
                 {nameInitial}
               </span>
             </div>
@@ -178,6 +198,24 @@ export default function ProfilePage() {
             >
               {rank} Rank
             </span>
+            {statPoints > 0 && (
+              <motion.button
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                onClick={() => setShowAllocModal(true)}
+                className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1"
+                style={{
+                  backgroundColor: "rgba(168,85,247,0.15)",
+                  color: "#a855f7",
+                  border: "1px solid rgba(168,85,247,0.35)",
+                  boxShadow: "0 0 8px rgba(168,85,247,0.2)",
+                }}
+                data-testid="badge-stat-points"
+              >
+                <Sparkles size={9} />
+                {statPoints} pts
+              </motion.button>
+            )}
           </div>
 
           {/* XP Progress Bar */}
@@ -190,15 +228,17 @@ export default function ProfilePage() {
                 {withinLevelXP} / {maxXP} XP
               </span>
             </div>
-            <div
-              className="w-full h-1.5 rounded-full overflow-hidden"
-              style={{ backgroundColor: `${colors.primary}18` }}
-            >
+            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${colors.primary}18` }}>
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${xpPct}%`, backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primaryGlow}` }}
               />
             </div>
+            {statPoints > 0 && (
+              <p className="text-[9px] mt-1.5 text-center animate-pulse" style={{ color: "#a855f7" }}>
+                ✦ {statPoints} unspent stat point{statPoints !== 1 ? "s" : ""} — tap to allocate
+              </p>
+            )}
           </div>
         </div>
 
@@ -250,9 +290,34 @@ export default function ProfilePage() {
 
         {/* Stat levels */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-1 h-4" style={{ backgroundColor: colors.primary }} />
-            <h2 className="text-[10px] font-display tracking-widest" style={{ color: colors.primary }}>STATS</h2>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4" style={{ backgroundColor: colors.primary }} />
+              <h2 className="text-[10px] font-display tracking-widest" style={{ color: colors.primary }}>STATS</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowIntroModal(true)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium"
+                style={{ backgroundColor: "rgba(99,102,241,0.1)", color: "#6366f1", border: "1px solid rgba(99,102,241,0.25)" }}
+                data-testid="button-how-stats-work"
+              >
+                How stats work
+              </button>
+              <button
+                onClick={() => setShowAllocModal(true)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium"
+                style={{
+                  backgroundColor: statPoints > 0 ? "rgba(168,85,247,0.15)" : "rgba(255,255,255,0.05)",
+                  color: statPoints > 0 ? "#a855f7" : colors.textMuted,
+                  border: `1px solid ${statPoints > 0 ? "rgba(168,85,247,0.35)" : "transparent"}`,
+                }}
+                data-testid="button-allocate-stats"
+              >
+                <PlusCircle size={8} />
+                {statPoints > 0 ? `Allocate (${statPoints})` : "Allocate"}
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {stats.map(({ key, label }) => {
@@ -261,15 +326,26 @@ export default function ProfilePage() {
               const currentXP = statLevels?.[key]?.currentXP ?? 0;
               const xpForNext = statLevels?.[key]?.xpForNext ?? 100;
               const pct = xpForNext > 0 ? Math.min(currentXP / xpForNext, 1) : 0;
+              const bonus = bonusStats[key as StatName] ?? 0;
+              const emoji = STAT_EMOJIS[key as StatName];
               return (
                 <div
                   key={key}
                   className="rounded-xl px-3 py-2.5"
                   style={{ backgroundColor: `${statColor}0d`, border: `1px solid ${statColor}25` }}
+                  data-testid={`stat-card-${key}`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: `${statColor}cc` }}>{label}</span>
-                    <span className="text-base font-mono font-bold" style={{ color: statColor }}>{level}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">{emoji}</span>
+                      <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: `${statColor}cc` }}>{label}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-base font-mono font-bold" style={{ color: statColor }}>{level}</span>
+                      {bonus > 0 && (
+                        <span className="text-[8px] font-mono" style={{ color: `${statColor}80` }}>+{bonus}</span>
+                      )}
+                    </div>
                   </div>
                   <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${statColor}20` }}>
                     <div
@@ -279,6 +355,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="text-[8px] mt-1 font-mono" style={{ color: `${statColor}60` }}>
                     {currentXP} / {xpForNext} XP
+                    {bonus > 0 && <span style={{ color: `${statColor}80` }}> · +{bonus} bonus</span>}
                   </div>
                 </div>
               );

@@ -1,0 +1,75 @@
+{
+  "version": "1.0.0",
+  "game": {
+    "name": "Ascend OS",
+    "subtitle": "Awakened Hunter System",
+    "tagline": "Your habits power your world."
+  },
+  "progression": {
+    "xpPerLevel": 100,
+    "statPointsPerLevel": 5,
+    "maxLevel": 100,
+    "ranks": [
+      { "rank": "E", "minLevel": 1, "maxLevel": 4, "color": "#6b7280" },
+      { "rank": "D", "minLevel": 5, "maxLevel": 9, "color": "#22c55e" },
+      { "rank": "C", "minLevel": 10, "maxLevel": 14, "color": "#3b82f6" },
+      { "rank": "B", "minLevel": 15, "maxLevel": 19, "color": "#a855f7" },
+      { "rank": "A", "minLevel": 20, "maxLevel": 29, "color": "#ef4444" },
+      { "rank": "S", "minLevel": 30, "maxLevel": 99, "color": "#ffd700" }
+    ]
+  },
+  "stats": {
+    "list": ["strength", "agility", "sense", "vitality"],
+    "baseHP": 100,
+    "baseMP": 50,
+    "hpScalingFactor": 1.05,
+    "mpScalingFactor": 1.05
+  },
+  "phases": {
+    "count": 5,
+    "statCaps": {
+      "1": 30,
+      "2": 60,
+      "3": 90,
+      "4": 100,
+      "5": 120
+    },
+    "requirements": {
+      "2": { "level": 5, "avgStat": 10, "streak": 7 },
+      "3": { "level": 15, "avgStat": 25, "streak": 14 },
+      "4": { "level": 30, "avgStat": 50, "streak": 14 },
+      "5": { "level": 50, "avgStat": 75, "streak": 14 }
+    }
+  },
+  "habits": {
+    "xpRanges": {
+      "short": { "minMinutes": 1, "maxMinutes": 3, "minXP": 10, "maxXP": 15 },
+      "medium": { "minMinutes": 4, "maxMinutes": 10, "minXP": 25, "maxXP": 40 },
+      "long": { "minMinutes": 11, "maxMinutes": 9999, "minXP": 60, "maxXP": 100 }
+    },
+    "streakBonuses": {
+      "3": 1.1,
+      "7": 1.25,
+      "14": 1.5,
+      "30": 2.0
+    },
+    "dailyBonusBase": 25,
+    "dailyBonusPerHabit": 5,
+    "weeklyBonusXP": 100
+  },
+  "onboarding": {
+    "totalDays": 5,
+    "xpPerDay": 5,
+    "habitTabUnlockDay": 3,
+    "trainTabUnlockDay": 7
+  },
+  "coach": {
+    "statTutorialDay": 8,
+    "tutorialMessage": "Your stats are powered by your habits. Every time you complete a habit, its linked stat gains XP — just like leveling up in an RPG. When your overall level increases, you earn Stat Points you can freely allocate to any stat. This is your edge: consistent real-world action directly upgrades your character."
+  },
+  "localStorage": {
+    "playerCacheKey": "ascend_player_cache",
+    "statsCacheKey": "ascend_stats_v2",
+    "progressionCacheKey": "ascend_progression_v1"
+  }
+}
