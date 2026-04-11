@@ -184,12 +184,15 @@ export async function registerRoutes(
       const current = player.totalExp ?? 0;
       const needed = Math.max(0, LEVEL_2_THRESHOLD - current);
       const afterXP = needed > 0 ? await storage.gainExp(req.params.id, needed) : player;
-      // Mark onboarding complete — reset exp to 0 at Level 2 for a clean start
+      // Mark onboarding complete — keep any XP earned during onboarding, just ensure level 2
+      const finalPlayer = afterXP ?? player;
+      const currentTotalXP = finalPlayer.totalExp ?? 100;
+      const expWithinLevel2 = Math.max(0, currentTotalXP - 100); // XP above the level-2 threshold
       const final = await storage.updatePlayer(req.params.id, {
         onboardingCompleted: 1,
         level: 2,
-        exp: 0,
-        totalExp: 100,
+        exp: expWithinLevel2,
+        totalExp: currentTotalXP,
       });
       res.json(attachDerivedStats(final ?? afterXP!, "Level up! Welcome to Level 2."));
     } catch (error) {
@@ -2747,7 +2750,7 @@ export async function registerRoutes(
         }
         if ((player.level ?? 1) < 2) {
           playerUpdates.level = 2;
-          playerUpdates.exp = 0;
+          // Do NOT reset exp — gainExp already computed the correct remainingXP
         }
       }
 

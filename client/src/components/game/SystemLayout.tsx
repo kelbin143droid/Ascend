@@ -69,12 +69,22 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const [toastVisible, setToastVisible] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState<Set<string>>(new Set());
   const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
+  const [habitsPointerSeen, setHabitsPointerSeen] = useState(() =>
+    localStorage.getItem("ascend_habits_pointer_seen") === "1"
+  );
 
   useEffect(() => {
     const handler = () => setTutorialDone(true);
     window.addEventListener("ascend:sectograph-tutorial-done", handler);
     return () => window.removeEventListener("ascend:sectograph-tutorial-done", handler);
   }, []);
+
+  useEffect(() => {
+    if (location === "/habits" && !habitsPointerSeen) {
+      localStorage.setItem("ascend_habits_pointer_seen", "1");
+      setHabitsPointerSeen(true);
+    }
+  }, [location, habitsPointerSeen]);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; isOnboardingComplete: boolean }>({
     queryKey: ["home", player?.id],
@@ -148,6 +158,14 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           0% { box-shadow: 0 0 0px transparent; }
           40% { box-shadow: 0 0 18px rgba(147,197,253,0.5); }
           100% { box-shadow: 0 0 0px transparent; }
+        }
+        @keyframes habitsPointerBounce {
+          0%, 100% { transform: translateY(0px); opacity: 0.9; }
+          50% { transform: translateY(-4px); opacity: 1; }
+        }
+        @keyframes habitsPointerPulse {
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.15); }
         }
       `}</style>
 
@@ -269,36 +287,70 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
               );
             }
 
+            const showHabitsPointer = item.path === "/habits" && displayDay >= 7 && !habitsPointerSeen;
+
             return (
               <Link key={item.path} href={item.path}>
-                <button
-                  data-testid={`nav-${item.label.toLowerCase()}`}
-                  className={cn(
-                    "flex flex-col items-center justify-center transition-all duration-300 group min-w-[60px]"
+                <div className="relative flex flex-col items-center">
+                  {showHabitsPointer && (
+                    <div
+                      className="absolute flex flex-col items-center pointer-events-none"
+                      style={{ top: -26, zIndex: 50 }}
+                    >
+                      <div
+                        className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                        style={{
+                          backgroundColor: "rgba(34,211,238,0.15)",
+                          border: "1px solid rgba(34,211,238,0.4)",
+                          color: "#22d3ee",
+                          animation: "habitsPointerPulse 1.6s ease-in-out infinite",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Day 7 Unlocked!
+                      </div>
+                      <div
+                        style={{
+                          width: 0, height: 0,
+                          borderLeft: "4px solid transparent",
+                          borderRight: "4px solid transparent",
+                          borderTop: "4px solid rgba(34,211,238,0.5)",
+                          animation: "habitsPointerBounce 1s ease-in-out infinite",
+                        }}
+                      />
+                    </div>
                   )}
-                  style={{
-                    color: isActive ? colors.primary : colors.textMuted,
-                    transform: isActive ? 'scale(1.1)' : 'scale(1)',
-                    ...(wasJustUnlocked ? { animation: "tabUnlockGlow 1.5s ease-out" } : {}),
-                  }}
-                >
-                  <div 
-                    className="relative p-1.5 rounded-sm transition-all duration-500"
-                    style={isActive ? {
-                      backgroundColor: `${colors.primary}33`,
-                      boxShadow: `0 0 25px ${colors.primaryGlow}`,
-                      border: `1px solid ${colors.surfaceBorder}`
-                    } : {}}
+                  <button
+                    data-testid={`nav-${item.label.toLowerCase()}`}
+                    className={cn(
+                      "flex flex-col items-center justify-center transition-all duration-300 group min-w-[60px]"
+                    )}
+                    style={{
+                      color: isActive ? colors.primary : showHabitsPointer ? "#22d3ee" : colors.textMuted,
+                      transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                      ...(wasJustUnlocked ? { animation: "tabUnlockGlow 1.5s ease-out" } : {}),
+                    }}
                   >
-                    <item.icon size={22} className={cn("transition-transform", isActive && "animate-pulse")} />
-                  </div>
-                  <span 
-                    className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase transition-all"
-                    style={{ opacity: isActive ? 1 : 0.6 }}
-                  >
-                    {t(item.label)}
-                  </span>
-                </button>
+                    <div 
+                      className="relative p-1.5 rounded-sm transition-all duration-500"
+                      style={isActive ? {
+                        backgroundColor: `${colors.primary}33`,
+                        boxShadow: `0 0 25px ${colors.primaryGlow}`,
+                        border: `1px solid ${colors.surfaceBorder}`
+                      } : showHabitsPointer ? {
+                        animation: "habitsPointerPulse 1.6s ease-in-out infinite",
+                      } : {}}
+                    >
+                      <item.icon size={22} className={cn("transition-transform", isActive && "animate-pulse")} />
+                    </div>
+                    <span 
+                      className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase transition-all"
+                      style={{ opacity: isActive ? 1 : showHabitsPointer ? 1 : 0.6 }}
+                    >
+                      {t(item.label)}
+                    </span>
+                  </button>
+                </div>
               </Link>
             );
           })}

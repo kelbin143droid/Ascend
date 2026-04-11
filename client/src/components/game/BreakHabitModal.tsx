@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,16 +18,6 @@ const BAD_HABIT_CATEGORIES = [
   { value: "social", label: "Social Patterns" },
   { value: "sleep", label: "Sleep Disruption" },
 ];
-
-interface BadHabitFormData {
-  name: string;
-  category: string;
-  trigger?: string;
-  craving?: string;
-  replacementHabit?: string;
-  replacementCue?: string;
-  userId: string;
-}
 
 interface Props {
   open: boolean;
@@ -70,7 +59,6 @@ export function BreakHabitModal({ open, onClose, onSubmit, editingBadHabit, play
   const analyze = () => {
     if (!name.trim()) return;
     setAnalyzing(true);
-    // Simulate brief "thinking" moment before showing result
     setTimeout(() => {
       const solution = aiCoachService.analyzeBadHabit(name, category);
       setAiSolution(solution);
@@ -185,7 +173,7 @@ export function BreakHabitModal({ open, onClose, onSubmit, editingBadHabit, play
             <button
               onClick={analyze}
               disabled={!name.trim() || analyzing}
-              className="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider transition-all active:scale-[0.98]"
+              className="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider"
               style={{
                 backgroundColor: !name.trim() ? "rgba(167,139,250,0.05)" : "rgba(167,139,250,0.12)",
                 border: "1px solid rgba(167,139,250,0.25)",
@@ -200,37 +188,28 @@ export function BreakHabitModal({ open, onClose, onSubmit, editingBadHabit, play
           )}
 
           {/* AI Solution Result */}
-          <AnimatePresence>
-            {aiSolution && (
-              <motion.div
-                initial={{ opacity: 0, y: 6, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: "auto" }}
-                exit={{ opacity: 0, y: -4, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div
-                  className="rounded-xl p-3 space-y-2"
-                  style={{ backgroundColor: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.2)" }}
-                  data-testid="ai-solution-panel"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(167,139,250,0.2)" }}>
-                      <Brain size={11} style={{ color: "#a78bfa" }} />
-                    </div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>
-                      AI Coach Analysis
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Sparkles size={11} style={{ color: "#a78bfa", marginTop: 2, flexShrink: 0 }} />
-                    <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
-                      {aiSolution.tip}
-                    </p>
-                  </div>
+          {aiSolution && (
+            <div
+              className="rounded-xl p-3 space-y-2"
+              style={{ backgroundColor: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.2)" }}
+              data-testid="ai-solution-panel"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(167,139,250,0.2)" }}>
+                  <Brain size={11} style={{ color: "#a78bfa" }} />
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#a78bfa" }}>
+                  AI Coach Analysis
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <Sparkles size={11} style={{ color: "#a78bfa", marginTop: 2, flexShrink: 0 }} />
+                <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
+                  {aiSolution.tip}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Replacement Plan */}
           <div
@@ -242,7 +221,11 @@ export function BreakHabitModal({ open, onClose, onSubmit, editingBadHabit, play
               <p className="text-[9px] uppercase tracking-wider font-bold" style={{ color: "#22c55e" }}>
                 Replacement Plan
               </p>
-              {analyzed && <span className="text-[8px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(167,139,250,0.12)", color: "#a78bfa" }}>AI-filled</span>}
+              {analyzed && (
+                <span className="text-[8px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(167,139,250,0.12)", color: "#a78bfa" }}>
+                  AI-filled
+                </span>
+              )}
             </div>
 
             <div>
@@ -277,7 +260,7 @@ export function BreakHabitModal({ open, onClose, onSubmit, editingBadHabit, play
           <div className="flex gap-2 pt-1">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg text-xs font-medium transition-colors"
+              className="flex-1 py-2.5 rounded-lg text-xs font-medium"
               style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)" }}
             >
               Cancel

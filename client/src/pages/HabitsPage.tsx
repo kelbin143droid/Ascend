@@ -283,14 +283,23 @@ export default function HabitsPage() {
               Build good. Break bad. Level up.
             </p>
           </div>
-          <button
-            onClick={activeTab === "build" ? openAddHabit : openAddBadHabit}
-            className="w-9 h-9 rounded-full flex items-center justify-center border border-gray-700 hover:border-cyan-500 transition-colors"
-            style={{ backgroundColor: "rgba(6,182,212,0.1)" }}
-            data-testid="button-add-habit"
-          >
-            <Plus className="w-4 h-4 text-cyan-400" />
-          </button>
+          <div className="flex flex-col items-center gap-0.5">
+            <button
+              onClick={activeTab === "build" ? openAddHabit : openAddBadHabit}
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+              style={{
+                backgroundColor: activeTab === "build" ? "rgba(6,182,212,0.12)" : "rgba(239,68,68,0.12)",
+                border: `1px solid ${activeTab === "build" ? "rgba(34,211,238,0.3)" : "rgba(239,68,68,0.3)"}`,
+              }}
+              data-testid="button-add-habit"
+              title={activeTab === "build" ? "Add Habit" : "Track Bad Habit"}
+            >
+              <Plus className="w-4 h-4" style={{ color: activeTab === "build" ? "#22d3ee" : "#f87171" }} />
+            </button>
+            <span className="text-[8px] uppercase tracking-wide font-bold" style={{ color: activeTab === "build" ? "rgba(34,211,238,0.5)" : "rgba(248,113,113,0.5)" }}>
+              {activeTab === "build" ? "Build" : "Break"}
+            </span>
+          </div>
         </div>
 
         {/* Tabs */}

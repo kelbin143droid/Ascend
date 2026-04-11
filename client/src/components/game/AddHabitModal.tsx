@@ -1,36 +1,20 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Brain, ChevronDown, ChevronUp, Zap, Sparkles, Shield, Droplets } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Zap, Sparkles, Shield } from "lucide-react";
 import { aiCoachService, type HabitRecommendation } from "@/lib/aiCoachService";
 import type { Habit } from "@shared/schema";
 
 const STAT_OPTIONS = [
-  { value: "strength", label: "Strength", color: "#ef4444", icon: "💪", desc: "Physical power" },
-  { value: "sense", label: "Sense", color: "#3b82f6", icon: "🧘", desc: "Mental clarity" },
-  { value: "vitality", label: "Vitality", color: "#f59e0b", icon: "❤️", desc: "Health & energy" },
-  { value: "agility", label: "Agility", color: "#22c55e", icon: "⚡", desc: "Movement & flex" },
+  { value: "strength", label: "Strength", color: "#ef4444", icon: "💪" },
+  { value: "sense", label: "Sense", color: "#3b82f6", icon: "🧘" },
+  { value: "vitality", label: "Vitality", color: "#f59e0b", icon: "❤️" },
+  { value: "agility", label: "Agility", color: "#22c55e", icon: "⚡" },
 ];
-
-interface HabitFormData {
-  name: string;
-  stat: string;
-  baseDurationMinutes: number;
-  currentDurationMinutes: number;
-  stackAfterHabitId?: string;
-  cue?: string;
-  craving?: string;
-  response?: string;
-  reward?: string;
-  scheduledHour?: number;
-  scheduledMinute?: number;
-  userId: string;
-}
 
 interface Props {
   open: boolean;
@@ -42,30 +26,22 @@ interface Props {
   isPending: boolean;
 }
 
-function EffectBadge({ type, effect }: { type: "HP" | "MP"; effect: "restore" | "protect" | "none" }) {
-  if (effect === "none") return null;
-  const color = type === "HP" ? "#22c55e" : "#3b82f6";
-  const Icon = type === "HP" ? Shield : Zap;
+function EffectTag({ label, color }: { label: string; color: string }) {
   return (
     <span
-      className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+      className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full"
       style={{ backgroundColor: `${color}18`, color, border: `1px solid ${color}30` }}
     >
-      <Icon size={8} />
-      {type} {effect}
+      {label}
     </span>
   );
 }
 
-function RecCard({
-  rec, selected, onSelect,
-}: { rec: HabitRecommendation; selected: boolean; onSelect: () => void }) {
+function RecCard({ rec, selected, onSelect }: { rec: HabitRecommendation; selected: boolean; onSelect: () => void }) {
   const statOpt = STAT_OPTIONS.find((s) => s.value === rec.stat);
   const color = statOpt?.color ?? "#3b82f6";
   return (
-    <motion.button
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
+    <button
       onClick={onSelect}
       data-testid={`ai-rec-card-${rec.name.replace(/\s+/g, "-").toLowerCase()}`}
       className="w-full text-left rounded-xl p-3 transition-all"
@@ -84,9 +60,9 @@ function RecCard({
             {rec.durationMinutes} min · +{rec.xpBonus} XP
           </p>
         </div>
-        <div className="flex flex-col gap-1 shrink-0">
-          <EffectBadge type="HP" effect={rec.hpEffect} />
-          <EffectBadge type="MP" effect={rec.mpEffect} />
+        <div className="flex flex-col gap-1 items-end shrink-0">
+          {rec.hpEffect !== "none" && <EffectTag label={`HP ${rec.hpEffect}`} color="#22c55e" />}
+          {rec.mpEffect !== "none" && <EffectTag label={`MP ${rec.mpEffect}`} color="#3b82f6" />}
         </div>
       </div>
       <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
@@ -97,7 +73,7 @@ function RecCard({
           ✓ Selected — fields auto-filled below
         </div>
       )}
-    </motion.button>
+    </button>
   );
 }
 
@@ -118,6 +94,7 @@ export function AddHabitModal({ open, onClose, onSubmit, editingHabit, habits, p
 
   const statOpt = STAT_OPTIONS.find((s) => s.value === stat);
   const recs = aiCoachService.getRecommendations(stat);
+  const color = statOpt?.color ?? "#3b82f6";
 
   useEffect(() => {
     if (!open) return;
@@ -156,8 +133,9 @@ export function AddHabitModal({ open, onClose, onSubmit, editingHabit, habits, p
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-    const hrs = scheduledHour !== "" ? parseInt(scheduledHour) : undefined;
-    const mins = scheduledHour !== "" ? parseInt(scheduledMinute) : undefined;
+    const timeSet = scheduledHour !== "" && scheduledHour !== "none";
+    const hrs = timeSet ? parseInt(scheduledHour) : undefined;
+    const mins = timeSet ? parseInt(scheduledMinute) : undefined;
     onSubmit({
       name: name.trim(),
       stat,
@@ -174,7 +152,12 @@ export function AddHabitModal({ open, onClose, onSubmit, editingHabit, habits, p
     });
   };
 
-  const color = statOpt?.color ?? "#3b82f6";
+  const LOOP_FIELDS = [
+    { label: "Cue — What triggers it?", val: cue, setter: setCue, color: "#22d3ee", placeholder: "e.g. After morning alarm", testId: "input-habit-cue" },
+    { label: "Craving — What feeling do you want?", val: craving, setter: setCraving, color: "#a78bfa", placeholder: "e.g. Feel energized", testId: "input-habit-craving" },
+    { label: "Response — The habit action", val: response, setter: setResponse, color: "#22c55e", placeholder: "e.g. Do 10 push-ups", testId: "input-habit-response" },
+    { label: "Reward — What you get", val: reward, setter: setReward, color: "#f59e0b", placeholder: "e.g. Strength XP + energy boost", testId: "input-habit-reward" },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -239,28 +222,18 @@ export function AddHabitModal({ open, onClose, onSubmit, editingHabit, habits, p
                 {showAI ? <ChevronUp size={12} style={{ color: "rgba(255,255,255,0.3)" }} /> : <ChevronDown size={12} style={{ color: "rgba(255,255,255,0.3)" }} />}
               </button>
 
-              <AnimatePresence>
-                {showAI && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-3 pb-3 space-y-2 pt-2">
-                      {recs.map((rec) => (
-                        <RecCard
-                          key={rec.name}
-                          rec={rec}
-                          selected={selectedRec?.name === rec.name}
-                          onSelect={() => applyRec(rec)}
-                        />
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {showAI && (
+                <div className="px-3 pb-3 space-y-2 pt-2">
+                  {recs.map((rec) => (
+                    <RecCard
+                      key={rec.name}
+                      rec={rec}
+                      selected={selectedRec?.name === rec.name}
+                      onSelect={() => applyRec(rec)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -308,14 +281,14 @@ export function AddHabitModal({ open, onClose, onSubmit, editingHabit, habits, p
                   <SelectValue placeholder="Hour" />
                 </SelectTrigger>
                 <SelectContent style={{ backgroundColor: "#0a0e1a", borderColor: "rgba(255,255,255,0.1)" }}>
-                  <SelectItem value="">No time</SelectItem>
+                  <SelectItem value="none" style={{ color: "white" }}>No time</SelectItem>
                   {Array.from({ length: 24 }, (_, i) => {
                     const label = i === 0 ? "12 AM" : i < 12 ? `${i} AM` : i === 12 ? "12 PM" : `${i - 12} PM`;
                     return <SelectItem key={i} value={String(i)} style={{ color: "white" }}>{label}</SelectItem>;
                   })}
                 </SelectContent>
               </Select>
-              {scheduledHour !== "" && (
+              {scheduledHour !== "" && scheduledHour !== "none" && scheduledHour && (
                 <Select value={scheduledMinute} onValueChange={setScheduledMinute}>
                   <SelectTrigger className="h-9 w-20 text-xs" style={{ backgroundColor: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "white" }} data-testid="select-scheduled-minute">
                     <SelectValue />
@@ -368,52 +341,35 @@ export function AddHabitModal({ open, onClose, onSubmit, editingHabit, habits, p
               {showLoopFields ? <ChevronUp size={12} style={{ color: "rgba(255,255,255,0.2)" }} /> : <ChevronDown size={12} style={{ color: "rgba(255,255,255,0.2)" }} />}
             </button>
 
-            <AnimatePresence>
-              {showLoopFields && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="px-3 pb-3 pt-2 space-y-2.5 border-l-2" style={{ borderColor: "rgba(34,211,238,0.2)" }}>
-                    {[
-                      { label: "Cue — What triggers it?", val: cue, setter: setCue, color: "#22d3ee", placeholder: "e.g. After morning alarm", testId: "input-habit-cue" },
-                      { label: "Craving — What feeling do you want?", val: craving, setter: setCraving, color: "#a78bfa", placeholder: "e.g. Feel energized", testId: "input-habit-craving" },
-                      { label: "Response — The habit action", val: response, setter: setResponse, color: "#22c55e", placeholder: "e.g. Do 10 push-ups", testId: "input-habit-response" },
-                      { label: "Reward — What you get", val: reward, setter: setReward, color: "#f59e0b", placeholder: "e.g. Strength XP + energy boost", testId: "input-habit-reward" },
-                    ].map(({ label, val, setter, color: c, placeholder, testId }) => (
-                      <div key={label}>
-                        <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: c }}>
-                          {label}
-                        </label>
-                        <Input
-                          value={val}
-                          onChange={(e) => setter(e.target.value)}
-                          placeholder={placeholder}
-                          className="h-8 text-xs"
-                          style={{ backgroundColor: "rgba(255,255,255,0.03)", borderColor: `${c}25`, color: "white" }}
-                          data-testid={testId}
-                        />
-                      </div>
-                    ))}
+            {showLoopFields && (
+              <div className="px-3 pb-3 pt-2 space-y-2.5 border-l-2" style={{ borderColor: "rgba(34,211,238,0.2)" }}>
+                {LOOP_FIELDS.map(({ label, val, setter, color: c, placeholder, testId }) => (
+                  <div key={testId}>
+                    <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: c }}>
+                      {label}
+                    </label>
+                    <Input
+                      value={val}
+                      onChange={(e) => setter(e.target.value)}
+                      placeholder={placeholder}
+                      className="h-8 text-xs"
+                      style={{ backgroundColor: "rgba(255,255,255,0.03)", borderColor: `${c}25`, color: "white" }}
+                      data-testid={testId}
+                    />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* XP/HP/MP preview */}
           {selectedRec && (
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
+            <div
               className="flex items-center gap-2 rounded-lg px-3 py-2"
               style={{ backgroundColor: `${color}08`, border: `1px solid ${color}20` }}
               data-testid="xp-preview"
             >
-              <Droplets size={11} style={{ color }} />
+              <Shield size={11} style={{ color }} />
               <div className="flex flex-wrap gap-2">
                 <span className="text-[9px] font-bold" style={{ color }}>+{selectedRec.xpBonus} XP</span>
                 {selectedRec.hpEffect !== "none" && (
@@ -423,14 +379,14 @@ export function AddHabitModal({ open, onClose, onSubmit, editingHabit, habits, p
                   <span className="text-[9px] font-bold" style={{ color: "#3b82f6" }}>MP {selectedRec.mpEffect}</span>
                 )}
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* Actions */}
           <div className="flex gap-2 pt-1">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg text-xs font-medium transition-colors"
+              className="flex-1 py-2.5 rounded-lg text-xs font-medium"
               style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)" }}
             >
               Cancel
