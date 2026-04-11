@@ -2733,7 +2733,25 @@ export async function registerRoutes(
       );
 
       const newStreak = Math.min(player.streak + dayCount, 999);
-      await storage.updatePlayer(req.params.id, { streak: newStreak });
+      const playerUpdates: Record<string, unknown> = { streak: newStreak };
+
+      // Auto-complete onboarding when all 5 sessions are simulated
+      if (newCompletedOnboardingDays >= 5 && player.onboardingCompleted !== 1) {
+        playerUpdates.onboardingCompleted = 1;
+        // Ensure the player reaches level 2 (same logic as /onboarding-complete)
+        const ONBOARDING_MIN_XP = 100;
+        const currentExp = (player.totalExp ?? 0);
+        if (currentExp < ONBOARDING_MIN_XP) {
+          const xpNeeded = ONBOARDING_MIN_XP - currentExp;
+          await storage.gainExp(req.params.id, xpNeeded);
+        }
+        if ((player.level ?? 1) < 2) {
+          playerUpdates.level = 2;
+          playerUpdates.exp = 0;
+        }
+      }
+
+      await storage.updatePlayer(req.params.id, playerUpdates);
 
       res.json({
         success: true,
@@ -2742,6 +2760,7 @@ export async function registerRoutes(
         newOnboardingDay,
         newStreak,
         distinctActiveDays: simDistinctDays.size,
+        onboardingCompleted: newCompletedOnboardingDays >= 5,
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to simulate days" });

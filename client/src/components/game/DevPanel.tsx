@@ -36,6 +36,7 @@ interface SimulateResult {
   newOnboardingDay: number;
   newStreak: number;
   distinctActiveDays: number;
+  onboardingCompleted?: boolean;
 }
 
 const POST_DAYS_KEY = (id: string) => `ascend_dev_postdays_${id}`;
@@ -89,13 +90,22 @@ export function DevPanel() {
       if (res.ok) {
         const data: SimulateResult = await res.json();
         const wasPostOnboarding = status?.onboardingCompleted ?? false;
+        // Also treat simulation as post-onboarding if it just completed onboarding
+        const nowPostOnboarding = wasPostOnboarding || (data.onboardingCompleted ?? false);
         let newPostDays = postOnboardingDays;
         if (wasPostOnboarding) {
           newPostDays = postOnboardingDays + data.daysSimulated;
           setPostOnboardingDays(newPostDays);
           setPostDays(player.id, newPostDays);
+        } else if (data.onboardingCompleted) {
+          // Just crossed into post-onboarding — set localStorage so sectograph/day6 flags are ready
+          localStorage.setItem("ascend_day5_sleep_scheduled", "true");
+          localStorage.setItem("ascend_day5_flow_scheduled", "true");
+          localStorage.setItem("ascend_day5_sectograph_intro_seen", "true");
+          localStorage.setItem("ascend_sectograph_tutorial_done", "true");
+          localStorage.setItem("ascend_sectograph_tutorial_step", "3");
         }
-        const shownDay = wasPostOnboarding ? 5 + newPostDays + 1 : data.newOnboardingDay;
+        const shownDay = nowPostOnboarding ? 5 + newPostDays + 1 : data.newOnboardingDay;
         setLastResult(`+${data.daysSimulated}d → Day ${shownDay}, streak ${data.newStreak}`);
         queryClient.invalidateQueries();
         fetchStatus();

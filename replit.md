@@ -64,8 +64,14 @@ Two-tab layout:
 - **Build tab**: Active habits with daily progress bar, expandable habit loop details (cue/craving/response/reward), scheduled time, streak stats, edit/delete.
 - **Break tab**: Bad habits tracking — each card shows trigger, craving, replacement plan, current streak, and daily "avoided" button. Stats overview: total tracked, best streak, total days avoided.
 - **Add Habit Modal**: Includes habit name, stat, starting duration, optional scheduled time (hour:minute picker), optional stack-after, and collapsible Habit Loop section (cue/craving/response/reward).
-- **Add Bad Habit Modal**: Name, category, trigger, craving, replacement plan (when + do instead).
+- **Add Bad Habit Modal**: Now uses `BreakHabitModal.tsx` — standalone component with "Analyze with AI Coach" button that pattern-matches the habit name/category and pre-fills replacement strategy and cue.
 - Habit loop fields stored in DB: `cue`, `craving`, `response`, `reward`, `scheduledHour`, `scheduledMinute`, `description` (all nullable).
+
+### AI-Powered Habit Modals (Integrated)
+- **`client/src/lib/aiCoachService.ts`**: Rule-based AI engine providing stat-specific habit recommendations (3 per stat: strength/sense/vitality/agility) with XP/HP/MP effect labels, full habit loop fields (cue/craving/response/reward), and tips. Also provides `analyzeBadHabit(name, category)` for pattern-matched replacement strategies.
+- **`client/src/components/game/AddHabitModal.tsx`**: Standalone Add/Edit Habit Dialog with collapsible "AI Coach Suggestions" panel showing 3 recommendation cards per stat. Selecting a card auto-fills name, duration, and habit loop fields. Shows XP/HP/MP preview when a recommendation is selected.
+- **`client/src/components/game/BreakHabitModal.tsx`**: Standalone Break Habit Dialog with "Analyze with AI Coach" button. Simulates a brief thinking delay then shows a replacement strategy + tip, auto-filling the replacement plan fields (editable).
+- `HabitsPage.tsx` uses these components instead of inline Dialog blocks, with simplified handler functions.
 
 ### Coach Page (Upgraded)
 Two-tab layout:

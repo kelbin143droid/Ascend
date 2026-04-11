@@ -7,16 +7,8 @@ import { SystemLayout } from "@/components/game/SystemLayout";
 import { Day7HabitsTutorial } from "@/components/game/Day7HabitsTutorial";
 import { isHabitsTutorialDone } from "@/lib/progressionService";
 import { apiRequest } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AddHabitModal } from "@/components/game/AddHabitModal";
+import { BreakHabitModal } from "@/components/game/BreakHabitModal";
 import {
   Flame,
   Plus,
@@ -58,15 +50,6 @@ const STAT_ICONS: Record<string, string> = {
 
 const DIFFICULTY_LABELS = ["", "Micro", "Light", "Standard", "Intense", "Master"];
 
-const BAD_HABIT_CATEGORIES = [
-  { value: "general", label: "General" },
-  { value: "substance", label: "Substance" },
-  { value: "digital", label: "Digital / Screen" },
-  { value: "food", label: "Food & Eating" },
-  { value: "procrastination", label: "Procrastination" },
-  { value: "social", label: "Social Patterns" },
-  { value: "sleep", label: "Sleep Disruption" },
-];
 
 interface CompletionResult {
   habit: Habit;
@@ -128,26 +111,9 @@ export default function HabitsPage() {
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  const [formName, setFormName] = useState("");
-  const [formStat, setFormStat] = useState("strength");
-  const [formDuration, setFormDuration] = useState("3");
-  const [formStackAfter, setFormStackAfter] = useState("none");
-  const [formCue, setFormCue] = useState("");
-  const [formCraving, setFormCraving] = useState("");
-  const [formResponse, setFormResponse] = useState("");
-  const [formReward, setFormReward] = useState("");
-  const [formScheduledHour, setFormScheduledHour] = useState("");
-  const [formScheduledMinute, setFormScheduledMinute] = useState("0");
-  const [showLoopFields, setShowLoopFields] = useState(false);
 
   const [showBadHabitForm, setShowBadHabitForm] = useState(false);
   const [editingBadHabit, setEditingBadHabit] = useState<BadHabit | null>(null);
-  const [bhName, setBhName] = useState("");
-  const [bhTrigger, setBhTrigger] = useState("");
-  const [bhCraving, setBhCraving] = useState("");
-  const [bhReplacement, setBhReplacement] = useState("");
-  const [bhReplacementCue, setBhReplacementCue] = useState("");
-  const [bhCategory, setBhCategory] = useState("general");
 
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
   const [showBurst, setShowBurst] = useState(false);
@@ -173,6 +139,9 @@ export default function HabitsPage() {
     queryFn: () => apiRequest("GET", `/api/player/${playerId}/badges`).then((r) => r.json()),
     enabled: !!playerId,
   });
+
+  const closeHabitForm = () => { setShowAddForm(false); setEditingHabit(null); };
+  const closeBadHabitForm = () => { setShowBadHabitForm(false); setEditingBadHabit(null); };
 
   const createHabitMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
@@ -249,112 +218,26 @@ export default function HabitsPage() {
 
   if (!player) return null;
 
-  function openAddHabit() {
-    setEditingHabit(null);
-    setFormName("");
-    setFormStat("strength");
-    setFormDuration("3");
-    setFormStackAfter("none");
-    setFormCue("");
-    setFormCraving("");
-    setFormResponse("");
-    setFormReward("");
-    setFormScheduledHour("");
-    setFormScheduledMinute("0");
-    setShowLoopFields(false);
-    setShowAddForm(true);
-  }
+  const openAddHabit = () => { setEditingHabit(null); setShowAddForm(true); };
+  const openEditHabit = (h: Habit) => { setEditingHabit(h); setShowAddForm(true); };
+  const openAddBadHabit = () => { setEditingBadHabit(null); setShowBadHabitForm(true); };
+  const openEditBadHabit = (bh: BadHabit) => { setEditingBadHabit(bh); setShowBadHabitForm(true); };
 
-  function openEditHabit(h: Habit) {
-    setEditingHabit(h);
-    setFormName(h.name);
-    setFormStat(h.stat);
-    setFormDuration(String(h.baseDurationMinutes));
-    setFormStackAfter(h.stackAfterHabitId ?? "none");
-    setFormCue(h.cue ?? "");
-    setFormCraving(h.craving ?? "");
-    setFormResponse(h.response ?? "");
-    setFormReward(h.reward ?? "");
-    setFormScheduledHour(h.scheduledHour != null ? String(h.scheduledHour) : "");
-    setFormScheduledMinute(h.scheduledMinute != null ? String(h.scheduledMinute) : "0");
-    setShowLoopFields(!!(h.cue || h.craving || h.response || h.reward));
-    setShowAddForm(true);
-  }
-
-  function closeHabitForm() {
-    setShowAddForm(false);
-    setEditingHabit(null);
-  }
-
-  function submitHabitForm() {
-    if (!formName.trim()) return;
-    const scheduledHour = formScheduledHour !== "" ? parseInt(formScheduledHour) : undefined;
-    const scheduledMinute = formScheduledHour !== "" ? parseInt(formScheduledMinute) : undefined;
-    const data = {
-      name: formName.trim(),
-      stat: formStat,
-      baseDurationMinutes: parseInt(formDuration) || 3,
-      currentDurationMinutes: parseInt(formDuration) || 3,
-      stackAfterHabitId: formStackAfter === "none" ? undefined : formStackAfter,
-      cue: formCue.trim() || undefined,
-      craving: formCraving.trim() || undefined,
-      response: formResponse.trim() || undefined,
-      reward: formReward.trim() || undefined,
-      scheduledHour,
-      scheduledMinute,
-      userId: playerId,
-    };
+  const submitHabitForm = (data: Record<string, unknown>) => {
     if (editingHabit) {
       updateHabitMutation.mutate({ id: editingHabit.id, data });
     } else {
       createHabitMutation.mutate(data);
     }
-  }
+  };
 
-  function openAddBadHabit() {
-    setEditingBadHabit(null);
-    setBhName("");
-    setBhTrigger("");
-    setBhCraving("");
-    setBhReplacement("");
-    setBhReplacementCue("");
-    setBhCategory("general");
-    setShowBadHabitForm(true);
-  }
-
-  function openEditBadHabit(bh: BadHabit) {
-    setEditingBadHabit(bh);
-    setBhName(bh.name);
-    setBhTrigger(bh.trigger ?? "");
-    setBhCraving(bh.craving ?? "");
-    setBhReplacement(bh.replacementHabit ?? "");
-    setBhReplacementCue(bh.replacementCue ?? "");
-    setBhCategory(bh.category);
-    setShowBadHabitForm(true);
-  }
-
-  function closeBadHabitForm() {
-    setShowBadHabitForm(false);
-    setEditingBadHabit(null);
-  }
-
-  function submitBadHabitForm() {
-    if (!bhName.trim()) return;
-    const data = {
-      name: bhName.trim(),
-      trigger: bhTrigger.trim() || undefined,
-      craving: bhCraving.trim() || undefined,
-      replacementHabit: bhReplacement.trim() || undefined,
-      replacementCue: bhReplacementCue.trim() || undefined,
-      category: bhCategory,
-      userId: playerId,
-    };
+  const submitBadHabitForm = (data: Record<string, unknown>) => {
     if (editingBadHabit) {
       updateBadHabitMutation.mutate({ id: editingBadHabit.id, data });
     } else {
       createBadHabitMutation.mutate(data);
     }
-  }
+  };
 
   const today = new Date().toLocaleDateString("en-CA");
   const activeHabits = habits.filter((h) => h.active);
@@ -901,309 +784,24 @@ export default function HabitsPage() {
         )}
       </div>
 
-      {/* ── ADD / EDIT HABIT MODAL ── */}
-      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="bg-gray-950 border-gray-800 max-w-sm max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle style={{ fontFamily: "'Orbitron', monospace", fontSize: 13, color: "white" }}>
-              {editingHabit ? "Edit Habit" : "New Daily Habit"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            {/* Name */}
-            <div>
-              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">Name</label>
-              <Input
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Morning Pushups"
-                className="h-9 bg-black/50 border-gray-700 text-sm text-white"
-                data-testid="input-habit-name"
-              />
-            </div>
+      <AddHabitModal
+        open={showAddForm}
+        onClose={closeHabitForm}
+        onSubmit={submitHabitForm}
+        editingHabit={editingHabit}
+        habits={habits}
+        playerId={playerId}
+        isPending={createHabitMutation.isPending || updateHabitMutation.isPending}
+      />
 
-            {/* Stat */}
-            <div>
-              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">Stat</label>
-              <Select value={formStat} onValueChange={setFormStat}>
-                <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-sm text-white" data-testid="select-habit-stat">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-gray-700">
-                  <SelectItem value="strength">💪 Strength</SelectItem>
-                  <SelectItem value="agility">⚡ Agility</SelectItem>
-                  <SelectItem value="sense">🧘 Sense</SelectItem>
-                  <SelectItem value="vitality">❤️ Vitality</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Duration */}
-            <div>
-              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                Starting Duration (minutes)
-              </label>
-              <Input
-                type="number"
-                min="1"
-                max="10"
-                value={formDuration}
-                onChange={(e) => setFormDuration(e.target.value)}
-                className="h-9 bg-black/50 border-gray-700 text-sm text-white"
-                data-testid="input-habit-duration"
-              />
-              <div className="text-[9px] text-gray-600 mt-1">Scales automatically with consistency</div>
-            </div>
-
-            {/* Scheduled time */}
-            <div>
-              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                Scheduled Time (optional)
-              </label>
-              <div className="flex gap-2">
-                <Select value={formScheduledHour} onValueChange={setFormScheduledHour}>
-                  <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-xs text-white flex-1" data-testid="select-scheduled-hour">
-                    <SelectValue placeholder="Hour" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-700 max-h-48 overflow-y-auto">
-                    <SelectItem value="">No time</SelectItem>
-                    {Array.from({ length: 24 }, (_, i) => {
-                      const label = i === 0 ? "12 AM" : i < 12 ? `${i} AM` : i === 12 ? "12 PM" : `${i - 12} PM`;
-                      return <SelectItem key={i} value={String(i)}>{label}</SelectItem>;
-                    })}
-                  </SelectContent>
-                </Select>
-                {formScheduledHour !== "" && (
-                  <Select value={formScheduledMinute} onValueChange={setFormScheduledMinute}>
-                    <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-xs text-white w-20" data-testid="select-scheduled-minute">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-gray-700">
-                      <SelectItem value="0">:00</SelectItem>
-                      <SelectItem value="15">:15</SelectItem>
-                      <SelectItem value="30">:30</SelectItem>
-                      <SelectItem value="45">:45</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </div>
-
-            {/* Stack After */}
-            <div>
-              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                Stack After (optional)
-              </label>
-              <Select value={formStackAfter} onValueChange={setFormStackAfter}>
-                <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-sm text-white" data-testid="select-habit-stack-after">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-gray-700">
-                  <SelectItem value="none">None</SelectItem>
-                  {habits.filter((h) => h.id !== editingHabit?.id).map((h) => (
-                    <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Habit Loop toggle */}
-            <button
-              type="button"
-              onClick={() => setShowLoopFields(!showLoopFields)}
-              className="w-full flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-500 hover:text-cyan-400 transition-colors py-1"
-              data-testid="button-toggle-habit-loop"
-            >
-              <span className="flex items-center gap-1.5">
-                <Zap className="w-3 h-3" />
-                Habit Loop (cue → craving → response → reward)
-              </span>
-              {showLoopFields ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-
-            {showLoopFields && (
-              <div className="space-y-2 pl-2 border-l-2 border-cyan-900">
-                <div>
-                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#22d3ee" }}>
-                    Cue — What triggers it?
-                  </label>
-                  <Input
-                    value={formCue}
-                    onChange={(e) => setFormCue(e.target.value)}
-                    placeholder="e.g. After morning alarm"
-                    className="h-8 bg-black/50 border-gray-700 text-xs text-white"
-                    data-testid="input-habit-cue"
-                  />
-                </div>
-                <div>
-                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#a78bfa" }}>
-                    Craving — What feeling do you want?
-                  </label>
-                  <Input
-                    value={formCraving}
-                    onChange={(e) => setFormCraving(e.target.value)}
-                    placeholder="e.g. Feel energized and alert"
-                    className="h-8 bg-black/50 border-gray-700 text-xs text-white"
-                    data-testid="input-habit-craving"
-                  />
-                </div>
-                <div>
-                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#34d399" }}>
-                    Response — What's the habit exactly?
-                  </label>
-                  <Input
-                    value={formResponse}
-                    onChange={(e) => setFormResponse(e.target.value)}
-                    placeholder={formName || "e.g. 10 pushups, no phone"}
-                    className="h-8 bg-black/50 border-gray-700 text-xs text-white"
-                    data-testid="input-habit-response"
-                  />
-                </div>
-                <div>
-                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#fbbf24" }}>
-                    Reward — How will you feel after?
-                  </label>
-                  <Input
-                    value={formReward}
-                    onChange={(e) => setFormReward(e.target.value)}
-                    placeholder="e.g. Proud, accomplished, strong"
-                    className="h-8 bg-black/50 border-gray-700 text-xs text-white"
-                    data-testid="input-habit-reward"
-                  />
-                </div>
-              </div>
-            )}
-
-            <Button
-              onClick={submitHabitForm}
-              disabled={!formName.trim() || createHabitMutation.isPending || updateHabitMutation.isPending}
-              className="w-full h-10 text-sm font-semibold"
-              style={{ backgroundColor: "#0e7490", color: "white" }}
-              data-testid="button-submit-habit"
-            >
-              {editingHabit ? "Save Changes" : "Add Habit"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── ADD / EDIT BAD HABIT MODAL ── */}
-      <Dialog open={showBadHabitForm} onOpenChange={setShowBadHabitForm}>
-        <DialogContent className="bg-gray-950 border-gray-800 max-w-sm max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle style={{ fontFamily: "'Orbitron', monospace", fontSize: 13, color: "white" }}>
-              {editingBadHabit ? "Edit Bad Habit" : "Track Bad Habit"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div
-              className="text-[11px] text-amber-400/80 bg-amber-900/10 border border-amber-900/20 rounded-lg p-2.5"
-            >
-              Identify the pattern, understand the craving, build a replacement.
-            </div>
-
-            <div>
-              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                Habit / Pattern Name
-              </label>
-              <Input
-                value={bhName}
-                onChange={(e) => setBhName(e.target.value)}
-                placeholder="e.g. Late night phone scrolling"
-                className="h-9 bg-black/50 border-gray-700 text-sm text-white"
-                data-testid="input-bad-habit-name"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] uppercase tracking-wider block mb-1 text-gray-500">
-                Category
-              </label>
-              <Select value={bhCategory} onValueChange={setBhCategory}>
-                <SelectTrigger className="h-9 bg-black/50 border-gray-700 text-sm text-white" data-testid="select-bad-habit-category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-gray-700">
-                  {BAD_HABIT_CATEGORIES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#f87171" }}>
-                Trigger — When does it happen?
-              </label>
-              <Input
-                value={bhTrigger}
-                onChange={(e) => setBhTrigger(e.target.value)}
-                placeholder="e.g. When I'm bored, after dinner"
-                className="h-8 bg-black/50 border-gray-700 text-xs text-white"
-                data-testid="input-bad-habit-trigger"
-              />
-            </div>
-
-            <div>
-              <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#fb923c" }}>
-                Craving — What need is it fulfilling?
-              </label>
-              <Input
-                value={bhCraving}
-                onChange={(e) => setBhCraving(e.target.value)}
-                placeholder="e.g. Escape, stimulation, comfort"
-                className="h-8 bg-black/50 border-gray-700 text-xs text-white"
-                data-testid="input-bad-habit-craving"
-              />
-            </div>
-
-            <div
-              className="rounded-lg p-2 border border-green-900/30"
-              style={{ backgroundColor: "rgba(22,163,74,0.05)" }}
-            >
-              <p className="text-[9px] uppercase tracking-wider text-green-600 font-semibold mb-2">
-                Replacement Plan
-              </p>
-              <div className="space-y-2">
-                <div>
-                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#34d399" }}>
-                    When the trigger hits, do:
-                  </label>
-                  <Input
-                    value={bhReplacementCue}
-                    onChange={(e) => setBhReplacementCue(e.target.value)}
-                    placeholder="e.g. When I reach for phone after dinner..."
-                    className="h-8 bg-black/50 border-green-900/30 text-xs text-white"
-                    data-testid="input-bad-habit-replacement-cue"
-                  />
-                </div>
-                <div>
-                  <label className="text-[9px] uppercase tracking-wider block mb-1" style={{ color: "#22d3ee" }}>
-                    Do this instead:
-                  </label>
-                  <Input
-                    value={bhReplacement}
-                    onChange={(e) => setBhReplacement(e.target.value)}
-                    placeholder="e.g. Read 10 pages, take a 5-min walk"
-                    className="h-8 bg-black/50 border-green-900/30 text-xs text-white"
-                    data-testid="input-bad-habit-replacement"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <Button
-              onClick={submitBadHabitForm}
-              disabled={!bhName.trim() || createBadHabitMutation.isPending || updateBadHabitMutation.isPending}
-              className="w-full h-10 text-sm font-semibold"
-              style={{ backgroundColor: "#7f1d1d", color: "white" }}
-              data-testid="button-submit-bad-habit"
-            >
-              {editingBadHabit ? "Save Changes" : "Start Tracking"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <BreakHabitModal
+        open={showBadHabitForm}
+        onClose={closeBadHabitForm}
+        onSubmit={submitBadHabitForm}
+        editingBadHabit={editingBadHabit}
+        playerId={playerId}
+        isPending={createBadHabitMutation.isPending || updateBadHabitMutation.isPending}
+      />
     </SystemLayout>
     </>
   );
