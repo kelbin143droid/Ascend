@@ -175,23 +175,6 @@ export function DevPanel() {
     setLoading(false);
   };
 
-  const clearSchedule = async () => {
-    if (!player?.id || loading) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/player/${player.id}/dev/clear-schedule`, { method: "POST" });
-      if (res.ok) {
-        setLastResult("Schedule cleared — Sectograph is now empty");
-      } else {
-        setLastResult("Failed to clear schedule");
-      }
-      queryClient.invalidateQueries();
-    } catch {
-      setLastResult("Error clearing schedule");
-    }
-    setLoading(false);
-  };
-
   const resetProgress = async () => {
     if (!player?.id || loading) return;
     setLoading(true);
@@ -583,20 +566,6 @@ export function DevPanel() {
               data-testid="button-fix-xp"
             >
               Fix XP → Level 1 · 25/100 XP
-            </button>
-
-            <button
-              onClick={clearSchedule}
-              disabled={loading}
-              className="w-full text-[10px] font-medium py-1.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
-              style={{
-                backgroundColor: loading ? "rgba(139,92,246,0.05)" : "rgba(139,92,246,0.08)",
-                border: "1px solid rgba(139,92,246,0.2)",
-                color: loading ? "rgba(139,92,246,0.4)" : "rgba(139,92,246,0.85)",
-              }}
-              data-testid="button-clear-schedule"
-            >
-              Clear Sectograph Blocks
             </button>
 
             <button

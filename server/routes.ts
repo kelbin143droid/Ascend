@@ -190,17 +190,6 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/player/:id/dev/clear-schedule", async (req, res) => {
-    try {
-      const player = await storage.getPlayer(req.params.id);
-      if (!player) return res.status(404).json({ error: "Player not found" });
-      await storage.updatePlayer(req.params.id, { schedule: [] });
-      res.json({ success: true });
-    } catch (err) {
-      res.status(500).json({ error: "Failed to clear schedule" });
-    }
-  });
-
   app.post("/api/player/:id/dev/fix-onboarding-xp", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);
