@@ -2800,7 +2800,7 @@ export async function registerRoutes(
         tabUnlocks: {
           HOME: { unlockDay: 1, unlocked: onboardingDay >= 1 },
           COACH: { unlockDay: 1, unlocked: onboardingDay >= 1 },
-          HABITS: { unlockDay: 3, unlocked: onboardingDay >= 3 },
+          HABITS: { unlockDay: 7, unlocked: onboardingDay >= 7 },
           TRAIN: { unlockDay: 5, unlocked: onboardingDay >= 5 },
         },
       });

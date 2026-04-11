@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
+import { Day7HabitsTutorial } from "@/components/game/Day7HabitsTutorial";
+import { isHabitsTutorialDone } from "@/lib/progressionService";
 import { apiRequest } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -118,6 +121,8 @@ export default function HabitsPage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const playerId = player?.id ?? "";
+
+  const [showTutorial, setShowTutorial] = useState(() => !isHabitsTutorialDone());
 
   const [activeTab, setActiveTab] = useState<"build" | "break">("build");
 
@@ -366,7 +371,13 @@ export default function HabitsPage() {
   const allDone = totalCount > 0 && completedCount === totalCount;
 
   return (
-    <SystemLayout>
+    <>
+      <AnimatePresence>
+        {showTutorial && (
+          <Day7HabitsTutorial onComplete={() => setShowTutorial(false)} />
+        )}
+      </AnimatePresence>
+      <SystemLayout>
       <div className="p-4 space-y-4 pb-24">
         <TaskCompletionBurst
           stat={completionResult?.habit?.stat ?? "strength"}
@@ -1194,5 +1205,6 @@ export default function HabitsPage() {
         </DialogContent>
       </Dialog>
     </SystemLayout>
+    </>
   );
 }

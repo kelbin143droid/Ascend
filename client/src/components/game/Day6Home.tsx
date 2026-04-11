@@ -8,6 +8,7 @@ import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, MANA_MAX, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted, getFlowCompletedToday, isSectographTutorialDone } from "@/lib/userState";
+import { getDisplayDay, isHabitsTutorialDone } from "@/lib/progressionService";
 import { computeXPState } from "@/lib/xpSystem";
 
 interface HomeData {
@@ -61,6 +62,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   );
   const [stats, setStats] = useState<GameStats>(() => getStats());
   const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
+  const [habitsTutorialDone, setHabitsTutorialDone] = useState(() => isHabitsTutorialDone());
+
+  const displayDay = getDisplayDay(player.id, homeData.onboardingDay, homeData.isOnboardingComplete);
+  const habitsTutorialRequired = displayDay >= 7;
+  const flowGatedByHabitsTutorial = habitsTutorialRequired && !habitsTutorialDone;
 
   const today = new Date().toISOString().split("T")[0];
   const flowCompletedToday = flowCompletedDate === today;
@@ -103,6 +109,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     const tutorialHandler = () => setTutorialDone(true);
     window.addEventListener("ascend:sectograph-tutorial-done", tutorialHandler);
     return () => window.removeEventListener("ascend:sectograph-tutorial-done", tutorialHandler);
+  }, []);
+
+  useEffect(() => {
+    const habitsHandler = () => setHabitsTutorialDone(true);
+    window.addEventListener("ascend:habits-tutorial-done", habitsHandler);
+    return () => window.removeEventListener("ascend:habits-tutorial-done", habitsHandler);
   }, []);
 
   const handleFlowComplete = (completedIds: string[], _bonus: boolean) => {
@@ -258,7 +270,50 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               <CheckCircle2 size={16} />
               Flow completed today · {totalMins} min logged
             </div>
-          ) : tutorialDone ? (
+          ) : !tutorialDone ? (
+            <div
+              data-testid="button-begin-flow-locked"
+              className="w-full py-4 rounded-xl text-center text-sm font-bold flex items-center justify-center gap-2 select-none"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.03)",
+                color: colors.textMuted,
+                border: `1px solid rgba(255,255,255,0.07)`,
+                opacity: 0.55,
+                cursor: "not-allowed",
+              }}
+            >
+              <Lock size={13} style={{ opacity: 0.6 }} />
+              Begin Daily Flow · Setup timeline first
+            </div>
+          ) : flowGatedByHabitsTutorial ? (
+            <div
+              data-testid="button-begin-flow-habits-locked"
+              className="w-full rounded-xl overflow-hidden select-none"
+              style={{ cursor: "not-allowed" }}
+            >
+              <div
+                className="w-full py-4 text-center text-sm font-bold flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: "rgba(167,139,250,0.06)",
+                  border: "1px solid rgba(167,139,250,0.2)",
+                  color: "rgba(167,139,250,0.55)",
+                  opacity: 0.8,
+                }}
+              >
+                <Lock size={13} style={{ opacity: 0.6 }} />
+                Begin Daily Flow
+              </div>
+              <div
+                className="py-2 text-center text-[10px]"
+                style={{
+                  backgroundColor: "rgba(167,139,250,0.04)",
+                  color: "rgba(167,139,250,0.6)",
+                }}
+              >
+                Complete the Habits tutorial first → visit Habits tab
+              </div>
+            </div>
+          ) : (
             <button
               data-testid="button-begin-flow"
               onClick={() => setFlowActive(true)}
@@ -275,21 +330,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 Begin Daily Flow
               </span>
             </button>
-          ) : (
-            <div
-              data-testid="button-begin-flow-locked"
-              className="w-full py-4 rounded-xl text-center text-sm font-bold flex items-center justify-center gap-2 select-none"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.03)",
-                color: colors.textMuted,
-                border: `1px solid rgba(255,255,255,0.07)`,
-                opacity: 0.55,
-                cursor: "not-allowed",
-              }}
-            >
-              <Lock size={13} style={{ opacity: 0.6 }} />
-              Begin Daily Flow · Setup timeline first
-            </div>
           )}
         </motion.div>
 

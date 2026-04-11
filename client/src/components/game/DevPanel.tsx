@@ -3,6 +3,7 @@ import { useGame } from "@/context/GameContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap, RotateCcw, Info, SkipForward } from "lucide-react";
 import { clearOnboardingTimestamps } from "@/features/onboarding/onboardingConfig";
+import { HABITS_TUTORIAL_KEY } from "@/lib/progressionService";
 
 const DAY_SESSION_MAP: Record<number, { sessionId: string; stat: string; durationMinutes: number }> = {
   1: { sessionId: "calm-breathing",  stat: "sense",   durationMinutes: 2 },
@@ -157,6 +158,7 @@ export function DevPanel() {
     localStorage.removeItem("ascend_sectograph_tutorial_done");
     localStorage.removeItem("ascend_sectograph_tutorial_step");
     localStorage.removeItem("ascend_sectograph_intro_seen");
+    localStorage.removeItem(HABITS_TUTORIAL_KEY);
     clearPostDays(player.id);
     setPostOnboardingDays(0);
     try {
@@ -483,19 +485,44 @@ export function DevPanel() {
               </button>
             </div>
 
-            <button
-              onClick={jumpToDaily}
-              disabled={loading}
-              className="w-full text-[10px] font-medium py-1.5 rounded-lg transition-colors"
-              style={{
-                backgroundColor: loading ? "rgba(34,211,238,0.04)" : "rgba(34,211,238,0.12)",
-                border: "1px solid rgba(34,211,238,0.2)",
-                color: loading ? "rgba(34,211,238,0.4)" : "rgba(34,211,238,0.9)",
-              }}
-              data-testid="button-jump-daily-flow"
-            >
-              Jump to Daily Flow →
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={jumpToDaily}
+                disabled={loading}
+                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: loading ? "rgba(34,211,238,0.04)" : "rgba(34,211,238,0.12)",
+                  border: "1px solid rgba(34,211,238,0.2)",
+                  color: loading ? "rgba(34,211,238,0.4)" : "rgba(34,211,238,0.9)",
+                }}
+                data-testid="button-jump-daily-flow"
+              >
+                → Day 6
+              </button>
+              <button
+                onClick={async () => {
+                  await jumpToDaily();
+                  if (!player?.id) return;
+                  const newPostDays = 1;
+                  setPostOnboardingDays(newPostDays);
+                  setPostDays(player.id, newPostDays);
+                  localStorage.removeItem(HABITS_TUTORIAL_KEY);
+                  setLastResult("→ Day 7 · Habits tutorial ready");
+                  queryClient.invalidateQueries();
+                  fetchStatus();
+                }}
+                disabled={loading}
+                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: loading ? "rgba(167,139,250,0.04)" : "rgba(167,139,250,0.12)",
+                  border: "1px solid rgba(167,139,250,0.2)",
+                  color: loading ? "rgba(167,139,250,0.4)" : "rgba(167,139,250,0.9)",
+                }}
+                data-testid="button-jump-day7"
+              >
+                → Day 7
+              </button>
+            </div>
 
             <button
               onClick={resetProgress}

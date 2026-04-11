@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SidebarMenu } from "./SidebarMenu";
 import { DevPanel } from "./DevPanel";
 import { isSectographTutorialDone } from "@/lib/userState";
+import { getDisplayDay } from "@/lib/progressionService";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 
 interface NavItem {
@@ -25,7 +26,7 @@ const TUTORIAL_LOCK_MSG = "Map your timeline in the Sectograph first";
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/", unlockDay: 1, lockMessage: "" },
   { icon: User, label: "PROFILE", path: "/profile", unlockDay: 1, lockMessage: TUTORIAL_LOCK_MSG },
-  { icon: Target, label: "HABITS", path: "/habits", unlockDay: 3, lockMessage: "Habits unlock on Day 3" },
+  { icon: Target, label: "HABITS", path: "/habits", unlockDay: 7, lockMessage: "Habits unlock on Day 7" },
   { icon: Brain, label: "COACH", path: "/coach", unlockDay: 1, lockMessage: TUTORIAL_LOCK_MSG },
 ];
 
@@ -87,13 +88,14 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
   const onboardingDay = homeData?.onboardingDay ?? 1;
   const isComplete = homeData?.isOnboardingComplete ?? false;
+  const displayDay = getDisplayDay(player?.id ?? "", onboardingDay, isComplete);
 
   useEffect(() => {
     const prevDay = parseInt(localStorage.getItem("ascend_nav_last_day") || "0", 10);
-    if (onboardingDay > prevDay && prevDay > 0) {
+    if (displayDay > prevDay && prevDay > 0) {
       const newlyUnlocked = new Set<string>();
       NAV_ITEMS.forEach(item => {
-        if (item.unlockDay > prevDay && item.unlockDay <= onboardingDay) {
+        if (item.unlockDay > prevDay && item.unlockDay <= displayDay) {
           newlyUnlocked.add(item.path);
         }
       });
@@ -102,18 +104,15 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         setTimeout(() => setJustUnlocked(new Set()), 3000);
       }
     }
-    localStorage.setItem("ascend_nav_last_day", String(onboardingDay));
-  }, [onboardingDay]);
+    localStorage.setItem("ascend_nav_last_day", String(displayDay));
+  }, [displayDay]);
 
   const isTabLocked = useCallback((item: NavItem) => {
-    if (!isComplete) {
-      return onboardingDay < item.unlockDay;
-    }
-    if (!tutorialDone && TUTORIAL_LOCK_PATHS.has(item.path)) {
-      return true;
-    }
+    const currDay = isComplete ? displayDay : onboardingDay;
+    if (currDay < item.unlockDay) return true;
+    if (isComplete && !tutorialDone && TUTORIAL_LOCK_PATHS.has(item.path)) return true;
     return false;
-  }, [onboardingDay, isComplete, tutorialDone]);
+  }, [onboardingDay, displayDay, isComplete, tutorialDone]);
 
   const handleLockedTap = useCallback((item: NavItem) => {
     setToastMessage(t(item.lockMessage));
