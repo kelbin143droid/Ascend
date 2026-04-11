@@ -865,25 +865,6 @@ export default function SectographPage() {
               </div>
             )}
 
-            {!isDay5Mode && !activeFocus && (
-              <button
-                onClick={() => setShowFocusSetup(true)}
-                className="w-full rounded-lg p-3 flex items-center gap-3 transition-all hover:scale-[1.01]"
-                style={{
-                  backgroundColor: "rgba(139,92,246,0.08)",
-                  border: "1px solid rgba(139,92,246,0.2)",
-                }}
-                data-testid="button-start-focus"
-              >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(139,92,246,0.15)" }}>
-                  <Target size={14} style={{ color: "#8b5cf6" }} />
-                </div>
-                <div className="text-left">
-                  <span className="text-sm font-medium block" style={{ color: colors.text }}>Start Focus Session</span>
-                  <span className="text-[10px]" style={{ color: colors.textMuted }}>Block time on your timeline</span>
-                </div>
-              </button>
-            )}
 
             {!isDay5Mode && awarenessInsight && (
               <div
@@ -1061,11 +1042,12 @@ export default function SectographPage() {
                     return (
                       <div
                         key={block.id}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all cursor-pointer hover:opacity-80 active:scale-[0.98]"
                         style={{
                           backgroundColor: isCurrent ? `${colors.primary}12` : "rgba(0,0,0,0.2)",
-                          border: isCurrent ? `1px solid ${colors.primary}25` : "1px solid transparent",
+                          border: isCurrent ? `1px solid ${colors.primary}25` : "1px solid rgba(255,255,255,0.06)",
                         }}
+                        onClick={() => setEditingBlock({ ...block, startMinute: block.startMinute ?? 0, endMinute: block.endMinute ?? 0, isNew: false })}
                         data-testid={`block-item-${block.id}`}
                       >
                         <div className="w-1 h-8 rounded-full flex-shrink-0" style={{ backgroundColor: block.color }} />
@@ -1085,6 +1067,18 @@ export default function SectographPage() {
                             NOW
                           </span>
                         )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const current = (player?.schedule ?? []) as any[];
+                            updatePlayer({ schedule: current.filter((b: any) => b.id !== block.id) });
+                          }}
+                          className="flex-shrink-0 p-1 rounded opacity-40 hover:opacity-100 transition-opacity"
+                          style={{ color: "#ef4444" }}
+                          data-testid={`button-delete-block-${block.id}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     );
                   })}
