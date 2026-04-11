@@ -16,10 +16,14 @@ const FLOW_COLOR = "#a855f7";
 
 export function Day5CoachTutorial({ onComplete }: Day5CoachTutorialProps) {
   const [, navigate] = useLocation();
-  const [phase, setPhase] = useState<Phase>("intro");
   const [sleepDone, setSleepDone] = useState(() => isDayFiveSleepScheduled());
   const [flowDone, setFlowDone] = useState(() => isDayFiveFlowScheduled());
   const bothDone = sleepDone && flowDone;
+
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (isDayFiveSleepScheduled() && isDayFiveFlowScheduled()) return "done";
+    return "intro";
+  });
 
   const syncState = useCallback(() => {
     const s = isDayFiveSleepScheduled();
@@ -45,7 +49,7 @@ export function Day5CoachTutorial({ onComplete }: Day5CoachTutorialProps) {
   }, [syncState]);
 
   useEffect(() => {
-    if (bothDone && phase === "tasks") {
+    if (bothDone && phase !== "done") {
       const t = setTimeout(() => setPhase("done"), 400);
       return () => clearTimeout(t);
     }

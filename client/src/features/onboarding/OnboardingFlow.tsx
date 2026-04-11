@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import { OnboardingDashboard } from "./OnboardingDashboard";
 import { OnboardingStartScreen } from "./OnboardingStartScreen";
 import { OnboardingCompletionScreen } from "./OnboardingCompletionScreen";
@@ -8,7 +8,7 @@ import { OnboardingCompleteScreen } from "./OnboardingCompleteScreen";
 import { DevPanel } from "@/components/game/DevPanel";
 import { Day5CoachTutorial } from "@/components/game/Day5CoachTutorial";
 import { ONBOARDING_CONFIG } from "./onboardingConfig";
-import { isDayFiveTutorialDone, markSectographTutorialDone } from "@/lib/userState";
+import { isDayFiveSleepScheduled, isDayFiveFlowScheduled, markSectographTutorialDone } from "@/lib/userState";
 import { useGame } from "@/context/GameContext";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -32,16 +32,30 @@ export function OnboardingFlow({
   justCompletedDay,
   onClearJustCompleted,
 }: OnboardingFlowProps) {
-  const [, setLocation] = useLocation();
   const { player } = useGame();
+  const queryClient = useQueryClient();
   const [internalView, setInternalView] = useState<InternalView>("dashboard");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [day5JustCompleted, setDay5JustCompleted] = useState(false);
 
   const { onboardingDay, completedDays, streak } = homeData;
   const earnedXP = completedDays.length * 5;
 
+  useEffect(() => {
+    if (
+      internalView === "dashboard" &&
+      onboardingDay === 5 &&
+      !completedDays.includes(5) &&
+      isDayFiveSleepScheduled() &&
+      isDayFiveFlowScheduled()
+    ) {
+      setSelectedDay(5);
+      setInternalView("day5-tutorial");
+    }
+  }, [internalView, onboardingDay, completedDays]);
+
   function handleStartDay(day: number) {
-    if (day === 5 && !isDayFiveTutorialDone()) {
+    if (day === 5) {
       setSelectedDay(5);
       setInternalView("day5-tutorial");
       return;
@@ -59,7 +73,7 @@ export function OnboardingFlow({
     const day = selectedDay ?? onboardingDay;
     const config = ONBOARDING_CONFIG[day];
     if (config) {
-      setLocation(`/guided-session/${config.sessionId}`);
+      window.location.href = `/guided-session/${config.sessionId}`;
     }
   }
 
@@ -75,34 +89,38 @@ export function OnboardingFlow({
       });
     } catch {}
 
-    sessionStorage.setItem("ascend_just_completed_day", "5");
     localStorage.setItem("ascend_ob_day5_ts", String(Date.now()));
+    queryClient.invalidateQueries();
+    setDay5JustCompleted(true);
+  }, [player?.id, queryClient]);
 
-    setLocation("/");
-  }, [player?.id, setLocation]);
+  const handleCompletionDismiss = useCallback(() => {
+    setDay5JustCompleted(false);
+    onClearJustCompleted();
+  }, [onClearJustCompleted]);
+
+  if (day5JustCompleted || (justCompletedDay !== null && justCompletedDay >= 5)) {
+    return (
+      <>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key="onboarding-complete"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <OnboardingCompleteScreen
+              streak={streak}
+              onEnter={handleCompletionDismiss}
+            />
+          </motion.div>
+        </AnimatePresence>
+        <DevPanel />
+      </>
+    );
+  }
 
   if (justCompletedDay !== null) {
-    if (justCompletedDay >= 5) {
-      return (
-        <>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key="onboarding-complete"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <OnboardingCompleteScreen
-                streak={streak}
-                onEnter={onClearJustCompleted}
-              />
-            </motion.div>
-          </AnimatePresence>
-          <DevPanel />
-        </>
-      );
-    }
-
     return (
       <>
         <AnimatePresence mode="wait">
