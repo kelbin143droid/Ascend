@@ -357,14 +357,6 @@ export function Sectograph({
         <circle cx={center} cy={center} r={6} fill={colors.background} stroke={colors.ring} strokeWidth="2" opacity="0.8" />
         <circle cx={center} cy={center} r={3} fill={colors.centerDot} opacity="0.9" />
 
-        <line x1={presentInner.x} y1={presentInner.y} x2={presentOuter.x} y2={presentOuter.y} stroke="#22c55e" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-        <circle cx={presentPos.x} cy={presentPos.y} r={4} fill="#22c55e" filter={`url(#presentGlow-${uid})`} opacity="0.9">
-          <animate attributeName="opacity" values="0.9;0.5;0.9" dur="3s" repeatCount="indefinite" />
-        </circle>
-        <circle cx={presentPos.x} cy={presentPos.y} r={7} fill="none" stroke="#22c55e" strokeWidth="1" opacity="0.3">
-          <animate attributeName="r" values="7;12;7" dur="3s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.3;0;0.3" dur="3s" repeatCount="indefinite" />
-        </circle>
 
         {[0, 6, 12, 18].map((hour) => {
           const angle = hourToAngle(hour);

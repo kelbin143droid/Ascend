@@ -202,7 +202,8 @@ export default function SectographPage() {
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customBlockName, setCustomBlockName] = useState("");
-  const [showSegments, setShowSegments] = useState(true);
+  const [showSegments, setShowSegments] = useState(false);
+  const [showAnchors, setShowAnchors] = useState(false);
 
   const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
   const [tutorialStep, setTutorialStep] = useState(() => isSectographTutorialDone() ? 99 : getSectographTutorialStep());
@@ -365,6 +366,16 @@ export default function SectographPage() {
       setShowFocusSetup(false);
       queryClient.invalidateQueries({ queryKey: ["behavioral-anchors"] });
       queryClient.invalidateQueries({ queryKey: ["rhythm"] });
+    },
+  });
+
+  const clearAnchorsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/player/${player?.id}/behavioral-anchors`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["behavioral-anchors", player?.id] });
     },
   });
 
@@ -942,9 +953,40 @@ export default function SectographPage() {
                 style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
                 data-testid="anchors-card"
               >
-                <h3 className="text-xs font-display font-bold tracking-wider mb-2" style={{ color: "#f59e0b" }}>
-                  RESET MARKERS
-                </h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-display font-bold tracking-wider" style={{ color: "#f59e0b" }}>
+                    RESET MARKERS
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (confirm("Clear all reset markers?")) {
+                          clearAnchorsMutation.mutate();
+                        }
+                      }}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium"
+                      style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}
+                      data-testid="button-clear-anchors"
+                    >
+                      <Trash2 size={8} />
+                      Clear all
+                    </button>
+                    <button
+                      onClick={() => setShowAnchors(v => !v)}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium transition-all"
+                      style={{
+                        backgroundColor: showAnchors ? "rgba(245,158,11,0.15)" : "rgba(0,0,0,0.2)",
+                        color: showAnchors ? "#f59e0b" : colors.textMuted,
+                        border: `1px solid ${showAnchors ? "rgba(245,158,11,0.3)" : "transparent"}`,
+                      }}
+                      data-testid="toggle-anchors"
+                    >
+                      {showAnchors ? <Eye size={8} /> : <EyeOff size={8} />}
+                      {showAnchors ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+                {showAnchors && <>
                 {anchorClusterInsight && (
                   <div
                     className="rounded-lg px-3 py-2 mb-3 flex items-start gap-2"
@@ -978,6 +1020,7 @@ export default function SectographPage() {
                     As more resets accumulate, patterns will emerge.
                   </p>
                 )}
+                </>}
               </div>
             )}
 

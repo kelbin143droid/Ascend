@@ -2623,9 +2623,12 @@ export async function registerRoutes(
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
+      const clearedAt: number | null = (player.stability as any)?.anchorsClearedAt ?? null;
+
       const allCompletions = await storage.getHabitCompletions(req.params.id);
       const guidedCompletions = allCompletions
         .filter(c => c.habitId.startsWith("guided_") && c.completedAt)
+        .filter(c => !clearedAt || new Date(c.completedAt!).getTime() > clearedAt)
         .map(c => ({
           sessionId: c.habitId.replace("guided_", ""),
           completedAt: c.completedAt!.toISOString(),
@@ -2638,6 +2641,20 @@ export async function registerRoutes(
       res.json({ anchors: guidedCompletions });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch behavioral anchors" });
+    }
+  });
+
+  app.delete("/api/player/:id/behavioral-anchors", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+      const stabilityData = (player.stability as any) ?? {};
+      await storage.updatePlayer(req.params.id, {
+        stability: { ...stabilityData, anchorsClearedAt: Date.now() },
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear anchors" });
     }
   });
 
