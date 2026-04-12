@@ -25,7 +25,7 @@ const TUTORIAL_LOCK_MSG = "Map your timeline in the Sectograph first";
 
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/", unlockDay: 1, lockMessage: "" },
-  { icon: User, label: "PROFILE", path: "/profile", unlockDay: 1, lockMessage: TUTORIAL_LOCK_MSG },
+  { icon: User, label: "PROFILE", path: "/profile", unlockDay: 8, lockMessage: "Profile unlocks on Day 8" },
   { icon: Target, label: "HABITS", path: "/habits", unlockDay: 7, lockMessage: "Habits unlock on Day 7" },
   { icon: Brain, label: "COACH", path: "/coach", unlockDay: 1, lockMessage: TUTORIAL_LOCK_MSG },
 ];

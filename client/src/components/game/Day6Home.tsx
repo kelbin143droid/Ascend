@@ -8,7 +8,7 @@ import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, MANA_MAX, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted, getFlowCompletedToday, isSectographTutorialDone } from "@/lib/userState";
-import { getDisplayDay, isHabitsTutorialDone } from "@/lib/progressionService";
+import { getDisplayDay, isHabitsTutorialDone, isGameUnlocked, GAME_UNLOCK_EVENT } from "@/lib/progressionService";
 import { computeXPState } from "@/lib/xpSystem";
 
 interface HomeData {
@@ -63,10 +63,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [stats, setStats] = useState<GameStats>(() => getStats());
   const [tutorialDone, setTutorialDone] = useState(() => isSectographTutorialDone());
   const [habitsTutorialDone, setHabitsTutorialDone] = useState(() => isHabitsTutorialDone());
+  const [gameUnlocked, setGameUnlocked] = useState(() => isGameUnlocked());
 
   const displayDay = getDisplayDay(player.id, homeData.onboardingDay, homeData.isOnboardingComplete);
   const habitsTutorialRequired = displayDay >= 7;
   const flowGatedByHabitsTutorial = habitsTutorialRequired && !habitsTutorialDone;
+  const flowGatedByGameTutorial = displayDay >= 8 && !gameUnlocked;
 
   const today = new Date().toISOString().split("T")[0];
   const flowCompletedToday = flowCompletedDate === today;
@@ -115,6 +117,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     const habitsHandler = () => setHabitsTutorialDone(true);
     window.addEventListener("ascend:habits-tutorial-done", habitsHandler);
     return () => window.removeEventListener("ascend:habits-tutorial-done", habitsHandler);
+  }, []);
+
+  useEffect(() => {
+    const gameHandler = () => setGameUnlocked(true);
+    window.addEventListener(GAME_UNLOCK_EVENT, gameHandler);
+    return () => window.removeEventListener(GAME_UNLOCK_EVENT, gameHandler);
   }, []);
 
   const handleFlowComplete = (completedIds: string[], _bonus: boolean) => {
@@ -255,6 +263,66 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </motion.div>
         )}
 
+        {/* ── DAY 8 PROFILE POINTER ──────────────────────────────────── */}
+        {flowGatedByGameTutorial && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            data-testid="day8-profile-pointer"
+          >
+            <button
+              onClick={() => navigate("/profile")}
+              className="w-full rounded-xl p-4 flex items-center gap-3 transition-all active:scale-[0.99]"
+              style={{
+                background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))",
+                border: "1px solid rgba(99,102,241,0.4)",
+                boxShadow: "0 0 24px rgba(99,102,241,0.12)",
+              }}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.25))", border: "1px solid rgba(99,102,241,0.4)" }}
+              >
+                <motion.span
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  style={{ fontSize: 18 }}
+                >
+                  ⚔️
+                </motion.span>
+              </div>
+              <div className="text-left flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#6366f1" }}>
+                    Day 8 — Stats Activated
+                  </p>
+                  <motion.div
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ backgroundColor: "rgba(99,102,241,0.18)", color: "#6366f1", border: "1px solid rgba(99,102,241,0.4)" }}
+                  >
+                    NEW
+                  </motion.div>
+                </div>
+                <p className="text-sm font-medium leading-snug" style={{ color: colors.text }}>
+                  Visit your Profile to unlock your HP, MP & game stats
+                </p>
+                <p className="text-[10px] mt-1" style={{ color: colors.textMuted }}>
+                  Tap here → Profile tab
+                </p>
+              </div>
+              <motion.div
+                animate={{ x: [0, 4, 0] }}
+                transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+              >
+                <ArrowRight size={18} style={{ color: "#6366f1" }} />
+              </motion.div>
+            </button>
+          </motion.div>
+        )}
+
         {/* ── PRIMARY ACTION ─────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
@@ -284,6 +352,34 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             >
               <Lock size={13} style={{ opacity: 0.6 }} />
               Begin Daily Flow · Setup timeline first
+            </div>
+          ) : flowGatedByGameTutorial ? (
+            <div
+              data-testid="button-begin-flow-game-locked"
+              className="w-full rounded-xl overflow-hidden select-none"
+              style={{ cursor: "not-allowed" }}
+            >
+              <div
+                className="w-full py-4 text-center text-sm font-bold flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: "rgba(99,102,241,0.06)",
+                  border: "1px solid rgba(99,102,241,0.2)",
+                  color: "rgba(99,102,241,0.55)",
+                  opacity: 0.8,
+                }}
+              >
+                <Lock size={13} style={{ opacity: 0.6 }} />
+                Begin Daily Flow
+              </div>
+              <div
+                className="py-2 text-center text-[10px]"
+                style={{
+                  backgroundColor: "rgba(99,102,241,0.04)",
+                  color: "rgba(99,102,241,0.7)",
+                }}
+              >
+                View your Profile tab to activate your game stats first
+              </div>
             </div>
           ) : flowGatedByHabitsTutorial ? (
             <div
@@ -469,8 +565,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </AnimatePresence>
         </motion.div>
 
-        {/* ── STAT BARS (hidden until Day 8) ──────────────────────── */}
-        {displayDay >= 8 && (
+        {/* ── STAT BARS (hidden until Day 8 game tutorial done) ───── */}
+        {displayDay >= 8 && gameUnlocked && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

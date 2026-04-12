@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { X, ChevronRight, Sword, Zap, Droplets, Shield, Star, Gamepad2, ArrowLeft } from "lucide-react";
+import { X, ChevronRight, Sword, Zap, Droplets, Shield, Star, Gamepad2, ArrowLeft, Heart, TrendingUp } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { markGameUnlocked } from "@/lib/progressionService";
 
@@ -63,7 +63,7 @@ export function GameIntroModal({ open, onClose, playerName }: GameIntroModalProp
   const colors = backgroundTheme.colors;
   const [slide, setSlide] = useState(0);
   const [, navigate] = useLocation();
-  const TOTAL = 5;
+  const TOTAL = 7;
   const isLast = slide === TOTAL - 1;
 
   const handleClose = () => {
@@ -213,8 +213,134 @@ export function GameIntroModal({ open, onClose, playerName }: GameIntroModalProp
             </div>
           )}
 
-          {/* ── Slide 2: Levels ─────────────────────────────────── */}
+          {/* ── Slide 2: HP & MP Vitals ─────────────────────────── */}
           {slide === 2 && (
+            <div className="px-5 pt-5 pb-6">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", damping: 12 }}
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+                style={{
+                  background: "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(59,130,246,0.15))",
+                  border: "2px solid rgba(34,197,94,0.3)",
+                  boxShadow: "0 0 28px rgba(34,197,94,0.15)",
+                }}
+              >
+                <span className="text-3xl">❤️</span>
+              </motion.div>
+
+              <div className="text-[9px] font-mono uppercase tracking-widest mb-2" style={{ color: "#22c55e" }}>
+                Your Vitals Are Live
+              </div>
+              <h2 className="text-xl font-display font-bold mb-3" style={{ color: colors.text }}>
+                HP & MP Bars
+              </h2>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: colors.textMuted }}>
+                Your <span style={{ color: "#22c55e", fontWeight: 600 }}>HP</span> reflects how well you protect your body. Your <span style={{ color: "#3b82f6", fontWeight: 600 }}>MP</span> reflects your mental consistency. Both show up on your home screen — live.
+              </p>
+
+              <div className="space-y-3">
+                {[
+                  { label: "HP", sublabel: "Vitality habits — sleep, nutrition, movement", color: "#22c55e", icon: Shield, pct: 84 },
+                  { label: "MP", sublabel: "Sense & breathing habits — meditation, focus", color: "#3b82f6", icon: Zap, pct: 70 },
+                ].map((v) => {
+                  const Icon = v.icon;
+                  return (
+                    <div key={v.label} className="rounded-xl px-4 py-3" style={{ backgroundColor: `${v.color}08`, border: `1px solid ${v.color}20` }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Icon size={12} style={{ color: v.color }} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: v.color }}>{v.label}</span>
+                        <span className="text-[9px]" style={{ color: colors.textMuted }}>— {v.sublabel}</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: `${v.color}18` }}>
+                        <motion.div
+                          className="h-full rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${v.pct}%` }}
+                          transition={{ duration: 0.8, ease: "easeOut" }}
+                          style={{ backgroundColor: v.color, boxShadow: `0 0 6px ${v.color}60` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 px-3 py-2 rounded-lg text-center" style={{ backgroundColor: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.15)" }}>
+                <p className="text-[9px]" style={{ color: "rgba(234,179,8,0.8)" }}>
+                  ⚠ Miss 2+ days → slow drain · 3-day streak → recovery begins
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Slide 3: Productivity Stats ──────────────────────── */}
+          {slide === 3 && (
+            <div className="px-5 pt-5 pb-6">
+              <motion.div
+                initial={{ scale: 0, rotate: -10 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", damping: 12 }}
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+                style={{
+                  background: "linear-gradient(135deg, rgba(168,85,247,0.15), rgba(59,130,246,0.15))",
+                  border: "2px solid rgba(168,85,247,0.3)",
+                  boxShadow: "0 0 28px rgba(168,85,247,0.15)",
+                }}
+              >
+                <TrendingUp size={28} style={{ color: "#a855f7" }} />
+              </motion.div>
+
+              <div className="text-[9px] font-mono uppercase tracking-widest mb-2" style={{ color: "#a855f7" }}>
+                Productivity Stats
+              </div>
+              <h2 className="text-xl font-display font-bold mb-3" style={{ color: colors.text }}>
+                Habits Build Stats
+              </h2>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: colors.textMuted }}>
+                Every habit you complete earns XP toward a specific stat. Your stats grow as your real-world discipline grows — no shortcuts.
+              </p>
+
+              <div className="space-y-2">
+                {[
+                  { label: "Strength", color: "#ef4444", example: "Push-ups · Plank · Lifting", xp: 28 },
+                  { label: "Agility", color: "#22c55e", example: "Stretching · Yoga · Sprints", xp: 22 },
+                  { label: "Sense", color: "#8b5cf6", example: "Meditation · Focus · Journaling", xp: 19 },
+                  { label: "Vitality", color: "#f59e0b", example: "Sleep · Nutrition · Hydration", xp: 31 },
+                ].map((s, i) => (
+                  <motion.div
+                    key={s.label}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.07 }}
+                    className="flex items-center gap-3"
+                  >
+                    <span className="text-[10px] font-bold w-14 shrink-0" style={{ color: s.color }}>{s.label}</span>
+                    <div className="flex-1 rounded-full overflow-hidden h-1.5" style={{ backgroundColor: `${s.color}18` }}>
+                      <motion.div
+                        className="h-full rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${s.xp}%` }}
+                        transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 + i * 0.07 }}
+                        style={{ backgroundColor: s.color, boxShadow: `0 0 5px ${s.color}60` }}
+                      />
+                    </div>
+                    <span className="text-[9px] w-12 text-right shrink-0" style={{ color: colors.textMuted }}>+{s.xp} XP</span>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="mt-4 px-3 py-2 rounded-lg" style={{ backgroundColor: `${colors.primary}0a`, border: `1px solid ${colors.primary}20` }}>
+                <p className="text-[10px] leading-relaxed" style={{ color: colors.textMuted }}>
+                  Stat XP is separate from your overall level XP. Both grow simultaneously as you train.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Slide 4: Levels ─────────────────────────────────── */}
+          {slide === 4 && (
             <div className="px-5 pt-5 pb-6">
               <motion.div
                 initial={{ scale: 0 }}
@@ -266,8 +392,8 @@ export function GameIntroModal({ open, onClose, playerName }: GameIntroModalProp
             </div>
           )}
 
-          {/* ── Slide 3: Stat Points ────────────────────────────── */}
-          {slide === 3 && (
+          {/* ── Slide 5: Stat Points ────────────────────────────── */}
+          {slide === 5 && (
             <div className="px-5 pt-5 pb-6">
               <motion.div
                 initial={{ scale: 0, rotate: 15 }}
@@ -325,8 +451,8 @@ export function GameIntroModal({ open, onClose, playerName }: GameIntroModalProp
             </div>
           )}
 
-          {/* ── Slide 4: Game Section Unlock ────────────────────── */}
-          {slide === 4 && (
+          {/* ── Slide 6: Game Section Unlock ────────────────────── */}
+          {slide === 6 && (
             <div className="px-5 pt-5 pb-6">
               {/* Pulsing unlock banner */}
               <motion.div
@@ -417,8 +543,8 @@ export function GameIntroModal({ open, onClose, playerName }: GameIntroModalProp
             </div>
           )}
 
-          {/* Navigation — slides 0–3 */}
-          {slide < 4 && (
+          {/* Navigation — slides 0–5 */}
+          {slide < 6 && (
             <div className="px-5 pb-5">
               <button
                 onClick={handleNext}

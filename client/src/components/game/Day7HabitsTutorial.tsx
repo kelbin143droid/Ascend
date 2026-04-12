@@ -52,16 +52,6 @@ const STEPS = [
     visual: "replace",
   },
   {
-    id: "vitals",
-    icon: Shield,
-    iconColor: "#f59e0b",
-    title: "HP & MP Effects",
-    subtitle: "Habits that protect your vitals",
-    body: "Your Vitality habits directly protect your HP. Your Sense and breathing habits protect your MP. Miss them for 2+ days and they slowly drain. Maintain a 3-day streak to start recovering.",
-    coachNote: "HP and MP are a live reflection of your real-world consistency — not just numbers.",
-    visual: "vitals",
-  },
-  {
     id: "ready",
     icon: Sparkles,
     iconColor: "#a78bfa",
