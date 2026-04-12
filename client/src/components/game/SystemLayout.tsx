@@ -20,7 +20,7 @@ interface NavItem {
   lockMessage: string;
 }
 
-const TUTORIAL_LOCK_PATHS = new Set(["/profile", "/habits", "/coach"]);
+const TUTORIAL_LOCK_PATHS = new Set(["/habits", "/coach"]);
 const TUTORIAL_LOCK_MSG = "Map your timeline in the Sectograph first";
 
 const NAV_ITEMS: NavItem[] = [

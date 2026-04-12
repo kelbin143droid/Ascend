@@ -189,6 +189,7 @@ export function DevPanel() {
     localStorage.removeItem("ascend_sectograph_intro_seen");
     localStorage.removeItem(HABITS_TUTORIAL_KEY);
     localStorage.removeItem("ascend_habits_pointer_seen");
+    localStorage.removeItem("ascend_game_section_unlocked");
     clearPostDays(player.id);
     setPostOnboardingDays(0);
     try {
@@ -451,6 +452,23 @@ export function DevPanel() {
                 Reset Today
               </button>
             </div>
+
+            <button
+              onClick={() => {
+                localStorage.removeItem("ascend_game_section_unlocked");
+                setLastResult("Game tutorial reset — visit Profile tab to replay");
+              }}
+              className="w-full text-[10px] font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
+              style={{
+                backgroundColor: "rgba(168,85,247,0.08)",
+                border: "1px solid rgba(168,85,247,0.25)",
+                color: "rgba(168,85,247,0.85)",
+              }}
+              data-testid="button-reset-game-tutorial"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset Game Tutorial
+            </button>
 
             <div className="flex items-center gap-2">
               <label className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>Days:</label>

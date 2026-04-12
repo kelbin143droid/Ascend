@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Menu,
   X,
-  UserCircle,
   BarChart3,
   BookOpen,
   Trophy,
@@ -28,7 +27,6 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { icon: UserCircle, label: "Profile", path: "/profile" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: BookOpen, label: "Library", path: "/library" },
   { icon: Trophy, label: "Achievements", path: "/inventory" },
