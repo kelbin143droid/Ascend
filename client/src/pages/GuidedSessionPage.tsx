@@ -258,26 +258,25 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
   useEffect(() => {
     let alive = true;
 
-    // ── Pre-load voice clips with HTMLAudioElement (most reliable cross-browser) ──
-    const clips: Record<"Inhale" | "Hold" | "Exhale", HTMLAudioElement> = {
-      Inhale: new Audio(INHALE_URL),
-      Hold:   new Audio(HOLD_URL),
-      Exhale: new Audio(EXHALE_URL),
+    // ── Voice via Web Speech API — no audio file unlock needed ───────────────
+    const speakPhase = (p: "Inhale" | "Hold" | "Exhale") => {
+      try {
+        if (!("speechSynthesis" in window)) return;
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(p);
+        utt.rate = 0.78;
+        utt.pitch = 0.88;
+        utt.volume = 1.0;
+        window.speechSynthesis.speak(utt);
+      } catch {}
     };
-    Object.values(clips).forEach(a => { a.volume = 0.85; a.preload = "auto"; a.load(); });
 
-    const playClip = (p: "Inhale" | "Hold" | "Exhale") => {
-      // Stop any currently playing clip first
-      Object.values(clips).forEach(a => { try { a.pause(); a.currentTime = 0; } catch {} });
-      clips[p].play().catch(() => {}); // silently ignore autoplay blocks
-    };
-
-    // ── Phase cycling — drives both the visual label and audio cues ──────────
+    // ── Phase cycling — drives both the visual label and voice cues ──────────
     let curPhase: "Inhale" | "Hold" | "Exhale" = "Inhale";
     let phaseStart = performance.now();
     setPhase("Inhale");
-    // Play first cue immediately
-    playClip("Inhale");
+    // Speak first cue immediately
+    speakPhase("Inhale");
 
     const tickId = setInterval(() => {
       if (!alive) return;
@@ -285,14 +284,14 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
         curPhase = VOICE_NEXT[curPhase];
         phaseStart = performance.now();
         setPhase(curPhase);
-        playClip(curPhase);
+        speakPhase(curPhase);
       }
     }, 100);
 
     return () => {
       alive = false;
       clearInterval(tickId);
-      Object.values(clips).forEach(a => { try { a.pause(); a.src = ""; } catch {} });
+      try { window.speechSynthesis?.cancel(); } catch {}
     };
   }, []);
 
