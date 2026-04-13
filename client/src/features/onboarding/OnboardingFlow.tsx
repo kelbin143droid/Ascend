@@ -97,7 +97,8 @@ export function OnboardingFlow({
   const handleCompletionDismiss = useCallback(() => {
     setDay5JustCompleted(false);
     onClearJustCompleted();
-  }, [onClearJustCompleted]);
+    queryClient.invalidateQueries();
+  }, [onClearJustCompleted, queryClient]);
 
   if (day5JustCompleted || (justCompletedDay !== null && justCompletedDay >= 5)) {
     return (

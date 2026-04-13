@@ -28,9 +28,9 @@ const EXERCISES: Exercise[] = [
     loop: true,
   },
   {
-    id: "push_ups",
-    name: "Push-Ups",
-    instruction: "Lower your chest to the floor, then push back up. Keep your core tight. Use your knees if needed.",
+    id: "shoulder_backward",
+    name: "Backwards Shoulder Roll",
+    instruction: "Roll your shoulders backwards in smooth circles. Keep your neck relaxed and breathe steadily.",
     video: "/videos/knee_pushups_loop.mp4",
     duration: 20,
     loop: true,
@@ -606,12 +606,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
               </div>
               <div className="text-white/90 text-sm font-medium">
                 All 8 exercises done. Your body thanks you.
-              </div>
-              <div
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold w-fit"
-                style={{ backgroundColor: `${COLOR}25`, color: COLOR, border: `1px solid ${COLOR}40` }}
-              >
-                +{XP_REWARD} Agility XP
               </div>
               <button
                 className="w-full py-4 rounded-2xl font-bold text-base transition-all active:scale-95"

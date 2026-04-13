@@ -485,12 +485,6 @@ export function CardioSessionEngine({ playerId, onComplete, onCancel, noApiCall 
               <div className="text-white/90 text-sm font-medium">
                 All 3 exercises done. Your energy is building.
               </div>
-              <div
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold w-fit"
-                style={{ backgroundColor: `${COLOR}25`, color: COLOR, border: `1px solid ${COLOR}40` }}
-              >
-                +{XP_REWARD} Strength XP
-              </div>
               <button
                 className="w-full py-4 rounded-2xl font-bold text-base transition-all active:scale-95"
                 style={{ backgroundColor: COLOR, color: "#fff" }}
