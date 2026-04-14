@@ -27,7 +27,7 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
     id: "calm-breathing",
     title: "2-Minute Reset",
     stat: "sense",
-    durationSeconds: 126,
+    durationSeconds: 140,
     icon: Wind,
     type: "breathing",
   },
@@ -249,14 +249,25 @@ function useCalmMusic(active: boolean) {
 }
 
 
-function BreathingSession({ accentColor }: { accentColor: string }) {
+function BreathingSession({
+  accentColor,
+  targetSeconds,
+  onDone,
+}: {
+  accentColor: string;
+  targetSeconds: number;
+  onDone: () => void;
+}) {
   const [phase, setPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
 
   useBreathingAudio(true);
   useCalmMusic(true);
 
   useEffect(() => {
     let alive = true;
+    const sessionStart = performance.now();
 
     // ── Voice via Web Speech API — no audio file unlock needed ───────────────
     const speakPhase = (p: "Inhale" | "Hold" | "Exhale") => {
@@ -281,6 +292,15 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
     const tickId = setInterval(() => {
       if (!alive) return;
       if (performance.now() - phaseStart >= VOICE_DURATIONS[curPhase]) {
+        const elapsedSec = (performance.now() - sessionStart) / 1000;
+        // After an Exhale completes and we've met the target duration, end cleanly
+        if (curPhase === "Exhale" && elapsedSec >= targetSeconds) {
+          alive = false;
+          clearInterval(tickId);
+          try { window.speechSynthesis?.cancel(); } catch {}
+          onDoneRef.current();
+          return;
+        }
         curPhase = VOICE_NEXT[curPhase];
         phaseStart = performance.now();
         setPhase(curPhase);
@@ -293,7 +313,7 @@ function BreathingSession({ accentColor }: { accentColor: string }) {
       clearInterval(tickId);
       try { window.speechSynthesis?.cancel(); } catch {}
     };
-  }, []);
+  }, [targetSeconds]);
 
   // Circle: small → large on inhale, stays large on hold, large → small on exhale
   const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.5;
@@ -785,10 +805,12 @@ export default function GuidedSessionPage() {
 
   useEffect(() => {
     if (sessionId === "light-movement" || sessionId === "focus-block") return;
+    // Breathing sessions manage their own completion via onDone callback (ends on exhale)
+    if (session.type === "breathing") return;
     if (session.type !== "instant" && elapsed >= session.durationSeconds && state === "active") {
       handleComplete();
     }
-  }, [elapsed, session.durationSeconds, state, sessionId]);
+  }, [elapsed, session.durationSeconds, state, sessionId, session.type]);
 
   const handleComplete = useCallback(() => {
     if (state !== "active") return;
@@ -949,7 +971,11 @@ export default function GuidedSessionPage() {
           </div>
         )}
         {state === "active" && session.type === "breathing" && (
-          <BreathingSession accentColor={accentColor} />
+          <BreathingSession
+            accentColor={accentColor}
+            targetSeconds={session.durationSeconds}
+            onDone={handleComplete}
+          />
         )}
         {state === "active" && session.type === "prompts" && (
           <PromptSession elapsed={elapsed} accentColor={accentColor} />
