@@ -1,5 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { AppTheme, getThemeById, themes, createCustomTheme } from "@/lib/themes";
+import { getGender } from "@/lib/userState";
+
+function getGenderDefaultTheme(): string {
+  const g = getGender();
+  if (g === "male") return "cyber-hunter";
+  if (g === "female") return "arcane-fable";
+  return "default";
+}
 
 interface ThemeContextType {
   theme: AppTheme;
@@ -26,7 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const [backgroundThemeId, setBackgroundThemeId] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("background-theme") || "default";
+      return localStorage.getItem("background-theme") || getGenderDefaultTheme();
     }
     return "default";
   });

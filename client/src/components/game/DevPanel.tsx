@@ -190,6 +190,8 @@ export function DevPanel() {
     localStorage.removeItem(HABITS_TUTORIAL_KEY);
     localStorage.removeItem("ascend_habits_pointer_seen");
     localStorage.removeItem("ascend_game_section_unlocked");
+    localStorage.removeItem("ascend_gender");
+    localStorage.removeItem("ascend_intro_done");
     clearPostDays(player.id);
     setPostOnboardingDays(0);
     try {
