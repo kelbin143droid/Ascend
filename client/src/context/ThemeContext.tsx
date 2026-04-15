@@ -19,14 +19,22 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [clockThemeId, setClockThemeId] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("clock-theme") || "default";
+      const explicit = localStorage.getItem("clock-theme");
+      if (explicit) return explicit;
+      const gender = localStorage.getItem("ascend_gender");
+      if (gender === "male" || gender === "female") return gender;
+      return "default";
     }
     return "default";
   });
 
   const [backgroundThemeId, setBackgroundThemeId] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("background-theme") || "default";
+      const explicit = localStorage.getItem("background-theme");
+      if (explicit) return explicit;
+      const gender = localStorage.getItem("ascend_gender");
+      if (gender === "male" || gender === "female") return gender;
+      return "default";
     }
     return "default";
   });

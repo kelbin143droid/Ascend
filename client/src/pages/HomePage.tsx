@@ -4,7 +4,6 @@ import { useState } from "react";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 import { Day6Home } from "@/components/game/Day6Home";
-import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -82,16 +81,6 @@ export default function HomePage() {
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
 
-  const [justCompletedDayId, setJustCompletedDayId] = useState<number | null>(() => {
-    const raw = sessionStorage.getItem("ascend_just_completed_day");
-    if (raw) {
-      const day = parseInt(raw, 10);
-      sessionStorage.removeItem("ascend_just_completed_day");
-      if (!isNaN(day) && day >= 1 && day <= 5) return day;
-    }
-    return null;
-  });
-
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
     queryFn: async () => {
@@ -143,25 +132,6 @@ export default function HomePage() {
       <ReturnProtocolScreen
         data={homeData.returnProtocol}
         onComplete={() => setReturnProtocolDismissed(true)}
-      />
-    );
-  }
-
-  const isOnboardingComplete = homeData?.isOnboardingComplete ?? false;
-  const lastCompletedDay = homeData.completedDays.length > 0
-    ? homeData.completedDays[homeData.completedDays.length - 1]
-    : null;
-  const completionScreenPending =
-    justCompletedDayId !== null &&
-    lastCompletedDay !== null &&
-    justCompletedDayId === lastCompletedDay;
-
-  if (!isOnboardingComplete || completionScreenPending) {
-    return (
-      <OnboardingFlow
-        homeData={homeData}
-        justCompletedDay={completionScreenPending ? justCompletedDayId : null}
-        onClearJustCompleted={() => setJustCompletedDayId(null)}
       />
     );
   }

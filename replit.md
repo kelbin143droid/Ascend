@@ -25,8 +25,20 @@ Ascend OS is built on modular, interconnected systems:
 -   **Return Protocol System**: Intelligently responds to user inactivity with tiered absence protocols without guilt language.
 -   **Stability Engine**: A 3-state system (stabilizing/stable/expanding) with disruption detection, recovery mode, and progressive feature gating.
 
+### Gender Theme System
+After the intro splash, users select their gender (Male / Female), which applies a permanent game theme:
+- **Iron Sovereign** (Male): Electric blue (#0ea5e9) + gold (#f59e0b), dark navy background — bold warrior feel.
+- **Neon Empress** (Female): Vivid magenta (#d946ef) + purple (#8b5cf6) + cyan (#06b6d4), deep cosmic background.
+Gender is stored in `localStorage` as `ascend_gender`. Theme is auto-applied on every load via `ThemeContext`. Users may still override the theme manually via the theme picker (their explicit choice is stored in `localStorage` as `background-theme`).
+
+### Onboarding Flow
+The 5-day onboarding is bypassed entirely. New users go through: **IntroScreen → GenderSelect → PlayerInfoScreen → Welcome → Day6Home**. `onboardingCompleted: 1` is set immediately after name + gender setup, so the app opens directly to the **Day6Home** (Begin Daily Flow) screen on every subsequent visit.
+
+### App Tutorial Overlay
+On first entry into Day6Home, a 4-step tooltip tour shows once (stored in `localStorage` as `ascend_app_tutorial_seen`). Each step highlights a bottom nav tab with an animated spotlight and explains its purpose (HOME → HABITS → COACH → PROFILE).
+
 ### Dual Progression System
-Users progress through an **Overall XP → Level** system and **Stat-Specific XP** (STR/AGI/SNS/VIT). Level-ups award Stat Points for allocation, affecting bonus stats. A game intro tutorial explains this system. The level curve uses exponential XP scaling, and an E through S Rank System is implemented. Features progressively unlock over the first few days of use.
+Users progress through an **Overall XP → Level** system and **Stat-Specific XP** (STR/AGI/SNS/VIT). Level-ups award Stat Points for allocation, affecting bonus stats. A game intro tutorial explains this system. The level curve uses exponential XP scaling, and an E through S Rank System is implemented. All features are unlocked from day 1 (no progressive day-based gating).
 
 ### Guided Activity Engine
 A reusable engine for step-based training activities (`instruction`, `timer`, `rep`, `breath`, `completion`) with voice guidance. Activities include Calm Breathing, Strength Micro Circuit, Light Movement Circuit, and Vitality Check, with adaptive training scaling across 5 difficulty tiers.
