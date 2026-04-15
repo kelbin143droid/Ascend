@@ -209,6 +209,39 @@ export function DevPanel() {
     setLoading(false);
   };
 
+  const resetToIntro = async () => {
+    if (!player?.id || loading) return;
+    setLoading(true);
+    clearOnboardingTimestamps();
+    sessionStorage.removeItem("ascend_just_completed_day");
+    localStorage.removeItem("ascend_day3_hydration_done");
+    localStorage.removeItem("ascend_day5_sleep_scheduled");
+    localStorage.removeItem("ascend_day5_flow_scheduled");
+    localStorage.removeItem("ascend_day5_sectograph_intro_seen");
+    localStorage.removeItem("ascend_sectograph_tutorial_done");
+    localStorage.removeItem("ascend_sectograph_tutorial_step");
+    localStorage.removeItem("ascend_sectograph_intro_seen");
+    localStorage.removeItem(HABITS_TUTORIAL_KEY);
+    localStorage.removeItem("ascend_habits_pointer_seen");
+    localStorage.removeItem("ascend_game_section_unlocked");
+    localStorage.removeItem("ascend_light_movement_completed");
+    localStorage.removeItem("ascend_gender");
+    localStorage.removeItem("background-theme");
+    localStorage.removeItem("clock-theme");
+    localStorage.removeItem("ascend_app_tutorial_seen");
+    clearPostDays(player.id);
+    setPostOnboardingDays(0);
+    try {
+      await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
+      setLastResult("→ Resetting to Intro…");
+      queryClient.invalidateQueries();
+      setTimeout(() => window.location.reload(), 400);
+    } catch {
+      setLastResult("Error resetting to intro");
+      setLoading(false);
+    }
+  };
+
   const jumpToDaily = async () => {
     if (!player?.id || loading) return;
     setLoading(true);
@@ -599,6 +632,21 @@ export function DevPanel() {
             >
               <RotateCcw className="w-3 h-3" />
               Reset to Day 1
+            </button>
+
+            <button
+              onClick={resetToIntro}
+              disabled={loading}
+              className="w-full text-[10px] font-medium py-1.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
+              style={{
+                backgroundColor: loading ? "rgba(251,191,36,0.04)" : "rgba(251,191,36,0.1)",
+                border: "1px solid rgba(251,191,36,0.3)",
+                color: loading ? "rgba(251,191,36,0.35)" : "rgba(251,191,36,0.9)",
+              }}
+              data-testid="button-reset-to-intro"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset to Intro Screen
             </button>
           </div>
 

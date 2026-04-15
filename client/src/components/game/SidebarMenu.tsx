@@ -71,7 +71,7 @@ export function SidebarMenu() {
   const isComplete = homeData?.isOnboardingComplete ?? false;
 
   const isLocked = (item: MenuItem) => {
-    if (item.isGame) return !gameUnlocked;
+    if (item.isGame) return false;
     if (!item.unlockDay) return false;
     if (isComplete) return false;
     return onboardingDay < item.unlockDay;
@@ -258,14 +258,9 @@ export function SidebarMenu() {
 
           {/* Game section */}
           <div className="px-5 pt-4 pb-1 flex items-center gap-2">
-            <span className="text-[9px] font-mono uppercase tracking-[0.2em]" style={{ color: gameUnlocked ? "#22d3ee" : colors.textMuted, opacity: gameUnlocked ? 0.8 : 0.5 }}>
+            <span className="text-[9px] font-mono uppercase tracking-[0.2em]" style={{ color: "#22d3ee", opacity: 0.8 }}>
               Game
             </span>
-            {!gameUnlocked && (
-              <span className="text-[8px] font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(255,255,255,0.04)", color: colors.textMuted, opacity: 0.5 }}>
-                Unlocks Day 8
-              </span>
-            )}
           </div>
           {gameItems.map(renderItem)}
         </nav>
