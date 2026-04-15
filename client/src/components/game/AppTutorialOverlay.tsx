@@ -132,7 +132,7 @@ export function AppTutorialOverlay() {
       {/* ── FULL DARK BACKDROP ── */}
       <motion.div
         className="absolute inset-0"
-        style={{ backgroundColor: "rgba(0,0,0,0.84)", backdropFilter: "blur(3px)" }}
+        style={{ backgroundColor: "rgba(0,0,0,0.60)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       />
