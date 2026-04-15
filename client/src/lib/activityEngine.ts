@@ -138,13 +138,66 @@ export function buildPhase1Activities(
   const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   const DAILY_FLOW_ORDER = [
+    "phase1_morning_check",
     "phase1_meditation",
     "phase1_agility",
     "phase1_strength",
     "phase1_vitality",
   ];
 
-  const allActivities = [
+  const allActivities: ActivityDefinition[] = [
+    {
+      id: "phase1_morning_check",
+      activityName: "Morning Check",
+      category: "vitality",
+      stat: "vitality",
+      duration: 20,
+      xpReward: 0,
+      color: "#06b6d4",
+      tier: 1,
+      xpMultiplier: 1.0,
+      steps: [
+        {
+          id: "sleep_check",
+          type: "check",
+          label: "Sleep Check",
+          instruction: "Did you sleep at least 7 hours last night?",
+          voiceText: "Did you sleep at least 7 hours? Consistent sleep fuels recovery and performance.",
+          infoTooltip: {
+            title: "Why 7+ hours matters",
+            bullets: [
+              "Muscle repair and memory consolidation happen in deep sleep",
+              "7–9 hours supports optimal hormone balance",
+              "Sleep debt reduces willpower, focus, and reaction time",
+            ],
+            note: "Even one extra hour tonight will compound over time.",
+          },
+        },
+        {
+          id: "morning_hydration",
+          type: "check",
+          label: "Hydration Check",
+          instruction: "Have you had water this morning?",
+          voiceText: "Have you had water this morning? Starting hydrated sets the tone for the day.",
+          infoTooltip: {
+            title: "Why morning hydration matters",
+            bullets: [
+              "Your body loses water overnight through breathing",
+              "Hydration kickstarts metabolism and mental clarity",
+              "Even mild dehydration reduces focus by up to 20%",
+            ],
+            note: "Aim to drink a glass before your first meal or coffee.",
+          },
+        },
+        {
+          id: "morning_check_done",
+          type: "completion",
+          label: "Check Complete",
+          instruction: "Morning check done.\nYou're starting the day with intention.",
+          voiceText: "Morning check complete. Let's begin.",
+        },
+      ],
+    },
     {
       id: "phase1_meditation",
       activityName: "Calm Breathing",
@@ -364,8 +417,8 @@ export function buildPhase1Activities(
           id: "sleep_check",
           type: "check",
           label: "Sleep Check",
-          instruction: "Did you sleep at least 6 hours last night?",
-          voiceText: "Did you sleep at least 6 hours? Consistent sleep fuels recovery.",
+          instruction: "Did you sleep at least 7 hours last night?",
+          voiceText: "Did you sleep at least 7 hours? Consistent sleep fuels recovery.",
           infoTooltip: {
             title: "Why sleep matters",
             bullets: [
