@@ -8,7 +8,6 @@ import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, MANA_MAX, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted, getFlowCompletedToday } from "@/lib/userState";
-import { AppTutorialOverlay } from "./AppTutorialOverlay";
 import { computeXPState } from "@/lib/xpSystem";
 
 interface HomeData {
@@ -137,7 +136,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   return (
     <SystemLayout>
-      <AppTutorialOverlay />
       <AnimatePresence>
         {flowActive && (
           <DailyFlowEngine

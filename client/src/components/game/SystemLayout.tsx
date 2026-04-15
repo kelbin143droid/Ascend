@@ -6,6 +6,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { SidebarMenu } from "./SidebarMenu";
 import { DevPanel } from "./DevPanel";
+import { AppTutorialOverlay } from "./AppTutorialOverlay";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 
 interface NavItem {
@@ -177,6 +178,8 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           })}
         </div>
       </nav>
+
+      <AppTutorialOverlay />
     </div>
   );
 }
