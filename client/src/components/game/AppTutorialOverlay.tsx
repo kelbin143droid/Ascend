@@ -163,45 +163,53 @@ export function AppTutorialOverlay() {
         />
       )}
 
-      {/* ── NAV TAB RING ── */}
+      {/* ── NAV TAB RING — glowing highlight around the active tab ── */}
       {isNav && (
         <AnimatePresence mode="wait">
           <motion.div
             key={`ring-nav-${step}`}
             className="absolute pointer-events-none"
             style={{
-              bottom: 6,
-              left: `calc(${tabX}% - 30px)`,
-              width: 60,
-              height: 58,
-              borderRadius: 14,
+              bottom: 4,
+              left: `calc(${tabX}% - 34px)`,
+              width: 68,
+              height: 62,
+              borderRadius: 16,
               border: `2px solid ${current.color}`,
-              boxShadow: `0 0 20px ${current.color}60, inset 0 0 16px ${current.color}15`,
+              boxShadow: `0 0 28px ${current.color}80, 0 0 14px ${current.color}50, inset 0 0 20px ${current.color}20`,
+              backgroundColor: `${current.color}08`,
             }}
             initial={{ opacity: 0, scale: 0.75 }}
-            animate={{ opacity: 1, scale: 1 }}
+            animate={{ opacity: [1, 0.75, 1], scale: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.28 }}
+            transition={{
+              scale: { duration: 0.28 },
+              opacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
+            }}
           />
         </AnimatePresence>
       )}
 
-      {/* ── NAV TAB ARROW — floats directly above the highlighted tab ── */}
+      {/* ── NAV TAB ARROW — bounces directly above the active tab ── */}
       {isNav && (
         <AnimatePresence mode="wait">
           <motion.div
             key={`arrow-nav-${step}`}
             className="absolute pointer-events-none"
             style={{
-              bottom: 68,
+              bottom: 70,
               left: `${tabX}%`,
               transform: "translateX(-50%)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
             }}
-            animate={{ y: [0, 6, 0] }}
-            transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ y: [0, 7, 0] }}
+            transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
           >
-            <svg width="20" height="12" viewBox="0 0 20 12" fill="none">
-              <path d="M10 12 L0 0 L20 0 Z" fill={current.color} opacity="0.85" />
+            <svg width="24" height="14" viewBox="0 0 24 14" fill="none">
+              <path d="M12 14 L0 0 L24 0 Z" fill={current.color} opacity="0.95" />
             </svg>
           </motion.div>
         </AnimatePresence>
@@ -263,71 +271,80 @@ export function AppTutorialOverlay() {
         </AnimatePresence>
       )}
 
-      {/* ── TUTORIAL CARD: nav + sidebar-intro (centered above nav) ── */}
+      {/* ── TUTORIAL CARD: nav + sidebar-intro ──
+          Use a STATIC outer div for centering (so CSS transform is never overridden
+          by Framer Motion's own transform), and animate only the inner motion.div. ── */}
       {(isNav || isSidebarIntro) && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            className="absolute"
-            style={{
-              bottom: isNav ? "90px" : "50%",
-              left: "50%",
-              transform: isNav ? "translateX(-50%)" : "translate(-50%, 50%)",
-              width: "min(320px, calc(100vw - 32px))",
-            }}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.28 }}
-          >
-            <TutorialCard
-              current={current}
-              Icon={Icon}
-              step={step}
-              onNext={next}
-              onDismiss={dismiss}
-            />
-          </motion.div>
-        </AnimatePresence>
+        <div
+          className="absolute"
+          style={{
+            bottom: isNav ? "96px" : "auto",
+            top: isSidebarIntro ? "50%" : "auto",
+            left: "50%",
+            transform: isSidebarIntro ? "translate(-50%, -50%)" : "translateX(-50%)",
+            width: "min(320px, calc(100vw - 32px))",
+          }}
+        >
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28 }}
+            >
+              <TutorialCard
+                current={current}
+                Icon={Icon}
+                step={step}
+                onNext={next}
+                onDismiss={dismiss}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
       )}
 
       {/* ── TUTORIAL CARD: sidebar-item (full-width at bottom) ── */}
       {isSidebarItem && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            className="absolute"
-            style={{ bottom: "80px", left: "12px", right: "12px" }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.28 }}
-          >
-            {/* Left arrow pointing toward highlighted sidebar item */}
+        <div
+          className="absolute"
+          style={{ bottom: "80px", left: "12px", right: "12px" }}
+        >
+          <AnimatePresence mode="wait">
             <motion.div
-              className="flex items-center gap-1.5 mb-2 ml-2 pointer-events-none"
-              animate={{ x: [0, -5, 0] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              key={step}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28 }}
             >
-              <svg width="14" height="9" viewBox="0 0 14 9" fill="none">
-                <path d="M0 4.5 L9 0 L9 9 Z" fill={current.color} opacity="0.8" />
-              </svg>
-              <span
-                className="text-[9px] font-mono uppercase tracking-widest"
-                style={{ color: `${current.color}80` }}
+              {/* Left arrow pointing toward highlighted sidebar item */}
+              <motion.div
+                className="flex items-center gap-1.5 mb-2 ml-2 pointer-events-none"
+                animate={{ x: [0, -5, 0] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
               >
-                see sidebar
-              </span>
+                <svg width="14" height="9" viewBox="0 0 14 9" fill="none">
+                  <path d="M0 4.5 L9 0 L9 9 Z" fill={current.color} opacity="0.8" />
+                </svg>
+                <span
+                  className="text-[9px] font-mono uppercase tracking-widest"
+                  style={{ color: `${current.color}80` }}
+                >
+                  see sidebar
+                </span>
+              </motion.div>
+              <TutorialCard
+                current={current}
+                Icon={Icon}
+                step={step}
+                onNext={next}
+                onDismiss={dismiss}
+              />
             </motion.div>
-            <TutorialCard
-              current={current}
-              Icon={Icon}
-              step={step}
-              onNext={next}
-              onDismiss={dismiss}
-            />
-          </motion.div>
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
       )}
     </div>
   );
