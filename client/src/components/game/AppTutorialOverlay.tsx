@@ -135,7 +135,6 @@ export function AppTutorialOverlay() {
         style={{ backgroundColor: "rgba(0,0,0,0.84)", backdropFilter: "blur(3px)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        onClick={dismiss}
       />
 
       {/* ── NAV TAB RING — glowing highlight ── */}
