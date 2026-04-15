@@ -36,7 +36,6 @@ const menuItems: MenuItem[] = [
 
 export function SidebarMenu() {
   const [open, setOpen] = useState(false);
-  const [tutorialMode, setTutorialMode] = useState(false);
   const [lockToast, setLockToast] = useState<string | null>(null);
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
@@ -56,16 +55,6 @@ export function SidebarMenu() {
     return () => window.removeEventListener(GAME_UNLOCK_EVENT, handler);
   }, []);
 
-  useEffect(() => {
-    const openHandler = () => { setOpen(true); setTutorialMode(true); };
-    const closeHandler = () => { setOpen(false); setTutorialMode(false); };
-    window.addEventListener("ascend:tutorial-sidebar-open", openHandler);
-    window.addEventListener("ascend:tutorial-sidebar-close", closeHandler);
-    return () => {
-      window.removeEventListener("ascend:tutorial-sidebar-open", openHandler);
-      window.removeEventListener("ascend:tutorial-sidebar-close", closeHandler);
-    };
-  }, []);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; isOnboardingComplete: boolean }>({
     queryKey: ["home", player?.id],
@@ -219,7 +208,7 @@ export function SidebarMenu() {
         )}
       </button>
 
-      {open && !tutorialMode && (
+      {open && (
         <div
           data-testid="sidebar-overlay"
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
@@ -243,17 +232,15 @@ export function SidebarMenu() {
           >
             ASCEND OS
           </span>
-          {!tutorialMode && (
-            <button
-              data-testid="button-sidebar-close"
-              onClick={() => setOpen(false)}
-              className="p-1.5 rounded-md transition-colors"
-              style={{ color: colors.textMuted }}
-              aria-label="Close menu"
-            >
-              <X size={20} />
-            </button>
-          )}
+          <button
+            data-testid="button-sidebar-close"
+            onClick={() => setOpen(false)}
+            className="p-1.5 rounded-md transition-colors"
+            style={{ color: colors.textMuted }}
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex flex-col py-2">

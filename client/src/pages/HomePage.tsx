@@ -138,7 +138,7 @@ export default function HomePage() {
 
   return (
     <>
-      {!dismissedNotification && homeData?.notification && (
+      {!dismissedNotification && homeData?.notification && localStorage.getItem("ascend_app_tutorial_seen") === "1" && (
         <div className="fixed top-0 left-0 right-0 z-50 max-w-md mx-auto px-4 pt-3">
           <NotificationBanner
             notification={homeData.notification}

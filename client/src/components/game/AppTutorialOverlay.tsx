@@ -2,11 +2,10 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, User, Target, Brain, X,
-  BarChart3, BookOpen, Trophy, Clock, Gamepad2, Menu,
+  BarChart3, BookOpen, Trophy, Clock, Gamepad2, Menu, ChevronRight,
 } from "lucide-react";
 
 const TUTORIAL_KEY = "ascend_app_tutorial_seen";
-const SIDEBAR_WIDTH = 288;
 
 type StepKind = "nav" | "sidebar-intro" | "sidebar-item";
 
@@ -19,22 +18,19 @@ interface BaseStep {
   desc: string;
 }
 
-interface NavStep extends BaseStep {
-  kind: "nav";
-  tabIndex: number;
-}
-
-interface SidebarIntroStep extends BaseStep {
-  kind: "sidebar-intro";
-}
-
-interface SidebarItemStep extends BaseStep {
-  kind: "sidebar-item";
-  itemTop: number;
-  itemHeight: number;
-}
+interface NavStep extends BaseStep { kind: "nav"; tabIndex: number; }
+interface SidebarIntroStep extends BaseStep { kind: "sidebar-intro"; }
+interface SidebarItemStep extends BaseStep { kind: "sidebar-item"; itemIndex: number; }
 
 type Step = NavStep | SidebarIntroStep | SidebarItemStep;
+
+const SIDEBAR_ITEMS = [
+  { icon: BarChart3, color: "#38bdf8", label: "Analytics" },
+  { icon: BookOpen, color: "#34d399", label: "Library" },
+  { icon: Trophy, color: "#fbbf24", label: "Achievements" },
+  { icon: Clock, color: "#c084fc", label: "Sectograph" },
+  { icon: Gamepad2, color: "#22d3ee", label: "Future Game" },
+];
 
 const STEPS: Step[] = [
   {
@@ -60,32 +56,32 @@ const STEPS: Step[] = [
   {
     kind: "sidebar-intro",
     icon: Menu, color: "#e2e8f0", sectionLabel: "MENU", title: "Full Navigation",
-    desc: "The ☰ icon opens your full navigation panel. It contains analytics, achievements, and your future game character. Opening it now…",
+    desc: "Tap the ☰ icon in the top-left to open the full navigation panel. Here's what's inside:",
   },
   {
-    kind: "sidebar-item", itemTop: 61, itemHeight: 46,
+    kind: "sidebar-item", itemIndex: 0,
     icon: BarChart3, color: "#38bdf8", sectionLabel: "ANALYTICS", title: "Analytics",
     desc: "Track your performance over time — weekly charts, habit streaks, XP growth, and trends across every stat.",
   },
   {
-    kind: "sidebar-item", itemTop: 107, itemHeight: 46,
+    kind: "sidebar-item", itemIndex: 1,
     icon: BookOpen, color: "#34d399", sectionLabel: "LIBRARY", title: "Library",
     desc: "Browse habit guides, workout routines, and wellness templates curated for your journey.",
   },
   {
-    kind: "sidebar-item", itemTop: 153, itemHeight: 46,
+    kind: "sidebar-item", itemIndex: 2,
     icon: Trophy, color: "#fbbf24", sectionLabel: "ACHIEVEMENTS", title: "Achievements",
     desc: "Your trophy room. Earn badges and unlock milestones as you build consistency and reach new levels.",
   },
   {
-    kind: "sidebar-item", itemTop: 231, itemHeight: 46,
+    kind: "sidebar-item", itemIndex: 3,
     icon: Clock, color: "#c084fc", sectionLabel: "SECTOGRAPH", title: "Sectograph",
     desc: "Your visual daily clock. Schedule habits and plan your entire day hour-by-hour in a radial time view.",
   },
   {
-    kind: "sidebar-item", itemTop: 309, itemHeight: 46,
+    kind: "sidebar-item", itemIndex: 4,
     icon: Gamepad2, color: "#22d3ee", sectionLabel: "FUTURE GAME", title: "Future Game",
-    desc: "Your RPG character is powered by real-life actions:\n• STR — grows from physical training\n• AGI — grows from movement & flexibility\n• VIT — grows from sleep & wellness\n• SEN — grows from meditation & focus\n\nComplete habits → level up your real-life stats → power up your game character.",
+    desc: "Your RPG character is powered by real actions.\n• STR grows from training\n• AGI grows from movement\n• VIT grows from sleep & wellness\n• SEN grows from meditation\n\nComplete daily habits → power up your character.",
   },
 ];
 
@@ -100,14 +96,10 @@ export function AppTutorialOverlay() {
 
   const dismiss = () => {
     localStorage.setItem(TUTORIAL_KEY, "1");
-    window.dispatchEvent(new CustomEvent("ascend:tutorial-sidebar-close"));
     setVisible(false);
   };
 
   const next = () => {
-    if (step === SIDEBAR_INTRO_INDEX) {
-      window.dispatchEvent(new CustomEvent("ascend:tutorial-sidebar-open"));
-    }
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
     } else {
@@ -116,9 +108,7 @@ export function AppTutorialOverlay() {
   };
 
   useEffect(() => {
-    return () => {
-      window.dispatchEvent(new CustomEvent("ascend:tutorial-sidebar-close"));
-    };
+    return () => { /* cleanup if needed */ };
   }, []);
 
   if (!visible) return null;
@@ -128,10 +118,10 @@ export function AppTutorialOverlay() {
   const isNav = current.kind === "nav";
   const isSidebarIntro = current.kind === "sidebar-intro";
   const isSidebarItem = current.kind === "sidebar-item";
+  const isAnyCard = isNav || isSidebarIntro || isSidebarItem;
 
   const tabX = isNav ? NAV_TAB_CENTERS[(current as NavStep).tabIndex] : 0;
-  const itemTop = isSidebarItem ? (current as SidebarItemStep).itemTop : 0;
-  const itemHeight = isSidebarItem ? (current as SidebarItemStep).itemHeight : 46;
+  const activeItemIndex = isSidebarItem ? (current as SidebarItemStep).itemIndex : -1;
 
   return (
     <div
@@ -139,31 +129,16 @@ export function AppTutorialOverlay() {
       style={{ pointerEvents: "all" }}
       data-tutorial-active="1"
     >
-      {/* ── BACKDROP: full for nav/sidebar-intro, right-side only for sidebar-item ── */}
-      {(isNav || isSidebarIntro) && (
-        <motion.div
-          className="absolute inset-0"
-          style={{ backgroundColor: "rgba(0,0,0,0.84)", backdropFilter: "blur(3px)" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={dismiss}
-        />
-      )}
-      {isSidebarItem && (
-        <motion.div
-          className="absolute inset-0"
-          style={{
-            backgroundColor: "rgba(0,0,0,0.80)",
-            backdropFilter: "blur(2px)",
-            clipPath: `polygon(${SIDEBAR_WIDTH}px 0%, 100% 0%, 100% 100%, ${SIDEBAR_WIDTH}px 100%)`,
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={dismiss}
-        />
-      )}
+      {/* ── FULL DARK BACKDROP ── */}
+      <motion.div
+        className="absolute inset-0"
+        style={{ backgroundColor: "rgba(0,0,0,0.84)", backdropFilter: "blur(3px)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={dismiss}
+      />
 
-      {/* ── NAV TAB RING — glowing highlight around the active tab ── */}
+      {/* ── NAV TAB RING — glowing highlight ── */}
       {isNav && (
         <AnimatePresence mode="wait">
           <motion.div
@@ -200,10 +175,6 @@ export function AppTutorialOverlay() {
               bottom: 70,
               left: `${tabX}%`,
               transform: "translateX(-50%)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 2,
             }}
             animate={{ y: [0, 7, 0] }}
             transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
@@ -215,7 +186,7 @@ export function AppTutorialOverlay() {
         </AnimatePresence>
       )}
 
-      {/* ── SIDEBAR BUTTON RING + ARROW (sidebar-intro) ── */}
+      {/* ── SIDEBAR BUTTON RING + ARROW (sidebar-intro step only) ── */}
       {isSidebarIntro && (
         <>
           <AnimatePresence mode="wait">
@@ -231,7 +202,10 @@ export function AppTutorialOverlay() {
               }}
               initial={{ opacity: 0, scale: 0.75 }}
               animate={{ opacity: [1, 0.6, 1], scale: 1 }}
-              transition={{ opacity: { duration: 1.4, repeat: Infinity }, scale: { duration: 0.28 } }}
+              transition={{
+                scale: { duration: 0.28 },
+                opacity: { duration: 1.4, repeat: Infinity, ease: "easeInOut" },
+              }}
             />
           </AnimatePresence>
           <motion.div
@@ -248,41 +222,18 @@ export function AppTutorialOverlay() {
         </>
       )}
 
-      {/* ── SIDEBAR ITEM RING ── */}
-      {isSidebarItem && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`ring-item-${step}`}
-            className="absolute pointer-events-none"
-            style={{
-              top: itemTop,
-              left: 4,
-              width: SIDEBAR_WIDTH - 8,
-              height: itemHeight,
-              borderRadius: 10,
-              border: `2px solid ${current.color}`,
-              boxShadow: `0 0 20px ${current.color}55, inset 0 0 10px ${current.color}10`,
-            }}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-          />
-        </AnimatePresence>
-      )}
-
-      {/* ── TUTORIAL CARD: nav + sidebar-intro ──
-          Use a STATIC outer div for centering (so CSS transform is never overridden
-          by Framer Motion's own transform), and animate only the inner motion.div. ── */}
-      {(isNav || isSidebarIntro) && (
+      {/* ── TUTORIAL CARD (all step types, always centered) ── */}
+      {isAnyCard && (
         <div
           className="absolute"
           style={{
             bottom: isNav ? "96px" : "auto",
-            top: isSidebarIntro ? "50%" : "auto",
+            top: (isSidebarIntro || isSidebarItem) ? "50%" : "auto",
             left: "50%",
-            transform: isSidebarIntro ? "translate(-50%, -50%)" : "translateX(-50%)",
-            width: "min(320px, calc(100vw - 32px))",
+            transform: (isSidebarIntro || isSidebarItem)
+              ? "translate(-50%, -50%)"
+              : "translateX(-50%)",
+            width: "min(340px, calc(100vw - 32px))",
           }}
         >
           <AnimatePresence mode="wait">
@@ -293,159 +244,139 @@ export function AppTutorialOverlay() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.28 }}
             >
-              <TutorialCard
-                current={current}
-                Icon={Icon}
-                step={step}
-                onNext={next}
-                onDismiss={dismiss}
-              />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* ── TUTORIAL CARD: sidebar-item (full-width at bottom) ── */}
-      {isSidebarItem && (
-        <div
-          className="absolute"
-          style={{ bottom: "80px", left: "12px", right: "12px" }}
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28 }}
-            >
-              {/* Left arrow pointing toward highlighted sidebar item */}
-              <motion.div
-                className="flex items-center gap-1.5 mb-2 ml-2 pointer-events-none"
-                animate={{ x: [0, -5, 0] }}
-                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              <div
+                className="rounded-2xl p-4"
+                style={{
+                  backgroundColor: "rgba(6,6,18,0.97)",
+                  border: `1px solid ${current.color}45`,
+                  boxShadow: `0 0 44px ${current.color}18, 0 8px 32px rgba(0,0,0,0.65)`,
+                }}
               >
-                <svg width="14" height="9" viewBox="0 0 14 9" fill="none">
-                  <path d="M0 4.5 L9 0 L9 9 Z" fill={current.color} opacity="0.8" />
-                </svg>
-                <span
-                  className="text-[9px] font-mono uppercase tracking-widest"
-                  style={{ color: `${current.color}80` }}
+                {/* Card header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: `${current.color}18`,
+                        border: `1px solid ${current.color}35`,
+                      }}
+                    >
+                      <Icon size={15} style={{ color: current.color }} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-[0.2em] font-bold mb-0.5" style={{ color: current.color }}>
+                        {current.sectionLabel}
+                      </p>
+                      <p className="text-sm font-bold leading-tight" style={{ color: "#f0f0ff" }}>
+                        {current.title}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={dismiss}
+                    className="p-1.5 rounded-lg shrink-0"
+                    style={{ color: "rgba(255,255,255,0.28)" }}
+                    data-testid="button-tutorial-dismiss"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+
+                {/* Sidebar-item: mini sidebar preview list */}
+                {(isSidebarItem || isSidebarIntro) && (
+                  <div
+                    className="rounded-xl overflow-hidden mb-3"
+                    style={{
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      backgroundColor: "rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    {SIDEBAR_ITEMS.map((item, i) => {
+                      const SIcon = item.icon;
+                      const isActive = i === activeItemIndex;
+                      return (
+                        <div
+                          key={item.label}
+                          className="flex items-center gap-2.5 px-3 py-2.5"
+                          style={{
+                            backgroundColor: isActive ? `${item.color}18` : "transparent",
+                            borderBottom: i < SIDEBAR_ITEMS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                            transition: "background-color 0.2s",
+                          }}
+                        >
+                          <SIcon
+                            size={14}
+                            style={{ color: isActive ? item.color : "rgba(255,255,255,0.22)" }}
+                          />
+                          <span
+                            className="text-xs font-medium flex-1"
+                            style={{ color: isActive ? item.color : "rgba(255,255,255,0.28)" }}
+                          >
+                            {item.label}
+                          </span>
+                          {isActive && (
+                            <motion.div
+                              animate={{ x: [0, -3, 0] }}
+                              transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+                            >
+                              <ChevronRight size={12} style={{ color: item.color, opacity: 0.8 }} />
+                            </motion.div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Description */}
+                <p
+                  className="text-xs leading-relaxed mb-3 whitespace-pre-line"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
                 >
-                  see sidebar
-                </span>
-              </motion.div>
-              <TutorialCard
-                current={current}
-                Icon={Icon}
-                step={step}
-                onNext={next}
-                onDismiss={dismiss}
-              />
+                  {current.desc}
+                </p>
+
+                {/* Progress dots + NEXT button */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex gap-1 items-center flex-wrap flex-1">
+                    {STEPS.map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="rounded-full"
+                        animate={{
+                          width: i === step ? 12 : 4,
+                          backgroundColor:
+                            i === step
+                              ? current.color
+                              : i < step
+                              ? `${current.color}55`
+                              : "rgba(255,255,255,0.12)",
+                        }}
+                        transition={{ duration: 0.22 }}
+                        style={{ height: 4, flexShrink: 0 }}
+                      />
+                    ))}
+                  </div>
+                  <motion.button
+                    onClick={next}
+                    className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold shrink-0"
+                    style={{
+                      backgroundColor: current.color,
+                      color: "#000",
+                      letterSpacing: "0.06em",
+                    }}
+                    whileTap={{ scale: 0.96 }}
+                    data-testid="button-tutorial-next"
+                  >
+                    {step < STEPS.length - 1 ? "NEXT →" : "DONE ✓"}
+                  </motion.button>
+                </div>
+              </div>
             </motion.div>
           </AnimatePresence>
         </div>
       )}
-    </div>
-  );
-}
-
-function TutorialCard({
-  current,
-  Icon,
-  step,
-  onNext,
-  onDismiss,
-}: {
-  current: Step;
-  Icon: any;
-  step: number;
-  onNext: () => void;
-  onDismiss: () => void;
-}) {
-  return (
-    <div
-      className="rounded-2xl p-4"
-      style={{
-        backgroundColor: "rgba(6,6,18,0.97)",
-        border: `1px solid ${current.color}45`,
-        boxShadow: `0 0 44px ${current.color}18, 0 8px 32px rgba(0,0,0,0.65)`,
-      }}
-    >
-      <div className="flex items-start justify-between mb-2.5">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{
-              backgroundColor: `${current.color}18`,
-              border: `1px solid ${current.color}35`,
-            }}
-          >
-            <Icon size={15} style={{ color: current.color }} />
-          </div>
-          <div>
-            <p
-              className="text-[9px] uppercase tracking-[0.2em] font-bold mb-0.5"
-              style={{ color: current.color }}
-            >
-              {current.sectionLabel}
-            </p>
-            <p className="text-sm font-bold leading-tight" style={{ color: "#f0f0ff" }}>
-              {current.title}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onDismiss}
-          className="p-1.5 rounded-lg shrink-0"
-          style={{ color: "rgba(255,255,255,0.28)" }}
-          data-testid="button-tutorial-dismiss"
-        >
-          <X size={13} />
-        </button>
-      </div>
-
-      <p
-        className="text-xs leading-relaxed mb-3 whitespace-pre-line"
-        style={{ color: "rgba(255,255,255,0.55)" }}
-      >
-        {current.desc}
-      </p>
-
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-1 items-center flex-wrap flex-1">
-          {STEPS.map((_, i) => (
-            <motion.div
-              key={i}
-              className="rounded-full"
-              animate={{
-                width: i === step ? 12 : 4,
-                backgroundColor:
-                  i === step
-                    ? current.color
-                    : i < step
-                    ? `${current.color}55`
-                    : "rgba(255,255,255,0.12)",
-              }}
-              transition={{ duration: 0.22 }}
-              style={{ height: 4, flexShrink: 0 }}
-            />
-          ))}
-        </div>
-        <motion.button
-          onClick={onNext}
-          className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold shrink-0"
-          style={{
-            backgroundColor: current.color,
-            color: "#000",
-            letterSpacing: "0.06em",
-          }}
-          whileTap={{ scale: 0.96 }}
-          data-testid="button-tutorial-next"
-        >
-          {step < STEPS.length - 1 ? "NEXT →" : "DONE ✓"}
-        </motion.button>
-      </div>
     </div>
   );
 }
