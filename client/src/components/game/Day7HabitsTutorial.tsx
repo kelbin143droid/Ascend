@@ -15,10 +15,10 @@ const STEPS = [
     id: "welcome",
     icon: Target,
     iconColor: "#a78bfa",
-    title: "Day 7 — Habits Unlocked",
-    subtitle: "Your next evolution begins",
-    body: "You've built real momentum over the past 6 days. Now it's time to go deeper — intentionally designing the habits that will shape who you're becoming.",
-    coachNote: "I'll walk you through the system. Take a moment with each step.",
+    title: "Habit System",
+    subtitle: "Build intentionally",
+    body: "Design the habits that shape who you're becoming. Every action you take consistently becomes part of your identity — and your stats.",
+    coachNote: "Start small. One or two strong habits beats scattered effort. Let's walk through the system.",
     visual: "unlock",
   },
   {
@@ -37,8 +37,8 @@ const STEPS = [
     iconColor: "#22c55e",
     title: "Building Good Habits",
     subtitle: "XP, stats, and progression",
-    body: "Each habit you complete earns XP toward specific stats. Strength habits grow your Strength stat. Sense habits grow Sense. Choose habits that match who you want to become.",
-    coachNote: "Start with one or two habits. Consistency with a few beats scattered effort across many.",
+    body: "Each habit you complete earns XP toward specific stats. Strength habits grow STR. Meditation grows SEN. Choose habits that match who you want to become.",
+    coachNote: "Consistency with a few beats scattered effort across many.",
     visual: "stats",
   },
   {
@@ -88,32 +88,19 @@ function LoopVisual() {
           <div
             key={n.label}
             className="absolute flex flex-col items-center"
-            style={{
-              left: cx - 24,
-              top: cy - 22,
-              width: 48,
-            }}
+            style={{ left: cx - 24, top: cy - 22, width: 48 }}
           >
             <div
               className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: `${n.color}20`,
-                color: n.color,
-                border: `1px solid ${n.color}40`,
-              }}
+              style={{ backgroundColor: `${n.color}20`, color: n.color, border: `1px solid ${n.color}40` }}
             >
               {n.label}
             </div>
-            <div className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-              {n.desc}
-            </div>
+            <div className="text-[8px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{n.desc}</div>
           </div>
         );
       })}
-      <div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ pointerEvents: "none" }}
-      >
+      <div className="absolute inset-0 flex items-center justify-center" style={{ pointerEvents: "none" }}>
         <RotateCcw size={20} style={{ color: "rgba(59,130,246,0.4)" }} />
       </div>
     </div>
@@ -122,19 +109,17 @@ function LoopVisual() {
 
 function StatsVisual() {
   const stats = [
-    { label: "Strength", color: "#ef4444", xp: 24, example: "Push-ups, Plank" },
-    { label: "Sense", color: "#8b5cf6", xp: 18, example: "Meditation, Focus" },
-    { label: "Agility", color: "#22c55e", xp: 21, example: "Stretching, Yoga" },
-    { label: "Vitality", color: "#f59e0b", xp: 30, example: "Sleep, Nutrition" },
+    { label: "STR — Strength", color: "#ef4444", xp: 24, example: "Training, Push-ups" },
+    { label: "SEN — Sense", color: "#8b5cf6", xp: 18, example: "Meditation, Focus" },
+    { label: "AGI — Agility", color: "#22c55e", xp: 21, example: "Stretching, Yoga" },
+    { label: "VIT — Vitality", color: "#f59e0b", xp: 30, example: "Sleep, Nutrition" },
   ];
   return (
     <div className="space-y-2 w-full max-w-xs mx-auto" data-testid="visual-stats">
       {stats.map((s) => (
         <div key={s.label} className="flex items-center gap-3">
-          <div className="w-14 text-right">
-            <span className="text-[10px] font-bold" style={{ color: s.color }}>
-              {s.label}
-            </span>
+          <div className="w-24 text-right shrink-0">
+            <span className="text-[10px] font-bold" style={{ color: s.color }}>{s.label}</span>
           </div>
           <div className="flex-1 rounded-full overflow-hidden h-2" style={{ backgroundColor: `${s.color}18` }}>
             <motion.div
@@ -145,9 +130,7 @@ function StatsVisual() {
               style={{ backgroundColor: s.color, boxShadow: `0 0 6px ${s.color}60` }}
             />
           </div>
-          <div className="text-[9px] w-10" style={{ color: "rgba(255,255,255,0.3)" }}>
-            +{s.xp} XP
-          </div>
+          <div className="text-[9px] w-10 shrink-0" style={{ color: "rgba(255,255,255,0.3)" }}>+{s.xp} XP</div>
         </div>
       ))}
     </div>
@@ -187,50 +170,15 @@ function ReplaceVisual() {
   );
 }
 
-function VitalsVisual() {
-  return (
-    <div className="space-y-3 w-full max-w-xs mx-auto" data-testid="visual-vitals">
-      {[
-        { label: "HP", color: "#22c55e", icon: Shield, note: "Vitality habits → protect HP", pct: 87 },
-        { label: "MP", color: "#3b82f6", icon: Zap, note: "Breathing & sense → protect MP", pct: 72 },
-      ].map((v) => {
-        const Icon = v.icon;
-        return (
-          <div key={v.label}>
-            <div className="flex items-center gap-2 mb-1.5">
-              <Icon size={11} style={{ color: v.color }} />
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: v.color }}>
-                {v.label}
-              </span>
-              <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.3)" }}>— {v.note}</span>
-            </div>
-            <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: `${v.color}18` }}>
-              <motion.div
-                className="h-full rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${v.pct}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                style={{ backgroundColor: v.color, boxShadow: `0 0 6px ${v.color}60` }}
-              />
-            </div>
-          </div>
-        );
-      })}
-      <div
-        className="rounded-lg px-3 py-2 text-center"
-        style={{ backgroundColor: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.15)" }}
-      >
-        <p className="text-[9px]" style={{ color: "rgba(234,179,8,0.8)" }}>
-          ⚠ Miss 2+ days → slow drain · 3-day streak → recovery begins
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function UnlockVisual() {
+  const statItems = [
+    { label: "STR", color: "#ef4444" },
+    { label: "AGI", color: "#22c55e" },
+    { label: "VIT", color: "#f59e0b" },
+    { label: "SEN", color: "#8b5cf6" },
+  ];
   return (
-    <div className="flex flex-col items-center gap-3" data-testid="visual-unlock">
+    <div className="flex flex-col items-center gap-4" data-testid="visual-unlock">
       <motion.div
         initial={{ scale: 0.7, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -245,18 +193,25 @@ function UnlockVisual() {
         <Target size={28} style={{ color: "#a78bfa" }} />
       </motion.div>
       <div className="flex gap-2">
-        {["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"].map((d, i) => (
-          <div
-            key={d}
-            className="w-1.5 h-1.5 rounded-full"
+        {statItems.map((s, i) => (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 + i * 0.1 }}
+            className="text-[9px] font-bold px-2 py-1 rounded-lg"
             style={{
-              backgroundColor: i === 6 ? "#a78bfa" : i >= 5 ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.15)",
+              backgroundColor: `${s.color}15`,
+              color: s.color,
+              border: `1px solid ${s.color}30`,
             }}
-          />
+          >
+            {s.label}
+          </motion.div>
         ))}
       </div>
       <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-        6 days complete — Habit System activated
+        Real habits → Real stats → Real growth
       </p>
     </div>
   );
@@ -389,7 +344,6 @@ export function Day7HabitsTutorial({ onComplete }: Props) {
                 {current.visual === "loop" && <LoopVisual />}
                 {current.visual === "stats" && <StatsVisual />}
                 {current.visual === "replace" && <ReplaceVisual />}
-                {current.visual === "vitals" && <VitalsVisual />}
                 {current.visual === "cta" && <CtaVisual />}
               </div>
 
@@ -439,15 +393,9 @@ export function Day7HabitsTutorial({ onComplete }: Props) {
             data-testid="button-tutorial-next"
           >
             {step === STEPS.length - 1 ? (
-              <>
-                Enter Habits
-                <ChevronRight size={15} />
-              </>
+              <>Enter Habits <ChevronRight size={15} /></>
             ) : (
-              <>
-                Next
-                <ChevronRight size={15} />
-              </>
+              <>Next <ChevronRight size={15} /></>
             )}
           </button>
         </div>
