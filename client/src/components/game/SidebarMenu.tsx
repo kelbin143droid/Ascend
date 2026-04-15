@@ -55,6 +55,16 @@ export function SidebarMenu() {
     return () => window.removeEventListener(GAME_UNLOCK_EVENT, handler);
   }, []);
 
+  useEffect(() => {
+    const openHandler = () => setOpen(true);
+    const closeHandler = () => setOpen(false);
+    window.addEventListener("ascend:tutorial-sidebar-open", openHandler);
+    window.addEventListener("ascend:tutorial-sidebar-close", closeHandler);
+    return () => {
+      window.removeEventListener("ascend:tutorial-sidebar-open", openHandler);
+      window.removeEventListener("ascend:tutorial-sidebar-close", closeHandler);
+    };
+  }, []);
 
   const { data: homeData } = useQuery<{ onboardingDay: number; isOnboardingComplete: boolean }>({
     queryKey: ["home", player?.id],
