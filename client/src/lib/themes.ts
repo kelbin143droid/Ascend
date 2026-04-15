@@ -206,52 +206,6 @@ export const themes: AppTheme[] = [
       clockHand: "#ffd700",
       centerDot: "#ff8c00"
     }
-  },
-  {
-    id: "cyber-hunter",
-    name: "Cyber Hunter",
-    description: "Electric blue — sharp, aggressive, relentless",
-    icon: "⚡",
-    colors: {
-      primary: "#4f8ef7",
-      primaryGlow: "rgba(79,142,247,0.38)",
-      secondary: "#7c3aed",
-      accent: "#00d4ff",
-      background: "#050815",
-      backgroundGradient: "radial-gradient(ellipse at top, rgba(30,50,120,0.25) 0%, rgba(5,8,21,1) 65%)",
-      surface: "rgba(10,20,60,0.65)",
-      surfaceBorder: "rgba(79,142,247,0.22)",
-      text: "#e8f0ff",
-      textMuted: "rgba(232,240,255,0.45)",
-      ring: "#4f8ef7",
-      ringGlow: "rgba(79,142,247,0.5)",
-      tickMark: "rgba(0,212,255,0.45)",
-      clockHand: "#4f8ef7",
-      centerDot: "#00d4ff"
-    }
-  },
-  {
-    id: "arcane-fable",
-    name: "Arcane Fable",
-    description: "Magenta & violet — mystical, fierce, unstoppable",
-    icon: "✨",
-    colors: {
-      primary: "#e040fb",
-      primaryGlow: "rgba(224,64,251,0.38)",
-      secondary: "#7c3aed",
-      accent: "#f472b6",
-      background: "#0d0614",
-      backgroundGradient: "radial-gradient(ellipse at top, rgba(80,10,100,0.3) 0%, rgba(13,6,20,1) 65%)",
-      surface: "rgba(40,10,60,0.65)",
-      surfaceBorder: "rgba(224,64,251,0.22)",
-      text: "#f8e8ff",
-      textMuted: "rgba(248,232,255,0.45)",
-      ring: "#e040fb",
-      ringGlow: "rgba(224,64,251,0.5)",
-      tickMark: "rgba(244,114,182,0.45)",
-      clockHand: "#e040fb",
-      centerDot: "#f472b6"
-    }
   }
 ];
 

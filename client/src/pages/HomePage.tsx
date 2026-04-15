@@ -1,12 +1,10 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useState } from "react";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 import { Day6Home } from "@/components/game/Day6Home";
-import { GenderSelectScreen } from "@/components/game/GenderSelectScreen";
-import { IntroTutorialScreen } from "@/components/game/IntroTutorialScreen";
-import { getGender, isIntroDone, type Gender } from "@/lib/userState";
+import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -80,12 +78,19 @@ interface HomeData {
 
 export default function HomePage() {
   const { player } = useGame();
-  const queryClient = useQueryClient();
 
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
-  const [gender, setGenderState] = useState<Gender | null>(() => getGender());
-  const [introDone, setIntroDone] = useState(() => isIntroDone());
+
+  const [justCompletedDayId, setJustCompletedDayId] = useState<number | null>(() => {
+    const raw = sessionStorage.getItem("ascend_just_completed_day");
+    if (raw) {
+      const day = parseInt(raw, 10);
+      sessionStorage.removeItem("ascend_just_completed_day");
+      if (!isNaN(day) && day >= 1 && day <= 5) return day;
+    }
+    return null;
+  });
 
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -124,15 +129,6 @@ export default function HomePage() {
     staleTime: 30000,
   });
 
-  // Gender select — shown immediately, even before homeData loads
-  if (!gender) {
-    return (
-      <GenderSelectScreen
-        onSelect={(g) => setGenderState(g)}
-      />
-    );
-  }
-
   if (!homeData || homeLoading) {
     return (
       <div
@@ -152,28 +148,20 @@ export default function HomePage() {
   }
 
   const isOnboardingComplete = homeData?.isOnboardingComplete ?? false;
+  const lastCompletedDay = homeData.completedDays.length > 0
+    ? homeData.completedDays[homeData.completedDays.length - 1]
+    : null;
+  const completionScreenPending =
+    justCompletedDayId !== null &&
+    lastCompletedDay !== null &&
+    justCompletedDayId === lastCompletedDay;
 
-  // New intro tutorial — replaces the 5-day onboarding
-  if (!isOnboardingComplete && !introDone) {
+  if (!isOnboardingComplete || completionScreenPending) {
     return (
-      <IntroTutorialScreen
-        onComplete={async () => {
-          if (player?.id) {
-            fetch(`/api/player/${player.id}/onboarding-complete`, { method: "POST" }).catch(() => {});
-          }
-          setIntroDone(true);
-          queryClient.invalidateQueries();
-        }}
-      />
-    );
-  }
-
-  // Waiting for API confirmation after intro completes
-  if (!isOnboardingComplete) {
-    return (
-      <div
-        style={{ minHeight: "100dvh", backgroundColor: "#06060f" }}
-        data-testid="home-loading"
+      <OnboardingFlow
+        homeData={homeData}
+        justCompletedDay={completionScreenPending ? justCompletedDayId : null}
+        onClearJustCompleted={() => setJustCompletedDayId(null)}
       />
     );
   }

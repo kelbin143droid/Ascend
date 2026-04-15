@@ -96,29 +96,3 @@ export function clearDayFiveTutorial(): void {
   localStorage.removeItem(DAY5_SLEEP_KEY);
   localStorage.removeItem(DAY5_FLOW_KEY);
 }
-
-// ── Gender ────────────────────────────────────────────────────────────────────
-const GENDER_KEY = "ascend_gender";
-const INTRO_DONE_KEY = "ascend_intro_done";
-
-export type Gender = "male" | "female";
-
-export function getGender(): Gender | null {
-  const v = localStorage.getItem(GENDER_KEY);
-  return v === "male" || v === "female" ? v : null;
-}
-
-export function setGender(g: Gender): void {
-  localStorage.setItem(GENDER_KEY, g);
-}
-
-export function isIntroDone(): boolean {
-  return localStorage.getItem(INTRO_DONE_KEY) === "true";
-}
-
-export function markIntroDone(): void {
-  localStorage.setItem(INTRO_DONE_KEY, "true");
-  // Also mark sectograph tutorial done so it doesn't re-appear
-  localStorage.setItem(SECTOGRAPH_TUTORIAL_KEY, "true");
-  localStorage.setItem(SECTOGRAPH_TUTORIAL_STEP_KEY, "3");
-}
