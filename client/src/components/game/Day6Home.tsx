@@ -44,10 +44,10 @@ interface Props {
 }
 
 const SESSION_LIST = [
+  { id: "phase1_vitality", label: "Vitality Check", sublabel: "Sleep · Hydration · Nutrition", icon: Heart, color: "#f59e0b", stat: "HP" },
   { id: "phase1_meditation", label: "Calm Breathing", sublabel: "4-4-6 breathing rhythm · 2 min", icon: Brain, color: "#3b82f6", stat: "Mana" },
   { id: "phase1_agility", label: "Agility Flow", sublabel: "Stretch circuit · 3 min", icon: Wind, color: "#22c55e", stat: "Agility" },
   { id: "phase1_strength", label: "Physical Circuit", sublabel: "Push-ups · Plank · Cardio", icon: Dumbbell, color: "#ef4444", stat: "Strength" },
-  { id: "phase1_vitality", label: "Vitality Check", sublabel: "Sleep · Hydration · Nutrition", icon: Heart, color: "#f59e0b", stat: "HP" },
 ];
 
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {

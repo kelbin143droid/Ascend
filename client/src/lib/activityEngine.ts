@@ -138,10 +138,10 @@ export function buildPhase1Activities(
   const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   const DAILY_FLOW_ORDER = [
+    "phase1_vitality",
     "phase1_meditation",
     "phase1_agility",
     "phase1_strength",
-    "phase1_vitality",
   ];
 
   const allActivities = [
