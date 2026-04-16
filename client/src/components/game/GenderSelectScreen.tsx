@@ -45,7 +45,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
           draggable={false}
         />
 
-        {/* ── MALE click zone (left card) ── */}
+        {/* ── MALE click zone (left card) — fully invisible ── */}
         <button
           onClick={() => setSelected("male")}
           aria-label="Select Male — Iron Sovereign"
@@ -55,34 +55,13 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             left: "5%",
             width: "43%",
             height: "44%",
-            borderRadius: "14px",
-            background: selected === "male" ? "rgba(34,211,238,0.12)" : "transparent",
-            border: selected === "male" ? "2.5px solid rgba(34,211,238,0.9)" : "2.5px solid transparent",
-            boxShadow: selected === "male"
-              ? "0 0 40px rgba(34,211,238,0.5), 0 0 80px rgba(34,211,238,0.15), inset 0 0 30px rgba(34,211,238,0.08)"
-              : "none",
-            transition: "all 0.25s ease",
+            background: "transparent",
+            border: "none",
+            boxShadow: "none",
           }}
-        >
-          {/* Tick indicator top-right */}
-          <AnimatePresence>
-            {selected === "male" && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ background: "#22d3ee", boxShadow: "0 0 14px rgba(34,211,238,0.8)" }}
-              >
-                <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
-                  <path d="M1.5 5L5 8.5L10.5 1.5" stroke="#020c14" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </button>
+        />
 
-        {/* ── FEMALE click zone (right card) ── */}
+        {/* ── FEMALE click zone (right card) — fully invisible ── */}
         <button
           onClick={() => setSelected("female")}
           aria-label="Select Female — Neon Empress"
@@ -92,31 +71,11 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             left: "52%",
             width: "43%",
             height: "44%",
-            borderRadius: "14px",
-            background: selected === "female" ? "rgba(217,70,239,0.12)" : "transparent",
-            border: selected === "female" ? "2.5px solid rgba(217,70,239,0.9)" : "2.5px solid transparent",
-            boxShadow: selected === "female"
-              ? "0 0 40px rgba(217,70,239,0.5), 0 0 80px rgba(217,70,239,0.15), inset 0 0 30px rgba(217,70,239,0.08)"
-              : "none",
-            transition: "all 0.25s ease",
+            background: "transparent",
+            border: "none",
+            boxShadow: "none",
           }}
-        >
-          <AnimatePresence>
-            {selected === "female" && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ background: "#d946ef", boxShadow: "0 0 14px rgba(217,70,239,0.8)" }}
-              >
-                <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
-                  <path d="M1.5 5L5 8.5L10.5 1.5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </button>
+        />
       </div>
 
       {/* ── Area below the image (dark strip at bottom of screen) ── */}
