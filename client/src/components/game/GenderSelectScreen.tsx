@@ -25,11 +25,17 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
       transition={{ duration: 0.6 }}
     >
       {/*
-        The image is 1:1 (square). Display it at 100% width so it
-        covers the top portion of the screen. Position invisible
-        click zones over the Male and Female card areas in the image.
+        Clamp the square to min(100vw, 100vh - 76px) so the 1:1 image
+        never overflows the viewport vertically. The 76px reserves space
+        for the button / hint below the image.
       */}
-      <div className="relative w-full flex-shrink-0" style={{ aspectRatio: "1 / 1" }}>
+      <div
+        className="relative flex-shrink-0"
+        style={{
+          width: "min(100vw, calc(100vh - 76px))",
+          height: "min(100vw, calc(100vh - 76px))",
+        }}
+      >
         {/* Background image — fills the square container */}
         <img
           src="/gender-select-bg.jpg"
