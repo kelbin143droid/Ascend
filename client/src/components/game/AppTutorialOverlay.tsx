@@ -69,7 +69,7 @@ const STEPS: Step[] = [
   {
     kind: "sidebar-item", itemIndex: 3,
     icon: Clock, color: "#c084fc", sectionLabel: "SECTOGRAPH", title: "Sectograph",
-    desc: "A Sectograph is a circular time wheel — like a clock face for your entire day.\n\nEach segment represents a time block. Assign habits to specific hours and see exactly how your day is structured at a glance.\n\n→ Drag habits onto time slots\n→ Spot gaps and overlaps instantly\n→ Plan smarter around your energy peaks\n\nThink of it as your visual life planner — your coach will guide you through it step by step when you open it.",
+    desc: "A circular time wheel for your day.\n\n→ Drag habits onto time slots\n→ Spot gaps and overlaps instantly\n→ Plan around your energy peaks",
   },
   {
     kind: "sidebar-item", itemIndex: 4,
@@ -172,14 +172,59 @@ export function AppTutorialOverlay() {
       style={{ pointerEvents: "all" }}
       data-tutorial-active="1"
     >
-      {/* ── FULL BACKDROP for non-sidebar-item steps ── */}
-      {!isSidebarItem && (
+      {/* ── FULL BACKDROP for non-sidebar-item, non-nav steps ── */}
+      {!isSidebarItem && !isNav && (
         <motion.div
           className="absolute inset-0"
-          style={{ backgroundColor: isNav ? "rgba(0,0,0,0.82)" : "rgba(0,0,0,0.68)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.68)" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         />
+      )}
+
+      {/* ── NAV-STEP BACKDROP — dims everything except the active tab ── */}
+      {isNav && (
+        <>
+          {/* Above the nav bar */}
+          <motion.div
+            className="absolute"
+            style={{
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 64,
+              backgroundColor: "rgba(0,0,0,0.82)",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          />
+          {/* Nav bar, left of active tab */}
+          <motion.div
+            className="absolute"
+            style={{
+              bottom: 0,
+              left: 0,
+              width: `${Math.max(0, tabX - 12.5)}%`,
+              height: 64,
+              backgroundColor: "rgba(0,0,0,0.82)",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          />
+          {/* Nav bar, right of active tab */}
+          <motion.div
+            className="absolute"
+            style={{
+              bottom: 0,
+              left: `${tabX + 12.5}%`,
+              right: 0,
+              height: 64,
+              backgroundColor: "rgba(0,0,0,0.82)",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          />
+        </>
       )}
 
       {/* ── NAV TAB SPOTLIGHT — covers exact tab area, dims everything else ── */}
@@ -195,8 +240,8 @@ export function AppTutorialOverlay() {
               height: 64,
               borderRadius: 8,
               border: `2px solid ${current.color}`,
-              backgroundColor: `${current.color}14`,
-              boxShadow: `0 0 32px ${current.color}70, inset 0 0 20px ${current.color}18`,
+              backgroundColor: "transparent",
+              boxShadow: `0 0 32px ${current.color}70`,
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
