@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, Gamepad2 } from "lucide-react";
+import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield } from "lucide-react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
@@ -34,13 +34,6 @@ interface PlayerData {
   statLevels?: Record<string, StatLevel>;
   displayStats?: Record<string, number>;
 }
-
-const GAME_STATS = [
-  { label: "STR", name: "Strength", key: "strength", color: "#ef4444", source: "Training" },
-  { label: "AGI", name: "Agility",  key: "agility",  color: "#22c55e", source: "Movement" },
-  { label: "VIT", name: "Vitality", key: "vitality", color: "#f59e0b", source: "Wellness" },
-  { label: "SEN", name: "Sense",    key: "sense",    color: "#a855f7", source: "Meditation" },
-];
 
 interface Player {
   id: string;
@@ -453,124 +446,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 />
               </div>
             </div>
-        </motion.div>
-
-        {/* ── FUTURE GAME ──────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="rounded-xl overflow-hidden"
-          style={{
-            border: "1px solid rgba(34,211,238,0.22)",
-            backgroundColor: "rgba(6,182,212,0.04)",
-          }}
-          data-testid="future-game-section"
-        >
-          {/* Section header */}
-          <div
-            className="px-4 py-3 flex items-center gap-2"
-            style={{ borderBottom: "1px solid rgba(34,211,238,0.12)" }}
-          >
-            <Gamepad2 size={14} style={{ color: "#22d3ee" }} />
-            <span
-              className="text-xs font-bold uppercase tracking-wider"
-              style={{ color: "#22d3ee" }}
-            >
-              Future Game
-            </span>
-            <span
-              className="ml-auto text-[9px] px-2 py-0.5 rounded-full font-mono"
-              style={{
-                backgroundColor: "rgba(34,211,238,0.1)",
-                color: "rgba(34,211,238,0.7)",
-                border: "1px solid rgba(34,211,238,0.2)",
-              }}
-            >
-              RPG CHARACTER
-            </span>
-          </div>
-
-          <div className="px-4 py-3 space-y-3">
-            <p
-              className="text-[10px] leading-relaxed"
-              style={{ color: "rgba(255,255,255,0.4)" }}
-            >
-              Your daily habits shape your RPG character. Complete real-life activities to level up each stat.
-            </p>
-
-            {/* Stat bars */}
-            {GAME_STATS.map((stat, i) => {
-              const statData = playerData?.statLevels?.[stat.key];
-              const level = statData?.level ?? 1;
-              const currentXP = statData?.currentXP ?? 0;
-              const xpForNext = statData?.xpForNext ?? 100;
-              const pct = Math.min(100, xpForNext > 0 ? (currentXP / xpForNext) * 100 : 0);
-              return (
-                <div key={stat.key} data-testid={`game-stat-${stat.key}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                        style={{
-                          backgroundColor: `${stat.color}18`,
-                          color: stat.color,
-                          border: `1px solid ${stat.color}30`,
-                        }}
-                      >
-                        {stat.label}
-                      </span>
-                      <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>
-                        {stat.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.28)" }}>
-                        {stat.source}
-                      </span>
-                      <span
-                        className="text-[10px] font-mono font-bold"
-                        style={{ color: stat.color }}
-                      >
-                        Lv.{level}
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    className="w-full h-1.5 rounded-full overflow-hidden"
-                    style={{ backgroundColor: `${stat.color}15` }}
-                  >
-                    <motion.div
-                      className="h-full rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.6, ease: "easeOut", delay: 0.06 * i }}
-                      style={{
-                        backgroundColor: stat.color,
-                        boxShadow: `0 0 5px ${stat.color}50`,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Start Game button */}
-            <button
-              onClick={() => navigate("/game3d")}
-              className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 mt-1 transition-all"
-              style={{
-                background: "linear-gradient(135deg, rgba(34,211,238,0.85), rgba(14,165,233,0.85))",
-                color: "#000d14",
-                letterSpacing: "0.08em",
-                boxShadow: "0 4px 18px rgba(34,211,238,0.22)",
-              }}
-              data-testid="button-start-game"
-            >
-              <Gamepad2 size={13} />
-              START GAME
-            </button>
-          </div>
         </motion.div>
 
       </div>

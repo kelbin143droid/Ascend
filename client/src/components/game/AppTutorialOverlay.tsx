@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Home, User, Target, Brain, X,
+  Home, User, Target, Brain, X, Heart, Zap,
   BarChart3, BookOpen, Trophy, Clock, Gamepad2, Menu,
 } from "lucide-react";
 
 const TUTORIAL_KEY = "ascend_app_tutorial_seen";
 
-type StepKind = "nav" | "sidebar-intro" | "sidebar-item";
+type StepKind = "nav" | "sidebar-intro" | "sidebar-item" | "home-intro";
 
 interface BaseStep {
   kind: StepKind;
@@ -21,8 +21,9 @@ interface BaseStep {
 interface NavStep extends BaseStep { kind: "nav"; tabIndex: number; }
 interface SidebarIntroStep extends BaseStep { kind: "sidebar-intro"; }
 interface SidebarItemStep extends BaseStep { kind: "sidebar-item"; itemIndex: number; }
+interface HomeIntroStep extends BaseStep { kind: "home-intro"; }
 
-type Step = NavStep | SidebarIntroStep | SidebarItemStep;
+type Step = NavStep | SidebarIntroStep | SidebarItemStep | HomeIntroStep;
 
 const STEPS: Step[] = [
   {
@@ -68,12 +69,22 @@ const STEPS: Step[] = [
   {
     kind: "sidebar-item", itemIndex: 3,
     icon: Clock, color: "#c084fc", sectionLabel: "SECTOGRAPH", title: "Sectograph",
-    desc: "Your visual daily clock. Schedule habits and plan your entire day hour-by-hour in a radial time view.",
+    desc: "A Sectograph is a circular time wheel — like a clock face for your entire day.\n\nEach segment represents a time block. Assign habits to specific hours and see exactly how your day is structured at a glance.\n\n→ Drag habits onto time slots\n→ Spot gaps and overlaps instantly\n→ Plan smarter around your energy peaks\n\nThink of it as your visual life planner — your coach will guide you through it step by step when you open it.",
   },
   {
     kind: "sidebar-item", itemIndex: 4,
     icon: Gamepad2, color: "#22d3ee", sectionLabel: "FUTURE GAME", title: "Future Game",
     desc: "Your RPG character is powered by real actions.\n• STR grows from training\n• AGI grows from movement\n• VIT grows from sleep & wellness\n• SEN grows from meditation\n\nComplete daily habits → power up your character.",
+  },
+  {
+    kind: "home-intro",
+    icon: Home, color: "#0ea5e9", sectionLabel: "HOME SCREEN", title: "Your Daily Hub",
+    desc: "This is your command center. Everything you need for your day lives here:\n\n▸ BEGIN DAILY FLOW starts your guided session\n▸ Your coach message sets the tone\n▸ Today's Sessions shows what's queued up\n\nScroll down to see your full status.",
+  },
+  {
+    kind: "home-intro",
+    icon: Heart, color: "#ef4444", sectionLabel: "HP & MANA", title: "Vitality & Meditation",
+    desc: "HP (Health Points) represents your physical vitality. It stays full when you sleep well, eat right, and stay active. Neglect these and it drops.\n\nMP (Mana Points) represents your mental clarity and focus. It recharges through meditation, breathwork, and mindfulness sessions.\n\nKeep both bars full by completing your daily habits. They directly affect your RPG character's power.",
   },
 ];
 
@@ -82,8 +93,8 @@ const NAV_TAB_CENTERS = [12.5, 37.5, 62.5, 87.5];
 const SIDEBAR_W = 288;
 const SIDEBAR_HEADER_H = 53;
 const NAV_PY = 8;
-const ITEM_H = 42;
-const SECTION_LABEL_H = 36;
+const ITEM_H = 44;
+const SECTION_LABEL_H = 44;
 
 const SIDEBAR_ITEM_Y: number[] = (() => {
   let y = SIDEBAR_HEADER_H + NAV_PY;
@@ -125,12 +136,18 @@ export function AppTutorialOverlay() {
   const next = () => {
     const cur = STEPS[step];
     if (step < STEPS.length - 1) {
+      const nextKind = STEPS[step + 1].kind;
       if (cur.kind === "sidebar-intro") {
         dispatchSidebarOpen();
       }
+      if (cur.kind === "sidebar-item" && nextKind === "home-intro") {
+        dispatchSidebarClose();
+      }
       setStep((s) => s + 1);
     } else {
-      dispatchSidebarClose();
+      if (cur.kind === "sidebar-item" || cur.kind === "sidebar-intro") {
+        dispatchSidebarClose();
+      }
       localStorage.setItem(TUTORIAL_KEY, "1");
       setVisible(false);
     }
@@ -143,6 +160,7 @@ export function AppTutorialOverlay() {
   const isNav = current.kind === "nav";
   const isSidebarIntro = current.kind === "sidebar-intro";
   const isSidebarItem = current.kind === "sidebar-item";
+  const isHomeIntro = current.kind === "home-intro";
 
   const tabX = isNav ? NAV_TAB_CENTERS[(current as NavStep).tabIndex] : 0;
   const activeItemIndex = isSidebarItem ? (current as SidebarItemStep).itemIndex : -1;
@@ -154,21 +172,66 @@ export function AppTutorialOverlay() {
       style={{ pointerEvents: "all" }}
       data-tutorial-active="1"
     >
-      {/* ── BACKDROP: full for nav/sidebar-intro; spotlight for sidebar-item ── */}
+      {/* ── FULL BACKDROP for non-sidebar-item steps ── */}
       {!isSidebarItem && (
         <motion.div
           className="absolute inset-0"
-          style={{ backgroundColor: "rgba(0,0,0,0.60)" }}
+          style={{ backgroundColor: isNav ? "rgba(0,0,0,0.82)" : "rgba(0,0,0,0.68)" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         />
       )}
 
-      {/* ── SIDEBAR-ITEM SPOTLIGHT — transparent box, box-shadow dims everything else ── */}
+      {/* ── NAV TAB SPOTLIGHT — covers exact tab area, dims everything else ── */}
+      {isNav && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`spotlight-nav-${step}`}
+            className="absolute pointer-events-none"
+            style={{
+              bottom: 0,
+              left: `${tabX - 12.5}%`,
+              width: "25%",
+              height: 64,
+              borderRadius: 8,
+              border: `2px solid ${current.color}`,
+              backgroundColor: `${current.color}14`,
+              boxShadow: `0 0 32px ${current.color}70, inset 0 0 20px ${current.color}18`,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          />
+        </AnimatePresence>
+      )}
+
+      {/* ── NAV TAB ARROW — bounces down toward highlighted tab ── */}
+      {isNav && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`arrow-nav-${step}`}
+            className="absolute pointer-events-none"
+            style={{
+              bottom: 72,
+              left: `${tabX}%`,
+              transform: "translateX(-50%)",
+            }}
+            animate={{ y: [0, 7, 0] }}
+            transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <svg width="24" height="14" viewBox="0 0 24 14" fill="none">
+              <path d="M12 14 L0 0 L24 0 Z" fill={current.color} opacity="0.95" />
+            </svg>
+          </motion.div>
+        </AnimatePresence>
+      )}
+
+      {/* ── SIDEBAR-ITEM SPOTLIGHT — transparent box, shadow dims everything else ── */}
       {isSidebarItem && (
         <AnimatePresence mode="wait">
           <motion.div
-            key={`spotlight-${activeItemIndex}`}
+            key={`spotlight-sidebar-${activeItemIndex}`}
             className="absolute pointer-events-none"
             style={{
               top: itemY,
@@ -178,7 +241,7 @@ export function AppTutorialOverlay() {
               borderRadius: 4,
               border: `2px solid ${current.color}`,
               backgroundColor: `${current.color}08`,
-              boxShadow: `0 0 0 9999px rgba(0,0,0,0.72), 0 0 32px ${current.color}60, inset 0 0 16px ${current.color}18`,
+              boxShadow: `0 0 0 9999px rgba(0,0,0,0.76), 0 0 32px ${current.color}60, inset 0 0 16px ${current.color}18`,
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -188,7 +251,7 @@ export function AppTutorialOverlay() {
         </AnimatePresence>
       )}
 
-      {/* ── SIDEBAR-ITEM ARROW — bounces left at right edge of spotlight ── */}
+      {/* ── SIDEBAR-ITEM ARROW — bounces left at right edge of sidebar ── */}
       {isSidebarItem && (
         <AnimatePresence mode="wait">
           <motion.div
@@ -214,55 +277,7 @@ export function AppTutorialOverlay() {
         </AnimatePresence>
       )}
 
-      {/* ── NAV TAB RING ── */}
-      {isNav && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`ring-nav-${step}`}
-            className="absolute pointer-events-none"
-            style={{
-              bottom: 4,
-              left: `calc(${tabX}% - 34px)`,
-              width: 68,
-              height: 62,
-              borderRadius: 16,
-              border: `2px solid ${current.color}`,
-              boxShadow: `0 0 28px ${current.color}80, 0 0 14px ${current.color}50, inset 0 0 20px ${current.color}20`,
-              backgroundColor: `${current.color}08`,
-            }}
-            initial={{ opacity: 0, scale: 0.75 }}
-            animate={{ opacity: [1, 0.75, 1], scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{
-              scale: { duration: 0.28 },
-              opacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
-            }}
-          />
-        </AnimatePresence>
-      )}
-
-      {/* ── NAV TAB ARROW ── */}
-      {isNav && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`arrow-nav-${step}`}
-            className="absolute pointer-events-none"
-            style={{
-              bottom: 70,
-              left: `${tabX}%`,
-              transform: "translateX(-50%)",
-            }}
-            animate={{ y: [0, 7, 0] }}
-            transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <svg width="24" height="14" viewBox="0 0 24 14" fill="none">
-              <path d="M12 14 L0 0 L24 0 Z" fill={current.color} opacity="0.95" />
-            </svg>
-          </motion.div>
-        </AnimatePresence>
-      )}
-
-      {/* ── SIDEBAR BUTTON RING (sidebar-intro) ── */}
+      {/* ── SIDEBAR BUTTON RING (sidebar-intro step) ── */}
       {isSidebarIntro && (
         <>
           <AnimatePresence mode="wait">
@@ -305,7 +320,7 @@ export function AppTutorialOverlay() {
           isSidebarItem
             ? { bottom: 90, left: 16, right: 16 }
             : isNav
-            ? { bottom: 96, left: "50%", transform: "translateX(-50%)", width: "min(340px, calc(100vw - 32px))" }
+            ? { bottom: 120, left: "50%", transform: "translateX(-50%)", width: "min(340px, calc(100vw - 32px))" }
             : { top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(340px, calc(100vw - 32px))" }
         }
       >
