@@ -160,6 +160,15 @@ export default function HabitsPage() {
         duration: 3000,
       });
     },
+    onError: (err: any) => {
+      console.error("[createHabit] failed:", err);
+      toast({
+        title: "Couldn't add habit",
+        description: err?.message ?? "Something went wrong. Please try again.",
+        variant: "destructive",
+        duration: 4000,
+      });
+    },
   });
 
   const updateHabitMutation = useMutation({
@@ -170,6 +179,15 @@ export default function HabitsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
       closeHabitForm();
       toast({ title: "Habit updated", duration: 2500 });
+    },
+    onError: (err: any) => {
+      console.error("[updateHabit] failed:", err);
+      toast({
+        title: "Couldn't update habit",
+        description: err?.message ?? "Something went wrong. Please try again.",
+        variant: "destructive",
+        duration: 4000,
+      });
     },
   });
 
