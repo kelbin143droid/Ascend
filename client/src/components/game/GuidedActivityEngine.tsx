@@ -419,15 +419,23 @@ function BreathingVisual({
   color,
   timing,
   audioEnabled = true,
+  shouldFinish = false,
+  onComplete,
 }: {
   active: boolean;
   color: string;
   timing: BreathTiming;
   audioEnabled?: boolean;
+  shouldFinish?: boolean;
+  onComplete?: () => void;
 }) {
   const [phase, setPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
   const [scale, setScale] = useState(0.5);
   const cancelledRef = useRef(false);
+  const shouldFinishRef = useRef(false);
+  useEffect(() => { shouldFinishRef.current = shouldFinish; }, [shouldFinish]);
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   const inhaleAudioRef = useRef<HTMLAudioElement | null>(null);
   const holdAudioRef = useRef<HTMLAudioElement | null>(null);
   const exhaleAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -482,6 +490,11 @@ function BreathingVisual({
           if (cancelledRef.current) return;
           setScale(1 - (i / exhaleFrames) * 0.5);
           await new Promise((r) => setTimeout(r, frameMs));
+        }
+        if (shouldFinishRef.current) {
+          cancelledRef.current = true;
+          onCompleteRef.current?.();
+          return;
         }
       }
     };
@@ -688,6 +701,7 @@ export function GuidedActivityEngine({
   const [antiGrindMultiplier, setAntiGrindMultiplier] = useState<number>(1.0);
   const [dailyCapReached, setDailyCapReached] = useState(false);
   const [timerRemaining, setTimerRemaining] = useState(0);
+  const [breathShouldFinish, setBreathShouldFinish] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const step = activity.steps[currentStepIdx];
@@ -751,7 +765,7 @@ export function GuidedActivityEngine({
       if (activity.autoflow && currentStep?.type === "timer" && nextStep?.type === "timer") {
         setTimeout(() => {
           setCurrentStepIdx(nextIdx);
-          setStepPhase("rest");
+          setStepPhase("getready");
         }, 400);
       } else if (activity.autoflow && currentStep?.type === "timer" && nextStep?.type !== "completion") {
         setTimeout(() => {
@@ -808,6 +822,7 @@ export function GuidedActivityEngine({
   const handleGetReadyComplete = useCallback(() => {
     if (isBreathStep) {
       setStepPhase("running");
+      setBreathShouldFinish(false);
       if (step?.durationSeconds) {
         setTimerRemaining(step.durationSeconds);
         let remaining = step.durationSeconds;
@@ -817,8 +832,9 @@ export function GuidedActivityEngine({
           if (remaining <= 3 && remaining > 0) beep.playCountdownBeep();
           if (remaining <= 0) {
             clearInterval(intervalRef.current!);
+            intervalRef.current = null;
             beep.playCompleteBeep();
-            advanceStep();
+            setBreathShouldFinish(true);
           }
         }, 1000);
       }
@@ -832,6 +848,7 @@ export function GuidedActivityEngine({
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    setBreathShouldFinish(false);
     advanceStep();
   }, [advanceStep]);
 
@@ -1018,6 +1035,8 @@ export function GuidedActivityEngine({
                           color={activity.color}
                           timing={step.breathTiming!}
                           audioEnabled={audio.enabled}
+                          shouldFinish={breathShouldFinish}
+                          onComplete={() => { setBreathShouldFinish(false); advanceStep(); }}
                         />
                         <div
                           className="text-2xl font-bold font-mono tabular-nums drop-shadow"
@@ -1047,6 +1066,8 @@ export function GuidedActivityEngine({
                       color={activity.color}
                       timing={step.breathTiming!}
                       audioEnabled={audio.enabled}
+                      shouldFinish={breathShouldFinish}
+                      onComplete={() => { setBreathShouldFinish(false); advanceStep(); }}
                     />
                     <div className="flex flex-col items-center gap-2">
                       <div
