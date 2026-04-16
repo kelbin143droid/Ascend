@@ -2102,12 +2102,7 @@ export async function registerRoutes(
         notification = { type: "recovery", message: "Progress resumes anytime. Today is a fresh start." };
       }
 
-      if (!notification && onboardingDay <= 2 && !hasCompletedHabitToday) {
-        const hour = new Date().getHours();
-        if (hour >= 17) {
-          notification = { type: "momentum", message: "A small action still counts today." };
-        }
-      }
+      // Removed "A small action still counts today" notification per user request
 
       const completionHours = allCompletions
         .filter(c => c.completedAt)

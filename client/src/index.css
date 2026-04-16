@@ -208,3 +208,18 @@ h1, h2, h3, h4, h5, h6 {
   100% { clip: rect(0px, 9999px, 0px, 0); }
 }
 
+/* ──────────────────────────────────────────────────────────────
+   GLOBAL TEXT SIZE BUMP — bump up tiny text for readability.
+   Overrides the most used small arbitrary-value Tailwind classes.
+   ────────────────────────────────────────────────────────────── */
+.text-\[7px\]  { font-size: 10px !important; }
+.text-\[8px\]  { font-size: 11px !important; }
+.text-\[9px\]  { font-size: 12px !important; }
+.text-\[10px\] { font-size: 13px !important; }
+.text-\[11px\] { font-size: 14px !important; }
+
+/* Bump Tailwind's built-in tiny classes a touch */
+.text-xs  { font-size: 13.5px !important; line-height: 1.45 !important; }
+.text-sm  { font-size: 15.5px !important; line-height: 1.5 !important; }
+.text-base { font-size: 17px !important; line-height: 1.55 !important; }
+

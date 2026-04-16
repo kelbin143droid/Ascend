@@ -441,6 +441,7 @@ export default function SectographPage() {
     setCustomBlockName("");
 
     const isSleepBlock = editingBlock.id.startsWith("sleep");
+    const isDailyFlowBlock = editingBlock.id.startsWith("daily-flow");
 
     if (isDay5Mode) {
       if (isSleepBlock && !day5SleepDone) {
@@ -453,13 +454,18 @@ export default function SectographPage() {
       return;
     }
 
-    if (isSleepBlock && !tutorialDone) {
-      markSectographTutorialDone();
-      setTutorialDone(true);
-      setTutorialStep(99);
-      setJustCompletedTutorial(true);
-      window.dispatchEvent(new CustomEvent("ascend:sectograph-tutorial-done"));
-      setTimeout(() => navigate("/"), 2200);
+    // Tutorial progression: Sleep (step 1) → Daily Flow (step 2) → Done
+    if (!tutorialDone) {
+      if (isSleepBlock && tutorialStep <= 1) {
+        setSectographTutorialStep(2);
+        setTutorialStep(2);
+      } else if (isDailyFlowBlock && tutorialStep === 2) {
+        markSectographTutorialDone();
+        setTutorialDone(true);
+        setTutorialStep(99);
+        setJustCompletedTutorial(true);
+        window.dispatchEvent(new CustomEvent("ascend:sectograph-tutorial-done"));
+      }
     }
   };
 
@@ -621,6 +627,37 @@ export default function SectographPage() {
           <div className="w-14" />
         </div>
 
+        {/* ── VIEW TABS (Timeline / Calendar) ──────────────────────── */}
+        {!isDay5Mode && (
+          <div
+            className="flex rounded-xl p-1 gap-1"
+            style={{
+              backgroundColor: `${colors.surface}80`,
+              border: `1px solid ${colors.surfaceBorder}`,
+            }}
+            data-testid="sectograph-tabs"
+          >
+            {tabs.filter(t => t.id !== "plan").map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold tracking-wide transition-all"
+                  style={{
+                    backgroundColor: isActive ? colors.primary : "transparent",
+                    color: isActive ? "#05070f" : colors.textMuted,
+                    boxShadow: isActive ? `0 0 12px ${colors.primaryGlow}` : "none",
+                  }}
+                  data-testid={`tab-${tab.id}`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
 
         {/* ── DAY 5 SETUP GUIDE ──────────────────────────────────────── */}
         {isDay5Mode && day5Step >= 1 && day5Step < 3 && (
@@ -702,7 +739,7 @@ export default function SectographPage() {
         {/* ── COACH TUTORIAL — step 0 fullscreen intro ─────────────── */}
         {!isDay5Mode && !tutorialDone && tutorialStep === 0 && (
           <div
-            className="fixed inset-0 z-50 flex items-end justify-center pb-8"
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
             style={{ backgroundColor: "rgba(0,0,0,0.90)" }}
             data-testid="tutorial-overlay-step0"
           >
@@ -761,15 +798,38 @@ export default function SectographPage() {
               <Brain size={15} style={{ color: "#3b82f6" }} />
             </div>
             <div className="flex-1">
-              <p className="text-[9px] uppercase tracking-wider font-bold mb-0.5" style={{ color: "rgba(59,130,246,0.7)" }}>Coach · Step 1</p>
-              <p className="text-sm font-medium leading-snug" style={{ color: colors.text }}>
-                Start with your <span style={{ color: "#3b4d6b", fontWeight: 700 }}>Sleep</span> block
+              <p className="text-xs uppercase tracking-wider font-bold mb-0.5" style={{ color: "rgba(59,130,246,0.8)" }}>Coach · Step 1 of 2</p>
+              <p className="text-base font-medium leading-snug" style={{ color: colors.text }}>
+                Start with your <span style={{ color: "#6b88b0", fontWeight: 700 }}>Sleep</span> block
               </p>
-              <p className="text-[10px] mt-1 leading-relaxed" style={{ color: colors.textMuted }}>
-                Tap the <strong style={{ color: colors.primary }}>+</strong> in the center of the clock, then select Sleep and set your hours.
+              <p className="text-sm mt-1.5 leading-relaxed" style={{ color: colors.textMuted }}>
+                Tap the <strong style={{ color: colors.primary }}>+</strong> in the center of the clock, choose <strong>Sleep</strong>, and set your hours.
               </p>
             </div>
-            <Moon size={14} style={{ color: "#3b4d6b", marginTop: 2 }} />
+            <Moon size={16} style={{ color: "#6b88b0", marginTop: 2 }} />
+          </div>
+        )}
+
+        {/* ── COACH CARD — step 2 (add Daily Flow block) ───────────── */}
+        {!isDay5Mode && !tutorialDone && tutorialStep === 2 && (
+          <div
+            className="w-full rounded-xl p-4 flex items-start gap-3"
+            style={{ backgroundColor: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)" }}
+            data-testid="tutorial-card-step2"
+          >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(168,85,247,0.15)" }}>
+              <Brain size={15} style={{ color: "#a855f7" }} />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs uppercase tracking-wider font-bold mb-0.5" style={{ color: "rgba(168,85,247,0.8)" }}>Coach · Step 2 of 2</p>
+              <p className="text-base font-medium leading-snug" style={{ color: colors.text }}>
+                Now add your <span style={{ color: "#a855f7", fontWeight: 700 }}>Daily Flow</span> window
+              </p>
+              <p className="text-sm mt-1.5 leading-relaxed" style={{ color: colors.textMuted }}>
+                Tap <strong style={{ color: colors.primary }}>+</strong> again, choose <strong>Daily Flow</strong>, and pick a time for your daily training session.
+              </p>
+            </div>
+            <Zap size={16} style={{ color: "#a855f7", marginTop: 2 }} />
           </div>
         )}
 
@@ -1184,7 +1244,7 @@ export default function SectographPage() {
             </div>}
           </div>
 
-        {activeTab === "calendar-removed" && (
+        {activeTab === "calendar" && (
           <div className="flex flex-col gap-4">
             <div
               className="rounded-lg p-3"
@@ -1349,7 +1409,7 @@ export default function SectographPage() {
           </div>
         )}
 
-        {activeTab === "plan-removed" && (
+        {false && activeTab === "plan" && (
           <div className="flex flex-col gap-4 pb-6">
             {/* Header */}
             <div className="text-center py-2">
