@@ -120,8 +120,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
 
   const displayLevel = playerData?.level ?? 2;
-  const hpColor = getHPColor(stats.hp);
-  const manaColor = getManaColor(stats.mana);
+  const isMaleTheme = backgroundTheme.id === "male";
+  // Mystic-forest palette overrides for stat bars when Iron Sovereign is active
+  const hpColor = isMaleTheme ? "#4ADE80" : getHPColor(stats.hp);
+  const manaColor = isMaleTheme ? "#D946EF" : getManaColor(stats.mana);
+  const woodGold = "#E8B964";
+  const woodDeep = "#7A4A1F";
   const hpPct = Math.min(100, Math.max(0, stats.hp));
   const manaBarPct = Math.min(100, Math.max(0, (stats.mana / MANA_MAX) * 100));
 
@@ -218,6 +222,75 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               <CheckCircle2 size={16} />
               Flow completed today · {totalMins} min logged
             </div>
+          ) : isMaleTheme ? (
+            // ─── Mystic Forest pill: [Crystal] [BEGIN DAILY FLOW] [Coin] ───
+            <div
+              className="flex items-stretch gap-2 p-2 rounded-2xl"
+              style={{
+                background: `linear-gradient(180deg, ${woodGold} 0%, #C68B4A 50%, ${woodDeep} 100%)`,
+                boxShadow: `0 0 0 2px ${woodDeep} inset, 0 8px 24px rgba(0,0,0,0.55), 0 0 32px rgba(63,182,255,0.20)`,
+              }}
+            >
+              {/* Crystal endcap */}
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{
+                  width: 52,
+                  borderRadius: "10px",
+                  background: "linear-gradient(180deg, #0E2433 0%, #08141A 100%)",
+                  boxShadow: `0 0 0 1.5px ${woodDeep} inset`,
+                }}
+                aria-hidden
+              >
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                  <path
+                    d="M14 4 L22 12 L18 22 L10 22 L6 12 Z"
+                    fill="#3FB6FF"
+                    stroke="#9FE2FF"
+                    strokeWidth="1"
+                    strokeLinejoin="round"
+                  />
+                  <path d="M14 4 L18 12 L22 12 M14 4 L10 12 L6 12 M18 12 L14 22 L10 12" stroke="#E0F4FF" strokeWidth="0.7" opacity="0.85" fill="none" />
+                  <circle cx="11" cy="9" r="1.2" fill="#FFFFFF" opacity="0.85" />
+                </svg>
+              </div>
+
+              {/* Main button */}
+              <button
+                data-testid="button-begin-flow"
+                onClick={() => setFlowActive(true)}
+                className="flex-1 rounded-xl font-bold text-sm uppercase tracking-[0.16em] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                style={{
+                  background: "linear-gradient(180deg, #5BC4FF 0%, #3FB6FF 50%, #2A95E0 100%)",
+                  color: "#06121A",
+                  boxShadow: `0 0 0 1.5px #9FE2FF inset, 0 2px 0 rgba(0,0,0,0.30)`,
+                  fontFamily: "system-ui, sans-serif",
+                  textShadow: "0 1px 0 rgba(255,255,255,0.30)",
+                }}
+              >
+                <Play size={15} fill="#06121A" />
+                Begin Daily Flow
+              </button>
+
+              {/* Coin/rune endcap */}
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{
+                  width: 52,
+                  borderRadius: "10px",
+                  background: "linear-gradient(180deg, #0E2433 0%, #08141A 100%)",
+                  boxShadow: `0 0 0 1.5px ${woodDeep} inset`,
+                }}
+                aria-hidden
+              >
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                  <circle cx="14" cy="14" r="10" fill="#1A2630" stroke={woodGold} strokeWidth="2" />
+                  <circle cx="14" cy="14" r="7" fill="none" stroke={woodGold} strokeWidth="1" opacity="0.7" />
+                  <path d="M14 8 L17 14 L14 20 L11 14 Z" fill={woodGold} opacity="0.85" />
+                  <circle cx="14" cy="14" r="1.4" fill="#06121A" />
+                </svg>
+              </div>
+            </div>
           ) : (
             <button
               data-testid="button-begin-flow"
@@ -244,7 +317,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.18 }}
           className="rounded-xl px-4 py-3 flex items-start gap-3"
-          style={{ backgroundColor: `${colors.primary}08`, border: `1px solid ${colors.primary}15` }}
+          style={{
+            backgroundColor: isMaleTheme ? "rgba(8,20,26,0.75)" : `${colors.primary}08`,
+            border: isMaleTheme ? `1px solid ${woodGold}55` : `1px solid ${colors.primary}15`,
+            boxShadow: isMaleTheme ? `0 0 0 1px rgba(232,185,100,0.10), 0 4px 12px rgba(0,0,0,0.35)` : undefined,
+          }}
           data-testid="coach-insight-card"
         >
           <div
@@ -380,7 +457,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
             className="rounded-xl px-4 py-3 space-y-3"
-            style={{ backgroundColor: `${colors.surface || colors.background}cc`, border: `1px solid ${colors.surfaceBorder}` }}
+            style={{
+              backgroundColor: isMaleTheme ? "rgba(8,20,26,0.75)" : `${colors.surface || colors.background}cc`,
+              border: isMaleTheme ? `1px solid ${woodGold}55` : `1px solid ${colors.surfaceBorder}`,
+              boxShadow: isMaleTheme ? `0 0 0 1px rgba(232,185,100,0.10), 0 4px 12px rgba(0,0,0,0.35)` : undefined,
+            }}
             data-testid="stat-bars-card"
           >
             {/* HP Bar */}
