@@ -178,7 +178,8 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                       "flex flex-col items-center justify-center transition-all duration-300 group min-w-[60px]"
                     )}
                     style={{
-                      color: isActive ? colors.primary : colors.textMuted,
+                      color: isActive ? colors.primary : colors.text,
+                      opacity: isActive ? 1 : 0.75,
                       transform: isActive ? "scale(1.1)" : "scale(1)",
                     }}
                   >
@@ -201,7 +202,6 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                     </div>
                     <span
                       className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase transition-all"
-                      style={{ opacity: isActive ? 1 : 0.6 }}
                     >
                       {t(item.label)}
                     </span>
