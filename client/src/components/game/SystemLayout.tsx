@@ -27,6 +27,8 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const { backgroundTheme } = useTheme();
   const { t } = useLanguage();
   const colors = backgroundTheme.colors;
+  const darkOverlayOpacity = backgroundTheme.darkOverlayOpacity ?? 0.15;
+  const gridOpacity = backgroundTheme.gridOpacity ?? 0.20;
 
   return (
     <div
@@ -49,12 +51,42 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         style={{ background: colors.backgroundGradient }}
       />
 
+      {/* Female theme — soft dreamy blobs */}
+      {backgroundTheme.id === "female" && (
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+          {[
+            { w: 220, h: 180, top: "5%",  left: "5%",  color: "rgba(255,210,230,0.55)" },
+            { w: 160, h: 140, top: "12%", left: "72%", color: "rgba(200,240,255,0.50)" },
+            { w: 130, h: 110, top: "35%", left: "-4%", color: "rgba(210,255,220,0.45)" },
+            { w: 180, h: 150, top: "55%", left: "68%", color: "rgba(255,220,245,0.50)" },
+            { w: 140, h: 120, top: "72%", left: "20%", color: "rgba(220,210,255,0.45)" },
+            { w: 100, h:  90, top: "20%", left: "40%", color: "rgba(255,240,200,0.40)" },
+          ].map((b, i) => (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                width: b.w,
+                height: b.h,
+                top: b.top,
+                left: b.left,
+                borderRadius: "50%",
+                background: b.color,
+                filter: "blur(40px)",
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       <div
-        className="fixed inset-0 z-0 opacity-15 scale-110 blur-[2px]"
+        className="fixed inset-0 z-0 scale-110 blur-[2px]"
         style={{
           backgroundImage: `url(${bgImage})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
+          opacity: darkOverlayOpacity,
+          transition: "opacity 0.6s ease",
         }}
       />
 
@@ -106,12 +138,14 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div
-        className="fixed inset-0 z-0 opacity-20 pointer-events-none"
+        className="fixed inset-0 z-0 pointer-events-none"
         style={{
           backgroundImage: `linear-gradient(${colors.primary}15 1px, transparent 1px), linear-gradient(90deg, ${colors.primary}15 1px, transparent 1px)`,
           backgroundSize: "30px 30px",
           backgroundPosition: "center",
           maskImage: "radial-gradient(ellipse at center, black 40%, transparent 90%)",
+          opacity: gridOpacity,
+          transition: "opacity 0.6s ease",
         }}
       />
 

@@ -3,6 +3,10 @@ export interface AppTheme {
   name: string;
   description: string;
   icon: string;
+  /** 0–1 opacity for the dark particle background image overlay. Default 0.15. */
+  darkOverlayOpacity?: number;
+  /** 0–1 opacity for the grid overlay. Default 0.20. */
+  gridOpacity?: number;
   colors: {
     primary: string;
     primaryGlow: string;
@@ -28,45 +32,51 @@ export const themes: AppTheme[] = [
     name: "Iron Sovereign",
     description: "Electric blue warrior — bold, powerful, relentless",
     icon: "⚔️",
+    darkOverlayOpacity: 0.22,
+    gridOpacity: 0.18,
     colors: {
-      primary: "#0ea5e9",
-      primaryGlow: "rgba(14, 165, 233, 0.4)",
+      primary: "#00e8ff",
+      primaryGlow: "rgba(0, 232, 255, 0.55)",
       secondary: "#f59e0b",
-      accent: "#ef4444",
-      background: "#030a14",
-      backgroundGradient: "radial-gradient(ellipse at top, rgba(14,165,233,0.18) 0%, rgba(245,158,11,0.06) 40%, rgba(3,10,20,1) 75%)",
-      surface: "rgba(0, 30, 60, 0.75)",
-      surfaceBorder: "rgba(14, 165, 233, 0.25)",
-      text: "#e0f2fe",
-      textMuted: "rgba(224, 242, 254, 0.45)",
-      ring: "#0ea5e9",
-      ringGlow: "rgba(14, 165, 233, 0.45)",
-      tickMark: "rgba(245, 158, 11, 0.5)",
+      accent: "#22ff88",
+      background: "#00080f",
+      backgroundGradient:
+        "radial-gradient(ellipse at 50% 0%, rgba(0,180,255,0.22) 0%, rgba(0,80,140,0.08) 40%, rgba(0,8,15,1) 70%), radial-gradient(ellipse at 80% 100%, rgba(245,158,11,0.10) 0%, transparent 50%)",
+      surface: "rgba(0, 16, 32, 0.88)",
+      surfaceBorder: "rgba(0, 232, 255, 0.32)",
+      text: "#d0f4ff",
+      textMuted: "rgba(180, 230, 255, 0.50)",
+      ring: "#00e8ff",
+      ringGlow: "rgba(0, 232, 255, 0.55)",
+      tickMark: "rgba(245, 158, 11, 0.55)",
       clockHand: "#f59e0b",
-      centerDot: "#ef4444",
+      centerDot: "#00e8ff",
     },
   },
   {
     id: "female",
     name: "Neon Empress",
-    description: "Vivid magenta cosmic — radiant, fierce, unstoppable",
-    icon: "👑",
+    description: "Soft pastel aura — radiant, graceful, unstoppable",
+    icon: "🌸",
+    darkOverlayOpacity: 0,
+    gridOpacity: 0,
     colors: {
-      primary: "#d946ef",
-      primaryGlow: "rgba(217, 70, 239, 0.4)",
-      secondary: "#8b5cf6",
-      accent: "#06b6d4",
-      background: "#05000f",
-      backgroundGradient: "radial-gradient(ellipse at top left, rgba(217,70,239,0.2) 0%, transparent 50%), radial-gradient(ellipse at bottom right, rgba(6,182,212,0.12) 0%, rgba(5,0,15,1) 70%)",
-      surface: "rgba(30, 0, 50, 0.75)",
-      surfaceBorder: "rgba(217, 70, 239, 0.25)",
-      text: "#fdf4ff",
-      textMuted: "rgba(253, 244, 255, 0.45)",
-      ring: "#d946ef",
-      ringGlow: "rgba(217, 70, 239, 0.45)",
-      tickMark: "rgba(139, 92, 246, 0.5)",
-      clockHand: "#8b5cf6",
-      centerDot: "#06b6d4",
+      primary: "#f4845f",
+      primaryGlow: "rgba(244, 132, 95, 0.45)",
+      secondary: "#c084fc",
+      accent: "#6ee7b7",
+      background: "#f0e6ff",
+      backgroundGradient:
+        "radial-gradient(ellipse at 20% 0%, rgba(255,182,213,0.70) 0%, transparent 55%), radial-gradient(ellipse at 80% 10%, rgba(196,232,255,0.55) 0%, transparent 50%), radial-gradient(ellipse at 50% 100%, rgba(167,243,208,0.45) 0%, transparent 55%), linear-gradient(160deg, #f9e4ff 0%, #e8d5ff 35%, #d5eeff 65%, #d5ffe8 100%)",
+      surface: "rgba(255, 240, 255, 0.72)",
+      surfaceBorder: "rgba(244, 132, 95, 0.38)",
+      text: "#2d1b4e",
+      textMuted: "rgba(45, 27, 78, 0.52)",
+      ring: "#c084fc",
+      ringGlow: "rgba(192, 132, 252, 0.45)",
+      tickMark: "rgba(110, 231, 183, 0.60)",
+      clockHand: "#f4845f",
+      centerDot: "#c084fc",
     },
   },
   {
