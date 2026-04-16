@@ -79,41 +79,16 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {backgroundTheme.id === "male" ? (
-        <>
-          {/* Pixel-art mystic forest background */}
-          <div
-            className="fixed inset-0 z-0"
-            style={{
-              backgroundImage: `url(/forest-bg.jpg)`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              imageRendering: "pixelated",
-              opacity: 0.55,
-              transition: "opacity 0.6s ease",
-            }}
-          />
-          {/* Soft dark vignette so UI text stays readable on top */}
-          <div
-            className="fixed inset-0 z-0 pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse at center, rgba(8,20,26,0.20) 0%, rgba(6,12,18,0.55) 60%, rgba(4,8,12,0.85) 100%)",
-            }}
-          />
-        </>
-      ) : (
-        <div
-          className="fixed inset-0 z-0 scale-110 blur-[2px]"
-          style={{
-            backgroundImage: `url(${bgImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: darkOverlayOpacity,
-            transition: "opacity 0.6s ease",
-          }}
-        />
-      )}
+      <div
+        className="fixed inset-0 z-0 scale-110 blur-[2px]"
+        style={{
+          backgroundImage: `url(${bgImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          opacity: darkOverlayOpacity,
+          transition: "opacity 0.6s ease",
+        }}
+      />
 
       <div className="fixed inset-0 z-10 pointer-events-none">
         <div
