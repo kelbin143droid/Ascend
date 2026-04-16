@@ -6,24 +6,28 @@ interface GenderSelectScreenProps {
   onSelect: (gender: "male" | "female") => void;
 }
 
-function MaleIcon({ color }: { color: string }) {
+function MaleIcon({ color, accentGold }: { color: string; accentGold: string }) {
   return (
-    <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-      <circle cx="26" cy="26" r="24" stroke={color} strokeWidth="1.5" fill={`${color}18`} />
+    <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+      {/* Outer wooden ring with gold accents */}
+      <circle cx="28" cy="28" r="25" stroke={accentGold} strokeWidth="2" fill={`${color}15`} />
+      <circle cx="28" cy="28" r="25" stroke={accentGold} strokeWidth="0.5" opacity="0.4" strokeDasharray="2 4" />
+      {/* Sky-blue crystal/diamond in center */}
       <path
-        d="M26 14 L30 20 L38 20 L32 26 L34 34 L26 30 L18 34 L20 26 L14 20 L22 20 Z"
-        fill="none"
+        d="M28 13 L36 22 L32 36 L24 36 L20 22 Z"
+        fill={`${color}30`}
         stroke={color}
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
-      <circle cx="26" cy="26" r="7" fill="none" stroke={color} strokeWidth="1.5" />
-      <path d="M19 19 L33 33 M33 19 L19 33" stroke={color} strokeWidth="0.8" opacity="0.4" />
-      <path
-        d="M26 8 L28 12 L26 10 L24 12 Z M44 26 L40 24 L42 26 L40 28 Z M26 44 L24 40 L26 42 L28 40 Z M8 26 L12 28 L10 26 L12 24 Z"
-        fill={color}
-        opacity="0.7"
-      />
+      <path d="M28 13 L32 22 L36 22 M28 13 L24 22 L20 22 M32 22 L28 36 L24 22" stroke={color} strokeWidth="0.8" opacity="0.7" />
+      {/* Gold rune dots at cardinal points */}
+      <circle cx="28" cy="6" r="1.6" fill={accentGold} />
+      <circle cx="50" cy="28" r="1.6" fill={accentGold} />
+      <circle cx="28" cy="50" r="1.6" fill={accentGold} />
+      <circle cx="6" cy="28" r="1.6" fill={accentGold} />
+      {/* Inner glow */}
+      <circle cx="28" cy="24" r="2" fill={color} opacity="0.9" />
     </svg>
   );
 }
@@ -74,7 +78,8 @@ function GenderCard({
 }) {
   const [pressed, setPressed] = useState(false);
   const isMale = gender === "male";
-  const color = isMale ? "#22d3ee" : "#d946ef";
+  const color = isMale ? "#3FB6FF" : "#d946ef";
+  const accentGold = "#E8B964";
   const label = isMale ? "Male" : "Female";
   const subtitle = isMale ? "IRON SOVEREIGN" : "NEON EMPRESS";
 
@@ -89,7 +94,9 @@ function GenderCard({
       whileTap={{ scale: 0.96 }}
       animate={{
         boxShadow: selected
-          ? `0 0 32px ${color}70, 0 0 64px ${color}30`
+          ? isMale
+            ? `0 0 32px ${color}70, 0 0 64px ${color}30, inset 0 0 24px ${accentGold}25`
+            : `0 0 32px ${color}70, 0 0 64px ${color}30`
           : pressed
           ? `0 0 20px ${color}50`
           : `0 0 0px transparent`,
@@ -105,9 +112,13 @@ function GenderCard({
         gap: "12px",
         padding: "20px 12px 18px",
         borderRadius: "18px",
-        border: `2px solid ${selected ? color : `${color}60`}`,
+        border: isMale && selected
+          ? `2px solid ${accentGold}`
+          : `2px solid ${selected ? color : `${color}60`}`,
         background: selected
-          ? `linear-gradient(160deg, ${color}22 0%, ${color}08 100%)`
+          ? isMale
+            ? `linear-gradient(160deg, ${color}22 0%, rgba(8,20,26,0.85) 60%, ${accentGold}15 100%)`
+            : `linear-gradient(160deg, ${color}22 0%, ${color}08 100%)`
           : `linear-gradient(160deg, rgba(10,14,30,0.75) 0%, rgba(6,8,20,0.85) 100%)`,
         cursor: "pointer",
         backdropFilter: "blur(12px)",
@@ -125,13 +136,15 @@ function GenderCard({
             position: "absolute",
             inset: 0,
             borderRadius: "16px",
-            background: `radial-gradient(ellipse at 50% 30%, ${color}20 0%, transparent 70%)`,
+            background: isMale
+              ? `radial-gradient(ellipse at 50% 30%, ${color}25 0%, transparent 60%), radial-gradient(ellipse at 50% 100%, ${accentGold}18 0%, transparent 50%)`
+              : `radial-gradient(ellipse at 50% 30%, ${color}20 0%, transparent 70%)`,
             pointerEvents: "none",
           }}
         />
       )}
       <div style={{ position: "relative", zIndex: 1 }}>
-        {isMale ? <MaleIcon color={color} /> : <FemaleIcon color={color} />}
+        {isMale ? <MaleIcon color={color} accentGold={accentGold} /> : <FemaleIcon color={color} />}
       </div>
       <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
         <div
@@ -151,9 +164,9 @@ function GenderCard({
             fontSize: "0.6rem",
             fontWeight: 600,
             letterSpacing: "0.14em",
-            color: color,
+            color: isMale ? accentGold : color,
             fontFamily: "Inter, system-ui, sans-serif",
-            opacity: 0.85,
+            opacity: 0.95,
           }}
         >
           {subtitle}
@@ -311,12 +324,12 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
                   textTransform: "uppercase",
                   background:
                     selected === "male"
-                      ? "linear-gradient(90deg, #22d3ee 0%, #0ea5e9 100%)"
+                      ? "linear-gradient(90deg, #3FB6FF 0%, #1E88E5 50%, #E8B964 100%)"
                       : "linear-gradient(90deg, #d946ef 0%, #8b5cf6 100%)",
-                  color: selected === "male" ? "#010c14" : "#fff",
+                  color: selected === "male" ? "#06121A" : "#fff",
                   boxShadow:
                     selected === "male"
-                      ? "0 0 44px rgba(34,211,238,0.55), 0 4px 24px rgba(34,211,238,0.35)"
+                      ? "0 0 44px rgba(63,182,255,0.55), 0 4px 24px rgba(232,185,100,0.35)"
                       : "0 0 44px rgba(217,70,239,0.55), 0 4px 24px rgba(217,70,239,0.35)",
                 }}
               >
