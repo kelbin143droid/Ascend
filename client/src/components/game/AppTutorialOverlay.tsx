@@ -84,7 +84,7 @@ const STEPS: Step[] = [
   {
     kind: "home-intro",
     icon: Heart, color: "#ef4444", sectionLabel: "HP & MANA", title: "Vitality & Meditation",
-    desc: "HP (Health Points) represents your physical vitality. It stays full when you sleep well, eat right, and stay active. Neglect these and it drops.\n\nMP (Mana Points) represents your mental clarity and focus. It recharges through meditation, breathwork, and mindfulness sessions.\n\nKeep both bars full by completing your daily habits. They directly affect your RPG character's power.",
+    desc: "HP = physical vitality. Refills with sleep, food, and movement.\n\nMP = mental focus. Refills with meditation and breathwork.\n\nKeep both full — they power your RPG stats.",
   },
 ];
 
@@ -415,6 +415,50 @@ export function AppTutorialOverlay() {
                   <X size={13} />
                 </button>
               </div>
+
+              {/* Visual preview — shown for HP & MANA step */}
+              {current.sectionLabel === "HP & MANA" && (
+                <div
+                  className="mb-3 p-3 rounded-lg"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  {/* HP bar */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart size={12} style={{ color: "#ef4444" }} fill="#ef4444" />
+                    <span className="text-[9px] font-bold tracking-wider" style={{ color: "#ef4444", width: 22 }}>HP</span>
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(239,68,68,0.15)" }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: "82%",
+                          background: "linear-gradient(90deg, #ef4444 0%, #f87171 100%)",
+                          boxShadow: "0 0 8px rgba(239,68,68,0.6)",
+                        }}
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.5)" }}>82/100</span>
+                  </div>
+                  {/* MP bar */}
+                  <div className="flex items-center gap-2">
+                    <Zap size={12} style={{ color: "#3b82f6" }} fill="#3b82f6" />
+                    <span className="text-[9px] font-bold tracking-wider" style={{ color: "#3b82f6", width: 22 }}>MP</span>
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(59,130,246,0.15)" }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: "65%",
+                          background: "linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)",
+                          boxShadow: "0 0 8px rgba(59,130,246,0.6)",
+                        }}
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.5)" }}>65/100</span>
+                  </div>
+                </div>
+              )}
 
               {/* Description */}
               <p
