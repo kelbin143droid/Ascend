@@ -49,9 +49,9 @@ function CardZone({
       style={{
         top,
         left,
-        width: "43%",
-        height: "44%",
-        borderRadius: "16px",
+        width: "39%",
+        height: "41%",
+        borderRadius: "14px",
         border: "none",
         cursor: "pointer",
       }}
@@ -119,8 +119,8 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
         <CardZone
           gender="male"
           color="#22d3ee"
-          top="36%"
-          left="5%"
+          top="38%"
+          left="7%"
           selected={selected === "male"}
           onClick={() => setSelected("male")}
         />
@@ -129,8 +129,8 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
         <CardZone
           gender="female"
           color="#d946ef"
-          top="36%"
-          left="52%"
+          top="38%"
+          left="54%"
           selected={selected === "female"}
           onClick={() => setSelected("female")}
         />
