@@ -289,7 +289,7 @@ const GROWTH_PLAYBOOKS: Record<string, { title: string; steps: string[]; close: 
 };
 
 const PLAYBOOK_TRIGGERS: { keys: string[]; playbook: string }[] = [
-  { keys: ["procrastinat", "putting off", "avoid", "delay", "won't start", "can't start"], playbook: "procrastination" },
+  { keys: ["procrastinat", "putting off", "putting it off", "put it off", "keep putting", "avoiding", "keep avoiding", "delay", "won't start", "can't start", "cant start", "keep delaying", "keep stalling"], playbook: "procrastination" },
   { keys: ["focus", "concentrat", "deep work", "scattered", "can't think"], playbook: "focus" },
   { keys: ["sleep", "insomnia", "can't sleep", "tired all day", "fall asleep", "stay asleep", "wake up tired"], playbook: "sleep" },
   { keys: ["motivat", "no drive", "don't feel like", "lazy", "nothing matters"], playbook: "motivation" },
