@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, User, Target, Brain, X, Heart, Zap,
@@ -20,7 +20,7 @@ interface BaseStep {
 
 interface NavStep extends BaseStep { kind: "nav"; tabIndex: number; }
 interface SidebarIntroStep extends BaseStep { kind: "sidebar-intro"; }
-interface SidebarItemStep extends BaseStep { kind: "sidebar-item"; itemIndex: number; }
+interface SidebarItemStep extends BaseStep { kind: "sidebar-item"; itemIndex: number; testId: string; }
 interface HomeIntroStep extends BaseStep { kind: "home-intro"; }
 
 type Step = NavStep | SidebarIntroStep | SidebarItemStep | HomeIntroStep;
@@ -52,27 +52,27 @@ const STEPS: Step[] = [
     desc: "The ☰ menu at the top-left opens your full navigation panel. Tap NEXT to see what's inside.",
   },
   {
-    kind: "sidebar-item", itemIndex: 0,
+    kind: "sidebar-item", itemIndex: 0, testId: "sidebar-analytics",
     icon: BarChart3, color: "#38bdf8", sectionLabel: "ANALYTICS", title: "Analytics",
     desc: "Track your performance over time — weekly charts, habit streaks, XP growth, and trends across every stat.",
   },
   {
-    kind: "sidebar-item", itemIndex: 1,
+    kind: "sidebar-item", itemIndex: 1, testId: "sidebar-library",
     icon: BookOpen, color: "#34d399", sectionLabel: "LIBRARY", title: "Library",
     desc: "Browse habit guides, workout routines, and wellness templates curated for your journey.",
   },
   {
-    kind: "sidebar-item", itemIndex: 2,
+    kind: "sidebar-item", itemIndex: 2, testId: "sidebar-achievements",
     icon: Trophy, color: "#fbbf24", sectionLabel: "ACHIEVEMENTS", title: "Achievements",
     desc: "Your trophy room. Earn badges and unlock milestones as you build consistency and reach new levels.",
   },
   {
-    kind: "sidebar-item", itemIndex: 3,
+    kind: "sidebar-item", itemIndex: 3, testId: "sidebar-sectograph",
     icon: Clock, color: "#c084fc", sectionLabel: "SECTOGRAPH", title: "Sectograph",
     desc: "A circular time wheel for your day.\n\n→ Drag habits onto time slots\n→ Spot gaps and overlaps instantly\n→ Plan around your energy peaks",
   },
   {
-    kind: "sidebar-item", itemIndex: 4,
+    kind: "sidebar-item", itemIndex: 4, testId: "sidebar-future-game",
     icon: Gamepad2, color: "#22d3ee", sectionLabel: "FUTURE GAME", title: "Future Game",
     desc: "Your RPG character is powered by real actions.\n• STR grows from training\n• AGI grows from movement\n• VIT grows from sleep & wellness\n• SEN grows from meditation\n\nComplete daily habits → power up your character.",
   },
@@ -91,25 +91,7 @@ const STEPS: Step[] = [
 const NAV_TAB_CENTERS = [12.5, 37.5, 62.5, 87.5];
 
 const SIDEBAR_W = 288;
-const SIDEBAR_HEADER_H = 53;
-const NAV_PY = 8;
-const ITEM_H = 44;
-const SECTION_LABEL_H = 44;
-
-const SIDEBAR_ITEM_Y: number[] = (() => {
-  let y = SIDEBAR_HEADER_H + NAV_PY;
-  const positions: number[] = [];
-  positions.push(y);
-  y += ITEM_H;
-  positions.push(y);
-  y += ITEM_H;
-  positions.push(y);
-  y += ITEM_H + SECTION_LABEL_H;
-  positions.push(y);
-  y += ITEM_H + SECTION_LABEL_H;
-  positions.push(y);
-  return positions;
-})();
+const ITEM_H_FALLBACK = 48;
 
 function dispatchSidebarOpen() {
   window.dispatchEvent(new CustomEvent("ascend:tutorial-sidebar-open"));
@@ -123,6 +105,32 @@ export function AppTutorialOverlay() {
     () => localStorage.getItem(TUTORIAL_KEY) !== "1"
   );
   const [step, setStep] = useState(0);
+  const [itemRect, setItemRect] = useState<{ top: number; height: number } | null>(null);
+
+  useEffect(() => {
+    const cur = STEPS[step];
+    if (cur.kind !== "sidebar-item") {
+      setItemRect(null);
+      return;
+    }
+    let cancelled = false;
+    const measure = () => {
+      const el = document.querySelector<HTMLElement>(`[data-testid="${(cur as SidebarItemStep).testId}"]`);
+      if (el && !cancelled) {
+        const r = el.getBoundingClientRect();
+        setItemRect({ top: r.top, height: r.height });
+      }
+    };
+    const t1 = setTimeout(measure, 50);
+    const t2 = setTimeout(measure, 350);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelled = true;
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener("resize", measure);
+    };
+  }, [step, visible]);
 
   const dismiss = () => {
     const cur = STEPS[step];
@@ -164,7 +172,8 @@ export function AppTutorialOverlay() {
 
   const tabX = isNav ? NAV_TAB_CENTERS[(current as NavStep).tabIndex] : 0;
   const activeItemIndex = isSidebarItem ? (current as SidebarItemStep).itemIndex : -1;
-  const itemY = isSidebarItem ? SIDEBAR_ITEM_Y[activeItemIndex] : 0;
+  const itemY = isSidebarItem ? (itemRect?.top ?? 0) : 0;
+  const itemH = isSidebarItem ? (itemRect?.height ?? ITEM_H_FALLBACK) : ITEM_H_FALLBACK;
 
   return (
     <div
@@ -282,7 +291,7 @@ export function AppTutorialOverlay() {
               top: itemY,
               left: 0,
               width: SIDEBAR_W,
-              height: ITEM_H,
+              height: itemH,
               borderRadius: 4,
               border: `2px solid ${current.color}`,
               backgroundColor: `${current.color}08`,
@@ -303,7 +312,7 @@ export function AppTutorialOverlay() {
             key={`arrow-sidebar-${activeItemIndex}`}
             className="absolute pointer-events-none"
             style={{
-              top: itemY + ITEM_H / 2 - 10,
+              top: itemY + itemH / 2 - 10,
               left: SIDEBAR_W + 6,
             }}
             animate={{ x: [0, -6, 0] }}
