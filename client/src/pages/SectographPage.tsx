@@ -797,6 +797,78 @@ export default function SectographPage() {
         )}
 
         <div className="flex flex-col items-center gap-4">
+            {/* ── DATE NAV STRIP ─────────────────────────────────── */}
+            {!isDay5Mode && (() => {
+              const viewDate = selectedDay ?? new Date();
+              const today = new Date();
+              const isToday =
+                viewDate.getFullYear() === today.getFullYear() &&
+                viewDate.getMonth() === today.getMonth() &&
+                viewDate.getDate() === today.getDate();
+              const shiftDay = (delta: number) => {
+                const d = new Date(viewDate);
+                d.setDate(d.getDate() + delta);
+                setSelectedDay(d);
+                setCurrentMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+              };
+              const goToday = () => {
+                const t = new Date();
+                setSelectedDay(t);
+                setCurrentMonth(new Date(t.getFullYear(), t.getMonth(), 1));
+              };
+              const dateLabel = viewDate.toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                year: viewDate.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+              });
+              return (
+                <div
+                  className="w-full flex items-center justify-between rounded-xl px-2 py-1.5"
+                  style={{
+                    backgroundColor: `${colors.surface}80`,
+                    border: `1px solid ${colors.surfaceBorder}`,
+                  }}
+                  data-testid="sectograph-date-nav"
+                >
+                  <button
+                    onClick={() => shiftDay(-1)}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
+                    data-testid="button-prev-day"
+                    aria-label="Previous day"
+                  >
+                    <ChevronLeft size={18} style={{ color: colors.primary }} />
+                  </button>
+                  <button
+                    onClick={goToday}
+                    className="flex-1 mx-2 flex flex-col items-center justify-center py-1 rounded-lg hover:bg-white/5 transition-colors"
+                    data-testid="button-current-date"
+                  >
+                    <span
+                      className="text-[10px] uppercase tracking-[0.2em] font-bold"
+                      style={{ color: isToday ? colors.primary : colors.textMuted }}
+                    >
+                      {isToday ? "Today" : "Tap to return to today"}
+                    </span>
+                    <span
+                      className="text-base font-display font-bold"
+                      style={{ color: colors.text }}
+                    >
+                      {dateLabel}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => shiftDay(1)}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
+                    data-testid="button-next-day"
+                    aria-label="Next day"
+                  >
+                    <ChevronRight size={18} style={{ color: colors.primary }} />
+                  </button>
+                </div>
+              );
+            })()}
+
             <div className="flex justify-center pt-2">
               <Sectograph
                 schedule={activeSchedule}
