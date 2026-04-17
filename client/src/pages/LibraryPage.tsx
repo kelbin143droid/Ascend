@@ -7,7 +7,8 @@ import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { useRoles } from "@/context/RolesContext";
 import { WeeklyGoalForm } from "@/components/game/WeeklyGoalForm";
 import { OnboardingFlow } from "@/components/game/OnboardingFlow";
-import { BookOpen, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle, Calendar, ChevronRight, Swords, Wind, Eye, Heart, Play, ExternalLink } from "lucide-react";
+import { GameIntroModal } from "@/components/game/GameIntroModal";
+import { BookOpen, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle, Calendar, ChevronRight, Swords, Wind, Eye, Heart, Play, ExternalLink, RotateCcw, Compass, Map, Sparkles, Layers } from "lucide-react";
 
 const PLANNING_UNLOCK_PHASE = 3;
 const TRIALS_UNLOCK_PHASE = 4;
@@ -21,6 +22,71 @@ export default function LibraryPage() {
   const { roles } = useRoles();
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showGameIntro, setShowGameIntro] = useState(false);
+  const [showTutorialList, setShowTutorialList] = useState(false);
+
+  type TutorialItem = {
+    id: string;
+    title: string;
+    description: string;
+    icon: typeof Compass;
+    color: string;
+    onPlay: () => void;
+  };
+
+  const replayTutorials: TutorialItem[] = [
+    {
+      id: "ascendant-guide",
+      title: "Ascendant's Guide",
+      description: "Full intro tour: phases, stats, stability, momentum",
+      icon: BookOpen,
+      color: colors.primary,
+      onPlay: () => setShowGuide(true),
+    },
+    {
+      id: "game-mechanics",
+      title: "Game Mechanics Intro",
+      description: "How XP, levels, stat points, and ranks work",
+      icon: Sparkles,
+      color: "#a855f7",
+      onPlay: () => setShowGameIntro(true),
+    },
+    {
+      id: "app-tour",
+      title: "App Tour",
+      description: "4-step walkthrough of the bottom navigation",
+      icon: Layers,
+      color: "#06b6d4",
+      onPlay: () => {
+        localStorage.removeItem("ascend_app_tutorial_seen");
+        navigate("/");
+      },
+    },
+    {
+      id: "sectograph",
+      title: "Sectograph Tutorial",
+      description: "Sleep block + Daily Flow on the 24-hour wheel",
+      icon: Compass,
+      color: "#f59e0b",
+      onPlay: () => {
+        localStorage.removeItem("ascend_sectograph_tutorial_done");
+        localStorage.removeItem("ascend_sectograph_tutorial_step");
+        localStorage.removeItem("ascend_sectograph_intro_seen");
+        navigate("/sectograph");
+      },
+    },
+    {
+      id: "habits",
+      title: "Habits Walkthrough",
+      description: "Build new rituals or break bad patterns",
+      icon: Map,
+      color: "#22c55e",
+      onPlay: () => {
+        localStorage.removeItem("ascend_habits_tutorial_done");
+        navigate("/habits");
+      },
+    },
+  ];
   
   const playerPhase = player?.phase || 1;
   const canAccessPlanning = playerPhase >= PLANNING_UNLOCK_PHASE;
@@ -430,6 +496,90 @@ export default function LibraryPage() {
             playerName={player?.name?.split(" ")[0] || ""}
           />
         )}
+
+        {showGameIntro && (
+          <GameIntroModal
+            open={showGameIntro}
+            onClose={() => setShowGameIntro(false)}
+            playerName={player?.name?.split(" ")[0] || ""}
+          />
+        )}
+
+        <div
+          className="rounded-lg overflow-hidden"
+          style={{
+            backgroundColor: colors.surface,
+            border: `1px solid ${colors.surfaceBorder}`,
+          }}
+        >
+          <button
+            onClick={() => setShowTutorialList(!showTutorialList)}
+            className="w-full p-4 flex items-center gap-3 transition-colors hover:bg-white/5"
+            data-testid="button-toggle-tutorial-list"
+          >
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{
+                backgroundColor: `${colors.primary}20`,
+                border: `1px solid ${colors.primary}40`,
+              }}
+            >
+              <RotateCcw size={20} style={{ color: colors.primary }} />
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="font-display font-bold" style={{ color: colors.text }}>
+                Replay Tutorials
+              </h3>
+              <p className="text-xs" style={{ color: colors.textMuted }}>
+                Re-watch any intro screen any time
+              </p>
+            </div>
+            {showTutorialList ? (
+              <ChevronUp size={20} style={{ color: colors.textMuted }} />
+            ) : (
+              <ChevronDown size={20} style={{ color: colors.textMuted }} />
+            )}
+          </button>
+
+          {showTutorialList && (
+            <div className="px-3 pb-3 space-y-2">
+              {replayTutorials.map((tut) => {
+                const TutIcon = tut.icon;
+                return (
+                  <button
+                    key={tut.id}
+                    onClick={tut.onPlay}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-white/5 text-left"
+                    style={{
+                      backgroundColor: "rgba(0,0,0,0.3)",
+                      border: `1px solid ${tut.color}30`,
+                    }}
+                    data-testid={`button-replay-${tut.id}`}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{
+                        backgroundColor: `${tut.color}20`,
+                        border: `1px solid ${tut.color}40`,
+                      }}
+                    >
+                      <TutIcon size={16} style={{ color: tut.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-display font-bold" style={{ color: colors.text }}>
+                        {tut.title}
+                      </div>
+                      <div className="text-[11px] truncate" style={{ color: colors.textMuted }}>
+                        {tut.description}
+                      </div>
+                    </div>
+                    <Play size={14} style={{ color: tut.color }} />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div>
           <div className="flex items-center gap-2 mb-3">

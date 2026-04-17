@@ -1762,6 +1762,7 @@ export async function registerRoutes(
           .replace(/Your streak ended/gi, "Returning restores momentum");
       }
 
+      response.reply = response.response;
       res.json({ ...response, coachTone: systemStateChat.coachToneModifier, stabilityState: systemStateChat.state, returnTier: returnProtocolChat.tier });
     } catch (error) {
       res.status(500).json({ error: "Failed to process coach chat" });
