@@ -109,7 +109,8 @@ export async function registerRoutes(
       }
       res.json(attachDerivedStats(player));
     } catch (error) {
-      res.status(500).json({ error: "Failed to get player" });
+      console.error("[GET /api/player/:id] error:", error);
+      res.status(500).json({ error: "Failed to get player", detail: (error as Error)?.message });
     }
   });
 
@@ -122,7 +123,8 @@ export async function registerRoutes(
       const player = await storage.createPlayer(parsed.data);
       res.status(201).json(attachDerivedStats(player));
     } catch (error) {
-      res.status(500).json({ error: "Failed to create player" });
+      console.error("[POST /api/player] error:", error);
+      res.status(500).json({ error: "Failed to create player", detail: (error as Error)?.message });
     }
   });
 
