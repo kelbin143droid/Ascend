@@ -6,3 +6,9 @@ id = "gUaRy3kz1o7Gji1A0Kqig"
 uri = "file://ascend-os.tar.gz"
 type = "unspecified"
 title = "ascend-os.tar.gz"
+
+[[outputs]]
+id = "UfTonLcBUAQ_4FB2l8m9T"
+uri = "file://exports/ascend-os.zip"
+type = "unspecified"
+title = "ascend-os.zip (project source)"
