@@ -164,6 +164,14 @@ export function AppTutorialOverlay() {
   if (!visible) return null;
 
   const current = STEPS[step];
+  if (!current) {
+    // Step index drifted past the end (stale state after STEPS changed). Bail
+    // out gracefully instead of crashing the whole app.
+    if (typeof window !== "undefined") {
+      try { localStorage.setItem(TUTORIAL_KEY, "1"); } catch {}
+    }
+    return null;
+  }
   const Icon = current.icon;
   const isNav = current.kind === "nav";
   const isSidebarIntro = current.kind === "sidebar-intro";
