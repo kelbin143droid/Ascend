@@ -4,11 +4,7 @@ import { useEffect, useState } from "react";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 import { Day6Home } from "@/components/game/Day6Home";
-import {
-  isNativePlatform,
-  requestPermission,
-  scheduleNotification,
-} from "@/lib/notificationService";
+import { isNativePlatform, requestPermission } from "@/lib/notificationService";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -85,44 +81,18 @@ export default function HomePage() {
 
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
-  const [notifPermissionAsked, setNotifPermissionAsked] = useState(false);
-
   useEffect(() => {
-    if (!isNativePlatform()) {
-      console.log("[HomePage] Native platform: false (web mode, skipping notif perm)");
-      return;
-    }
+    if (!isNativePlatform()) return;
     let cancelled = false;
     (async () => {
-      console.log("[HomePage] Native platform: true — requesting notif permission");
       const granted = await requestPermission();
       if (cancelled) return;
-      setNotifPermissionAsked(true);
-      console.log(
-        granted
-          ? "[HomePage] Permission granted"
-          : "[HomePage] Permission denied",
-      );
+      console.log(granted ? "[HomePage] Notif permission granted" : "[HomePage] Notif permission denied");
     })();
     return () => {
       cancelled = true;
     };
   }, []);
-
-  const handleTestNotification = async () => {
-    const fireAt = new Date(Date.now() + 5_000);
-    console.log("[HomePage] Test notification button clicked, scheduling for", fireAt.toISOString());
-    const result = await scheduleNotification(
-      "Ascend OS — Test",
-      "If you can read this, notifications work! 🎯",
-      fireAt,
-    );
-    console.log("[HomePage] Test notification result:", result);
-    if (!isNativePlatform()) {
-      // Friendly hint for the web preview where notifications can't fire.
-      alert("Notifications only fire on the Android/iOS build. Logged result to console.");
-    }
-  };
 
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
