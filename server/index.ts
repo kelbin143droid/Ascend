@@ -12,6 +12,36 @@ declare module "http" {
   }
 }
 
+app.use((req, res, next) => {
+  const origin = req.headers.origin as string | undefined;
+  const allowedOrigins = new Set([
+    "https://localhost",
+    "http://localhost",
+    "capacitor://localhost",
+    "ionic://localhost",
+    "https://solo-quest-rpg.replit.app",
+  ]);
+  const isReplitDev = origin?.endsWith(".replit.dev") || origin?.endsWith(".repl.co");
+  const isLocalDev = origin?.startsWith("http://localhost:") || origin?.startsWith("http://127.0.0.1:");
+
+  if (origin && (allowedOrigins.has(origin) || isReplitDev || isLocalDev)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    req.headers["access-control-request-headers"] || "Content-Type, Authorization",
+  );
+  res.setHeader("Access-Control-Max-Age", "86400");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  next();
+});
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {
