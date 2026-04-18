@@ -165,48 +165,6 @@ export default function HomePage() {
         player={player!}
         scalingData={scalingData ?? null}
       />
-      <button
-        type="button"
-        onClick={handleTestNotification}
-        onTouchEnd={(e) => {
-          // Capacitor/Android sometimes swallows the synthetic click near the
-          // bottom safe-area edge. Fire on touchend as well to guarantee it.
-          e.preventDefault();
-          handleTestNotification();
-        }}
-        data-testid="button-test-notification"
-        aria-label="Send test notification in 5 seconds"
-        title="Send a test notification in 5 seconds"
-        style={{
-          position: "fixed",
-          // Bottom nav is h-16 (64px) + 8px pb. Lift the button above it AND
-          // above the device's gesture bar via safe-area inset.
-          bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
-          left: "calc(16px + env(safe-area-inset-left, 0px))",
-          zIndex: 2147483647,
-          width: 56,
-          height: 56,
-          borderRadius: "50%",
-          border: "1px solid rgba(255,255,255,0.18)",
-          background: "linear-gradient(135deg,#0ea5e9,#8b5cf6)",
-          color: "#fff",
-          fontSize: 24,
-          lineHeight: 1,
-          boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
-          cursor: "pointer",
-          pointerEvents: "auto",
-          touchAction: "manipulation",
-          WebkitTapHighlightColor: "rgba(255,255,255,0.2)",
-          WebkitUserSelect: "none",
-          userSelect: "none",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-        }}
-      >
-        🔔
-      </button>
     </>
   );
 }
