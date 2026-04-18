@@ -35,12 +35,11 @@ import {
   Coffee,
   Book,
   Gamepad2,
-  Wind,
-  Heart,
-  Dumbbell,
   Settings2,
   Brain,
   CheckCircle2,
+  Palette,
+  ArrowRight,
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
 import {
@@ -93,14 +92,31 @@ const BLOCK_PRESETS = [
   { id: "sleep", name: "Sleep", icon: Moon, color: "#3b4d6b", defaultStart: { h: 22, m: 0 }, defaultEnd: { h: 6, m: 0 } },
   { id: "work", name: "Work", icon: Briefcase, color: "#4a6fa5", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 17, m: 0 } },
   { id: "study", name: "Study", icon: Book, color: "#5a8a72", defaultStart: { h: 18, m: 0 }, defaultEnd: { h: 20, m: 0 } },
-  { id: "strength", name: "Strength", icon: Dumbbell, color: "#ef4444", defaultStart: { h: 7, m: 0 }, defaultEnd: { h: 7, m: 45 } },
-  { id: "agility", name: "Agility", icon: Wind, color: "#22c55e", defaultStart: { h: 7, m: 45 }, defaultEnd: { h: 8, m: 15 } },
-  { id: "vitality", name: "Vitality", icon: Heart, color: "#a855f7", defaultStart: { h: 8, m: 15 }, defaultEnd: { h: 8, m: 30 } },
   { id: "daily-flow", name: "Daily Flow", icon: Zap, color: "#a855f7", defaultStart: { h: 7, m: 0 }, defaultEnd: { h: 8, m: 0 } },
   { id: "meal", name: "Meal", icon: Coffee, color: "#7d9d6a", defaultStart: { h: 12, m: 0 }, defaultEnd: { h: 13, m: 0 } },
   { id: "leisure", name: "Leisure", icon: Gamepad2, color: "#8b7aa3", defaultStart: { h: 20, m: 0 }, defaultEnd: { h: 22, m: 0 } },
-  { id: "custom", name: "Custom", icon: Zap, color: "#6b7280", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 10, m: 0 } },
+  { id: "custom", name: "Custom", icon: Palette, color: "#6b7280", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 10, m: 0 } },
 ];
+
+// Six curated swatches for Custom blocks; user can also enter any hex value.
+const CUSTOM_COLOR_PRESETS = [
+  "#ef4444", // red
+  "#f59e0b", // amber
+  "#22c55e", // green
+  "#06b6d4", // cyan
+  "#6366f1", // indigo
+  "#ec4899", // pink
+];
+
+// Daily Flow becomes the umbrella for these training sub-types.
+const DAILY_FLOW_SUBTYPES: { id: string; label: string }[] = [
+  { id: "mixed",    label: "Mixed" },
+  { id: "strength", label: "Strength" },
+  { id: "agility",  label: "Agility" },
+  { id: "vitality", label: "Vitality" },
+];
+
+const HEX_REGEX = /^#([0-9a-fA-F]{6})$/;
 
 interface EditingBlock {
   id: string;
@@ -112,6 +128,8 @@ interface EditingBlock {
   color: string;
   isSystemTask?: boolean;
   isNew?: boolean;
+  /** Sub-type for Daily Flow blocks. */
+  subType?: string;
 }
 
 function getAwarenessInsight(schedule: ScheduleBlock[], freeWindows: FreeWindow[]): string | null {
@@ -355,8 +373,9 @@ export default function SectographPage() {
         endHour: preset.defaultEnd.h,
         endMinute: preset.defaultEnd.m,
         color: preset.color,
-        isSystemTask: ["strength", "agility", "vitality", "work", "study"].includes(preset.id),
+        isSystemTask: ["work", "study", "daily-flow"].includes(preset.id),
         isNew: true,
+        subType: preset.id === "daily-flow" ? "mixed" : undefined,
       });
       if (preset.id === "custom") setCustomBlockName("");
     }
@@ -366,8 +385,12 @@ export default function SectographPage() {
   const handleSaveBlock = () => {
     if (!editingBlock || !player) return;
     const name = editingBlock.id.startsWith("custom") ? (customBlockName || "Custom Block") : editingBlock.name;
-    const blockFinal = { ...editingBlock, name };
-    delete (blockFinal as any).isNew;
+    const blockFinal: any = { ...editingBlock, name };
+    delete blockFinal.isNew;
+    // Strip subType when not a Daily Flow block to keep stored data clean.
+    if (!editingBlock.id.startsWith("daily-flow")) {
+      delete blockFinal.subType;
+    }
     const current: ScheduleBlock[] = (player.schedule ?? []) as ScheduleBlock[];
     // System preset IDs that should be deduplicated (only one per type allowed)
     const SYSTEM_PRESET_PREFIXES = ["sleep", "daily", "work", "study", "exercise", "meal", "morning", "evening"];
@@ -528,6 +551,42 @@ export default function SectographPage() {
 
   const freeWindows = useMemo(() => detectFreeWindows(activeSchedule, 30), [activeSchedule]);
   const awarenessInsight = useMemo(() => getAwarenessInsight(activeSchedule, freeWindows), [activeSchedule, freeWindows]);
+
+  // Tick once a minute so the active/next block computation refreshes without re-rendering Sectograph internals.
+  const [nowTick, setNowTick] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const { currentBlock, nextBlock } = useMemo(() => {
+    if (!activeSchedule.length) return { currentBlock: null as ScheduleBlock | null, nextBlock: null as ScheduleBlock | null };
+    const nowMin = nowTick.getHours() * 60 + nowTick.getMinutes();
+    let curr: ScheduleBlock | null = null;
+    let next: ScheduleBlock | null = null;
+    let nextDelta = Number.POSITIVE_INFINITY;
+    for (const b of activeSchedule) {
+      const start = b.startHour * 60 + (b.startMinute ?? 0);
+      let end = b.endHour * 60 + (b.endMinute ?? 0);
+      if (end <= start) end += 24 * 60; // wraps midnight
+      const containsNow = nowMin >= start && nowMin < end;
+      const containsNowWrap = end > 24 * 60 && nowMin + 24 * 60 >= start && nowMin + 24 * 60 < end;
+      if (containsNow || containsNowWrap) curr = b;
+      const startDelta = start - nowMin;
+      if (startDelta > 0 && startDelta < nextDelta) {
+        nextDelta = startDelta;
+        next = b;
+      }
+    }
+    // If nothing later today, the "next" block is the earliest one tomorrow.
+    if (!next) {
+      const earliest = [...activeSchedule].sort(
+        (a, b) => (a.startHour * 60 + (a.startMinute ?? 0)) - (b.startHour * 60 + (b.startMinute ?? 0)),
+      )[0];
+      next = earliest ?? null;
+    }
+    return { currentBlock: curr, nextBlock: next };
+  }, [activeSchedule, nowTick]);
 
   const todayKey = formatDateKey(new Date());
   const daysInMonth = getDaysInMonth(currentMonth);
@@ -879,6 +938,7 @@ export default function SectographPage() {
                 rhythmWindows={[]}
                 suggestedPlacements={[]}
                 highlightCenter={day5Step === 1}
+                currentBlockId={currentBlock?.id ?? null}
                 onCenterClick={() => {
                   if (!isDay5Mode && !tutorialDone && tutorialStep === 0) {
                     setSectographTutorialStep(1);
@@ -897,13 +957,68 @@ export default function SectographPage() {
                     endMinute: blk.endMinute ?? 0,
                     color: blk.color || "#6b7280",
                     isSystemTask: blk.isSystemTask,
+                    subType: blk.subType,
                     isNew: false,
                   });
+                  if (blk.id?.startsWith("custom")) setCustomBlockName(blk.name || "");
                 }}
                 onFreeWindowClick={() => {}}
                 onSuggestedPlacementClick={() => {}}
               />
             </div>
+
+            {/* ── NOW / NEXT preview strip ─────────────────────────── */}
+            {!isDay5Mode && (currentBlock || nextBlock) && (
+              <div
+                className="w-full rounded-lg p-3 flex items-stretch gap-3"
+                style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
+                data-testid="now-next-preview"
+              >
+                {currentBlock ? (
+                  <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: currentBlock.color, boxShadow: `0 0 10px ${currentBlock.color}` }}
+                    />
+                    <div className="min-w-0">
+                      <div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: colors.textMuted }}>
+                        Now
+                      </div>
+                      <div className="text-sm font-semibold truncate" style={{ color: colors.text }} data-testid="text-current-block-name">
+                        {currentBlock.name}
+                        {currentBlock.subType && currentBlock.subType !== "mixed" && (
+                          <span className="text-[10px] font-normal ml-1.5" style={{ color: colors.textMuted }}>
+                            · {currentBlock.subType}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center gap-2.5">
+                    <div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: colors.textMuted }}>
+                      Open Time
+                    </div>
+                  </div>
+                )}
+                {nextBlock && (
+                  <>
+                    <div className="w-px self-stretch" style={{ backgroundColor: colors.surfaceBorder }} />
+                    <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                      <ArrowRight size={12} className="flex-shrink-0" style={{ color: colors.textMuted }} />
+                      <div className="min-w-0">
+                        <div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: colors.textMuted }}>
+                          Next · {formatTimeSlot(nextBlock.startHour, nextBlock.startMinute ?? 0)}
+                        </div>
+                        <div className="text-sm font-semibold truncate" style={{ color: colors.text }} data-testid="text-next-block-name">
+                          {nextBlock.name}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
 
             {!isDay5Mode && awarenessInsight && (
@@ -935,41 +1050,93 @@ export default function SectographPage() {
                   </h3>
                 </div>
                 <div className="space-y-2">
-                  {rhythmInsights.slice(0, 2).map((insight, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-2.5 px-3 py-2 rounded-lg"
-                      style={{ backgroundColor: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}
-                      data-testid={`rhythm-insight-${i}`}
-                    >
+                  {rhythmInsights.slice(0, 2).map((insight, i) => {
+                    const dotColor =
+                      insight.actionType === "reset" ? "#f59e0b" :
+                      insight.actionType === "focusSession" ? "#8b5cf6" :
+                      insight.actionType === "habit" ? "#3b82f6" : "#6366f1";
+                    // Pair insight with its source rhythm window (same ordering on the server).
+                    const win = rhythmWindows[i];
+                    const targetHour = win?.startHour ?? null;
+                    const targetMinute = win?.startMinute ?? 0;
+                    // Suggested action label based on the detected pattern.
+                    const actionLabel =
+                      insight.actionType === "reset"
+                        ? "Schedule a Daily Flow recovery block"
+                        : insight.actionType === "focusSession"
+                        ? "Lock in a Daily Flow focus block"
+                        : "Anchor a Daily Flow block here";
+                    const handleAutoCreate = () => {
+                      if (targetHour === null) return;
+                      const startMin = targetHour * 60 + targetMinute;
+                      const endMin = startMin + 30; // 30-min recovery block
+                      const endH = Math.floor(endMin / 60) % 24;
+                      const endM = endMin % 60;
+                      setEditingBlock({
+                        id: `daily-flow_${Date.now()}`,
+                        name: "Daily Flow",
+                        startHour: targetHour,
+                        startMinute: targetMinute,
+                        endHour: endH,
+                        endMinute: endM,
+                        color: "#a855f7",
+                        isSystemTask: true,
+                        isNew: true,
+                        subType: insight.actionType === "focusSession" ? "mixed" : "vitality",
+                      });
+                    };
+                    return (
                       <div
-                        className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                        style={{
-                          backgroundColor: insight.actionType === "reset" ? "#f59e0b" : insight.actionType === "focusSession" ? "#8b5cf6" : insight.actionType === "habit" ? "#3b82f6" : "#6366f1",
-                        }}
-                      />
-                      <div>
-                        <p className="text-xs leading-relaxed" style={{ color: colors.text, opacity: 0.85 }}>
-                          {insight.message}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="h-1 rounded-full flex-1" style={{ backgroundColor: "rgba(99,102,241,0.15)" }}>
-                            <div
-                              className="h-full rounded-full"
-                              style={{ width: `${Math.round(insight.confidenceScore * 100)}%`, backgroundColor: "rgba(99,102,241,0.5)" }}
-                            />
+                        key={i}
+                        className="px-3 py-2.5 rounded-lg"
+                        style={{ backgroundColor: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}
+                        data-testid={`rhythm-insight-${i}`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div
+                            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                            style={{ backgroundColor: dotColor }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs leading-relaxed" style={{ color: colors.text, opacity: 0.85 }}>
+                              {insight.message}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="h-1 rounded-full flex-1" style={{ backgroundColor: "rgba(99,102,241,0.15)" }}>
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${Math.round(insight.confidenceScore * 100)}%`, backgroundColor: "rgba(99,102,241,0.5)" }}
+                                />
+                              </div>
+                              <span className="text-[9px] font-mono" style={{ color: colors.textMuted, opacity: 0.5 }}>
+                                {Math.round(insight.confidenceScore * 100)}%
+                              </span>
+                            </div>
                           </div>
-                          <span className="text-[9px] font-mono" style={{ color: colors.textMuted, opacity: 0.5 }}>
-                            {Math.round(insight.confidenceScore * 100)}%
-                          </span>
                         </div>
+                        {targetHour !== null && (
+                          <button
+                            type="button"
+                            onClick={handleAutoCreate}
+                            className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-colors hover:bg-[rgba(168,85,247,0.18)]"
+                            style={{
+                              backgroundColor: "rgba(168,85,247,0.12)",
+                              color: "#c084fc",
+                              border: "1px solid rgba(168,85,247,0.3)",
+                            }}
+                            data-testid={`button-rhythm-action-${i}`}
+                          >
+                            <Plus size={12} />
+                            {actionLabel} at {formatTimeSlot(targetHour, targetMinute)}
+                          </button>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {rhythmWindows.length > 0 && (
                   <p className="text-[10px] mt-3 leading-relaxed" style={{ color: colors.textMuted, opacity: 0.5 }}>
-                    Glowing arcs on the timeline show where your rhythms are strongest.
+                    Tap a suggestion to schedule it — you can adjust the time before saving.
                   </p>
                 )}
               </div>
@@ -1827,6 +1994,81 @@ export default function SectographPage() {
                     />
                   </div>
                 </div>
+                {/* ── Daily Flow sub-type chooser ─────────────── */}
+                {editingBlock.id.startsWith("daily-flow") && (
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block" style={{ color: colors.textMuted }}>
+                      Sub-type
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5" data-testid="daily-flow-subtype-picker">
+                      {DAILY_FLOW_SUBTYPES.map((st) => {
+                        const isSel = (editingBlock.subType ?? "mixed") === st.id;
+                        return (
+                          <button
+                            key={st.id}
+                            type="button"
+                            onClick={() => setEditingBlock({ ...editingBlock, subType: st.id })}
+                            data-testid={`subtype-${st.id}`}
+                            className="text-[10px] py-1.5 rounded-md font-semibold transition-all"
+                            style={{
+                              backgroundColor: isSel ? `${editingBlock.color}30` : "rgba(255,255,255,0.04)",
+                              color: isSel ? editingBlock.color : colors.textMuted,
+                              border: `1px solid ${isSel ? editingBlock.color : "rgba(255,255,255,0.08)"}`,
+                            }}
+                          >
+                            {st.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Color picker (Custom blocks only) ───────── */}
+                {editingBlock.id.startsWith("custom") && (
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block" style={{ color: colors.textMuted }}>
+                      Color
+                    </label>
+                    <div className="flex items-center gap-2 flex-wrap" data-testid="custom-color-picker">
+                      {CUSTOM_COLOR_PRESETS.map((c) => {
+                        const isSel = editingBlock.color.toLowerCase() === c.toLowerCase();
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setEditingBlock({ ...editingBlock, color: c })}
+                            data-testid={`color-swatch-${c.replace("#", "")}`}
+                            aria-label={`Use color ${c}`}
+                            className="w-7 h-7 rounded-full transition-transform"
+                            style={{
+                              backgroundColor: c,
+                              boxShadow: isSel ? `0 0 0 2px ${colors.surface}, 0 0 0 4px ${c}` : "none",
+                              transform: isSel ? "scale(1.1)" : "scale(1)",
+                            }}
+                          />
+                        );
+                      })}
+                      <Input
+                        value={editingBlock.color}
+                        onChange={(e) =>
+                          setEditingBlock({ ...editingBlock, color: e.target.value })
+                        }
+                        onBlur={(e) => {
+                          // On blur, snap back to a valid color if user left a partial hex.
+                          if (!HEX_REGEX.test(e.target.value)) {
+                            setEditingBlock({ ...editingBlock, color: CUSTOM_COLOR_PRESETS[0] });
+                          }
+                        }}
+                        placeholder="#hex"
+                        className="bg-white/5 border-white/10 text-xs h-7 w-24 ml-auto font-mono"
+                        style={{ color: colors.text }}
+                        data-testid="input-custom-color-hex"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-1">
                   <div
                     className="w-5 h-5 rounded-full shrink-0 mt-0.5"
@@ -1834,6 +2076,11 @@ export default function SectographPage() {
                   />
                   <span className="text-sm font-medium" style={{ color: colors.text }}>
                     {editingBlock.id.startsWith("custom") ? (customBlockName || "Custom Block") : editingBlock.name}
+                    {editingBlock.id.startsWith("daily-flow") && editingBlock.subType && editingBlock.subType !== "mixed" && (
+                      <span className="text-xs font-normal ml-1.5" style={{ color: colors.textMuted }}>
+                        · {editingBlock.subType}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="flex gap-2 pt-1">

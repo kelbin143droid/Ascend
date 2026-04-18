@@ -14,6 +14,8 @@ export interface ScheduleBlock {
   isSystemTask?: boolean;
   isTemplate?: boolean;
   segment?: string;
+  /** Optional Daily Flow sub-type: 'strength' | 'agility' | 'vitality' | 'mixed' */
+  subType?: string;
 }
 
 export interface FreeWindow {
@@ -115,6 +117,8 @@ interface SectographProps {
   rhythmWindows?: RhythmWindowVisual[];
   suggestedPlacements?: SuggestedPlacement[];
   highlightCenter?: boolean;
+  /** ID of the schedule block that is currently active — receives a pulsing glow. */
+  currentBlockId?: string | null;
   onCenterClick?: () => void;
   onBlockClick?: (block: ScheduleBlock) => void;
   onFreeWindowClick?: (window: FreeWindow) => void;
@@ -203,6 +207,17 @@ export function Sectograph({
   const colors = clockTheme.colors;
   const uid = useMemo(() => Math.random().toString(36).slice(2, 8), []);
 
+  // Memoize per-block geometry so segments are not recomputed every tick of the clock.
+  const scheduleSegments = useMemo(() => {
+    return schedule.map((block) => {
+      const startAngle = timeToAngle(block.startHour, block.startMinute ?? 0);
+      const endAngle = timeToAngle(block.endHour, block.endMinute ?? 0);
+      const path = createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius);
+      return { block, path };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schedule, scheduleOuterRadius, scheduleInnerRadius]);
+
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size}>
@@ -255,14 +270,45 @@ export function Sectograph({
           );
         })}
 
-        {schedule.map((block) => {
-          const startAngle = timeToAngle(block.startHour, block.startMinute ?? 0);
-          const endAngle = timeToAngle(block.endHour, block.endMinute ?? 0);
+        {scheduleSegments.map(({ block, path }) => {
+          const isActive = currentBlockId === block.id;
           return (
             <g key={block.id} onClick={() => onBlockClick?.(block)} style={{ cursor: onBlockClick ? "pointer" : "default" }} data-testid={`sectograph-block-${block.id}`}>
-              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill={block.color} opacity={1} stroke={block.isSystemTask ? colors.ring : "rgba(255,255,255,0.15)"} strokeWidth={block.isSystemTask ? 1.5 : 0.5} className={onBlockClick ? "hover:opacity-80 transition-opacity" : ""} />
+              {/* base segment — stronger contrast: thicker stroke for all blocks, brighter for system tasks */}
+              <path
+                d={path}
+                fill={block.color}
+                opacity={1}
+                stroke={block.isSystemTask ? colors.ring : "rgba(255,255,255,0.35)"}
+                strokeWidth={block.isSystemTask ? 1.5 : 1}
+                className={onBlockClick ? "hover:opacity-80 transition-opacity" : ""}
+              />
               {block.isSystemTask && (
-                <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="none" stroke={colors.ringGlow} strokeWidth="3" style={{ filter: "blur(4px)", pointerEvents: "none" }} />
+                <path d={path} fill="none" stroke={colors.ringGlow} strokeWidth="3" style={{ filter: "blur(4px)", pointerEvents: "none" }} />
+              )}
+              {isActive && (
+                <>
+                  {/* pulsing inner highlight */}
+                  <path
+                    d={path}
+                    fill="rgba(255,255,255,0.18)"
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                    style={{ pointerEvents: "none" }}
+                  >
+                    <animate attributeName="opacity" values="1;0.55;1" dur="1.8s" repeatCount="indefinite" />
+                  </path>
+                  {/* outer soft glow */}
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke={block.color}
+                    strokeWidth="6"
+                    style={{ filter: "blur(6px)", pointerEvents: "none" }}
+                  >
+                    <animate attributeName="opacity" values="0.85;0.3;0.85" dur="1.8s" repeatCount="indefinite" />
+                  </path>
+                </>
               )}
             </g>
           );
