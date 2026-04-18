@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -9,15 +9,19 @@ import { LanguageStageProvider } from "@/context/LanguageStageContext";
 import { RolesProvider } from "@/context/RolesContext";
 import { WeeklyGoalsProvider, useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { TasksProvider } from "@/context/TasksContext";
+import { initNotifications, isNativePlatform } from "@/lib/notificationService";
+import { installNativeFetchBase } from "@/lib/apiBase";
 import HomePage from "@/pages/HomePage";
 import StatusPage from "@/pages/StatusPage";
 import TrainPage from "@/pages/TrainPage";
 import CoachPage from "@/pages/CoachPage";
-import DungeonPage from "@/pages/DungeonPage";
 import InventoryPage from "@/pages/InventoryPage";
-import Game3DPage from "@/pages/Game3DPage";
-import HousingPage from "@/pages/HousingPage";
 import SurvivalPage from "@/pages/SurvivalPage";
+
+// Heavy 3D scenes — code-split so the initial mobile bundle stays small.
+const DungeonPage = React.lazy(() => import("@/pages/DungeonPage"));
+const Game3DPage = React.lazy(() => import("@/pages/Game3DPage"));
+const HousingPage = React.lazy(() => import("@/pages/HousingPage"));
 import ProfilePage from "@/pages/ProfilePage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import LibraryPage from "@/pages/LibraryPage";
@@ -80,6 +84,36 @@ function Router() {
   );
 }
 
+function NativeBootstrap() {
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+    installNativeFetchBase();
+    initNotifications().catch((err) =>
+      console.warn("[App] notification init failed", err),
+    );
+  }, []);
+  return null;
+}
+
+function PageFallback() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#0b1020",
+        color: "#94a3b8",
+        fontFamily: "system-ui, sans-serif",
+        fontSize: 14,
+      }}
+    >
+      Loading…
+    </div>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -89,10 +123,13 @@ function App() {
             <PlanningProviders>
               <IntroWrapper>
                 <PlanningGate>
-                  <Router />
+                  <Suspense fallback={<PageFallback />}>
+                    <Router />
+                  </Suspense>
                 </PlanningGate>
                 <PhaseUnlockOverlay />
                 <Toaster />
+                <NativeBootstrap />
               </IntroWrapper>
             </PlanningProviders>
           </LanguageStageProvider>
