@@ -2,6 +2,10 @@ import React, { createContext, useContext, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Task, InsertTask, UpdateTask, Quadrant } from "@shared/schema";
+import {
+  scheduleTaskNotification,
+  cancelTaskNotification,
+} from "@/lib/notificationService";
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -50,30 +54,45 @@ export function TasksProvider({
     mutationFn: async (task: Omit<InsertTask, "userId">) => {
       if (!userId) throw new Error("No user ID");
       const res = await apiRequest("POST", "/api/tasks", { ...task, userId });
-      return res.json();
+      return res.json() as Promise<Task>;
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", userId, currentWeekStart] });
+      // Auto-schedule a notification at the task's start time (no-op on web).
+      if (created?.id && created?.startTime) {
+        scheduleTaskNotification(created).catch((err) =>
+          console.warn("[TasksContext] schedule on create failed", err),
+        );
+      }
     },
   });
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, updates, confirmStrategic }: { id: string; updates: UpdateTask; confirmStrategic?: boolean }) => {
       const res = await apiRequest("PATCH", `/api/tasks/${id}`, { ...updates, confirmStrategic });
-      return res.json();
+      return res.json() as Promise<Task>;
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", userId, currentWeekStart] });
+      // Reschedule notification at the new start time (cancel + reschedule via stable id).
+      if (updated?.id && updated?.startTime) {
+        scheduleTaskNotification(updated).catch((err) =>
+          console.warn("[TasksContext] reschedule on update failed", err),
+        );
+      }
     },
   });
 
   const deleteTaskMutation = useMutation({
     mutationFn: async ({ id, confirmStrategic }: { id: string; confirmStrategic?: boolean }) => {
       const res = await apiRequest("DELETE", `/api/tasks/${id}`, { confirmStrategic });
-      return res.ok;
+      return { ok: res.ok, id };
     },
-    onSuccess: () => {
+    onSuccess: ({ id }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", userId, currentWeekStart] });
+      cancelTaskNotification(id).catch((err) =>
+        console.warn("[TasksContext] cancel on delete failed", err),
+      );
     },
   });
 

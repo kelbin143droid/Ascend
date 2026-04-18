@@ -11,24 +11,32 @@ export const isNativePlatform = (): boolean => Capacitor.isNativePlatform();
 let permissionGranted = false;
 let initPromise: Promise<boolean> | null = null;
 
-async function ensurePermission(): Promise<boolean> {
+export async function requestPermission(): Promise<boolean> {
+  console.log("[notifications] Native platform:", isNativePlatform());
   if (!isNativePlatform()) return false;
-  // Cache only the granted state — denied states must re-check every time so
-  // that toggling permission from system settings is picked up without a
-  // full app restart.
-  if (permissionGranted) return true;
+  if (permissionGranted) {
+    console.log("[notifications] Permission already granted");
+    return true;
+  }
 
   try {
     const status: PermissionStatus = await LocalNotifications.checkPermissions();
     if (status.display === "granted") {
       permissionGranted = true;
+      console.log("[notifications] Permission granted (already)");
       return true;
     }
     if (status.display === "denied") {
+      console.log("[notifications] Permission denied (system level)");
       return false;
     }
     const req = await LocalNotifications.requestPermissions();
     permissionGranted = req.display === "granted";
+    console.log(
+      permissionGranted
+        ? "[notifications] Permission granted"
+        : "[notifications] Permission denied",
+    );
     return permissionGranted;
   } catch (err) {
     console.warn("[notifications] permission check failed", err);
@@ -37,11 +45,12 @@ async function ensurePermission(): Promise<boolean> {
 }
 
 export async function initNotifications(): Promise<boolean> {
+  console.log("[notifications] Native platform:", isNativePlatform());
   if (!isNativePlatform()) return false;
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    const granted = await ensurePermission();
+    const granted = await requestPermission();
     if (!granted) return false;
 
     try {
@@ -54,6 +63,7 @@ export async function initNotifications(): Promise<boolean> {
         vibration: true,
         lights: true,
       });
+      console.log("[notifications] Android channel created");
     } catch {
       // createChannel only exists on Android; ignore on other platforms
     }
@@ -96,39 +106,125 @@ export interface ScheduleResult {
   notificationId?: number;
 }
 
-export async function scheduleTaskNotification(
-  taskId: string,
+/**
+ * Schedule a one-off notification at the given date/time.
+ * Auto-generates a numeric id; safe to call from anywhere.
+ */
+export async function scheduleNotification(
   title: string,
   body: string,
-  dateTime: Date | string | number,
+  date: Date | string | number,
 ): Promise<ScheduleResult> {
   if (!isNativePlatform()) {
+    console.log("[notifications] scheduleNotification skipped (web)");
     return { scheduled: false, reason: "not-native" };
   }
   const granted = await initNotifications();
   if (!granted) return { scheduled: false, reason: "no-permission" };
 
-  const at = dateTime instanceof Date ? dateTime : new Date(dateTime);
+  const at = date instanceof Date ? date : new Date(date);
+  if (isNaN(at.getTime()) || at.getTime() <= Date.now()) {
+    console.warn("[notifications] scheduleNotification: time is in the past", at);
+    return { scheduled: false, reason: "past-time" };
+  }
+
+  const id = ((Date.now() & 0x7fffffff) >>> 0) || 1;
+  try {
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id,
+          title,
+          body,
+          schedule: { at, allowWhileIdle: true },
+          channelId: "ascend-default",
+          smallIcon: "ic_stat_icon",
+        },
+      ],
+    });
+    console.log("[notifications] Notification scheduled", { id, at: at.toISOString(), title });
+    return { scheduled: true, notificationId: id };
+  } catch (err) {
+    console.warn("[notifications] schedule failed", err);
+    return { scheduled: false, reason: "error" };
+  }
+}
+
+interface TaskLike {
+  id: string;
+  name?: string;
+  title?: string;
+  description?: string | null;
+  body?: string;
+  startTime?: Date | string | number | null;
+  date?: Date | string | number | null;
+}
+
+/**
+ * Schedule a notification tied to a task. Two call shapes are supported:
+ *   scheduleTaskNotification(task)
+ *   scheduleTaskNotification(taskId, title, body, date)
+ */
+export async function scheduleTaskNotification(
+  taskOrId: TaskLike | string,
+  title?: string,
+  body?: string,
+  dateTime?: Date | string | number,
+): Promise<ScheduleResult> {
+  let id: string;
+  let resolvedTitle: string;
+  let resolvedBody: string;
+  let resolvedDate: Date | string | number | null | undefined;
+
+  if (typeof taskOrId === "string") {
+    id = taskOrId;
+    resolvedTitle = title ?? "Reminder";
+    resolvedBody = body ?? "";
+    resolvedDate = dateTime;
+  } else {
+    id = taskOrId.id;
+    resolvedTitle = taskOrId.title ?? taskOrId.name ?? "Reminder";
+    resolvedBody = taskOrId.body ?? taskOrId.description ?? "";
+    resolvedDate = taskOrId.startTime ?? taskOrId.date;
+  }
+
+  if (!isNativePlatform()) {
+    return { scheduled: false, reason: "not-native" };
+  }
+  if (resolvedDate == null) {
+    console.warn("[notifications] scheduleTaskNotification: no date", id);
+    return { scheduled: false, reason: "past-time" };
+  }
+  const granted = await initNotifications();
+  if (!granted) return { scheduled: false, reason: "no-permission" };
+
+  const at = resolvedDate instanceof Date ? resolvedDate : new Date(resolvedDate);
   if (isNaN(at.getTime()) || at.getTime() <= Date.now()) {
     return { scheduled: false, reason: "past-time" };
   }
 
-  const id = stableNotificationId(taskId);
+  const numericId = stableNotificationId(id);
   const notification: LocalNotificationSchema = {
-    id,
-    title,
-    body,
+    id: numericId,
+    title: resolvedTitle,
+    body: resolvedBody,
     schedule: { at, allowWhileIdle: true },
     channelId: "ascend-default",
     smallIcon: "ic_stat_icon",
-    extra: { taskId },
+    extra: { taskId: id },
   };
 
   try {
-    await LocalNotifications.cancel({ notifications: [{ id }] }).catch(() => {});
+    await LocalNotifications.cancel({ notifications: [{ id: numericId }] }).catch(() => {});
     const opts: ScheduleOptions = { notifications: [notification] };
     await LocalNotifications.schedule(opts);
-    return { scheduled: true, notificationId: id };
+    console.log("[notifications] Notification scheduled (task)", {
+      id: numericId,
+      taskId: id,
+      at: at.toISOString(),
+      title: resolvedTitle,
+    });
+    return { scheduled: true, notificationId: numericId };
   } catch (err) {
     console.warn("[notifications] schedule failed", err);
     return { scheduled: false, reason: "error" };
