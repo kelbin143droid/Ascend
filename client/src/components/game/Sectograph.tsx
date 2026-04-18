@@ -134,6 +134,7 @@ export function Sectograph({
   rhythmWindows = [],
   suggestedPlacements = [],
   highlightCenter = false,
+  currentBlockId = null,
   onCenterClick,
   onBlockClick,
   onFreeWindowClick,
