@@ -143,6 +143,11 @@ export function AppTutorialOverlay() {
 
   const next = () => {
     const cur = STEPS[step];
+    if (!cur) {
+      try { localStorage.setItem(TUTORIAL_KEY, "1"); } catch {}
+      setVisible(false);
+      return;
+    }
     if (step < STEPS.length - 1) {
       const nextKind = STEPS[step + 1].kind;
       if (cur.kind === "sidebar-intro") {
