@@ -5,7 +5,7 @@ import { X, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const COLOR = "#f97316";
-const REST_SECONDS = 5;
+const REST_SECONDS = 7;
 const XP_REWARD = 35;
 
 interface Exercise {

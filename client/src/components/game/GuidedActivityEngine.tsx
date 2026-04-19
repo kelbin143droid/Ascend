@@ -833,7 +833,11 @@ export function GuidedActivityEngine({
           if (remaining <= 0) {
             clearInterval(intervalRef.current!);
             intervalRef.current = null;
-            beep.playCompleteBeep();
+            // Defer the completion beep until the breathing visual gracefully
+            // finishes its current Inhale → Hold → Exhale cycle. The beep is
+            // played in the BreathingVisual onComplete callback below so it
+            // lines up with the XP screen instead of cutting into the last
+            // hold/exhale voice cue.
             setBreathShouldFinish(true);
           }
         }, 1000);
@@ -1036,7 +1040,7 @@ export function GuidedActivityEngine({
                           timing={step.breathTiming!}
                           audioEnabled={audio.enabled}
                           shouldFinish={breathShouldFinish}
-                          onComplete={() => { setBreathShouldFinish(false); advanceStep(); }}
+                          onComplete={() => { beep.playCompleteBeep(); setBreathShouldFinish(false); advanceStep(); }}
                         />
                         <div
                           className="text-2xl font-bold font-mono tabular-nums drop-shadow"
@@ -1067,7 +1071,7 @@ export function GuidedActivityEngine({
                       timing={step.breathTiming!}
                       audioEnabled={audio.enabled}
                       shouldFinish={breathShouldFinish}
-                      onComplete={() => { setBreathShouldFinish(false); advanceStep(); }}
+                      onComplete={() => { beep.playCompleteBeep(); setBreathShouldFinish(false); advanceStep(); }}
                     />
                     <div className="flex flex-col items-center gap-2">
                       <div
