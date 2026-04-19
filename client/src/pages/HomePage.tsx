@@ -199,11 +199,11 @@ export default function HomePage() {
         title="Send a test notification"
         style={{
           position: "fixed",
-          bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
-          left: "calc(16px + env(safe-area-inset-left, 0px))",
+          top: "calc(12px + env(safe-area-inset-top, 0px))",
+          right: "calc(12px + env(safe-area-inset-right, 0px))",
           zIndex: 2147483647,
-          width: 56,
-          height: 56,
+          width: 48,
+          height: 48,
           borderRadius: "50%",
           border: "1px solid rgba(255,255,255,0.18)",
           background:
@@ -211,7 +211,7 @@ export default function HomePage() {
               ? "linear-gradient(135deg,#22c55e,#0ea5e9)"
               : "linear-gradient(135deg,#0ea5e9,#8b5cf6)",
           color: "#fff",
-          fontSize: 22,
+          fontSize: 20,
           lineHeight: 1,
           boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
           cursor: "pointer",
@@ -234,10 +234,9 @@ export default function HomePage() {
           onClick={() => setBellStatus("")}
           style={{
             position: "fixed",
-            bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
-            left: "calc(80px + env(safe-area-inset-left, 0px))",
-            right: "calc(16px + env(safe-area-inset-right, 0px))",
-            maxWidth: 320,
+            top: "calc(68px + env(safe-area-inset-top, 0px))",
+            right: "calc(12px + env(safe-area-inset-right, 0px))",
+            maxWidth: 280,
             zIndex: 2147483647,
             background: "rgba(11,16,32,0.95)",
             color: "#fff",
