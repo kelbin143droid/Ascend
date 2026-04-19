@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: "com.soloquest.app",
   appName: "Solo Quest RPG",
   webDir: "dist/public",
-  bundledWebRuntime: false,
   // Load the live Replit deployment directly so UI updates show up on the
   // phone without rebuilding the APK. Anything you ship to
   // solo-quest-rpg.replit.app is picked up on the next app launch.
