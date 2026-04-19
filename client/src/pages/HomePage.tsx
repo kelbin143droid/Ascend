@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 import { Day6Home } from "@/components/game/Day6Home";
-import { isNativePlatform, requestPermission } from "@/lib/notificationService";
+import {
+  isNativePlatform,
+  requestNotificationPermissions,
+  scheduleNotification,
+} from "@/lib/notificationService";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -85,7 +89,7 @@ export default function HomePage() {
     if (!isNativePlatform()) return;
     let cancelled = false;
     (async () => {
-      const granted = await requestPermission();
+      const granted = await requestNotificationPermissions();
       if (cancelled) return;
       console.log(granted ? "[HomePage] Notif permission granted" : "[HomePage] Notif permission denied");
     })();
@@ -93,6 +97,20 @@ export default function HomePage() {
       cancelled = true;
     };
   }, []);
+
+  const handleTestNotification = async () => {
+    const fireAt = new Date(Date.now() + 5_000);
+    console.log("[HomePage] Test notification button tapped — scheduling for", fireAt.toISOString());
+    const result = await scheduleNotification(
+      "Ascend OS — Test",
+      "If you can read this, notifications work! 🎯",
+      fireAt,
+    );
+    console.log("[HomePage] Test notification result:", result);
+    if (!isNativePlatform()) {
+      alert("Notifications only fire on the Android/iOS build. (Logged result to console.)");
+    }
+  };
 
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -165,6 +183,44 @@ export default function HomePage() {
         player={player!}
         scalingData={scalingData ?? null}
       />
+      <button
+        type="button"
+        onClick={handleTestNotification}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          handleTestNotification();
+        }}
+        data-testid="button-test-notification"
+        aria-label="Send test notification in 5 seconds"
+        title="Send a test notification in 5 seconds"
+        style={{
+          position: "fixed",
+          bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
+          left: "calc(16px + env(safe-area-inset-left, 0px))",
+          zIndex: 2147483647,
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          border: "1px solid rgba(255,255,255,0.18)",
+          background: "linear-gradient(135deg,#0ea5e9,#8b5cf6)",
+          color: "#fff",
+          fontSize: 24,
+          lineHeight: 1,
+          boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
+          cursor: "pointer",
+          pointerEvents: "auto",
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "rgba(255,255,255,0.2)",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+        }}
+      >
+        🔔
+      </button>
     </>
   );
 }

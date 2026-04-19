@@ -11,6 +11,12 @@ export const isNativePlatform = (): boolean => Capacitor.isNativePlatform();
 let permissionGranted = false;
 let initPromise: Promise<boolean> | null = null;
 
+/**
+ * Public alias — explicit name preferred by callers.
+ * Wraps LocalNotifications.requestPermissions() with caching + native guard.
+ */
+export const requestNotificationPermissions = (): Promise<boolean> => requestPermission();
+
 export async function requestPermission(): Promise<boolean> {
   console.log("[notifications] Native platform:", isNativePlatform());
   if (!isNativePlatform()) return false;
