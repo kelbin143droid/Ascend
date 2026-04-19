@@ -6,6 +6,11 @@ import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { useTasks } from "@/context/TasksContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { Sectograph, type ScheduleBlock } from "@/components/game/Sectograph";
+import {
+  scheduleTaskNotification,
+  requestNotificationPermissions,
+  isNativePlatform,
+} from "@/lib/notificationService";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Check, Pencil, X, Clock, Moon, Coffee, Book, Sunrise, Gamepad2, Briefcase, Swords, Wind, Eye, Heart, Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, CalendarDays, Flame, Zap } from "lucide-react";
@@ -223,20 +228,21 @@ export default function StatusPage() {
     
     const hasRequiredTags = blockToSave.roleId && blockToSave.quadrant;
     
+    // Build the actual start/end Date objects from the block's hour/minute.
+    const today = new Date();
+    const startTime = new Date(today);
+    startTime.setHours(blockToSave.startHour, blockToSave.startMinute || 0, 0, 0);
+
+    const endTime = new Date(today);
+    const startTotalMinutes = blockToSave.startHour * 60 + (blockToSave.startMinute || 0);
+    const endTotalMinutes = blockToSave.endHour * 60 + (blockToSave.endMinute || 0);
+    if (endTotalMinutes <= startTotalMinutes) {
+      endTime.setDate(endTime.getDate() + 1);
+    }
+    endTime.setHours(blockToSave.endHour, blockToSave.endMinute || 0, 0, 0);
+
     if (hasRequiredTags) {
       try {
-        const today = new Date();
-        const startTime = new Date(today);
-        startTime.setHours(blockToSave.startHour, blockToSave.startMinute || 0, 0, 0);
-        
-        const endTime = new Date(today);
-        const startTotalMinutes = blockToSave.startHour * 60 + (blockToSave.startMinute || 0);
-        const endTotalMinutes = blockToSave.endHour * 60 + (blockToSave.endMinute || 0);
-        if (endTotalMinutes <= startTotalMinutes) {
-          endTime.setDate(endTime.getDate() + 1);
-        }
-        endTime.setHours(blockToSave.endHour, blockToSave.endMinute || 0, 0, 0);
-        
         await createTask({
           roleId: blockToSave.roleId!,
           weeklyGoalId: blockToSave.weeklyGoalId,
@@ -246,8 +252,44 @@ export default function StatusPage() {
           endTime: endTime,
           color: blockToSave.color,
         });
+        // createTask's onSuccess in TasksContext already schedules the
+        // notification + shows a toast. Nothing else to do here.
       } catch (error) {
         console.error("Failed to persist task to database:", error);
+      }
+    } else if (isNativePlatform() && startTime.getTime() > Date.now()) {
+      // Untagged Sectograph block: still schedule a local notification so the
+      // user gets a phone reminder even though we're not persisting a Task.
+      try {
+        const granted = await requestNotificationPermissions();
+        if (granted) {
+          const r = await scheduleTaskNotification(
+            blockToSave.id,
+            blockToSave.name || "Sectograph block",
+            blockToSave.description || "Time to focus on this block.",
+            startTime,
+          );
+          if (r.scheduled) {
+            toast({
+              title: "Reminder set",
+              description: `You'll be notified at ${startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+            });
+          } else {
+            toast({
+              title: "Reminder NOT set",
+              description: `Reason: ${r.reason ?? "unknown"}`,
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Notification permission needed",
+            description: "Tap the bell on Home → Allow, then re-save the block.",
+            variant: "destructive",
+          });
+        }
+      } catch (err) {
+        console.warn("[StatusPage] schedule failed", err);
       }
     }
     
