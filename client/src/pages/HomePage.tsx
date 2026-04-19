@@ -86,27 +86,38 @@ export default function HomePage() {
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
   // Permission is requested on explicit user action (bell tap) — no mount-time prompt.
+  const [bellStatus, setBellStatus] = useState<string>("");
+  const [bellTapCount, setBellTapCount] = useState(0);
 
   const handleTestNotification = async () => {
+    setBellTapCount((n) => n + 1);
+    setBellStatus("Tap registered — checking platform…");
     console.log("[HomePage] Bell tapped — requesting notification permission");
+
     if (!isNativePlatform()) {
-      alert("Notifications only fire on the Android/iOS build.");
+      setBellStatus("Web preview: notifications only fire on the Android build.");
       return;
     }
+    setBellStatus("Asking Android for permission…");
     const granted = await requestNotificationPermissions();
     if (!granted) {
+      setBellStatus("Permission denied. Enable it in Android Settings → Apps → Solo Quest RPG → Notifications.");
       console.warn("[HomePage] Permission denied — cannot send test notification");
-      alert("Notification permission denied. Enable it in Android system settings.");
       return;
     }
-    // Fire immediately (1s in the future to satisfy the plugin's "at" requirement).
+    setBellStatus("Permission OK. Scheduling test notification…");
     const fireAt = new Date(Date.now() + 1_000);
     const result = await scheduleNotification(
-      "Ascend OS — Test",
-      "If you can read this, notifications work! 🎯",
+      "Solo Quest RPG — Test",
+      "If you can read this, notifications work!",
       fireAt,
     );
     console.log("[HomePage] Test notification scheduled:", result);
+    if (result.scheduled) {
+      setBellStatus(`Scheduled (id ${result.notificationId}). Notification should appear within 1s.`);
+    } else {
+      setBellStatus(`Schedule failed: ${result.reason ?? "unknown"}`);
+    }
   };
 
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
@@ -183,13 +194,9 @@ export default function HomePage() {
       <button
         type="button"
         onClick={handleTestNotification}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          handleTestNotification();
-        }}
         data-testid="button-test-notification"
-        aria-label="Send test notification in 5 seconds"
-        title="Send a test notification in 5 seconds"
+        aria-label="Send a test notification"
+        title="Send a test notification"
         style={{
           position: "fixed",
           bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
@@ -199,9 +206,12 @@ export default function HomePage() {
           height: 56,
           borderRadius: "50%",
           border: "1px solid rgba(255,255,255,0.18)",
-          background: "linear-gradient(135deg,#0ea5e9,#8b5cf6)",
+          background:
+            bellTapCount > 0
+              ? "linear-gradient(135deg,#22c55e,#0ea5e9)"
+              : "linear-gradient(135deg,#0ea5e9,#8b5cf6)",
           color: "#fff",
-          fontSize: 24,
+          fontSize: 22,
           lineHeight: 1,
           boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
           cursor: "pointer",
@@ -216,8 +226,33 @@ export default function HomePage() {
           padding: 0,
         }}
       >
-        🔔
+        {bellTapCount === 0 ? "🔔" : `🔔${bellTapCount}`}
       </button>
+      {bellStatus && (
+        <div
+          data-testid="text-bell-status"
+          onClick={() => setBellStatus("")}
+          style={{
+            position: "fixed",
+            bottom: "calc(88px + env(safe-area-inset-bottom, 0px))",
+            left: "calc(80px + env(safe-area-inset-left, 0px))",
+            right: "calc(16px + env(safe-area-inset-right, 0px))",
+            maxWidth: 320,
+            zIndex: 2147483647,
+            background: "rgba(11,16,32,0.95)",
+            color: "#fff",
+            fontSize: 12,
+            lineHeight: 1.35,
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.15)",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
+            pointerEvents: "auto",
+          }}
+        >
+          {bellStatus}
+        </div>
+      )}
     </>
   );
 }
