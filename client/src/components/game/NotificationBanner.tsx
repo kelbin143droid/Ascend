@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Bell } from "lucide-react";
 
 interface NotificationBannerProps {
@@ -15,7 +15,23 @@ const TYPE_STYLES: Record<string, { accent: string; bg: string; border: string }
   milestone: { accent: "rgba(251,191,36,0.8)", bg: "rgba(251,191,36,0.06)", border: "rgba(251,191,36,0.12)" },
 };
 
+const VISIBLE_MS = 5000;
+const FADE_MS = 600;
+
 export function NotificationBanner({ notification, onDismiss }: NotificationBannerProps) {
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    if (!notification) return;
+    setFading(false);
+    const fadeTimer = setTimeout(() => setFading(true), VISIBLE_MS);
+    const dismissTimer = setTimeout(() => onDismiss(), VISIBLE_MS + FADE_MS);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(dismissTimer);
+    };
+  }, [notification, onDismiss]);
+
   if (!notification) return null;
 
   const style = TYPE_STYLES[notification.type] || TYPE_STYLES.momentum;
@@ -28,6 +44,10 @@ export function NotificationBanner({ notification, onDismiss }: NotificationBann
         backgroundColor: style.bg,
         border: `1px solid ${style.border}`,
         animation: "fadeSlideIn 0.4s ease-out",
+        opacity: fading ? 0 : 1,
+        transform: fading ? "translateY(-12px)" : "translateY(0)",
+        transition: `opacity ${FADE_MS}ms ease-out, transform ${FADE_MS}ms ease-out`,
+        pointerEvents: fading ? "none" : "auto",
       }}
     >
       <Bell size={14} className="mt-0.5 shrink-0" style={{ color: style.accent }} />

@@ -4,11 +4,6 @@ import { useEffect, useState } from "react";
 import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 import { Day6Home } from "@/components/game/Day6Home";
-import {
-  isNativePlatform,
-  requestNotificationPermissions,
-  scheduleNotification,
-} from "@/lib/notificationService";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -85,41 +80,6 @@ export default function HomePage() {
 
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
-  // Permission is requested on explicit user action (bell tap) — no mount-time prompt.
-  const [bellStatus, setBellStatus] = useState<string>("");
-  const [bellTapCount, setBellTapCount] = useState(0);
-
-  const handleTestNotification = async () => {
-    setBellTapCount((n) => n + 1);
-    setBellStatus("Tap registered — checking platform…");
-    console.log("[HomePage] Bell tapped — requesting notification permission");
-
-    if (!isNativePlatform()) {
-      setBellStatus("Web preview: notifications only fire on the Android build.");
-      return;
-    }
-    setBellStatus("Asking Android for permission…");
-    const granted = await requestNotificationPermissions();
-    if (!granted) {
-      setBellStatus("Permission denied. Enable it in Android Settings → Apps → Solo Quest RPG → Notifications.");
-      console.warn("[HomePage] Permission denied — cannot send test notification");
-      return;
-    }
-    setBellStatus("Permission OK. Scheduling test notification…");
-    const fireAt = new Date(Date.now() + 1_000);
-    const result = await scheduleNotification(
-      "Solo Quest RPG — Test",
-      "If you can read this, notifications work!",
-      fireAt,
-    );
-    console.log("[HomePage] Test notification scheduled:", result);
-    if (result.scheduled) {
-      setBellStatus(`Scheduled (id ${result.notificationId}). Notification should appear within 1s.`);
-    } else {
-      setBellStatus(`Schedule failed: ${result.reason ?? "unknown"}`);
-    }
-  };
-
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
     queryFn: async () => {
@@ -191,67 +151,6 @@ export default function HomePage() {
         player={player!}
         scalingData={scalingData ?? null}
       />
-      <button
-        type="button"
-        onClick={handleTestNotification}
-        data-testid="button-test-notification"
-        aria-label="Send a test notification"
-        title="Send a test notification"
-        style={{
-          position: "fixed",
-          top: "calc(12px + env(safe-area-inset-top, 0px))",
-          right: "calc(12px + env(safe-area-inset-right, 0px))",
-          zIndex: 2147483647,
-          width: 48,
-          height: 48,
-          borderRadius: "50%",
-          border: "1px solid rgba(255,255,255,0.18)",
-          background:
-            bellTapCount > 0
-              ? "linear-gradient(135deg,#22c55e,#0ea5e9)"
-              : "linear-gradient(135deg,#0ea5e9,#8b5cf6)",
-          color: "#fff",
-          fontSize: 20,
-          lineHeight: 1,
-          boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
-          cursor: "pointer",
-          pointerEvents: "auto",
-          touchAction: "manipulation",
-          WebkitTapHighlightColor: "rgba(255,255,255,0.2)",
-          WebkitUserSelect: "none",
-          userSelect: "none",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-        }}
-      >
-        {bellTapCount === 0 ? "🔔" : `🔔${bellTapCount}`}
-      </button>
-      {bellStatus && (
-        <div
-          data-testid="text-bell-status"
-          onClick={() => setBellStatus("")}
-          style={{
-            position: "fixed",
-            top: "calc(68px + env(safe-area-inset-top, 0px))",
-            right: "calc(12px + env(safe-area-inset-right, 0px))",
-            maxWidth: 280,
-            zIndex: 2147483647,
-            background: "rgba(11,16,32,0.95)",
-            color: "#fff",
-            fontSize: 12,
-            lineHeight: 1.35,
-            padding: "10px 12px",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.15)",
-            boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
-            pointerEvents: "auto",
-          }}
-        >
-          {bellStatus}
-        </div>
-      )}
     </>
   );
 }
