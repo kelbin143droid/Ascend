@@ -8,6 +8,12 @@ import { useGame } from "@/context/GameContext";
 import { useRoles } from "@/context/RolesContext";
 import { useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { apiRequest } from "@/lib/queryClient";
+import {
+  scheduleTaskNotification,
+  requestNotificationPermissions,
+  isNativePlatform,
+} from "@/lib/notificationService";
+import { useToast } from "@/hooks/use-toast";
 import type { Quadrant } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -195,6 +201,7 @@ export default function SectographPage() {
   const colors = backgroundTheme.colors;
   const { player, updatePlayer } = useGame();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<ViewTab>("sectograph");
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -382,11 +389,66 @@ export default function SectographPage() {
     setShowAddBlock(false);
   };
 
-  const handleSaveBlock = () => {
+  const handleSaveBlock = async () => {
     if (!editingBlock || !player) return;
     const name = editingBlock.id.startsWith("custom") ? (customBlockName || "Custom Block") : editingBlock.name;
     const blockFinal: any = { ...editingBlock, name };
     delete blockFinal.isNew;
+
+    // Schedule a phone notification for the block's start time.
+    if (
+      isNativePlatform() &&
+      typeof blockFinal.startHour === "number"
+    ) {
+      const now = new Date();
+      const fireAt = new Date(now);
+      fireAt.setHours(
+        blockFinal.startHour,
+        blockFinal.startMinute || 0,
+        0,
+        0,
+      );
+      // If the block's time today is already past, push to tomorrow.
+      if (fireAt.getTime() <= now.getTime()) {
+        fireAt.setDate(fireAt.getDate() + 1);
+      }
+      try {
+        const granted = await requestNotificationPermissions();
+        if (!granted) {
+          toast({
+            title: "Notification permission needed",
+            description: "Tap the bell on Home → Allow, then re-save the block.",
+            variant: "destructive",
+          });
+        } else {
+          const r = await scheduleTaskNotification(
+            blockFinal.id,
+            blockFinal.name || "Sectograph block",
+            "Time for this block.",
+            fireAt,
+          );
+          if (r.scheduled) {
+            toast({
+              title: "Reminder set",
+              description: `You'll be notified at ${fireAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+            });
+          } else {
+            toast({
+              title: "Reminder NOT set",
+              description: `Reason: ${r.reason ?? "unknown"}`,
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("[SectographPage] schedule failed", err);
+        toast({
+          title: "Reminder failed",
+          description: String(err),
+          variant: "destructive",
+        });
+      }
+    }
     // Strip subType when not a Daily Flow block to keep stored data clean.
     if (!editingBlock.id.startsWith("daily-flow")) {
       delete blockFinal.subType;
