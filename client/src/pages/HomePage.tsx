@@ -85,31 +85,28 @@ export default function HomePage() {
 
   const [dismissedNotification, setDismissedNotification] = useState(false);
   const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
-  useEffect(() => {
-    if (!isNativePlatform()) return;
-    let cancelled = false;
-    (async () => {
-      const granted = await requestNotificationPermissions();
-      if (cancelled) return;
-      console.log(granted ? "[HomePage] Notif permission granted" : "[HomePage] Notif permission denied");
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Permission is requested on explicit user action (bell tap) — no mount-time prompt.
 
   const handleTestNotification = async () => {
-    const fireAt = new Date(Date.now() + 5_000);
-    console.log("[HomePage] Test notification button tapped — scheduling for", fireAt.toISOString());
+    console.log("[HomePage] Bell tapped — requesting notification permission");
+    if (!isNativePlatform()) {
+      alert("Notifications only fire on the Android/iOS build.");
+      return;
+    }
+    const granted = await requestNotificationPermissions();
+    if (!granted) {
+      console.warn("[HomePage] Permission denied — cannot send test notification");
+      alert("Notification permission denied. Enable it in Android system settings.");
+      return;
+    }
+    // Fire immediately (1s in the future to satisfy the plugin's "at" requirement).
+    const fireAt = new Date(Date.now() + 1_000);
     const result = await scheduleNotification(
       "Ascend OS — Test",
       "If you can read this, notifications work! 🎯",
       fireAt,
     );
-    console.log("[HomePage] Test notification result:", result);
-    if (!isNativePlatform()) {
-      alert("Notifications only fire on the Android/iOS build. (Logged result to console.)");
-    }
+    console.log("[HomePage] Test notification scheduled:", result);
   };
 
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({

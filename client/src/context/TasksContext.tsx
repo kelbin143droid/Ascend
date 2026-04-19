@@ -1,10 +1,13 @@
-import React, { createContext, useContext, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Task, InsertTask, UpdateTask, Quadrant } from "@shared/schema";
 import {
   scheduleTaskNotification,
   cancelTaskNotification,
+  requestNotificationPermissions,
+  isNativePlatform,
+  listPendingNotifications,
 } from "@/lib/notificationService";
 
 function getWeekStartDate(date: Date = new Date()): string {
@@ -49,6 +52,69 @@ export function TasksProvider({
     },
     enabled: !!userId,
   });
+
+  // Authoritative sync: whenever the loaded task list changes, reconcile pending
+  // OS notifications with the desired set of upcoming tasks. We schedule any
+  // missing/changed notifications and CANCEL pending ones whose task no longer
+  // exists or has moved into the past. Stable ids (FNV-1a of taskId) make this
+  // idempotent — re-scheduling overwrites without duplicating.
+  const syncedSignatureRef = useRef<string>("");
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+    const upcoming = (tasks ?? []).filter(
+      (t) => t?.id && t?.startTime && new Date(t.startTime).getTime() > Date.now(),
+    );
+    const signature = upcoming
+      .map((t) => `${t.id}:${new Date(t.startTime!).getTime()}:${t.title ?? ""}`)
+      .sort()
+      .join("|");
+    if (signature === syncedSignatureRef.current) return;
+
+    let cancelled = false;
+    (async () => {
+      const granted = await requestNotificationPermissions();
+      if (cancelled) return;
+      if (!granted) {
+        console.warn("[TasksContext] Notification permission denied — Sectograph tasks not scheduled");
+        // Do NOT commit signature so we retry once permission flips to granted.
+        return;
+      }
+
+      // Cancel pending OS notifications that are no longer desired.
+      try {
+        const desiredIds = new Set(upcoming.map((t) => t.id));
+        const pending = await listPendingNotifications();
+        for (const p of pending) {
+          const taskId = (p as any)?.extra?.taskId as string | undefined;
+          if (taskId && !desiredIds.has(taskId)) {
+            await cancelTaskNotification(taskId);
+          }
+        }
+      } catch (err) {
+        console.warn("[TasksContext] reconcile cancel pass failed", err);
+      }
+
+      // Schedule (or re-schedule) every desired upcoming task.
+      let okCount = 0;
+      for (const task of upcoming) {
+        try {
+          const r = await scheduleTaskNotification(task);
+          if (r.scheduled) okCount += 1;
+        } catch (err) {
+          console.warn("[TasksContext] schedule failed for task", task.id, err);
+        }
+      }
+      console.log(
+        `[TasksContext] Sectograph notif sync — scheduled ${okCount}/${upcoming.length} upcoming task(s)`,
+      );
+      // Only commit signature on a successful pass so denied→granted recovers.
+      if (!cancelled) syncedSignatureRef.current = signature;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tasks]);
 
   const createTaskMutation = useMutation({
     mutationFn: async (task: Omit<InsertTask, "userId">) => {
