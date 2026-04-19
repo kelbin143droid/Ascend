@@ -9,6 +9,11 @@ import {
   isNativePlatform,
   listPendingNotifications,
 } from "@/lib/notificationService";
+import { useToast } from "@/hooks/use-toast";
+
+function formatTime(d: Date): string {
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -40,6 +45,7 @@ export function TasksProvider({
   userId: string | null;
 }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const currentWeekStart = useMemo(() => getWeekStartDate(), []);
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
@@ -122,13 +128,32 @@ export function TasksProvider({
       const res = await apiRequest("POST", "/api/tasks", { ...task, userId });
       return res.json() as Promise<Task>;
     },
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", userId, currentWeekStart] });
-      // Auto-schedule a notification at the task's start time (no-op on web).
-      if (created?.id && created?.startTime) {
-        scheduleTaskNotification(created).catch((err) =>
-          console.warn("[TasksContext] schedule on create failed", err),
-        );
+      if (!isNativePlatform()) return;
+      if (!created?.id || !created?.startTime) return;
+      try {
+        const r = await scheduleTaskNotification(created);
+        const at = new Date(created.startTime);
+        if (r.scheduled) {
+          toast({
+            title: "Notification scheduled",
+            description: `You'll be reminded at ${formatTime(at)}.`,
+          });
+        } else {
+          toast({
+            title: "Notification NOT scheduled",
+            description: `Reason: ${r.reason ?? "unknown"} (start time: ${at.toISOString()})`,
+            variant: "destructive",
+          });
+        }
+      } catch (err) {
+        console.warn("[TasksContext] schedule on create failed", err);
+        toast({
+          title: "Notification failed",
+          description: String(err),
+          variant: "destructive",
+        });
       }
     },
   });
@@ -138,13 +163,27 @@ export function TasksProvider({
       const res = await apiRequest("PATCH", `/api/tasks/${id}`, { ...updates, confirmStrategic });
       return res.json() as Promise<Task>;
     },
-    onSuccess: (updated) => {
+    onSuccess: async (updated) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", userId, currentWeekStart] });
-      // Reschedule notification at the new start time (cancel + reschedule via stable id).
-      if (updated?.id && updated?.startTime) {
-        scheduleTaskNotification(updated).catch((err) =>
-          console.warn("[TasksContext] reschedule on update failed", err),
-        );
+      if (!isNativePlatform()) return;
+      if (!updated?.id || !updated?.startTime) return;
+      try {
+        const r = await scheduleTaskNotification(updated);
+        const at = new Date(updated.startTime);
+        if (r.scheduled) {
+          toast({
+            title: "Notification rescheduled",
+            description: `Updated to ${formatTime(at)}.`,
+          });
+        } else {
+          toast({
+            title: "Reschedule skipped",
+            description: `Reason: ${r.reason ?? "unknown"}`,
+            variant: "destructive",
+          });
+        }
+      } catch (err) {
+        console.warn("[TasksContext] reschedule on update failed", err);
       }
     },
   });
