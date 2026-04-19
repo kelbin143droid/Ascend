@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.ascendos.app",
-  appName: "Ascend OS",
+  appId: "com.soloquest.app",
+  appName: "Solo Quest RPG",
   webDir: "dist/public",
   bundledWebRuntime: false,
   android: {
