@@ -14,9 +14,19 @@ export interface ScheduleBlock {
   isSystemTask?: boolean;
   isTemplate?: boolean;
   segment?: string;
-  /** Optional Daily Flow sub-type: 'strength' | 'agility' | 'vitality' | 'mixed' */
   subType?: string;
+  type?: BlockType;
+  completed?: boolean;
 }
+
+export type BlockType =
+  | "sleep"
+  | "work"
+  | "study"
+  | "daily"
+  | "meal"
+  | "leisure"
+  | "custom";
 
 export interface FreeWindow {
   startHour: number;
@@ -58,14 +68,87 @@ export interface SuggestedPlacement {
   reason: string;
 }
 
+/* ─────────────── Fixed type-based color system ─────────────── */
+export const TYPE_COLORS: Record<BlockType, string> = {
+  sleep: "#3a3f4a",     // dark gray
+  work: "#3b82f6",      // blue
+  study: "#22c55e",     // green
+  daily: "#a855f7",     // purple (Daily Flow)
+  meal: "#f97316",      // orange
+  leisure: "#eab308",   // yellow
+  custom: "#6b7280",    // neutral gray
+};
+
+/** Best-effort classifier for blocks coming from older data without `type`. */
+export function inferBlockType(block: ScheduleBlock): BlockType {
+  if (block.type) return block.type;
+  const id = (block.id || "").toLowerCase();
+  const seg = (block.segment || "").toLowerCase();
+  const name = (block.name || "").toLowerCase();
+  if (id.startsWith("seg-sleep") || id.startsWith("sleep") || seg === "sleep" || /\bsleep\b|\brest\b/.test(name)) return "sleep";
+  if (id.startsWith("daily-flow") || id.startsWith("daily") || /daily flow|workout|train|gym|stretch|breath/.test(name)) return "daily";
+  if (id.startsWith("work") || seg === "work" || /\bwork\b|meeting|deep work/.test(name)) return "work";
+  if (id.startsWith("study") || /\bstudy\b|\bread\b|\blearn\b|\bclass\b|\bcourse\b/.test(name)) return "study";
+  if (id.startsWith("meal") || /\bmeal\b|\blunch\b|\bdinner\b|\bbreakfast\b|\bsnack\b|\beat\b/.test(name)) return "meal";
+  if (id.startsWith("leisure") || /leisure|\bgame\b|\btv\b|relax|\bfun\b|social/.test(name)) return "leisure";
+  return "custom";
+}
+
+/** Always returns a deterministic palette color so the wheel reads consistently. */
+export function getBlockColor(block: ScheduleBlock): string {
+  return TYPE_COLORS[inferBlockType(block)];
+}
+
+/* ─────────────── Time helpers (overnight-safe) ─────────────── */
+/** Returns true when `nowMin` (0..1440) falls between an interval that may wrap past midnight. */
+function isNowInsideInterval(nowMin: number, startMin: number, endMin: number): boolean {
+  if (endMin > startMin) return nowMin >= startMin && nowMin < endMin;
+  // Wrapped (e.g. 22:00 → 06:00)
+  return nowMin >= startMin || nowMin < endMin;
+}
+
+/** Whether the interval has fully ended for today, given current minute-of-day. */
+function isIntervalPast(nowMin: number, startMin: number, endMin: number): boolean {
+  if (endMin > startMin) return nowMin >= endMin;
+  // Wrapped intervals can only be considered "past" when nowMin is between endMin and startMin.
+  return nowMin >= endMin && nowMin < startMin;
+}
+
+/** Minutes remaining in an interval that contains `nowMin`. Returns 0 if not inside. */
+function minutesRemainingInInterval(nowMin: number, startMin: number, endMin: number): number {
+  if (!isNowInsideInterval(nowMin, startMin, endMin)) return 0;
+  if (endMin > startMin) return endMin - nowMin;
+  // Wrapped: end is tomorrow.
+  return (endMin + 24 * 60) - nowMin;
+}
+
+/** Minutes elapsed inside an interval, capped to its duration. Handles wrapped intervals. */
+function elapsedMinutesInInterval(nowMin: number, startMin: number, endMin: number): number {
+  const duration = endMin > startMin ? endMin - startMin : (endMin + 24 * 60) - startMin;
+  if (isNowInsideInterval(nowMin, startMin, endMin)) {
+    if (endMin > startMin) return nowMin - startMin;
+    // Wrapped, currently inside
+    return nowMin >= startMin ? nowMin - startMin : (nowMin + 24 * 60) - startMin;
+  }
+  if (isIntervalPast(nowMin, startMin, endMin)) return duration;
+  return 0;
+}
+
+export const _sectographTimeHelpers = {
+  isNowInsideInterval,
+  isIntervalPast,
+  minutesRemainingInInterval,
+  elapsedMinutesInInterval,
+};
+
 export const DEFAULT_SEGMENTS: ScheduleBlock[] = [
-  { id: "seg-sleep", name: "Sleep", startHour: 22, endHour: 6, color: "#2d3a4f", segment: "sleep" },
-  { id: "seg-morning", name: "Morning", startHour: 6, endHour: 9, color: "#4a6272", segment: "personal" },
-  { id: "seg-work-am", name: "Work", startHour: 9, endHour: 12, color: "#3d5a80", segment: "work", isSystemTask: true },
-  { id: "seg-midday", name: "Break", startHour: 12, endHour: 13, color: "#5a7d5a", segment: "personal" },
-  { id: "seg-work-pm", name: "Work", startHour: 13, endHour: 17, color: "#3d5a80", segment: "work", isSystemTask: true },
-  { id: "seg-focus", name: "Focus", startHour: 17, endHour: 19, color: "#6b5b8a", segment: "focus", isSystemTask: true },
-  { id: "seg-evening", name: "Personal", startHour: 19, endHour: 22, color: "#5a6b7a", segment: "personal" },
+  { id: "seg-sleep", name: "Sleep", startHour: 22, endHour: 6, color: TYPE_COLORS.sleep, segment: "sleep", type: "sleep" },
+  { id: "seg-morning", name: "Morning", startHour: 6, endHour: 9, color: TYPE_COLORS.custom, segment: "personal", type: "custom" },
+  { id: "seg-work-am", name: "Work", startHour: 9, endHour: 12, color: TYPE_COLORS.work, segment: "work", type: "work", isSystemTask: true },
+  { id: "seg-midday", name: "Meal", startHour: 12, endHour: 13, color: TYPE_COLORS.meal, segment: "personal", type: "meal" },
+  { id: "seg-work-pm", name: "Work", startHour: 13, endHour: 17, color: TYPE_COLORS.work, segment: "work", type: "work", isSystemTask: true },
+  { id: "seg-focus", name: "Study", startHour: 17, endHour: 19, color: TYPE_COLORS.study, segment: "focus", type: "study", isSystemTask: true },
+  { id: "seg-evening", name: "Leisure", startHour: 19, endHour: 22, color: TYPE_COLORS.leisure, segment: "personal", type: "leisure" },
 ];
 
 export function detectFreeWindows(schedule: ScheduleBlock[], minGapMinutes: number = 30): FreeWindow[] {
@@ -117,7 +200,6 @@ interface SectographProps {
   rhythmWindows?: RhythmWindowVisual[];
   suggestedPlacements?: SuggestedPlacement[];
   highlightCenter?: boolean;
-  /** ID of the schedule block that is currently active — receives a pulsing glow. */
   currentBlockId?: string | null;
   onCenterClick?: () => void;
   onBlockClick?: (block: ScheduleBlock) => void;
@@ -143,25 +225,25 @@ export function Sectograph({
   const [time, setTime] = useState(new Date());
   const { clockTheme } = useTheme();
 
+  // Tick once per minute for needle (was every second — wasteful).
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
+    const update = () => setTime(new Date());
+    update();
+    const timer = setInterval(update, 30_000);
     return () => clearInterval(timer);
   }, []);
 
+  /* ─────────────── Geometry ─────────────── */
   const center = size / 2;
-  const outerRadius = (size / 2) - 12;
-  const glowRingRadius = outerRadius * 0.82;
-  const glowRingWidth = outerRadius * 0.12;
-  const innerRadius = outerRadius * 0.55;
-  const scheduleInnerRadius = innerRadius + 4;
-  const scheduleOuterRadius = glowRingRadius - glowRingWidth / 2 - 2;
-  const presentMarkerRadius = outerRadius - 1;
+  const outerRadius = (size / 2) - 8;
+  const progressRingRadius = outerRadius - 2;
+  const progressRingWidth = 3;
+  const scheduleOuterRadius = outerRadius - 8;
+  const scheduleInnerRadius = scheduleOuterRadius - Math.max(28, size * 0.11);
+  const innerRadius = scheduleInnerRadius - 6;
 
-  const timeToAngle = (hour: number, minute: number = 0) => {
-    const totalMinutes = hour * 60 + minute;
-    return (totalMinutes / (24 * 60)) * 360 - 90;
-  };
-
+  const timeToAngle = (hour: number, minute: number = 0) =>
+    ((hour * 60 + minute) / (24 * 60)) * 360 - 90;
   const hourToAngle = (hour: number) => ((hour % 24) / 24) * 360 - 90;
 
   const polarToCartesian = (angle: number, radius: number) => {
@@ -183,22 +265,51 @@ export function Sectograph({
     return `M ${outerStart.x} ${outerStart.y} A ${outerR} ${outerR} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y} L ${innerEnd.x} ${innerEnd.y} A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y} Z`;
   };
 
+  const createStrokeArcPath = (startAngle: number, endAngle: number, radius: number) => {
+    let adjustedEnd = endAngle;
+    if (endAngle < startAngle) adjustedEnd = endAngle + 360;
+    const start = polarToCartesian(startAngle, radius);
+    const end = polarToCartesian(adjustedEnd, radius);
+    const largeArc = (adjustedEnd - startAngle) > 180 ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+  };
+
   const hours = time.getHours();
   const minutes = time.getMinutes();
-  const seconds = time.getSeconds();
-
   const currentAngle = timeToAngle(hours, minutes);
-  const hourAngle = (hours / 24) * 360 + (minutes / 60) * 15 - 90;
-  const minuteAngle = (minutes / 60) * 360 + (seconds / 60) * 6 - 90;
+  const nowMin = hours * 60 + minutes;
 
-  const hourHandLength = innerRadius * 0.5;
-  const minuteHandLength = innerRadius * 0.75;
-  const hourHandEnd = polarToCartesian(hourAngle, hourHandLength);
-  const minuteHandEnd = polarToCartesian(minuteAngle, minuteHandLength);
+  /* ─────────────── Schedule segments (memoized) ─────────────── */
+  const scheduleSegments = useMemo(() => {
+    return schedule.map((block) => {
+      const startAngle = timeToAngle(block.startHour, block.startMinute ?? 0);
+      const endAngle = timeToAngle(block.endHour, block.endMinute ?? 0);
+      const path = createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius);
 
-  const presentPos = polarToCartesian(currentAngle, presentMarkerRadius);
-  const presentInner = polarToCartesian(currentAngle, scheduleInnerRadius - 2);
-  const presentOuter = polarToCartesian(currentAngle, scheduleOuterRadius + 2);
+      const startMin = block.startHour * 60 + (block.startMinute ?? 0);
+      const endMin = block.endHour * 60 + (block.endMinute ?? 0);
+      const isPast = block.completed === true || isIntervalPast(nowMin, startMin, endMin);
+      const color = getBlockColor(block);
+      return { block, path, color, isPast };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schedule, scheduleOuterRadius, scheduleInnerRadius, nowMin]);
+
+  /* ─────────────── Day completion percentage (overnight-safe) ─────────────── */
+  const dayCompletionPct = useMemo(() => {
+    if (schedule.length === 0) return 0;
+    let scheduledMin = 0;
+    let elapsedScheduledMin = 0;
+    for (const b of schedule) {
+      const s = b.startHour * 60 + (b.startMinute ?? 0);
+      const e = b.endHour * 60 + (b.endMinute ?? 0);
+      const duration = e > s ? e - s : (e + 24 * 60) - s;
+      scheduledMin += duration;
+      elapsedScheduledMin += elapsedMinutesInInterval(nowMin, s, e);
+    }
+    if (scheduledMin <= 0) return 0;
+    return Math.min(1, elapsedScheduledMin / scheduledMin);
+  }, [schedule, nowMin]);
 
   const freeWindows = useMemo(() => {
     if (!showAwareness) return [];
@@ -208,146 +319,149 @@ export function Sectograph({
   const colors = clockTheme.colors;
   const uid = useMemo(() => Math.random().toString(36).slice(2, 8), []);
 
-  // Memoize per-block geometry so segments are not recomputed every tick of the clock.
-  const scheduleSegments = useMemo(() => {
-    return schedule.map((block) => {
-      const startAngle = timeToAngle(block.startHour, block.startMinute ?? 0);
-      const endAngle = timeToAngle(block.endHour, block.endMinute ?? 0);
-      const path = createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius);
-      return { block, path };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schedule, scheduleOuterRadius, scheduleInnerRadius]);
+  // Needle endpoints
+  const needleTip = polarToCartesian(currentAngle, scheduleOuterRadius + 2);
+  const needleBase = polarToCartesian(currentAngle, innerRadius - 2);
+
+  // Outer progress arc (start of day → now)
+  const progressEndAngle = -90 + dayCompletionPct * 360;
+  const progressArcPath = dayCompletionPct > 0.001
+    ? createStrokeArcPath(-90, progressEndAngle, progressRingRadius)
+    : null;
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
+      <style>{`
+        @keyframes sectoNeedlePulse-${uid} {
+          0%, 100% { opacity: 0.95; }
+          50% { opacity: 0.55; }
+        }
+        @keyframes sectoTipPulse-${uid} {
+          0%, 100% { r: 4; opacity: 0.9; }
+          50% { r: 6; opacity: 0.45; }
+        }
+      `}</style>
       <svg width={size} height={size}>
         <defs>
-          <filter id={`glowRing-${uid}`} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-          <filter id={`softGlow-${uid}`} x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur stdDeviation="8" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id={`presentGlow-${uid}`} x="-200%" y="-200%" width="500%" height="500%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <linearGradient id={`ringGradient-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={colors.ring} />
-            <stop offset="50%" stopColor={colors.secondary} />
-            <stop offset="100%" stopColor={colors.ring} />
-          </linearGradient>
           <radialGradient id={`centerDark-${uid}`} cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor={colors.background} />
-            <stop offset="80%" stopColor={colors.background} />
             <stop offset="100%" stopColor={colors.background} />
           </radialGradient>
         </defs>
 
-        <circle cx={center} cy={center} r={outerRadius + 4} fill="none" stroke={colors.surfaceBorder} strokeWidth="1" />
-        <circle cx={center} cy={center} r={outerRadius} fill={colors.surface} stroke={colors.surfaceBorder} strokeWidth="1" />
-        <circle cx={center} cy={center} r={glowRingRadius} fill="none" stroke={`url(#ringGradient-${uid})`} strokeWidth={glowRingWidth} filter={`url(#glowRing-${uid})`} opacity="0.5" />
-        <circle cx={center} cy={center} r={glowRingRadius} fill="none" stroke={colors.ringGlow} strokeWidth={glowRingWidth + 8} opacity="0.4" style={{ filter: "blur(6px)" }} />
+        {/* Layer 1 — subtle background ring */}
+        <circle
+          cx={center}
+          cy={center}
+          r={outerRadius}
+          fill={colors.surface}
+          stroke={colors.surfaceBorder}
+          strokeWidth="1"
+        />
+        <circle
+          cx={center}
+          cy={center}
+          r={progressRingRadius}
+          fill="none"
+          stroke={colors.surfaceBorder}
+          strokeWidth={progressRingWidth}
+          opacity="0.35"
+        />
 
+        {/* Outer progress arc — completed scheduled time */}
+        {progressArcPath && (
+          <path
+            d={progressArcPath}
+            fill="none"
+            stroke={colors.primary}
+            strokeWidth={progressRingWidth}
+            strokeLinecap="round"
+            opacity="0.9"
+          />
+        )}
+
+        {/* Hour ticks */}
         {[...Array(24)].map((_, hour) => {
           const angle = hourToAngle(hour);
-          const isMainHour = hour % 6 === 0;
-          const tickOuter = outerRadius - 2;
-          const tickInner = isMainHour ? outerRadius - 16 : outerRadius - 8;
+          const isMain = hour % 6 === 0;
+          const tickOuter = scheduleOuterRadius + 5;
+          const tickInner = isMain ? scheduleOuterRadius - 2 : scheduleOuterRadius + 1;
           const start = polarToCartesian(angle, tickInner);
           const end = polarToCartesian(angle, tickOuter);
           return (
-            <line key={hour} x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke={isMainHour ? colors.ring : colors.tickMark} strokeWidth={isMainHour ? 2 : 1} />
+            <line
+              key={hour}
+              x1={start.x}
+              y1={start.y}
+              x2={end.x}
+              y2={end.y}
+              stroke={isMain ? colors.text : colors.tickMark}
+              strokeWidth={isMain ? 1.5 : 0.75}
+              opacity={isMain ? 0.85 : 0.45}
+            />
           );
         })}
 
-        {scheduleSegments.map(({ block, path }) => {
+        {/* Layer 2 — schedule segments (solid colors, no gradient/glow) */}
+        {scheduleSegments.map(({ block, path, color, isPast }) => {
           const isActive = currentBlockId === block.id;
           return (
-            <g key={block.id} onClick={() => onBlockClick?.(block)} style={{ cursor: onBlockClick ? "pointer" : "default" }} data-testid={`sectograph-block-${block.id}`}>
-              {/* base segment — stronger contrast: thicker stroke for all blocks, brighter for system tasks */}
+            <g
+              key={block.id}
+              onClick={() => onBlockClick?.(block)}
+              style={{ cursor: onBlockClick ? "pointer" : "default" }}
+              data-testid={`sectograph-block-${block.id}`}
+            >
               <path
                 d={path}
-                fill={block.color}
-                opacity={1}
-                stroke={block.isSystemTask ? colors.ring : "rgba(255,255,255,0.35)"}
-                strokeWidth={block.isSystemTask ? 1.5 : 1}
-                className={onBlockClick ? "hover:opacity-80 transition-opacity" : ""}
+                fill={color}
+                opacity={isPast && !isActive ? 0.45 : 1}
+                stroke={isActive ? "#ffffff" : "rgba(0,0,0,0.25)"}
+                strokeWidth={isActive ? 1.5 : 0.5}
+                className={onBlockClick ? "transition-opacity hover:opacity-80" : ""}
               />
-              {block.isSystemTask && (
-                <path d={path} fill="none" stroke={colors.ringGlow} strokeWidth="3" style={{ filter: "blur(4px)", pointerEvents: "none" }} />
-              )}
               {isActive && (
-                <>
-                  {/* pulsing inner highlight */}
-                  <path
-                    d={path}
-                    fill="rgba(255,255,255,0.18)"
-                    stroke="#ffffff"
-                    strokeWidth="1.5"
-                    style={{ pointerEvents: "none" }}
-                  >
-                    <animate attributeName="opacity" values="1;0.55;1" dur="1.8s" repeatCount="indefinite" />
-                  </path>
-                  {/* outer soft glow */}
-                  <path
-                    d={path}
-                    fill="none"
-                    stroke={block.color}
-                    strokeWidth="6"
-                    style={{ filter: "blur(6px)", pointerEvents: "none" }}
-                  >
-                    <animate attributeName="opacity" values="0.85;0.3;0.85" dur="1.8s" repeatCount="indefinite" />
-                  </path>
-                </>
+                <path
+                  d={path}
+                  fill="rgba(255,255,255,0.18)"
+                  stroke="none"
+                  style={{ pointerEvents: "none" }}
+                >
+                  <animate attributeName="opacity" values="0.25;0;0.25" dur="2.4s" repeatCount="indefinite" />
+                </path>
               )}
             </g>
           );
         })}
 
-        {rhythmWindows.map((rw, i) => {
-          const startAngle = timeToAngle(rw.startHour, rw.startMinute);
-          const endAngle = timeToAngle(rw.endHour, rw.endMinute);
-          const glowColor = rw.actionType === "reset" ? "245,158,11" : rw.actionType === "focusSession" ? "139,92,246" : rw.actionType === "habit" ? "59,130,246" : "99,102,241";
-          const opacity = Math.min(0.25, rw.confidenceScore * 0.35);
-          const glowOpacity = Math.min(0.15, rw.confidenceScore * 0.2);
-          return (
-            <g key={`rhythm-${i}`} data-testid={`sectograph-rhythm-${i}`}>
-              <path d={createArcPath(startAngle, endAngle, outerRadius - 2, scheduleOuterRadius + 1)} fill={`rgba(${glowColor},${opacity})`} stroke="none" />
-              <path d={createArcPath(startAngle, endAngle, outerRadius - 2, scheduleOuterRadius + 1)} fill={`rgba(${glowColor},${glowOpacity})`} stroke="none" style={{ filter: "blur(6px)", pointerEvents: "none" }}>
-                <animate attributeName="opacity" values={`${glowOpacity};${glowOpacity * 0.4};${glowOpacity}`} dur="4s" repeatCount="indefinite" />
-              </path>
-            </g>
-          );
-        })}
-
+        {/* Free windows — subtle dashed overlay */}
         {showAwareness && freeWindows.map((gap, i) => {
           const startAngle = timeToAngle(gap.startHour, gap.startMinute);
           const endAngle = timeToAngle(gap.endHour, gap.endMinute);
           return (
-            <g key={`free-${i}`} onClick={() => onFreeWindowClick?.(gap)} style={{ cursor: onFreeWindowClick ? "pointer" : "default" }} data-testid={`sectograph-free-${i}`}>
-              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="rgba(34,197,94,0.08)" stroke="rgba(34,197,94,0.25)" strokeWidth="1" strokeDasharray="4 3" />
+            <g
+              key={`free-${i}`}
+              onClick={() => onFreeWindowClick?.(gap)}
+              style={{ cursor: onFreeWindowClick ? "pointer" : "default" }}
+              data-testid={`sectograph-free-${i}`}
+            >
+              <path
+                d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
+                fill="rgba(34,197,94,0.06)"
+                stroke="rgba(34,197,94,0.22)"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+              />
             </g>
           );
         })}
 
+        {/* Suggested placements — small dashed markers */}
         {suggestedPlacements.map((sp, i) => {
           const startMin = sp.suggestedHour * 60 + sp.suggestedMinute;
           const endMin = startMin + sp.durationMinutes;
           const startAngle = timeToAngle(sp.suggestedHour, sp.suggestedMinute);
           const endAngle = timeToAngle(Math.floor(endMin / 60) % 24, endMin % 60);
-          const midAngle = (startAngle + endAngle) / 2 + (endAngle < startAngle ? 180 : 0);
-          const labelPos = polarToCartesian(midAngle, (scheduleOuterRadius + scheduleInnerRadius) / 2);
           return (
             <g
               key={`suggestion-${i}`}
@@ -355,17 +469,38 @@ export function Sectograph({
               style={{ cursor: onSuggestedPlacementClick ? "pointer" : "default" }}
               data-testid={`sectograph-suggestion-${i}`}
             >
-              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="rgba(34,211,238,0.12)" stroke="rgba(34,211,238,0.4)" strokeWidth="1" strokeDasharray="3 2" />
-              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="none" stroke="rgba(34,211,238,0.2)" strokeWidth="5" style={{ filter: "blur(5px)", pointerEvents: "none" }}>
-                <animate attributeName="opacity" values="0.2;0.08;0.2" dur="3s" repeatCount="indefinite" />
-              </path>
-              <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" fill="rgba(34,211,238,0.7)" style={{ fontSize: "6px", fontFamily: "var(--font-mono)", fontWeight: "bold", letterSpacing: "0.05em", pointerEvents: "none" }}>
-                Suggested
-              </text>
+              <path
+                d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
+                fill="rgba(34,211,238,0.10)"
+                stroke="rgba(34,211,238,0.45)"
+                strokeWidth="1"
+                strokeDasharray="3 2"
+              />
             </g>
           );
         })}
 
+        {/* Rhythm windows — kept (very subtle) */}
+        {rhythmWindows.map((rw, i) => {
+          const startAngle = timeToAngle(rw.startHour, rw.startMinute);
+          const endAngle = timeToAngle(rw.endHour, rw.endMinute);
+          const colorRgb = rw.actionType === "reset" ? "245,158,11"
+            : rw.actionType === "focusSession" ? "139,92,246"
+            : rw.actionType === "habit" ? "59,130,246"
+            : "99,102,241";
+          const opacity = Math.min(0.18, rw.confidenceScore * 0.22);
+          return (
+            <path
+              key={`rhythm-${i}`}
+              data-testid={`sectograph-rhythm-${i}`}
+              d={createArcPath(startAngle, endAngle, scheduleOuterRadius + 4, scheduleOuterRadius + 1)}
+              fill={`rgba(${colorRgb},${opacity})`}
+              stroke="none"
+            />
+          );
+        })}
+
+        {/* Active focus block — subtle highlight */}
         {focusBlock && (() => {
           const endMin = focusBlock.startHour * 60 + focusBlock.startMinute + focusBlock.durationMinutes;
           const endH = Math.floor(endMin / 60) % 24;
@@ -373,79 +508,119 @@ export function Sectograph({
           const startAngle = timeToAngle(focusBlock.startHour, focusBlock.startMinute);
           const endAngle = timeToAngle(endH, endM);
           return (
-            <g data-testid="sectograph-focus-block">
-              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="rgba(139,92,246,0.35)" stroke="rgba(139,92,246,0.7)" strokeWidth="1.5" />
-              <path d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)} fill="none" stroke="rgba(139,92,246,0.5)" strokeWidth="4" style={{ filter: "blur(4px)", pointerEvents: "none" }} />
-            </g>
+            <path
+              data-testid="sectograph-focus-block"
+              d={createArcPath(startAngle, endAngle, scheduleOuterRadius, scheduleInnerRadius)}
+              fill="rgba(168,85,247,0.25)"
+              stroke="rgba(168,85,247,0.6)"
+              strokeWidth="1.5"
+            />
           );
         })()}
 
+        {/* Behavioral anchors — small dots */}
         {anchors.map((anchor, i) => {
           const angle = timeToAngle(anchor.hour, anchor.minute);
-          const markerOuter = scheduleOuterRadius + 6;
-          const markerPos = polarToCartesian(angle, markerOuter);
-          const tickInnerPos = polarToCartesian(angle, scheduleOuterRadius);
-          const tickOuterPos = polarToCartesian(angle, markerOuter - 3);
+          const pos = polarToCartesian(angle, scheduleOuterRadius + 6);
           return (
-            <g key={`anchor-${i}`} data-testid={`sectograph-anchor-${i}`}>
-              <line x1={tickInnerPos.x} y1={tickInnerPos.y} x2={tickOuterPos.x} y2={tickOuterPos.y} stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
-              <circle cx={markerPos.x} cy={markerPos.y} r={3.5} fill="#f59e0b" opacity="0.9" />
-              <circle cx={markerPos.x} cy={markerPos.y} r={6} fill="none" stroke="#f59e0b" strokeWidth="0.5" opacity="0.4" />
-            </g>
+            <circle
+              key={`anchor-${i}`}
+              data-testid={`sectograph-anchor-${i}`}
+              cx={pos.x}
+              cy={pos.y}
+              r={2.5}
+              fill="#f59e0b"
+              opacity="0.85"
+            />
           );
         })}
 
-        <circle cx={center} cy={center} r={innerRadius} fill={`url(#centerDark-${uid})`} stroke={colors.surfaceBorder} strokeWidth="1" />
-        <circle cx={center} cy={center} r={innerRadius - 8} fill="none" stroke={colors.surfaceBorder} strokeWidth="1" opacity="0.5" />
+        {/* Inner disc */}
+        <circle
+          cx={center}
+          cy={center}
+          r={innerRadius}
+          fill={`url(#centerDark-${uid})`}
+          stroke={colors.surfaceBorder}
+          strokeWidth="1"
+        />
 
-        <line x1={center} y1={center} x2={hourHandEnd.x} y2={hourHandEnd.y} stroke={colors.text} strokeWidth="3" strokeLinecap="round" opacity="0.9" />
-        <line x1={center} y1={center} x2={minuteHandEnd.x} y2={minuteHandEnd.y} stroke={colors.clockHand} strokeWidth="2" strokeLinecap="round" filter={`url(#softGlow-${uid})`} opacity="0.8" />
+        {/* Layer 3 — bold current time needle */}
+        <line
+          x1={needleBase.x}
+          y1={needleBase.y}
+          x2={needleTip.x}
+          y2={needleTip.y}
+          stroke={colors.primary}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          style={{ animation: `sectoNeedlePulse-${uid} 2.4s ease-in-out infinite` }}
+        />
+        <circle
+          cx={needleTip.x}
+          cy={needleTip.y}
+          r={4}
+          fill={colors.primary}
+          style={{ animation: `sectoTipPulse-${uid} 2.4s ease-in-out infinite` }}
+        />
 
-        <circle cx={center} cy={center} r={6} fill={colors.background} stroke={colors.ring} strokeWidth="2" opacity="0.8" />
-        <circle cx={center} cy={center} r={3} fill={colors.centerDot} opacity="0.9" />
+        {/* Center pivot */}
+        <circle cx={center} cy={center} r={3} fill={colors.primary} opacity="0.9" />
 
-
-        {[0, 6, 12, 18].map((hour) => {
+        {/* Cardinal hour labels */}
+        {[
+          { hour: 0, label: "12AM" },
+          { hour: 6, label: "6AM" },
+          { hour: 12, label: "12PM" },
+          { hour: 18, label: "6PM" },
+        ].map(({ hour, label }) => {
           const angle = hourToAngle(hour);
-          const pos = polarToCartesian(angle, outerRadius - 24);
-          const labels: Record<number, string> = { 0: "12", 6: "6", 12: "12", 18: "6" };
-          const periods: Record<number, string> = { 0: "AM", 6: "AM", 12: "PM", 18: "PM" };
+          const pos = polarToCartesian(angle, scheduleInnerRadius - 12);
           return (
-            <text key={hour} x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="middle" fill={colors.textMuted} style={{ fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: "bold" }}>
-              {labels[hour]}
-              <tspan fill={colors.tickMark} style={{ fontSize: "7px" }}>{periods[hour]}</tspan>
+            <text
+              key={hour}
+              x={pos.x}
+              y={pos.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={colors.textMuted}
+              style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 700, letterSpacing: "0.05em" }}
+            >
+              {label}
             </text>
           );
         })}
+
+        {/* Now time label (top) */}
+        <text
+          x={center}
+          y={14}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={colors.text}
+          opacity={0.85}
+          style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, letterSpacing: "-0.02em" }}
+        >
+          {time.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+        </text>
       </svg>
 
+      {/* Center "Add Block" button */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         {highlightCenter && (
           <>
             <style>{`
-              @keyframes sectoCenterPulse1 {
+              @keyframes sectoCenterPulse1-${uid} {
                 0%, 100% { transform: scale(1); opacity: 0.7; }
                 50% { transform: scale(1.5); opacity: 0; }
-              }
-              @keyframes sectoCenterPulse2 {
-                0%, 100% { transform: scale(1); opacity: 0.5; }
-                50% { transform: scale(1.8); opacity: 0; }
               }
             `}</style>
             <div
               className="absolute rounded-full pointer-events-none"
               style={{
-                width: 44, height: 44,
+                width: 64, height: 64,
                 border: "2px solid #6366f1",
-                animation: "sectoCenterPulse1 1.4s ease-out infinite",
-              }}
-            />
-            <div
-              className="absolute rounded-full pointer-events-none"
-              style={{
-                width: 44, height: 44,
-                border: "1px solid #a855f7",
-                animation: "sectoCenterPulse2 1.4s ease-out 0.35s infinite",
+                animation: `sectoCenterPulse1-${uid} 1.4s ease-out infinite`,
               }}
             />
           </>
@@ -453,35 +628,26 @@ export function Sectograph({
         <button
           data-testid="button-schedule"
           onClick={onCenterClick}
-          className="pointer-events-auto w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 group"
+          className="pointer-events-auto rounded-full flex items-center justify-center gap-1.5 transition-transform duration-200 cursor-pointer hover:scale-105 active:scale-95"
           style={{
             backgroundColor: colors.surface,
-            border: highlightCenter ? "2px solid #6366f1" : `1.5px solid ${colors.ring}`,
-            boxShadow: highlightCenter
-              ? "0 0 24px rgba(99,102,241,0.7), 0 0 8px rgba(99,102,241,0.4) inset"
-              : `0 0 18px ${colors.primaryGlow}, 0 0 6px ${colors.primaryGlow}60 inset`,
+            border: `1.5px solid ${colors.primary}`,
+            color: colors.primary,
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            padding: "8px 12px",
+            minWidth: 86,
+            boxShadow: `0 0 12px ${colors.primaryGlow}`,
           }}
           title="Add time block"
         >
-          <svg viewBox="0 0 24 24" className="w-5 h-5 transition-colors group-hover:rotate-90" style={{ color: highlightCenter ? "#6366f1" : colors.primary, transition: "transform 0.25s ease" }} fill="none" stroke="currentColor" strokeWidth="2">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M12 5v14M5 12h14" />
           </svg>
+          ADD BLOCK
         </button>
-      </div>
-
-      <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none" style={{ top: "-8px" }}>
-        <div
-          className="text-sm font-mono font-bold tracking-tighter"
-          style={{
-            color: colors.text,
-            textShadow: `0 0 8px ${colors.primaryGlow}`,
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "-0.02em",
-            opacity: 0.8,
-          }}
-        >
-          {time.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-        </div>
       </div>
     </div>
   );

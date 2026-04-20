@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow, type BehavioralAnchor, type ActiveFocusBlock, type RhythmWindowVisual, type SuggestedPlacement } from "@/components/game/Sectograph";
+import { CurrentMissionCard } from "@/components/game/CurrentMissionCard";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
 import { useRoles } from "@/context/RolesContext";
@@ -995,10 +996,10 @@ export default function SectographPage() {
                 schedule={activeSchedule}
                 size={300}
                 showAwareness={true}
-                anchors={[]}
+                anchors={showAnchors ? behavioralAnchors : []}
                 focusBlock={null}
-                rhythmWindows={[]}
-                suggestedPlacements={[]}
+                rhythmWindows={rhythmWindows}
+                suggestedPlacements={placementSuggestions}
                 highlightCenter={day5Step === 1}
                 currentBlockId={currentBlock?.id ?? null}
                 onCenterClick={() => {
@@ -1029,57 +1030,35 @@ export default function SectographPage() {
               />
             </div>
 
-            {/* ── NOW / NEXT preview strip ─────────────────────────── */}
-            {!isDay5Mode && (currentBlock || nextBlock) && (
-              <div
-                className="w-full rounded-lg p-3 flex items-stretch gap-3"
-                style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
-                data-testid="now-next-preview"
-              >
-                {currentBlock ? (
-                  <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: currentBlock.color, boxShadow: `0 0 10px ${currentBlock.color}` }}
-                    />
-                    <div className="min-w-0">
-                      <div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: colors.textMuted }}>
-                        Now
-                      </div>
-                      <div className="text-sm font-semibold truncate" style={{ color: colors.text }} data-testid="text-current-block-name">
-                        {currentBlock.name}
-                        {currentBlock.subType && currentBlock.subType !== "mixed" && (
-                          <span className="text-[10px] font-normal ml-1.5" style={{ color: colors.textMuted }}>
-                            · {currentBlock.subType}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center gap-2.5">
-                    <div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: colors.textMuted }}>
-                      Open Time
-                    </div>
-                  </div>
-                )}
-                {nextBlock && (
-                  <>
-                    <div className="w-px self-stretch" style={{ backgroundColor: colors.surfaceBorder }} />
-                    <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                      <ArrowRight size={12} className="flex-shrink-0" style={{ color: colors.textMuted }} />
-                      <div className="min-w-0">
-                        <div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: colors.textMuted }}>
-                          Next · {formatTimeSlot(nextBlock.startHour, nextBlock.startMinute ?? 0)}
-                        </div>
-                        <div className="text-sm font-semibold truncate" style={{ color: colors.text }} data-testid="text-next-block-name">
-                          {nextBlock.name}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+            {/* ── CURRENT MISSION card ─────────────────────────── */}
+            {!isDay5Mode && (
+              <CurrentMissionCard
+                currentBlock={currentBlock ?? null}
+                nextBlock={nextBlock ?? null}
+                onAddBlock={() => setShowAddBlock(true)}
+                onStartFocus={(block) => {
+                  setEditingBlock({
+                    id: block.id,
+                    name: block.name,
+                    startHour: block.startHour,
+                    startMinute: block.startMinute ?? 0,
+                    endHour: block.endHour,
+                    endMinute: block.endMinute ?? 0,
+                    color: block.color,
+                    isSystemTask: block.isSystemTask,
+                    subType: block.subType,
+                    isNew: false,
+                  } as any);
+                }}
+                onComplete={(block) => {
+                  // Mark block as completed in local schedule and persist.
+                  if (!player) return;
+                  const updated = (activeSchedule as any[]).map((b: any) =>
+                    b.id === block.id ? { ...b, completed: true } : b,
+                  );
+                  updatePlayer({ schedule: updated });
+                }}
+              />
             )}
 
 
