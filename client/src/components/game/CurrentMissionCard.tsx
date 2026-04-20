@@ -15,6 +15,14 @@ interface CurrentMissionCardProps {
   onAddBlock?: () => void;
 }
 
+/** Rough XP estimate based on block duration (mock: 1 XP/min, capped). */
+function estimateXp(block: ScheduleBlock): number {
+  const s = block.startHour * 60 + (block.startMinute ?? 0);
+  const e = block.endHour * 60 + (block.endMinute ?? 0);
+  const dur = e > s ? e - s : (e + 24 * 60) - s;
+  return Math.max(5, Math.min(120, Math.round(dur / 2)));
+}
+
 const fmt = (h: number, m: number) =>
   `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 
@@ -107,22 +115,24 @@ export function CurrentMissionCard({
   const accent = getBlockColor(block);
   const isActive = !!currentBlock;
 
+  const xp = estimateXp(block);
+
   return (
     <div
       data-testid="current-mission-card"
       className="w-full rounded-2xl overflow-hidden"
       style={{
         backgroundColor: colors.surface,
-        border: `1px solid ${colors.surfaceBorder}`,
-        boxShadow: isActive ? `0 0 0 1px ${accent}55, 0 4px 14px rgba(0,0,0,0.25)` : undefined,
+        border: isActive ? `1px solid ${accent}55` : `1px solid ${colors.surfaceBorder}`,
+        boxShadow: isActive ? `0 4px 14px rgba(0,0,0,0.22)` : undefined,
       }}
     >
       {/* Accent bar */}
-      <div style={{ height: 3, backgroundColor: accent }} />
+      <div style={{ height: 3, backgroundColor: accent, opacity: isActive ? 1 : 0.55 }} />
 
       <div className="p-4 flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div
               className="text-[10px] uppercase tracking-[0.18em] font-bold mb-1 flex items-center gap-1.5"
               style={{ color: isActive ? accent : colors.textMuted }}
@@ -144,17 +154,37 @@ export function CurrentMissionCard({
               {block.name}
             </div>
             <div
-              className="text-xs mt-1 font-mono"
+              className="text-xs mt-1 font-mono flex items-center flex-wrap gap-x-2"
               style={{ color: colors.textMuted }}
               data-testid="text-mission-time"
             >
-              {fmt(block.startHour, block.startMinute ?? 0)}
-              {" – "}
-              {fmt(block.endHour, block.endMinute ?? 0)}
+              <span>
+                {fmt(block.startHour, block.startMinute ?? 0)}
+                {" – "}
+                {fmt(block.endHour, block.endMinute ?? 0)}
+              </span>
               {countdownLabel && (
-                <span style={{ color: accent, marginLeft: 8 }}>· {countdownLabel}</span>
+                <span
+                  style={{
+                    color: accent,
+                    animation: isActive ? "missionCountdown 2.4s ease-in-out infinite" : undefined,
+                  }}
+                  data-testid="text-mission-countdown"
+                >
+                  · {countdownLabel}
+                </span>
               )}
             </div>
+          </div>
+          <div
+            className="flex-shrink-0 px-2 py-1 rounded-md text-[10px] font-bold tracking-wider"
+            style={{
+              backgroundColor: `${accent}1f`,
+              color: accent,
+            }}
+            data-testid="text-mission-xp"
+          >
+            +{xp} XP
           </div>
         </div>
 
@@ -165,7 +195,7 @@ export function CurrentMissionCard({
                 type="button"
                 onClick={() => onStartFocus(block)}
                 data-testid="button-mission-focus"
-                className="flex-1 px-3 py-2.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-semibold transition-transform active:scale-95"
+                className="flex-1 px-3 py-2.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-transform active:scale-95"
                 style={{
                   backgroundColor: accent,
                   color: "#0b1020",
@@ -183,8 +213,8 @@ export function CurrentMissionCard({
                 className="flex-1 px-3 py-2.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-semibold transition-transform active:scale-95"
                 style={{
                   backgroundColor: "transparent",
-                  border: `1px solid ${colors.surfaceBorder}`,
-                  color: colors.text,
+                  border: `1px solid ${accent}55`,
+                  color: accent,
                 }}
               >
                 <Check size={13} />
@@ -208,6 +238,10 @@ export function CurrentMissionCard({
         @keyframes missionDot {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.4; transform: scale(1.3); }
+        }
+        @keyframes missionCountdown {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.55; }
         }
       `}</style>
     </div>

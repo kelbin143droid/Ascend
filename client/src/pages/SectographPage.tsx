@@ -1062,55 +1062,94 @@ export default function SectographPage() {
             )}
 
 
-            {!isDay5Mode && awarenessInsight && (
-              <div
-                className="w-full rounded-lg p-3 flex items-start gap-3"
-                style={{
-                  backgroundColor: `${colors.primary}08`,
-                  border: `1px solid ${colors.primary}20`,
-                }}
-                data-testid="awareness-insight"
-              >
-                <Sparkles size={14} className="flex-shrink-0 mt-0.5" style={{ color: colors.primary, opacity: 0.7 }} />
-                <p className="text-xs leading-relaxed" style={{ color: colors.text, opacity: 0.85 }}>
-                  {awarenessInsight}
-                </p>
-              </div>
-            )}
+            {!isDay5Mode && (() => {
+              // Find the next upcoming free window today and show an actionable card.
+              const now = new Date();
+              const nowMin = now.getHours() * 60 + now.getMinutes();
+              // Prefer the window the user is currently inside, then the next one upcoming.
+              const upcoming = freeWindows.find(w => {
+                const start = w.startHour * 60 + w.startMinute;
+                const end = w.endHour * 60 + w.endMinute;
+                return nowMin >= start && nowMin < end;
+              }) ?? freeWindows.find(w => {
+                const start = w.startHour * 60 + w.startMinute;
+                return start > nowMin;
+              });
+              if (!upcoming) {
+                return awarenessInsight ? (
+                  <div className="w-full px-1 flex items-start gap-2" data-testid="awareness-insight">
+                    <Sparkles size={12} className="flex-shrink-0 mt-0.5" style={{ color: colors.primary, opacity: 0.65 }} />
+                    <p className="text-xs leading-snug" style={{ color: colors.text, opacity: 0.8 }}>
+                      {awarenessInsight}
+                    </p>
+                  </div>
+                ) : null;
+              }
+              const h = Math.floor(upcoming.durationMinutes / 60);
+              const m = upcoming.durationMinutes % 60;
+              const dur = h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`;
+              const timeLabel = formatTimeSlot(upcoming.startHour, upcoming.startMinute);
+              const isNow = (upcoming.startHour * 60 + upcoming.startMinute) <= nowMin;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingBlock({
+                      id: `custom_${Date.now()}`,
+                      name: "",
+                      startHour: upcoming.startHour,
+                      startMinute: upcoming.startMinute,
+                      endHour: upcoming.endHour,
+                      endMinute: upcoming.endMinute,
+                      color: "#6b7280",
+                      isNew: true,
+                    } as any);
+                    setCustomBlockName("");
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl flex items-center gap-3 text-left transition-transform active:scale-[0.99]"
+                  style={{
+                    backgroundColor: `${colors.primary}10`,
+                    border: `1px solid ${colors.primary}25`,
+                  }}
+                  data-testid="awareness-insight"
+                >
+                  <Sparkles size={14} className="flex-shrink-0" style={{ color: colors.primary, opacity: 0.85 }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold" style={{ color: colors.text }}>
+                      {dur} free window {isNow ? "now" : `at ${timeLabel}`}
+                    </div>
+                  </div>
+                  <span
+                    className="text-[10px] font-bold tracking-wide flex-shrink-0"
+                    style={{ color: colors.primary }}
+                  >
+                    Fill with Task →
+                  </span>
+                </button>
+              );
+            })()}
 
             {!isDay5Mode && rhythmInsights.length > 0 && (
-              <div
-                className="w-full rounded-lg p-4"
-                style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
-                data-testid="rhythm-insights-card"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <Activity size={12} style={{ color: "#6366f1" }} />
-                  <h3 className="text-xs font-display font-bold tracking-wider" style={{ color: "#6366f1" }}>
-                    RHYTHM DETECTED
+              <div className="w-full px-1" data-testid="rhythm-insights-card">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Activity size={11} style={{ color: "#6366f1" }} />
+                  <h3 className="text-[10px] font-display font-bold tracking-[0.18em]" style={{ color: "#6366f1" }}>
+                    RHYTHM INSIGHTS
                   </h3>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {rhythmInsights.slice(0, 2).map((insight, i) => {
                     const dotColor =
                       insight.actionType === "reset" ? "#f59e0b" :
                       insight.actionType === "focusSession" ? "#8b5cf6" :
                       insight.actionType === "habit" ? "#3b82f6" : "#6366f1";
-                    // Pair insight with its source rhythm window (same ordering on the server).
                     const win = rhythmWindows[i];
                     const targetHour = win?.startHour ?? null;
                     const targetMinute = win?.startMinute ?? 0;
-                    // Suggested action label based on the detected pattern.
-                    const actionLabel =
-                      insight.actionType === "reset"
-                        ? "Schedule a Daily Flow recovery block"
-                        : insight.actionType === "focusSession"
-                        ? "Lock in a Daily Flow focus block"
-                        : "Anchor a Daily Flow block here";
                     const handleAutoCreate = () => {
                       if (targetHour === null) return;
                       const startMin = targetHour * 60 + targetMinute;
-                      const endMin = startMin + 30; // 30-min recovery block
+                      const endMin = startMin + 30;
                       const endH = Math.floor(endMin / 60) % 24;
                       const endM = endMin % 60;
                       setEditingBlock({
@@ -1127,59 +1166,41 @@ export default function SectographPage() {
                       });
                     };
                     return (
-                      <div
-                        key={i}
-                        className="px-3 py-2.5 rounded-lg"
-                        style={{ backgroundColor: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}
-                        data-testid={`rhythm-insight-${i}`}
-                      >
-                        <div className="flex items-start gap-2.5">
+                      <div key={i} data-testid={`rhythm-insight-${i}`}>
+                        <div className="flex items-start gap-2">
                           <div
                             className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
                             style={{ backgroundColor: dotColor }}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs leading-relaxed" style={{ color: colors.text, opacity: 0.85 }}>
+                            <p className="text-xs leading-snug" style={{ color: colors.text, opacity: 0.92 }}>
                               {insight.message}
                             </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="h-1 rounded-full flex-1" style={{ backgroundColor: "rgba(99,102,241,0.15)" }}>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <div className="h-[2px] rounded-full flex-1" style={{ backgroundColor: "rgba(99,102,241,0.18)" }}>
                                 <div
                                   className="h-full rounded-full"
-                                  style={{ width: `${Math.round(insight.confidenceScore * 100)}%`, backgroundColor: "rgba(99,102,241,0.5)" }}
+                                  style={{ width: `${Math.round(insight.confidenceScore * 100)}%`, backgroundColor: dotColor, opacity: 0.7 }}
                                 />
                               </div>
-                              <span className="text-[9px] font-mono" style={{ color: colors.textMuted, opacity: 0.5 }}>
-                                {Math.round(insight.confidenceScore * 100)}%
-                              </span>
+                              {targetHour !== null && (
+                                <button
+                                  type="button"
+                                  onClick={handleAutoCreate}
+                                  className="text-[10px] font-semibold tracking-wide transition-opacity hover:opacity-80 flex-shrink-0"
+                                  style={{ color: "#c084fc" }}
+                                  data-testid={`button-rhythm-action-${i}`}
+                                >
+                                  Schedule Block →
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
-                        {targetHour !== null && (
-                          <button
-                            type="button"
-                            onClick={handleAutoCreate}
-                            className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-colors hover:bg-[rgba(168,85,247,0.18)]"
-                            style={{
-                              backgroundColor: "rgba(168,85,247,0.12)",
-                              color: "#c084fc",
-                              border: "1px solid rgba(168,85,247,0.3)",
-                            }}
-                            data-testid={`button-rhythm-action-${i}`}
-                          >
-                            <Plus size={12} />
-                            {actionLabel} at {formatTimeSlot(targetHour, targetMinute)}
-                          </button>
-                        )}
                       </div>
                     );
                   })}
                 </div>
-                {rhythmWindows.length > 0 && (
-                  <p className="text-[10px] mt-3 leading-relaxed" style={{ color: colors.textMuted, opacity: 0.5 }}>
-                    Tap a suggestion to schedule it — you can adjust the time before saving.
-                  </p>
-                )}
               </div>
             )}
 
