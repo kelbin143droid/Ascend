@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Play, Check, Plus, Clock } from "lucide-react";
+import { Check, Plus, Clock } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import {
   getBlockColor,
@@ -13,14 +13,6 @@ interface CurrentMissionCardProps {
   onStartFocus?: (block: ScheduleBlock) => void;
   onComplete?: (block: ScheduleBlock) => void;
   onAddBlock?: () => void;
-}
-
-/** Rough XP estimate based on block duration (mock: 1 XP/min, capped). */
-function estimateXp(block: ScheduleBlock): number {
-  const s = block.startHour * 60 + (block.startMinute ?? 0);
-  const e = block.endHour * 60 + (block.endMinute ?? 0);
-  const dur = e > s ? e - s : (e + 24 * 60) - s;
-  return Math.max(5, Math.min(120, Math.round(dur / 2)));
 }
 
 const fmt = (h: number, m: number) =>
@@ -176,35 +168,28 @@ export function CurrentMissionCard({
               )}
             </div>
           </div>
-          <div
-            className="flex-shrink-0 px-2 py-1 rounded-md text-[10px] font-bold tracking-wider"
-            style={{
-              backgroundColor: `${accent}1f`,
-              color: accent,
-            }}
-            data-testid="text-mission-xp"
-          >
-            +{xp} XP
-          </div>
+          {isActive && (
+            <div
+              className="flex-shrink-0 px-2 py-1 rounded-md text-[10px] font-bold tracking-wider flex items-center gap-1"
+              style={{
+                backgroundColor: `${accent}1f`,
+                color: accent,
+                animation: "missionDot 1.6s ease-in-out infinite",
+              }}
+              data-testid="text-mission-now"
+              aria-label="Currently active mission"
+            >
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: accent }}
+              />
+              NOW
+            </div>
+          )}
         </div>
 
-        {isActive && (onStartFocus || onComplete) && (
+        {isActive && onComplete && (
           <div className="flex items-center gap-2">
-            {onStartFocus && (
-              <button
-                type="button"
-                onClick={() => onStartFocus(block)}
-                data-testid="button-mission-focus"
-                className="flex-1 px-3 py-2.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-transform active:scale-95"
-                style={{
-                  backgroundColor: accent,
-                  color: "#0b1020",
-                }}
-              >
-                <Play size={13} fill="#0b1020" />
-                Focus Mode
-              </button>
-            )}
             {onComplete && (
               <button
                 type="button"
