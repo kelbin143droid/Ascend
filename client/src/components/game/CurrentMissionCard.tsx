@@ -107,8 +107,6 @@ export function CurrentMissionCard({
   const accent = getBlockColor(block);
   const isActive = !!currentBlock;
 
-  const xp = estimateXp(block);
-
   return (
     <div
       data-testid="current-mission-card"
