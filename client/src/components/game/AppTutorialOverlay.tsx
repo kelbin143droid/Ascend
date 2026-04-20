@@ -4,6 +4,7 @@ import {
   Home, User, Target, Brain, X, Heart, Zap,
   BarChart3, BookOpen, Trophy, Clock, Gamepad2, Menu,
 } from "lucide-react";
+import { getHPColor, getManaColor, MANA_MAX } from "@/lib/statsSystem";
 
 const TUTORIAL_KEY = "ascend_app_tutorial_seen";
 
@@ -21,7 +22,7 @@ interface BaseStep {
 interface NavStep extends BaseStep { kind: "nav"; tabIndex: number; }
 interface SidebarIntroStep extends BaseStep { kind: "sidebar-intro"; }
 interface SidebarItemStep extends BaseStep { kind: "sidebar-item"; itemIndex: number; testId: string; }
-interface HomeIntroStep extends BaseStep { kind: "home-intro"; }
+interface HomeIntroStep extends BaseStep { kind: "home-intro"; targetTestId?: string; }
 
 type Step = NavStep | SidebarIntroStep | SidebarItemStep | HomeIntroStep;
 
@@ -77,13 +78,13 @@ const STEPS: Step[] = [
     desc: "Your RPG character is powered by real actions.\n• STR grows from training\n• AGI grows from movement\n• VIT grows from sleep & wellness\n• SEN grows from meditation\n\nComplete daily habits → power up your character.",
   },
   {
-    kind: "home-intro",
-    icon: Home, color: "#0ea5e9", sectionLabel: "HOME SCREEN", title: "Your Daily Hub",
-    desc: "This is your command center. Everything you need for your day lives here:\n\n▸ BEGIN DAILY FLOW starts your guided session\n▸ Your coach message sets the tone\n▸ Today's Sessions shows what's queued up\n\nScroll down to see your full status.",
+    kind: "home-intro", targetTestId: "button-begin-flow",
+    icon: Home, color: "#0ea5e9", sectionLabel: "DAILY FLOW", title: "Begin Daily Flow",
+    desc: "Tap this to start your guided daily session — sleep check, vitality, breathwork, training, and reflection in one flow.",
   },
   {
-    kind: "home-intro",
-    icon: Heart, color: "#ef4444", sectionLabel: "HP & MANA", title: "Vitality & Meditation",
+    kind: "home-intro", targetTestId: "stat-bars-card",
+    icon: Heart, color: "#22c55e", sectionLabel: "HP & MANA", title: "Vitality & Meditation",
     desc: "HP = physical vitality. Refills with sleep, food, and movement.\n\nMP = mental focus. Refills with meditation and breathwork.\n\nKeep both full — they power your RPG stats.",
   },
 ];
@@ -106,30 +107,65 @@ export function AppTutorialOverlay() {
   );
   const [step, setStep] = useState(0);
   const [itemRect, setItemRect] = useState<{ top: number; height: number } | null>(null);
+  const [homeRect, setHomeRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   useEffect(() => {
     const cur = STEPS[step];
-    if (cur.kind !== "sidebar-item") {
-      setItemRect(null);
-      return;
+    if (cur.kind === "sidebar-item") {
+      let cancelled = false;
+      const measure = () => {
+        const el = document.querySelector<HTMLElement>(`[data-testid="${(cur as SidebarItemStep).testId}"]`);
+        if (el && !cancelled) {
+          const r = el.getBoundingClientRect();
+          setItemRect({ top: r.top, height: r.height });
+        }
+      };
+      const t1 = setTimeout(measure, 50);
+      const t2 = setTimeout(measure, 350);
+      window.addEventListener("resize", measure);
+      return () => {
+        cancelled = true;
+        clearTimeout(t1);
+        clearTimeout(t2);
+        window.removeEventListener("resize", measure);
+      };
     }
-    let cancelled = false;
-    const measure = () => {
-      const el = document.querySelector<HTMLElement>(`[data-testid="${(cur as SidebarItemStep).testId}"]`);
-      if (el && !cancelled) {
-        const r = el.getBoundingClientRect();
-        setItemRect({ top: r.top, height: r.height });
-      }
-    };
-    const t1 = setTimeout(measure, 50);
-    const t2 = setTimeout(measure, 350);
-    window.addEventListener("resize", measure);
-    return () => {
-      cancelled = true;
-      clearTimeout(t1);
-      clearTimeout(t2);
-      window.removeEventListener("resize", measure);
-    };
+    setItemRect(null);
+
+    if (cur.kind === "home-intro" && (cur as HomeIntroStep).targetTestId) {
+      const targetId = (cur as HomeIntroStep).targetTestId!;
+      let cancelled = false;
+      const measure = () => {
+        const el = document.querySelector<HTMLElement>(`[data-testid="${targetId}"]`);
+        if (el && !cancelled) {
+          // Bring target into view if it's off-screen so the pointer makes sense.
+          const r0 = el.getBoundingClientRect();
+          if (r0.top < 16 || r0.bottom > window.innerHeight - 16) {
+            try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch {}
+          }
+          // Re-measure after potential scroll.
+          requestAnimationFrame(() => {
+            if (cancelled) return;
+            const r = el.getBoundingClientRect();
+            setHomeRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+          });
+        }
+      };
+      const t1 = setTimeout(measure, 60);
+      const t2 = setTimeout(measure, 380);
+      const t3 = setTimeout(measure, 750);
+      window.addEventListener("resize", measure);
+      window.addEventListener("scroll", measure, true);
+      return () => {
+        cancelled = true;
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        window.removeEventListener("resize", measure);
+        window.removeEventListener("scroll", measure, true);
+      };
+    }
+    setHomeRect(null);
   }, [step, visible]);
 
   const dismiss = () => {
@@ -194,8 +230,8 @@ export function AppTutorialOverlay() {
       style={{ pointerEvents: "all" }}
       data-tutorial-active="1"
     >
-      {/* ── FULL BACKDROP for non-sidebar-item, non-nav steps ── */}
-      {!isSidebarItem && !isNav && (
+      {/* ── FULL BACKDROP for non-sidebar-item, non-nav, non-home-target steps ── */}
+      {!isSidebarItem && !isNav && !(isHomeIntro && homeRect) && (
         <motion.div
           className="absolute inset-0"
           style={{ backgroundColor: "rgba(0,0,0,0.68)" }}
@@ -203,6 +239,60 @@ export function AppTutorialOverlay() {
           animate={{ opacity: 1 }}
         />
       )}
+
+      {/* ── HOME-INTRO SPOTLIGHT — cutout dim around target, target stays visible ── */}
+      {isHomeIntro && homeRect && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`spotlight-home-${step}`}
+            className="absolute pointer-events-none"
+            style={{
+              top: homeRect.top - 8,
+              left: homeRect.left - 8,
+              width: homeRect.width + 16,
+              height: homeRect.height + 16,
+              borderRadius: 14,
+              border: `2px solid ${current.color}`,
+              backgroundColor: "transparent",
+              boxShadow: `0 0 0 9999px rgba(0,0,0,0.62), 0 0 32px ${current.color}70, inset 0 0 18px ${current.color}22`,
+            }}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.28 }}
+          />
+        </AnimatePresence>
+      )}
+
+      {/* ── HOME-INTRO ARROW — points at target from card side ── */}
+      {isHomeIntro && homeRect && (() => {
+        const cardOnTop = homeRect.top > window.innerHeight / 2;
+        const arrowTop = cardOnTop ? homeRect.top - 34 : homeRect.top + homeRect.height + 12;
+        const arrowLeft = homeRect.left + homeRect.width / 2;
+        return (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`arrow-home-${step}`}
+              className="absolute pointer-events-none"
+              style={{
+                top: arrowTop,
+                left: arrowLeft,
+                transform: "translateX(-50%)",
+              }}
+              animate={{ y: cardOnTop ? [0, 7, 0] : [0, -7, 0] }}
+              transition={{ duration: 1.0, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <svg width="26" height="18" viewBox="0 0 26 18" fill="none" style={{ filter: `drop-shadow(0 0 6px ${current.color}aa)` }}>
+                {cardOnTop ? (
+                  <path d="M13 18 L0 0 L26 0 Z" fill={current.color} />
+                ) : (
+                  <path d="M13 0 L0 18 L26 18 Z" fill={current.color} />
+                )}
+              </svg>
+            </motion.div>
+          </AnimatePresence>
+        );
+      })()}
 
       {/* ── NAV-STEP BACKDROP — dims everything except the active tab ── */}
       {isNav && (
@@ -383,13 +473,18 @@ export function AppTutorialOverlay() {
       {/* ── TUTORIAL CARD ── */}
       <div
         className="absolute"
-        style={
-          isSidebarItem
-            ? { bottom: 90, left: 16, right: 16 }
-            : isNav
-            ? { bottom: 120, left: "50%", transform: "translateX(-50%)", width: "min(340px, calc(100vw - 32px))" }
-            : { top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(340px, calc(100vw - 32px))" }
-        }
+        style={(() => {
+          if (isSidebarItem) return { bottom: 90, left: 16, right: 16 };
+          if (isNav) return { bottom: 120, left: "50%", transform: "translateX(-50%)", width: "min(340px, calc(100vw - 32px))" };
+          if (isHomeIntro && homeRect) {
+            // Place card opposite the target so the actual UI stays visible.
+            const cardOnTop = homeRect.top > window.innerHeight / 2;
+            return cardOnTop
+              ? { top: 16, left: "50%", transform: "translateX(-50%)", width: "min(340px, calc(100vw - 32px))" }
+              : { bottom: 86, left: "50%", transform: "translateX(-50%)", width: "min(340px, calc(100vw - 32px))" };
+          }
+          return { top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "min(340px, calc(100vw - 32px))" };
+        })()}
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -438,49 +533,55 @@ export function AppTutorialOverlay() {
                 </button>
               </div>
 
-              {/* Visual preview — shown for HP & MANA step */}
-              {current.sectionLabel === "HP & MANA" && (
-                <div
-                  className="mb-3 p-3 rounded-lg"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  {/* HP bar */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <Heart size={12} style={{ color: "#ef4444" }} fill="#ef4444" />
-                    <span className="text-[9px] font-bold tracking-wider" style={{ color: "#ef4444", width: 22 }}>HP</span>
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(239,68,68,0.15)" }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: "82%",
-                          background: "linear-gradient(90deg, #ef4444 0%, #f87171 100%)",
-                          boxShadow: "0 0 8px rgba(239,68,68,0.6)",
-                        }}
-                      />
+              {/* Visual preview — shown for HP & MANA step. Colors match Day6Home. */}
+              {current.sectionLabel === "HP & MANA" && (() => {
+                const hpVal = 82;
+                const mpVal = Math.round(MANA_MAX * 0.65);
+                const hpC = getHPColor(hpVal);
+                const mpC = getManaColor(mpVal);
+                return (
+                  <div
+                    className="mb-3 p-3 rounded-lg"
+                    style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    {/* HP bar */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <Heart size={12} style={{ color: hpC }} fill={hpC} />
+                      <span className="text-[9px] font-bold tracking-wider" style={{ color: hpC, width: 22 }}>HP</span>
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: `${hpC}26` }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${hpVal}%`,
+                            background: hpC,
+                            boxShadow: `0 0 8px ${hpC}99`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.5)" }}>{hpVal}/100</span>
                     </div>
-                    <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.5)" }}>82/100</span>
-                  </div>
-                  {/* MP bar */}
-                  <div className="flex items-center gap-2">
-                    <Zap size={12} style={{ color: "#3b82f6" }} fill="#3b82f6" />
-                    <span className="text-[9px] font-bold tracking-wider" style={{ color: "#3b82f6", width: 22 }}>MP</span>
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(59,130,246,0.15)" }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: "65%",
-                          background: "linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)",
-                          boxShadow: "0 0 8px rgba(59,130,246,0.6)",
-                        }}
-                      />
+                    {/* MP bar */}
+                    <div className="flex items-center gap-2">
+                      <Zap size={12} style={{ color: mpC }} fill={mpC} />
+                      <span className="text-[9px] font-bold tracking-wider" style={{ color: mpC, width: 22 }}>MP</span>
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: `${mpC}26` }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${(mpVal / MANA_MAX) * 100}%`,
+                            background: mpC,
+                            boxShadow: `0 0 8px ${mpC}99`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.5)" }}>{mpVal}/{MANA_MAX}</span>
                     </div>
-                    <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.5)" }}>65/100</span>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Description */}
               <p
