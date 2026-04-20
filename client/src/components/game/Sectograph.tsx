@@ -337,12 +337,16 @@ export function Sectograph({
           50% { opacity: 0.75; }
         }
         @keyframes sectoNodeHalo-${uid} {
-          0%, 100% { r: 7; opacity: 0.55; }
-          50% { r: 12; opacity: 0; }
+          0%, 100% { r: 9; opacity: 0.85; }
+          50% { r: 18; opacity: 0; }
+        }
+        @keyframes sectoNodeHalo2-${uid} {
+          0%, 100% { r: 11; opacity: 0.6; }
+          50% { r: 22; opacity: 0; }
         }
         @keyframes sectoNodePulse-${uid} {
-          0%, 100% { r: 5.5; }
-          50% { r: 6.5; }
+          0%, 100% { r: 7; }
+          50% { r: 8.5; }
         }
       `}</style>
       <svg width={size} height={size}>
@@ -353,6 +357,9 @@ export function Sectograph({
           </radialGradient>
           <filter id={`needleGlow-${uid}`} x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="2.2" />
+          </filter>
+          <filter id={`needleGlowStrong-${uid}`} x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="5" />
           </filter>
         </defs>
 
@@ -564,62 +571,103 @@ export function Sectograph({
         />
 
         {/* Layer 3 — bold current time needle (player position) */}
-        {/* Soft outer glow line */}
+        {/* Wide outer glow line */}
         <line
           x1={needleBase.x}
           y1={needleBase.y}
           x2={needleTip.x}
           y2={needleTip.y}
           stroke="#06b6d4"
-          strokeWidth="7"
+          strokeWidth="14"
           strokeLinecap="round"
-          opacity="0.35"
-          filter={`url(#needleGlow-${uid})`}
+          opacity="0.4"
+          filter={`url(#needleGlowStrong-${uid})`}
           style={{ pointerEvents: "none" }}
         />
-        {/* Bold core needle */}
+        {/* Mid glow line */}
         <line
           x1={needleBase.x}
           y1={needleBase.y}
           x2={needleTip.x}
           y2={needleTip.y}
           stroke="#22d3ee"
-          strokeWidth="3.5"
+          strokeWidth="8"
           strokeLinecap="round"
-          style={{ animation: `sectoNeedlePulse-${uid} 2.6s ease-in-out infinite` }}
+          opacity="0.55"
+          filter={`url(#needleGlow-${uid})`}
+          style={{ pointerEvents: "none" }}
         />
-        {/* Player-position node at the edge */}
+        {/* Bold bright core needle */}
+        <line
+          x1={needleBase.x}
+          y1={needleBase.y}
+          x2={needleTip.x}
+          y2={needleTip.y}
+          stroke="#ffffff"
+          strokeWidth="3"
+          strokeLinecap="round"
+          style={{ animation: `sectoNeedlePulse-${uid} 2.2s ease-in-out infinite` }}
+        />
+        {/* Cyan inner stripe to colorize the bright core */}
+        <line
+          x1={needleBase.x}
+          y1={needleBase.y}
+          x2={needleTip.x}
+          y2={needleTip.y}
+          stroke="#22d3ee"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          opacity="0.95"
+        />
+        {/* Player-position node at the edge — multiple layered halos */}
         <circle
           cx={needleTip.x}
           cy={needleTip.y}
-          r={11}
+          r={20}
           fill="#22d3ee"
-          opacity="0.18"
-          filter={`url(#needleGlow-${uid})`}
+          opacity="0.22"
+          filter={`url(#needleGlowStrong-${uid})`}
           style={{ pointerEvents: "none" }}
         />
         <circle
           cx={needleTip.x}
           cy={needleTip.y}
-          r={7}
+          r={11}
           fill="none"
           stroke="#22d3ee"
-          strokeWidth="1.5"
-          opacity="0.55"
-          style={{ animation: `sectoNodeHalo-${uid} 2.6s ease-out infinite` }}
+          strokeWidth="2"
+          opacity="0.7"
+          style={{ animation: `sectoNodeHalo2-${uid} 2.2s ease-out infinite` }}
         />
         <circle
           cx={needleTip.x}
           cy={needleTip.y}
-          r={5.5}
-          fill="#22d3ee"
-          stroke="#0b1020"
+          r={9}
+          fill="none"
+          stroke="#67e8f9"
           strokeWidth="1.5"
-          style={{ animation: `sectoNodePulse-${uid} 2.6s ease-in-out infinite` }}
+          opacity="0.85"
+          style={{ animation: `sectoNodeHalo-${uid} 2.2s ease-out infinite` }}
+        />
+        <circle
+          cx={needleTip.x}
+          cy={needleTip.y}
+          r={7}
+          fill="#22d3ee"
+          stroke="#ffffff"
+          strokeWidth="2"
+          style={{ animation: `sectoNodePulse-${uid} 2.2s ease-in-out infinite` }}
+        />
+        <circle
+          cx={needleTip.x}
+          cy={needleTip.y}
+          r={2.5}
+          fill="#ffffff"
+          opacity="0.95"
         />
 
         {/* Center pivot */}
-        <circle cx={center} cy={center} r={3.5} fill="#22d3ee" opacity="0.95" />
+        <circle cx={center} cy={center} r={4.5} fill="#22d3ee" stroke="#ffffff" strokeWidth="1.5" opacity="1" />
 
         {/* Cardinal hour labels */}
         {[

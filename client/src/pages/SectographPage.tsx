@@ -13,6 +13,7 @@ import {
   scheduleTaskNotification,
   requestNotificationPermissions,
   isNativePlatform,
+  cancelTaskNotification,
 } from "@/lib/notificationService";
 import { useToast } from "@/hooks/use-toast";
 import type { Quadrant } from "@shared/schema";
@@ -47,6 +48,19 @@ import {
   CheckCircle2,
   Palette,
   ArrowRight,
+  AlarmClock,
+  Star,
+  Heart,
+  Flame,
+  Music,
+  Camera,
+  Dumbbell,
+  Smile,
+  Bookmark,
+  Sun,
+  Headphones,
+  PenTool,
+  Leaf,
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
 import {
@@ -105,6 +119,25 @@ const BLOCK_PRESETS = [
   { id: "custom", name: "Custom", icon: Palette, color: "#6b7280", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 10, m: 0 } },
 ];
 
+// Icon options for Custom blocks (key → component lookup).
+const CUSTOM_ICONS: { key: string; Icon: any; label: string }[] = [
+  { key: "palette",    Icon: Palette,    label: "Palette" },
+  { key: "star",       Icon: Star,       label: "Star" },
+  { key: "heart",      Icon: Heart,      label: "Heart" },
+  { key: "flame",      Icon: Flame,      label: "Flame" },
+  { key: "music",      Icon: Music,      label: "Music" },
+  { key: "headphones", Icon: Headphones, label: "Listen" },
+  { key: "camera",     Icon: Camera,     label: "Camera" },
+  { key: "dumbbell",   Icon: Dumbbell,   label: "Train" },
+  { key: "smile",      Icon: Smile,      label: "Mood" },
+  { key: "bookmark",   Icon: Bookmark,   label: "Save" },
+  { key: "sun",        Icon: Sun,        label: "Sun" },
+  { key: "pen",        Icon: PenTool,    label: "Write" },
+  { key: "leaf",       Icon: Leaf,       label: "Calm" },
+  { key: "brain",      Icon: Brain,      label: "Mind" },
+];
+const ICON_BY_KEY: Record<string, any> = Object.fromEntries(CUSTOM_ICONS.map(i => [i.key, i.Icon]));
+
 // Six curated swatches for Custom blocks; user can also enter any hex value.
 const CUSTOM_COLOR_PRESETS = [
   "#ef4444", // red
@@ -137,6 +170,10 @@ interface EditingBlock {
   isNew?: boolean;
   /** Sub-type for Daily Flow blocks. */
   subType?: string;
+  /** Icon key for Custom blocks (lookup in ICON_BY_KEY). */
+  iconKey?: string;
+  /** Optional alarm time HH:MM (Sleep blocks). */
+  alarmAt?: string;
 }
 
 function getAwarenessInsight(schedule: ScheduleBlock[], freeWindows: FreeWindow[]): string | null {
@@ -450,9 +487,74 @@ export default function SectographPage() {
         });
       }
     }
+    // ── Sleep wake-up alarm — schedule (or cancel) a separate notification at alarmAt.
+    if (isNativePlatform() && editingBlock.id.startsWith("sleep")) {
+      const alarmId = `${blockFinal.id}__alarm`;
+      const hasAlarm =
+        typeof blockFinal.alarmAt === "string" && /^\d{2}:\d{2}$/.test(blockFinal.alarmAt);
+      // Always cancel any prior alarm first so toggle-off / time-change behaves correctly.
+      try {
+        await cancelTaskNotification(alarmId);
+      } catch (err) {
+        console.warn("[SectographPage] cancel prior alarm failed", err);
+      }
+      if (hasAlarm) {
+        const [ah, am] = blockFinal.alarmAt.split(":").map(Number);
+        const now = new Date();
+        const alarmAt = new Date(now);
+        alarmAt.setHours(ah, am, 0, 0);
+        if (alarmAt.getTime() <= now.getTime()) {
+          alarmAt.setDate(alarmAt.getDate() + 1);
+        }
+        try {
+          const granted = await requestNotificationPermissions();
+          if (!granted) {
+            toast({
+              title: "Alarm permission needed",
+              description: "Allow notifications and re-save the block.",
+              variant: "destructive",
+            });
+          } else {
+            const r = await scheduleTaskNotification(
+              alarmId,
+              "Wake up",
+              "Time to rise — your day is starting.",
+              alarmAt,
+            );
+            if (r.scheduled) {
+              toast({
+                title: "Alarm set",
+                description: `Wake-up at ${alarmAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`,
+              });
+            } else {
+              toast({
+                title: "Alarm NOT set",
+                description: `Reason: ${r.reason ?? "unknown"}`,
+                variant: "destructive",
+              });
+            }
+          }
+        } catch (err) {
+          console.warn("[SectographPage] alarm schedule failed", err);
+          toast({
+            title: "Alarm failed",
+            description: String(err),
+            variant: "destructive",
+          });
+        }
+      }
+    }
     // Strip subType when not a Daily Flow block to keep stored data clean.
     if (!editingBlock.id.startsWith("daily-flow")) {
       delete blockFinal.subType;
+    }
+    // Strip iconKey when not a Custom block to keep stored data clean.
+    if (!editingBlock.id.startsWith("custom")) {
+      delete blockFinal.iconKey;
+    }
+    // Strip alarmAt when not a Sleep block.
+    if (!editingBlock.id.startsWith("sleep")) {
+      delete blockFinal.alarmAt;
     }
     const current: ScheduleBlock[] = (player.schedule ?? []) as ScheduleBlock[];
     // System preset IDs that should be deduplicated (only one per type allowed)
@@ -502,8 +604,19 @@ export default function SectographPage() {
     }
   };
 
-  const handleDeleteBlock = () => {
+  const handleDeleteBlock = async () => {
     if (!editingBlock || !player) return;
+    // Cancel any scheduled phone notifications tied to this block.
+    if (isNativePlatform()) {
+      try {
+        await cancelTaskNotification(editingBlock.id);
+        if (editingBlock.id.startsWith("sleep")) {
+          await cancelTaskNotification(`${editingBlock.id}__alarm`);
+        }
+      } catch (err) {
+        console.warn("[SectographPage] cancel on delete failed", err);
+      }
+    }
     deleteScheduleBlock(editingBlock.id);
     setEditingBlock(null);
   };
@@ -1011,16 +1124,13 @@ export default function SectographPage() {
                 }}
                 onBlockClick={(block) => {
                   const blk = block as any;
+                  // Spread to preserve persisted metadata (iconKey, alarmAt, description, etc).
                   setEditingBlock({
-                    id: blk.id,
+                    ...blk,
                     name: blk.name || blk.label || "",
-                    startHour: blk.startHour,
                     startMinute: blk.startMinute ?? 0,
-                    endHour: blk.endHour,
                     endMinute: blk.endMinute ?? 0,
                     color: blk.color || "#6b7280",
-                    isSystemTask: blk.isSystemTask,
-                    subType: blk.subType,
                     isNew: false,
                   });
                   if (blk.id?.startsWith("custom")) setCustomBlockName(blk.name || "");
@@ -1138,7 +1248,7 @@ export default function SectographPage() {
                   </h3>
                 </div>
                 <div className="space-y-3">
-                  {rhythmInsights.slice(0, 2).map((insight, i) => {
+                  {rhythmInsights.slice(0, 1).map((insight, i) => {
                     const dotColor =
                       insight.actionType === "reset" ? "#f59e0b" :
                       insight.actionType === "focusSession" ? "#8b5cf6" :
@@ -1947,47 +2057,69 @@ export default function SectographPage() {
         </Dialog>
         {/* ── ADD BLOCK — preset picker ─────────────────────────── */}
         <Dialog open={showAddBlock} onOpenChange={setShowAddBlock}>
-          <DialogContent className="max-w-sm border-white/10" style={{ backgroundColor: colors.surface }}>
+          <DialogContent
+            className="max-w-sm"
+            style={{
+              backgroundColor: colors.surface,
+              border: `1px solid ${colors.primary}40`,
+              boxShadow: `0 0 32px ${colors.primary}25, 0 8px 24px rgba(0,0,0,0.4)`,
+            }}
+          >
             <DialogHeader>
-              <DialogTitle className="text-sm font-display font-bold" style={{ color: colors.text }}>
-                Add Time Block
+              <DialogTitle className="text-base font-display font-bold tracking-wider" style={{ color: colors.primary }}>
+                ADD TIME BLOCK
               </DialogTitle>
             </DialogHeader>
-            <p className="text-[11px] mb-3" style={{ color: colors.textMuted }}>
+            <p className="text-[11px] mb-4" style={{ color: colors.text, opacity: 0.7 }}>
               Choose a block type to add to your timeline
             </p>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-4 gap-2.5">
               {BLOCK_PRESETS.map((preset) => {
                 const Icon = preset.icon;
                 const isHighlighted =
                   isDay5Mode &&
                   ((day5Step === 1 && preset.id === "sleep") ||
                    (day5Step === 2 && preset.id === "daily-flow"));
+                // Brighter hue for the icon foreground (boost saturation/lightness via overlay).
+                const vivid = preset.color;
                 return (
                   <button
                     key={preset.id}
                     data-testid={`preset-${preset.id}`}
                     onClick={() => handlePresetClick(preset)}
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95"
+                    className="relative flex flex-col items-center gap-1.5 px-1 py-3 rounded-xl transition-all active:scale-95 hover:scale-[1.04]"
                     style={{
-                      backgroundColor: isHighlighted ? `${preset.color}25` : `${preset.color}15`,
-                      border: isHighlighted ? `2px solid ${preset.color}` : `1px solid ${preset.color}30`,
-                      boxShadow: isHighlighted ? `0 0 12px ${preset.color}60, 0 0 4px ${preset.color}30 inset` : "none",
-                      transform: isHighlighted ? "scale(1.08)" : "scale(1)",
+                      background: isHighlighted
+                        ? `linear-gradient(160deg, ${vivid}55, ${vivid}22)`
+                        : `linear-gradient(160deg, ${vivid}38, ${vivid}10)`,
+                      border: isHighlighted ? `2px solid ${vivid}` : `1px solid ${vivid}66`,
+                      boxShadow: isHighlighted
+                        ? `0 0 16px ${vivid}90, 0 0 4px ${vivid}40 inset`
+                        : `0 0 10px ${vivid}33, 0 1px 0 rgba(255,255,255,0.04) inset`,
+                      transform: isHighlighted ? "scale(1.06)" : "scale(1)",
                     }}
                   >
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${preset.color}25` }}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center"
+                      style={{
+                        background: `radial-gradient(circle at 35% 30%, ${vivid}aa, ${vivid}55)`,
+                        boxShadow: `0 0 8px ${vivid}80`,
+                      }}
                     >
-                      <Icon size={16} style={{ color: preset.color }} />
+                      <Icon size={18} style={{ color: "#ffffff", filter: `drop-shadow(0 0 4px ${vivid})` }} />
                     </div>
-                    <span className="text-[9px] font-medium text-center leading-tight" style={{ color: preset.color }}>
+                    <span
+                      className="text-[10px] font-bold text-center leading-tight tracking-wide"
+                      style={{ color: "#ffffff", textShadow: `0 0 6px ${vivid}` }}
+                    >
                       {preset.name}
                     </span>
                     {isHighlighted && (
-                      <span className="text-[7px] font-bold leading-none" style={{ color: preset.color, opacity: 0.85 }}>
-                        ← tap
+                      <span
+                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-bold leading-none px-1.5 py-0.5 rounded-full"
+                        style={{ backgroundColor: vivid, color: "#0b1020" }}
+                      >
+                        TAP
                       </span>
                     )}
                   </button>
@@ -2008,19 +2140,51 @@ export default function SectographPage() {
             {editingBlock && (
               <div className="space-y-4">
                 {editingBlock.id.startsWith("custom") && (
-                  <div>
-                    <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block" style={{ color: colors.textMuted }}>
-                      Name
-                    </label>
-                    <Input
-                      value={customBlockName}
-                      onChange={(e) => setCustomBlockName(e.target.value)}
-                      placeholder="Block name…"
-                      className="bg-white/5 border-white/10 text-sm"
-                      style={{ color: colors.text }}
-                      data-testid="input-custom-block-name"
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block" style={{ color: colors.textMuted }}>
+                        Name
+                      </label>
+                      <Input
+                        value={customBlockName}
+                        onChange={(e) => setCustomBlockName(e.target.value)}
+                        placeholder="Block name…"
+                        className="bg-white/5 border-white/10 text-sm"
+                        style={{ color: colors.text }}
+                        data-testid="input-custom-block-name"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider font-bold mb-1.5 block" style={{ color: colors.textMuted }}>
+                        Icon
+                      </label>
+                      <div
+                        className="grid grid-cols-7 gap-1.5"
+                        data-testid="custom-icon-picker"
+                      >
+                        {CUSTOM_ICONS.map(({ key, Icon, label }) => {
+                          const isSel = (editingBlock.iconKey ?? "palette") === key;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              aria-label={label}
+                              onClick={() => setEditingBlock({ ...editingBlock, iconKey: key })}
+                              data-testid={`custom-icon-${key}`}
+                              className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform active:scale-95"
+                              style={{
+                                backgroundColor: isSel ? `${editingBlock.color}30` : "rgba(255,255,255,0.04)",
+                                border: `1px solid ${isSel ? editingBlock.color : "rgba(255,255,255,0.08)"}`,
+                                boxShadow: isSel ? `0 0 8px ${editingBlock.color}80` : "none",
+                              }}
+                            >
+                              <Icon size={15} style={{ color: isSel ? editingBlock.color : colors.textMuted }} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -2056,6 +2220,64 @@ export default function SectographPage() {
                     />
                   </div>
                 </div>
+                {/* ── Sleep block — wake-up alarm ─────────────── */}
+                {editingBlock.id.startsWith("sleep") && (
+                  <div
+                    className="rounded-lg p-3"
+                    style={{
+                      backgroundColor: "rgba(99,102,241,0.08)",
+                      border: "1px solid rgba(99,102,241,0.2)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: colors.text }}>
+                        <AlarmClock size={14} style={{ color: "#818cf8" }} />
+                        Wake-up alarm
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingBlock.alarmAt) {
+                            const { alarmAt: _, ...rest } = editingBlock;
+                            setEditingBlock(rest as EditingBlock);
+                          } else {
+                            // Default the alarm to the block's end time (wake time).
+                            const h = String(editingBlock.endHour).padStart(2, "0");
+                            const m = String(editingBlock.endMinute).padStart(2, "0");
+                            setEditingBlock({ ...editingBlock, alarmAt: `${h}:${m}` });
+                          }
+                        }}
+                        data-testid="toggle-sleep-alarm"
+                        className="relative w-9 h-5 rounded-full transition-colors"
+                        style={{
+                          backgroundColor: editingBlock.alarmAt ? "#818cf8" : "rgba(255,255,255,0.12)",
+                        }}
+                        aria-pressed={!!editingBlock.alarmAt}
+                      >
+                        <span
+                          className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+                          style={{ left: editingBlock.alarmAt ? "calc(100% - 18px)" : "2px" }}
+                        />
+                      </button>
+                    </div>
+                    {editingBlock.alarmAt && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          value={editingBlock.alarmAt}
+                          onChange={(e) => setEditingBlock({ ...editingBlock, alarmAt: e.target.value })}
+                          className="bg-white/5 border-white/10 text-sm flex-1"
+                          style={{ color: colors.text }}
+                          data-testid="input-sleep-alarm"
+                        />
+                        <span className="text-[10px]" style={{ color: colors.textMuted }}>
+                          rings on phone
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* ── Daily Flow sub-type chooser ─────────────── */}
                 {editingBlock.id.startsWith("daily-flow") && (
                   <div>
