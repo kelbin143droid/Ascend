@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield } from "lucide-react";
+import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, Sparkles, X } from "lucide-react";
+import {
+  shouldPromptAutoSwitch,
+  setMode as setSleepMode,
+  dismissAutoSwitchPrompt,
+} from "@/lib/sleepModeStore";
 import { useLocation } from "wouter";
 import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
@@ -160,6 +165,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         className="flex flex-col gap-4 py-6 px-1 max-w-md mx-auto w-full"
         data-testid="day6-home"
       >
+        <AutoSwitchBanner navigate={navigate} />
+
         {/* ── HEADER ─────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -391,6 +398,29 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       </button>
                     );
                   })}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/sleep-settings")}
+                    data-testid="link-sleep-settings"
+                    className="w-full text-left flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 active:bg-white/10"
+                    style={{ borderTop: `1px solid ${colors.surfaceBorder}50` }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: "#fbbf2415" }}
+                    >
+                      <Sparkles size={14} style={{ color: "#fbbf24" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-tight" style={{ color: colors.text }}>
+                        Sleep Optimization
+                      </p>
+                      <p className="text-[10px] mt-0.5" style={{ color: `${colors.textMuted}88` }}>
+                        Choose how the night flow guides you
+                      </p>
+                    </div>
+                    <span className="text-[9px]" style={{ color: colors.textMuted }}>›</span>
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -473,5 +503,92 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
       </div>
     </SystemLayout>
+  );
+}
+
+function AutoSwitchBanner({ navigate }: { navigate: (to: string) => void }) {
+  const { backgroundTheme } = useTheme();
+  const colors = backgroundTheme.colors;
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    setShow(shouldPromptAutoSwitch());
+    const handler = () => setShow(shouldPromptAutoSwitch());
+    window.addEventListener("ascend:vitality-flow-changed", handler);
+    window.addEventListener("ascend:sleep-mode-changed", handler);
+    return () => {
+      window.removeEventListener("ascend:vitality-flow-changed", handler);
+      window.removeEventListener("ascend:sleep-mode-changed", handler);
+    };
+  }, []);
+
+  if (!show) return null;
+
+  const accept = () => {
+    setSleepMode("adaptive");
+    setShow(false);
+    navigate("/sleep-settings");
+  };
+  const dismiss = () => {
+    dismissAutoSwitchPrompt();
+    setShow(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl p-3 flex items-start gap-3"
+      style={{
+        backgroundColor: "rgba(251,191,36,0.08)",
+        border: "1px solid rgba(251,191,36,0.35)",
+        boxShadow: "0 0 22px rgba(251,191,36,0.18)",
+      }}
+      data-testid="auto-switch-banner"
+    >
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+        style={{ backgroundColor: "rgba(251,191,36,0.18)" }}
+      >
+        <Sparkles size={16} style={{ color: "#fbbf24" }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold" style={{ color: "#fde68a" }}>
+          You're doing great
+        </p>
+        <p className="text-[11px] mt-0.5 leading-snug" style={{ color: colors.textMuted }}>
+          Switch to Adaptive Mode? It'll quietly trim guidance you no longer need.
+        </p>
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            type="button"
+            onClick={accept}
+            data-testid="button-accept-adaptive"
+            className="text-[11px] font-bold px-3 py-1 rounded-md"
+            style={{ backgroundColor: "#fbbf24", color: "#1a1208" }}
+          >
+            Switch to Adaptive
+          </button>
+          <button
+            type="button"
+            onClick={dismiss}
+            data-testid="button-dismiss-adaptive"
+            className="text-[11px] px-2 py-1 rounded-md"
+            style={{ color: colors.textMuted }}
+          >
+            Not now
+          </button>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Dismiss"
+        className="shrink-0 p-1 rounded-md"
+        style={{ color: colors.textMuted }}
+      >
+        <X size={14} />
+      </button>
+    </motion.div>
   );
 }

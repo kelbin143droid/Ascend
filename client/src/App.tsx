@@ -34,6 +34,7 @@ import NutritionPage from "@/pages/NutritionPage";
 import GuidedSessionPage from "@/pages/GuidedSessionPage";
 import WakeFlowPage from "@/pages/WakeFlowPage";
 import NightFlowPage from "@/pages/NightFlowPage";
+import SleepSettingsPage from "@/pages/SleepSettingsPage";
 import FlowApp from "@/pages/FlowApp";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/habits" component={HabitsPage} />
       <Route path="/wake-flow" component={WakeFlowPage} />
       <Route path="/night-flow" component={NightFlowPage} />
+      <Route path="/sleep-settings" component={SleepSettingsPage} />
       <Route path="/guided-session/:sessionId">
         {(params: { sessionId?: string }) => <GuidedSessionPage key={params?.sessionId ?? "session"} />}
       </Route>

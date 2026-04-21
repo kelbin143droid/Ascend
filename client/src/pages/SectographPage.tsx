@@ -15,6 +15,7 @@ import {
   isNativePlatform,
   cancelTaskNotification,
 } from "@/lib/notificationService";
+import { getNightPlan } from "@/lib/sleepModeStore";
 import { useToast } from "@/hooks/use-toast";
 import type { Quadrant } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -525,7 +526,9 @@ export default function SectographPage() {
         });
       }
     }
-    // ── Night Flow trigger — fire 60min before sleep block start.
+    // ── Night Flow / wind-down trigger.
+    // Honors the active Sleep Mode: minimal mode → simple ping (no auto-open),
+    // beginner/adaptive/custom → opens Night Flow at the configured offset.
     if (
       isNativePlatform() &&
       editingBlock.id.startsWith("sleep") &&
@@ -537,23 +540,32 @@ export default function SectographPage() {
       } catch (err) {
         console.warn("[SectographPage] cancel prior night-flow failed", err);
       }
-      const now = new Date();
-      const sleepStart = new Date(now);
-      sleepStart.setHours(blockFinal.startHour, blockFinal.startMinute || 0, 0, 0);
-      const nightAt = new Date(sleepStart.getTime() - 60 * 60 * 1000);
-      if (nightAt.getTime() <= now.getTime()) {
-        nightAt.setDate(nightAt.getDate() + 1);
-      }
-      try {
-        await scheduleTaskNotification(
-          nightId,
-          "Wind-down",
-          "Start your Night Flow — sleep optimization in 60 min.",
-          nightAt,
-          { route: "/night-flow", source: "night-flow" },
-        );
-      } catch (err) {
-        console.warn("[SectographPage] night-flow schedule failed", err);
+      const plan = getNightPlan();
+      if (plan.windDownReminder) {
+        const now = new Date();
+        const sleepStart = new Date(now);
+        sleepStart.setHours(blockFinal.startHour, blockFinal.startMinute || 0, 0, 0);
+        const offsetMs = Math.max(5, plan.windDownOffsetMin) * 60 * 1000;
+        const nightAt = new Date(sleepStart.getTime() - offsetMs);
+        if (nightAt.getTime() <= now.getTime()) {
+          nightAt.setDate(nightAt.getDate() + 1);
+        }
+        const minimal = !plan.showFullFlow;
+        try {
+          await scheduleTaskNotification(
+            nightId,
+            minimal ? "Start winding down" : "Wind-down",
+            minimal
+              ? "Time to wind down — open your tools when ready."
+              : `Start your Night Flow — sleep optimization in ${plan.windDownOffsetMin} min.`,
+            nightAt,
+            minimal
+              ? { source: "night-flow-minimal" }
+              : { route: "/night-flow", source: "night-flow" },
+          );
+        } catch (err) {
+          console.warn("[SectographPage] night-flow schedule failed", err);
+        }
       }
     }
     // ── Sleep wake-up alarm — schedule (or cancel) a separate notification at alarmAt.

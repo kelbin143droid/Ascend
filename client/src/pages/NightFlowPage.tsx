@@ -21,6 +21,7 @@ import {
   recordSkip,
   type SkipReason,
 } from "@/lib/vitalityFlowStore";
+import { getNightPlan } from "@/lib/sleepModeStore";
 
 type Phase = number;
 
@@ -31,9 +32,9 @@ const SKIP_REASONS: { value: SkipReason; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-function PhaseProgress({ phase }: { phase: number }) {
-  const total = 5;
-  const pct = Math.min(100, ((phase) / total) * 100);
+function PhaseProgress({ phase, total }: { phase: number; total: number }) {
+  const safeTotal = Math.max(1, total);
+  const pct = Math.min(100, (phase / safeTotal) * 100);
   return (
     <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
       <div
@@ -565,7 +566,44 @@ export default function NightFlowPage() {
     }
   };
 
-  const advance = () => setPhase((p) => ((p + 1) as Phase));
+  // Resolve which phases run tonight from the active sleep mode.
+  const plan = getNightPlan();
+  const enabledPhaseCount =
+    1 + // Phase 1 (intro) always runs
+    (plan.foodCutoff ? 1 : 0) +
+    (plan.lowStimulation ? 1 : 0) +
+    (plan.sleepPriming ? 1 : 0);
+
+  // Minimal mode (or custom-with-everything-off): no full flow exists.
+  // Bounce the user back to settings instead of stranding them on an empty intro.
+  useEffect(() => {
+    if (!plan.showFullFlow) {
+      navigate("/sleep-settings");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.showFullFlow]);
+
+  // Skip to the next ENABLED phase based on the plan.
+  const nextEnabledPhase = (from: Phase): Phase => {
+    let p = from + 1;
+    // Phase 2 = food cutoff, 3 = low stim, 4 = priming.
+    while (p <= 4) {
+      if (p === 2 && !plan.foodCutoff) { p++; continue; }
+      if (p === 3 && !plan.lowStimulation) { p++; continue; }
+      if (p === 4 && !plan.sleepPriming) { p++; continue; }
+      return p;
+    }
+    return 5; // jump to completion
+  };
+
+  const onAdvanceFromPhase = () => {
+    const next = nextEnabledPhase(phase);
+    if (next >= 5) {
+      finalize();
+    } else {
+      setPhase(next);
+    }
+  };
 
   const finalize = () => {
     markNightCompleted();
@@ -595,7 +633,7 @@ export default function NightFlowPage() {
               <X size={16} />
             </button>
             <div className="flex-1">
-              <PhaseProgress phase={phase} />
+              <PhaseProgress phase={phase} total={enabledPhaseCount} />
             </div>
             <span className="text-[10px] font-mono w-10 text-right" style={{ color: colors.textMuted }}>
               {phase}/4
@@ -605,9 +643,9 @@ export default function NightFlowPage() {
       )}
 
       <div className={phase > 1 && phase < 5 ? "pt-12" : ""}>
-        {phase === 1 && <Phase1Init onContinue={advance} />}
-        {phase === 2 && <Phase2FoodCutoff onDone={advance} onSkip={() => handleSkip("food_cutoff")} />}
-        {phase === 3 && <Phase3LowStim onDone={advance} onSkip={() => handleSkip("low_stim")} />}
+        {phase === 1 && <Phase1Init onContinue={onAdvanceFromPhase} />}
+        {phase === 2 && <Phase2FoodCutoff onDone={onAdvanceFromPhase} onSkip={() => handleSkip("food_cutoff")} />}
+        {phase === 3 && <Phase3LowStim onDone={onAdvanceFromPhase} onSkip={() => handleSkip("low_stim")} />}
         {phase === 4 && <Phase4Priming onDone={goToCompletion} onSkip={() => handleSkip("priming")} />}
         {phase === 5 && <NightCompletion onClose={close} />}
       </div>
