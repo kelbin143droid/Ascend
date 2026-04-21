@@ -22,10 +22,15 @@ export interface NutritionEntry {
 export interface NutritionDay {
   date: string;            // YYYY-MM-DD
   entries: NutritionEntry[];
+  waterIntake: number;     // ml consumed today
+  waterGoal: number;       // ml goal (default 3000)
 }
 
 const STORAGE_PREFIX = "ascend_nutrition_";
 const CHANGE_EVENT = "ascend:nutrition-changed";
+
+export const DEFAULT_WATER_GOAL = 3000;
+export const MAX_WATER_INTAKE = 6000;
 
 export function todayIso(): string {
   const d = new Date();
@@ -37,14 +42,20 @@ function storageKey(date: string): string {
 }
 
 export function readDay(date: string = todayIso()): NutritionDay {
+  const empty: NutritionDay = { date, entries: [], waterIntake: 0, waterGoal: DEFAULT_WATER_GOAL };
   try {
     const raw = localStorage.getItem(storageKey(date));
-    if (!raw) return { date, entries: [] };
-    const parsed = JSON.parse(raw) as NutritionDay;
-    if (!parsed || !Array.isArray(parsed.entries)) return { date, entries: [] };
-    return { date, entries: parsed.entries };
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as Partial<NutritionDay>;
+    if (!parsed || !Array.isArray(parsed.entries)) return empty;
+    return {
+      date,
+      entries: parsed.entries,
+      waterIntake: typeof parsed.waterIntake === "number" ? parsed.waterIntake : 0,
+      waterGoal: typeof parsed.waterGoal === "number" ? parsed.waterGoal : DEFAULT_WATER_GOAL,
+    };
   } catch {
-    return { date, entries: [] };
+    return empty;
   }
 }
 
@@ -109,6 +120,45 @@ export function computeTotals(entries: NutritionEntry[]): NutritionTotals {
     fat: +totals.fat.toFixed(1),
     count: entries.length,
   };
+}
+
+/* ─────────────── Water tracking ─────────────── */
+export function addWater(ml: number, date: string = todayIso()): NutritionDay {
+  const day = readDay(date);
+  day.waterIntake = Math.max(0, Math.min(MAX_WATER_INTAKE, day.waterIntake + ml));
+  writeDay(day);
+  return day;
+}
+
+export function setWaterIntake(ml: number, date: string = todayIso()): NutritionDay {
+  const day = readDay(date);
+  day.waterIntake = Math.max(0, Math.min(MAX_WATER_INTAKE, ml));
+  writeDay(day);
+  return day;
+}
+
+export function setWaterGoal(ml: number, date: string = todayIso()): NutritionDay {
+  const day = readDay(date);
+  day.waterGoal = Math.max(500, Math.min(MAX_WATER_INTAKE, ml));
+  writeDay(day);
+  return day;
+}
+
+/* ─────────────── Vitality stat hook (stub) ─────────────── */
+/**
+ * Stub for the future Vitality stat. Returns a 0-100 score derived from
+ * hydration %, calorie %, and protein %. Implementation intentionally
+ * simple — wire into the stat system when ready.
+ */
+export function calculateVitalityScore(day: NutritionDay, opts?: { calorieGoal?: number; proteinGoal?: number }): number {
+  const calorieGoal = opts?.calorieGoal ?? 2200;
+  const proteinGoal = opts?.proteinGoal ?? 130;
+  const totals = computeTotals(day.entries);
+  const hydrationPct = Math.min(1, day.waterIntake / Math.max(1, day.waterGoal));
+  const caloriePct = Math.min(1, totals.calories / Math.max(1, calorieGoal));
+  const proteinPct = Math.min(1, totals.protein / Math.max(1, proteinGoal));
+  // Equal-weighted blend, expressed as 0–100.
+  return Math.round(((hydrationPct + caloriePct + proteinPct) / 3) * 100);
 }
 
 export function subscribeNutrition(handler: () => void): () => void {

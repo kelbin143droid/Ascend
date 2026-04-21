@@ -174,6 +174,8 @@ interface EditingBlock {
   iconKey?: string;
   /** Optional alarm time HH:MM (Sleep blocks). */
   alarmAt?: string;
+  /** Saved-meal reference (set when scheduling from Nutrition page). */
+  mealId?: string;
 }
 
 function getAwarenessInsight(schedule: ScheduleBlock[], freeWindows: FreeWindow[]): string | null {
@@ -319,6 +321,39 @@ export default function SectographPage() {
     const seen = localStorage.getItem("ascend_sectograph_intro_seen");
     if (!seen) setShowIntroOverlay(true);
   }, []);
+
+  // If the user came from the Nutrition page after tapping "Schedule" on a
+  // saved meal, pre-open the Add Block dialog with type=meal pre-filled.
+  // Only consume the intent when no guided flow is in progress so we don't
+  // hijack the tutorial / day-5 prescribed steps.
+  useEffect(() => {
+    if (isDay5Mode) return;
+    if (!tutorialDone) return;
+    if (showIntroOverlay) return;
+    import("@/lib/savedMealsStore").then(({ consumePendingMealSchedule }) => {
+      const pending = consumePendingMealSchedule();
+      if (!pending) return;
+      const now = new Date();
+      const startHour = (now.getHours() + 1) % 24;
+      const endHour = (startHour + 1) % 24;
+      setEditingBlock({
+        id: `meal_${Date.now()}`,
+        name: pending.name,
+        startHour,
+        startMinute: 0,
+        endHour,
+        endMinute: 0,
+        color: "#f97316",
+        isNew: true,
+        mealId: pending.mealId,
+      });
+      toast({
+        title: "Schedule this meal",
+        description: `Pick a time to log "${pending.name}".`,
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDay5Mode, tutorialDone, showIntroOverlay]);
 
   const dismissIntro = useCallback(() => {
     localStorage.setItem("ascend_sectograph_intro_seen", "1");

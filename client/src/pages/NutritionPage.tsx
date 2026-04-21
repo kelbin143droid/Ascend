@@ -5,6 +5,9 @@ import { DailySummary } from "@/components/nutrition/DailySummary";
 import { FoodSearch } from "@/components/nutrition/FoodSearch";
 import { QuickAdd } from "@/components/nutrition/QuickAdd";
 import { FoodItem } from "@/components/nutrition/FoodItem";
+import { HydrationCard } from "@/components/nutrition/HydrationCard";
+import { SavedMealsList } from "@/components/nutrition/SavedMealsList";
+import { CreateMealModal } from "@/components/nutrition/CreateMealModal";
 import {
   computeTotals,
   readDay,
@@ -18,6 +21,7 @@ export default function NutritionPage() {
   const colors = backgroundTheme.colors;
 
   const [day, setDay] = useState<NutritionDay>(() => readDay());
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     const refresh = () => setDay(readDay(todayIso()));
@@ -46,11 +50,17 @@ export default function NutritionPage() {
         {/* Daily summary */}
         <DailySummary totals={totals} />
 
+        {/* Hydration */}
+        <HydrationCard waterIntake={day.waterIntake} waterGoal={day.waterGoal} />
+
         {/* Search */}
         <FoodSearch />
 
         {/* Quick add */}
         <QuickAdd />
+
+        {/* Saved meals */}
+        <SavedMealsList onCreate={() => setCreateOpen(true)} />
 
         {/* Food log */}
         <div className="flex flex-col gap-2">
@@ -87,6 +97,8 @@ export default function NutritionPage() {
           )}
         </div>
       </div>
+
+      <CreateMealModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </SystemLayout>
   );
 }
