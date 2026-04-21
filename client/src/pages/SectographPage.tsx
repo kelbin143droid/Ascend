@@ -464,6 +464,7 @@ export default function SectographPage() {
             blockFinal.name || "Sectograph block",
             "Time for this block.",
             fireAt,
+            { route: "/sectograph", source: "sectograph-block" },
           );
           if (r.scheduled) {
             toast({
@@ -520,6 +521,7 @@ export default function SectographPage() {
               "Wake up",
               "Time to rise — your day is starting.",
               alarmAt,
+              { route: "/sectograph", source: "sectograph-alarm" },
             );
             if (r.scheduled) {
               toast({

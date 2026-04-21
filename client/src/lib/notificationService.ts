@@ -176,6 +176,7 @@ export async function scheduleTaskNotification(
   title?: string,
   body?: string,
   dateTime?: Date | string | number,
+  extraData?: Record<string, unknown>,
 ): Promise<ScheduleResult> {
   let id: string;
   let resolvedTitle: string;
@@ -217,7 +218,7 @@ export async function scheduleTaskNotification(
     schedule: { at, allowWhileIdle: true },
     channelId: "ascend-default",
     smallIcon: "ic_stat_icon",
-    extra: { taskId: id },
+    extra: { taskId: id, ...(extraData ?? {}) },
   };
 
   try {

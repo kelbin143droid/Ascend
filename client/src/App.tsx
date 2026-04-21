@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -85,6 +85,7 @@ function Router() {
 }
 
 function NativeBootstrap() {
+  const [, setLocation] = useLocation();
   useEffect(() => {
     if (!isNativePlatform()) return;
     installNativeFetchBase();
@@ -92,6 +93,26 @@ function NativeBootstrap() {
       console.warn("[App] notification init failed", err),
     );
   }, []);
+
+  // Route the user when they tap a scheduled notification.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<Record<string, unknown>>).detail ?? {};
+      const route = typeof detail.route === "string" ? detail.route : null;
+      const source = typeof detail.source === "string" ? detail.source : null;
+      // Sectograph-originated notifications always land on /sectograph,
+      // even on older builds where `route` wasn't stored in extra.
+      const target =
+        route ||
+        (source && source.startsWith("sectograph") ? "/sectograph" : null);
+      if (target) {
+        setLocation(target);
+      }
+    };
+    window.addEventListener("ascend:notification-tap", handler as EventListener);
+    return () => window.removeEventListener("ascend:notification-tap", handler as EventListener);
+  }, [setLocation]);
+
   return null;
 }
 
