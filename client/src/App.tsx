@@ -30,6 +30,7 @@ import TrialsPage from "@/pages/TrialsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import SectographPage from "@/pages/SectographPage";
 import HabitsPage from "@/pages/HabitsPage";
+import NutritionPage from "@/pages/NutritionPage";
 import GuidedSessionPage from "@/pages/GuidedSessionPage";
 import FlowApp from "@/pages/FlowApp";
 import NotFound from "@/pages/not-found";
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/trials" component={TrialsPage} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/sectograph" component={SectographPage} />
+      <Route path="/nutrition" component={NutritionPage} />
       <Route path="/" component={HomePage} />
       <Route path="/schedule" component={StatusPage} />
       <Route path="/train" component={TrainPage} />
