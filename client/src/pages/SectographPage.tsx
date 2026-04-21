@@ -61,8 +61,10 @@ import {
   Headphones,
   PenTool,
   Leaf,
+  Utensils,
 } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
+import { getSavedMeal, logSavedMealToToday } from "@/lib/savedMealsStore";
 import {
   isSectographTutorialDone,
   markSectographTutorialDone,
@@ -2176,6 +2178,52 @@ export default function SectographPage() {
             </DialogHeader>
             {editingBlock && (
               <div className="space-y-4">
+                {/* ── Linked saved meal — quick log to today ───── */}
+                {editingBlock.mealId && (() => {
+                  const meal = getSavedMeal(editingBlock.mealId);
+                  if (!meal) return null;
+                  return (
+                    <div
+                      className="rounded-lg p-3"
+                      style={{
+                        backgroundColor: "rgba(249,115,22,0.08)",
+                        border: "1px solid rgba(249,115,22,0.25)",
+                      }}
+                      data-testid="block-linked-meal"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Utensils size={13} style={{ color: "#f97316" }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "#f97316" }}>
+                            Linked Meal
+                          </p>
+                          <p className="text-xs font-bold truncate" style={{ color: colors.text }}>
+                            {meal.name}
+                          </p>
+                          <p className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
+                            {meal.totalCalories} kcal · P{meal.totalProtein}g · C{meal.totalCarbs}g · F{meal.totalFat}g
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          const n = logSavedMealToToday(meal.id);
+                          toast({
+                            title: "Meal logged",
+                            description: `Added ${n} item${n === 1 ? "" : "s"} from ${meal.name} to today.`,
+                          });
+                        }}
+                        className="w-full text-xs h-8"
+                        style={{ backgroundColor: "#f97316", color: "#fff" }}
+                        data-testid="button-log-linked-meal"
+                      >
+                        <Plus size={12} className="mr-1" />
+                        Log this meal
+                      </Button>
+                    </div>
+                  );
+                })()}
                 {editingBlock.id.startsWith("custom") && (
                   <>
                     <div>
