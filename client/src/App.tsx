@@ -32,6 +32,8 @@ import SectographPage from "@/pages/SectographPage";
 import HabitsPage from "@/pages/HabitsPage";
 import NutritionPage from "@/pages/NutritionPage";
 import GuidedSessionPage from "@/pages/GuidedSessionPage";
+import WakeFlowPage from "@/pages/WakeFlowPage";
+import NightFlowPage from "@/pages/NightFlowPage";
 import FlowApp from "@/pages/FlowApp";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
@@ -77,6 +79,8 @@ function Router() {
       <Route path="/profile" component={ProfilePage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/habits" component={HabitsPage} />
+      <Route path="/wake-flow" component={WakeFlowPage} />
+      <Route path="/night-flow" component={NightFlowPage} />
       <Route path="/guided-session/:sessionId">
         {(params: { sessionId?: string }) => <GuidedSessionPage key={params?.sessionId ?? "session"} />}
       </Route>
@@ -106,6 +110,8 @@ function NativeBootstrap() {
       // even on older builds where `route` wasn't stored in extra.
       const target =
         route ||
+        (source === "wake-alarm" ? "/wake-flow" : null) ||
+        (source === "night-flow" ? "/night-flow" : null) ||
         (source && source.startsWith("sectograph") ? "/sectograph" : null);
       if (target) {
         setLocation(target);

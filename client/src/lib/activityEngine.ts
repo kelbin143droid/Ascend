@@ -138,7 +138,6 @@ export function buildPhase1Activities(
   const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   const DAILY_FLOW_ORDER = [
-    "phase1_vitality",
     "phase1_meditation",
     "phase1_agility",
     "phase1_strength",
@@ -342,52 +341,9 @@ export function buildPhase1Activities(
         },
       ],
     },
-    {
-      id: "phase1_vitality",
-      activityName: "Vitality Check",
-      category: "vitality",
-      stat: "vitality",
-      duration: 30,
-      xpReward: 0,
-      color: CATEGORY_COLORS.vitality,
-      tier: vitalityTier,
-      xpMultiplier: vitalityMultiplier,
-      steps: [
-        {
-          id: "hydration",
-          type: "instruction",
-          label: "Hydration",
-          instruction: "Drink one full glass of water right now. Hydration is the foundation of energy.",
-          voiceText: "Drink a full glass of water. Hydration is the foundation of energy.",
-        },
-        {
-          id: "sleep_check",
-          type: "check",
-          label: "Sleep Check",
-          instruction: "Did you get at least 7 hours of sleep?",
-          voiceText: "Did you get at least 7 hours of sleep? Consistent sleep fuels recovery.",
-          infoTooltip: {
-            title: "Why sleep matters",
-            bullets: [
-              "Muscle repair happens during deep sleep",
-              "7–9 hours supports hormone balance",
-              "Sleep debt reduces willpower and focus",
-            ],
-            note: "Even one extra hour of sleep tonight will compound over time.",
-          },
-        },
-        {
-          id: "vitality_done",
-          type: "completion",
-          label: "Vitality Complete",
-          instruction: "Activity complete.\nSmall actions build momentum.",
-          voiceText: "Vitality check complete.",
-        },
-      ],
-    },
   ];
 
   return DAILY_FLOW_ORDER
     .map(id => allActivities.find(a => a.id === id))
-    .filter((a): a is ActivityDefinition => !!a);
+    .filter((a) => !!a) as ActivityDefinition[];
 }

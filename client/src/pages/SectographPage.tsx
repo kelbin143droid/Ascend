@@ -525,6 +525,37 @@ export default function SectographPage() {
         });
       }
     }
+    // ── Night Flow trigger — fire 60min before sleep block start.
+    if (
+      isNativePlatform() &&
+      editingBlock.id.startsWith("sleep") &&
+      typeof blockFinal.startHour === "number"
+    ) {
+      const nightId = `${blockFinal.id}__nightflow`;
+      try {
+        await cancelTaskNotification(nightId);
+      } catch (err) {
+        console.warn("[SectographPage] cancel prior night-flow failed", err);
+      }
+      const now = new Date();
+      const sleepStart = new Date(now);
+      sleepStart.setHours(blockFinal.startHour, blockFinal.startMinute || 0, 0, 0);
+      const nightAt = new Date(sleepStart.getTime() - 60 * 60 * 1000);
+      if (nightAt.getTime() <= now.getTime()) {
+        nightAt.setDate(nightAt.getDate() + 1);
+      }
+      try {
+        await scheduleTaskNotification(
+          nightId,
+          "Wind-down",
+          "Start your Night Flow — sleep optimization in 60 min.",
+          nightAt,
+          { route: "/night-flow", source: "night-flow" },
+        );
+      } catch (err) {
+        console.warn("[SectographPage] night-flow schedule failed", err);
+      }
+    }
     // ── Sleep wake-up alarm — schedule (or cancel) a separate notification at alarmAt.
     if (isNativePlatform() && editingBlock.id.startsWith("sleep")) {
       const alarmId = `${blockFinal.id}__alarm`;
@@ -558,7 +589,7 @@ export default function SectographPage() {
               "Wake up",
               "Time to rise — your day is starting.",
               alarmAt,
-              { route: "/sectograph", source: "sectograph-alarm" },
+              { route: "/wake-flow", source: "wake-alarm" },
             );
             if (r.scheduled) {
               toast({
@@ -600,6 +631,22 @@ export default function SectographPage() {
     const SYSTEM_PRESET_PREFIXES = ["sleep", "daily", "work", "study", "exercise", "meal", "morning", "evening"];
     const blockTypePrefix = blockFinal.id.split("_")[0];
     const isSystemPreset = SYSTEM_PRESET_PREFIXES.includes(blockTypePrefix);
+    // For system presets, find any existing block(s) of the same type that
+    // will be replaced so we can cancel their scheduled notifications first.
+    if (editingBlock.isNew && isSystemPreset && isNativePlatform()) {
+      const replaced = current.filter((b: any) => b.id.split("_")[0] === blockTypePrefix && b.id !== blockFinal.id);
+      for (const r of replaced) {
+        try {
+          await cancelTaskNotification(r.id);
+          if (String(r.id).startsWith("sleep")) {
+            await cancelTaskNotification(`${r.id}__alarm`);
+            await cancelTaskNotification(`${r.id}__nightflow`);
+          }
+        } catch (err) {
+          console.warn("[SectographPage] cancel replaced block failed", r.id, err);
+        }
+      }
+    }
     const newSchedule = editingBlock.isNew
       ? [
           // For system presets: remove existing block of same type before adding
@@ -651,6 +698,7 @@ export default function SectographPage() {
         await cancelTaskNotification(editingBlock.id);
         if (editingBlock.id.startsWith("sleep")) {
           await cancelTaskNotification(`${editingBlock.id}__alarm`);
+          await cancelTaskNotification(`${editingBlock.id}__nightflow`);
         }
       } catch (err) {
         console.warn("[SectographPage] cancel on delete failed", err);
