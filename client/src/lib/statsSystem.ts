@@ -1,4 +1,7 @@
 const STATS_KEY = "ascend_stats_v2";
+const LEVEL_APPLIED_KEY = "ascend_stats_level_applied";
+
+export const STATS_CHANGED_EVENT = "ascend:stats-changed";
 
 export interface GameStats {
   hp: number;
@@ -10,10 +13,22 @@ export interface GameStats {
   consecutiveBreathingDone: number;
 }
 
+export const HP_BASE = 100;
 export const MANA_MAX = 50;
+export const LEVEL_SCALE_PER_LEVEL = 0.10;
+
+export function getMaxHP(level: number): number {
+  const lvl = Math.max(1, Math.floor(level || 1));
+  return Math.round(HP_BASE * (1 + LEVEL_SCALE_PER_LEVEL * (lvl - 1)));
+}
+
+export function getMaxMana(level: number): number {
+  const lvl = Math.max(1, Math.floor(level || 1));
+  return Math.round(MANA_MAX * (1 + LEVEL_SCALE_PER_LEVEL * (lvl - 1)));
+}
 
 const DEFAULT_STATS: GameStats = {
-  hp: 100,
+  hp: HP_BASE,
   mana: MANA_MAX,
   missedSleepDays: 0,
   missedBreathingDays: 0,
@@ -33,16 +48,57 @@ export function getStats(): GameStats {
 function saveStats(s: GameStats): void {
   try {
     localStorage.setItem(STATS_KEY, JSON.stringify(s));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(STATS_CHANGED_EVENT));
+    }
   } catch {}
+}
+
+export function applyLevelUpStats(newLevel: number): { hp: number; mana: number; maxHp: number; maxMana: number } | null {
+  try {
+    const lvl = Math.max(1, Math.floor(newLevel || 1));
+    const lastApplied = parseInt(localStorage.getItem(LEVEL_APPLIED_KEY) || "0", 10) || 0;
+    if (lvl <= lastApplied) {
+      return null;
+    }
+    const s = getStats();
+    const maxHp = getMaxHP(lvl);
+    const maxMana = getMaxMana(lvl);
+    s.hp = maxHp;
+    s.mana = maxMana;
+    saveStats(s);
+    localStorage.setItem(LEVEL_APPLIED_KEY, String(lvl));
+    return { hp: s.hp, mana: s.mana, maxHp, maxMana };
+  } catch {
+    return null;
+  }
+}
+
+export function initLevelBaseline(level: number): void {
+  try {
+    const lvl = Math.max(1, Math.floor(level || 1));
+    if (!localStorage.getItem(LEVEL_APPLIED_KEY)) {
+      localStorage.setItem(LEVEL_APPLIED_KEY, String(lvl));
+    }
+  } catch {}
+}
+
+function getCurrentLevel(): number {
+  try {
+    return parseInt(localStorage.getItem(LEVEL_APPLIED_KEY) || "1", 10) || 1;
+  } catch {
+    return 1;
+  }
 }
 
 export function recordSleepCheck(sleptWell: boolean): GameStats {
   const s = getStats();
+  const maxHp = getMaxHP(getCurrentLevel());
   if (sleptWell) {
     s.missedSleepDays = 0;
     s.consecutiveSleepGood = Math.min(s.consecutiveSleepGood + 1, 7);
     if (s.consecutiveSleepGood >= 3) {
-      s.hp = Math.min(100, s.hp + 0.5);
+      s.hp = Math.min(maxHp, s.hp + 0.5);
     }
   } else {
     s.consecutiveSleepGood = 0;
@@ -58,11 +114,12 @@ export function recordSleepCheck(sleptWell: boolean): GameStats {
 
 export function recordBreathingSession(completed: boolean): GameStats {
   const s = getStats();
+  const maxMana = getMaxMana(getCurrentLevel());
   if (completed) {
     s.missedBreathingDays = 0;
     s.consecutiveBreathingDone = Math.min(s.consecutiveBreathingDone + 1, 7);
     if (s.consecutiveBreathingDone >= 3) {
-      s.mana = Math.min(MANA_MAX, s.mana + 0.5);
+      s.mana = Math.min(maxMana, s.mana + 0.5);
     }
   } else {
     s.consecutiveBreathingDone = 0;

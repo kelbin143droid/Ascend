@@ -6,7 +6,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
 import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
-import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, MANA_MAX, type GameStats } from "@/lib/statsSystem";
+import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted, getFlowCompletedToday } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
 
@@ -88,6 +88,20 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   const refreshStats = useCallback(() => setStats(getStats()), []);
 
+  const currentLevel = playerData?.level ?? 1;
+  const maxHp = getMaxHP(currentLevel);
+  const maxMana = getMaxMana(currentLevel);
+
+  useEffect(() => {
+    initLevelBaseline(currentLevel);
+  }, [currentLevel]);
+
+  useEffect(() => {
+    const handler = () => setStats(getStats());
+    window.addEventListener(STATS_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(STATS_CHANGED_EVENT, handler);
+  }, []);
+
   useEffect(() => {
     const sleepHandler = (e: Event) => {
       const detail = (e as CustomEvent<{ sleptWell: boolean }>).detail;
@@ -120,10 +134,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
 
   const displayLevel = playerData?.level ?? 2;
-  const hpColor = getHPColor(stats.hp);
-  const manaColor = getManaColor(stats.mana);
-  const hpPct = Math.min(100, Math.max(0, stats.hp));
-  const manaBarPct = Math.min(100, Math.max(0, (stats.mana / MANA_MAX) * 100));
+  const hpColor = getHPColor((stats.hp / maxHp) * 100);
+  const manaColor = getManaColor((stats.mana / maxMana) * 100);
+  const hpPct = Math.min(100, Math.max(0, (stats.hp / maxHp) * 100));
+  const manaBarPct = Math.min(100, Math.max(0, (stats.mana / maxMana) * 100));
 
   const consecutiveDays = homeData?.stability?.consecutiveActiveDays ?? homeData?.streak ?? 0;
 
@@ -396,7 +410,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   </span>
                 </div>
                 <span className="text-[10px] font-mono font-bold" style={{ color: hpColor }}>
-                  {hpPct.toFixed(0)} / 100
+                  {Math.round(stats.hp)} / {maxHp}
                 </span>
               </div>
               <div
@@ -428,7 +442,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   </span>
                 </div>
                 <span className="text-[10px] font-mono font-bold" style={{ color: manaColor }}>
-                  {Math.round(stats.mana)} / {MANA_MAX}
+                  {Math.round(stats.mana)} / {maxMana}
                 </span>
               </div>
               <div
