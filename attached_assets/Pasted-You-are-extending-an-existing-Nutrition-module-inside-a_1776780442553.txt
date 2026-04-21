@@ -1,0 +1,222 @@
+You are extending an existing "Nutrition" module inside a futuristic productivity app called "Ascend OS".
+
+The current system already supports:
+
+- Food search
+- Daily calorie tracking
+- Macro tracking
+- Food log
+
+Now implement the following advanced features:
+
+---
+
+1. WATER INTAKE TRACKING
+
+UI
+
+Add a new section ABOVE the food log:
+
+"Hydration" Card
+
+Display:
+
+- Current water intake (e.g., 0 / 3000 ml)
+- Progress bar
+- Quick add buttons:
+  +250 ml
+  +500 ml
+  +750 ml
+
+Optional:
+
+- Small water icon with glow effect
+
+---
+
+STATE
+
+Extend nutrition state:
+
+{
+date: string,
+waterIntake: number,
+waterGoal: number, // default 3000 ml
+entries: [...]
+}
+
+---
+
+LOGIC
+
+- Increase waterIntake when user taps quick add
+- Clamp max at reasonable limit (e.g., 6000 ml)
+- Persist daily (AsyncStorage/local storage)
+
+---
+
+2. SAVED MEALS SYSTEM
+
+Users must be able to create reusable meals.
+
+---
+
+DATA STRUCTURE
+
+Create a new collection:
+
+SavedMeals:
+
+{
+id: string,
+name: string, // "Breakfast", "Post Workout"
+foods: [
+{
+name,
+calories,
+protein,
+carbs,
+fat,
+quantity
+}
+],
+totalCalories,
+totalProtein,
+totalCarbs,
+totalFat
+}
+
+---
+
+UI
+
+Add a new section:
+
+"Saved Meals"
+
+- List saved meals
+- Each item shows:
+  - Name
+  - Calories
+  - Macros
+
+Buttons:
+
+- "Add to Today"
+- "Schedule"
+
+---
+
+CREATE MEAL FLOW
+
+Allow user to:
+
+- Select multiple foods from their log or search
+- Name the meal
+- Save it
+
+---
+
+3. ADD MEAL TO DAILY LOG
+
+When user taps "Add to Today":
+→ Add all foods inside the meal to today's entries
+
+---
+
+4. SECTOGRAPH INTEGRATION (CRITICAL)
+
+This is the most important feature.
+
+---
+
+GOAL
+
+Allow saved meals to be scheduled using the existing "Meal" time block in Sectograph.
+
+---
+
+IMPLEMENTATION
+
+When user taps "Schedule":
+
+1. Open existing "Add Time Block" modal
+
+2. Auto-select:
+   
+   - Block Type: "Meal"
+
+3. Pre-fill:
+   
+   - Title = meal.name
+   - Optional: description = calories + macros
+
+4. Store reference:
+   Add field to time block:
+
+{
+type: "meal",
+mealId: string
+}
+
+---
+
+OPTIONAL (BUT IMPORTANT)
+
+When user taps a scheduled meal block:
+→ Show meal details
+→ Allow "Log this meal" button
+
+This button should:
+→ Add meal foods to nutrition log
+
+---
+
+5. UX RULES
+
+- Keep UI minimal and fast
+- Avoid overloading screen
+- Use glow accents consistently
+- Make water + meals feel like part of a system, not separate tools
+
+---
+
+6. FILE STRUCTURE
+
+Create:
+
+/components/Nutrition/
+
+- HydrationCard.tsx
+- SavedMealsList.tsx
+- CreateMealModal.tsx
+
+---
+
+7. FUTURE HOOK (DO NOT IMPLEMENT LOGIC YET)
+
+Prepare hooks for:
+
+- Vitality stat scaling from:
+  - hydration %
+  - calorie intake
+  - protein intake
+
+Just structure functions like:
+
+calculateVitalityScore(nutritionData)
+
+(no need to implement fully yet)
+
+---
+
+FINAL REQUIREMENT
+
+Everything must:
+
+- Work with existing nutrition system
+- Persist data correctly
+- Integrate cleanly with Sectograph
+- Be modular and scalable
+
+Do NOT break existing functionality.
