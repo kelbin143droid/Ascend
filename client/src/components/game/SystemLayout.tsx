@@ -24,17 +24,20 @@ const NAV_ITEMS: NavItem[] = [
 
 export function SystemLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { backgroundTheme } = useTheme();
+  const { backgroundTheme, customBackgroundImage } = useTheme();
   const { t } = useLanguage();
   const colors = backgroundTheme.colors;
-  const darkOverlayOpacity = backgroundTheme.darkOverlayOpacity ?? 0.15;
-  const gridOpacity = backgroundTheme.gridOpacity ?? 0.20;
+  const hasCustomBg = !!customBackgroundImage;
+  // When the user uploaded a background, dial down the layout's own
+  // overlays so their image stays visible instead of being painted over.
+  const darkOverlayOpacity = hasCustomBg ? 0 : (backgroundTheme.darkOverlayOpacity ?? 0.15);
+  const gridOpacity = hasCustomBg ? 0 : (backgroundTheme.gridOpacity ?? 0.20);
 
   return (
     <div
       className="relative min-h-screen w-full overflow-hidden font-ui selection:bg-primary selection:text-background"
       style={{
-        backgroundColor: colors.background,
+        backgroundColor: hasCustomBg ? "transparent" : colors.background,
         color: colors.text,
       }}
     >
@@ -48,7 +51,16 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
       <div
         className="fixed inset-0 z-0"
-        style={{ background: colors.backgroundGradient }}
+        style={
+          hasCustomBg
+            ? {
+                backgroundImage: `url("${customBackgroundImage}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }
+            : { background: colors.backgroundGradient }
+        }
       />
 
       {/* Female theme — soft dreamy blobs */}
