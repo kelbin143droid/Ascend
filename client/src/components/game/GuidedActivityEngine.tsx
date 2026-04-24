@@ -762,7 +762,18 @@ export function GuidedActivityEngine({
     if (nextIdx < activity.steps.length) {
       const currentStep = activity.steps[currentStepIdx];
       const nextStep = activity.steps[nextIdx];
-      if (activity.autoflow && currentStep?.type === "timer" && nextStep?.type === "timer") {
+      const currentIsRest =
+        currentStep?.type === "timer" &&
+        (currentStep.label === "Rest" || currentStep.id.startsWith("rest"));
+      if (activity.autoflow && currentIsRest && nextStep?.type === "timer") {
+        // After an explicit rest step, skip the auto "Get Ready" countdown —
+        // the rest the user just sat through is already the prep, an extra
+        // 3s prep would feel like a double rest.
+        setTimeout(() => {
+          setCurrentStepIdx(nextIdx);
+          setStepPhase("ready");
+        }, 400);
+      } else if (activity.autoflow && currentStep?.type === "timer" && nextStep?.type === "timer") {
         setTimeout(() => {
           setCurrentStepIdx(nextIdx);
           setStepPhase("getready");
@@ -873,6 +884,26 @@ export function GuidedActivityEngine({
       return () => clearTimeout(t);
     }
   }, [currentStepIdx, stepPhase]);
+
+  // Auto-start the next timer in autoflow mode (no extra "Get Ready" overlay)
+  // — kicks in only when the engine just chained from a previous rest step.
+  useEffect(() => {
+    if (
+      activity.autoflow &&
+      isTimerStep &&
+      stepPhase === "ready" &&
+      currentStepIdx > 0 &&
+      !stepsCompleted.has(currentStepIdx)
+    ) {
+      const prev = activity.steps[currentStepIdx - 1];
+      const prevWasRest =
+        prev?.type === "timer" && (prev.label === "Rest" || prev.id.startsWith("rest"));
+      if (prevWasRest) {
+        const t = setTimeout(() => startTimer(), 200);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [currentStepIdx, stepPhase, isTimerStep, activity, stepsCompleted, startTimer]);
 
   useEffect(() => {
     return () => {

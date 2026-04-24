@@ -118,11 +118,18 @@ export function buildPhase1Activities(
 
   const meditationDuration = 120 + (meditationTier - 1) * 30;
 
-  // Jumping jacks always lead the circuit.
+  // Jumping jacks always lead the circuit, jogging in place follows as the
+  // second warm-up move.
   const cardioLabel = "Jumping Jacks";
   const cardioVideo = "/videos/jumpingjacks_loop.mp4";
   const cardioInstruction = `Jumping jacks for ${st.cardioSeconds} seconds. Arms and legs in sync.`;
   const cardioVoice = `Jumping jacks. ${st.cardioSeconds} seconds.`;
+
+  const jogLabel = "Jog in Place";
+  const jogVideo = "/videos/joginplace_loop.mp4";
+  const jogSeconds = st.cardioSeconds;
+  const jogInstruction = `Jog in place for ${jogSeconds} seconds. Lift your knees, land softly.`;
+  const jogVoice = `Jog in place. ${jogSeconds} seconds. Knees up.`;
 
   const pushUpVideo = "/videos/pushups_loop.mp4";
   const pushUpLabel = strengthTier <= 1 ? "Push-Ups (Knee if needed)" : "Push-Ups";
@@ -133,9 +140,9 @@ export function buildPhase1Activities(
   // Squat seconds reuse pushup scaling.
   const squatSeconds = st.pushupSeconds;
 
-  // Total = jumping jacks + 2×(push + sit + squat) + 6 inter-exercise rests.
+  // Total = jumping jacks + jog + 2×(push + sit + squat) + 7 inter-exercise rests.
   const strengthTotal =
-    st.cardioSeconds + 2 * (st.pushupSeconds + st.pushupSeconds + squatSeconds) + 6 * st.restSeconds;
+    st.cardioSeconds + jogSeconds + 2 * (st.pushupSeconds + st.pushupSeconds + squatSeconds) + 7 * st.restSeconds;
   const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   const DAILY_FLOW_ORDER = [
@@ -198,8 +205,8 @@ export function buildPhase1Activities(
           id: "intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: "Jumping Jacks first, then two sets of Push-ups → Sit-ups → Squats. 6s rest between each.",
-          voiceText: "Get ready. Jumping jacks first, then two full sets.",
+          instruction: "Jumping Jacks, then Jog in Place, then two sets of Push-ups → Sit-ups → Squats. 6s rest between each.",
+          voiceText: "Get ready. Jumping jacks, then jog in place, then two full sets.",
         },
         // ── Warm-up
         {
@@ -210,6 +217,23 @@ export function buildPhase1Activities(
           durationSeconds: st.cardioSeconds,
           voiceText: cardioVoice,
           videoSrc: cardioVideo,
+        },
+        {
+          id: "rest_warmup_1",
+          type: "timer",
+          label: "Rest",
+          instruction: `Rest ${st.restSeconds} seconds. Breathe.`,
+          durationSeconds: st.restSeconds,
+          voiceText: "Rest.",
+        },
+        {
+          id: "jog",
+          type: "timer",
+          label: jogLabel,
+          instruction: jogInstruction,
+          durationSeconds: jogSeconds,
+          voiceText: jogVoice,
+          videoSrc: jogVideo,
         },
         {
           id: "rest_1",
