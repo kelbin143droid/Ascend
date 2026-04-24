@@ -18,3 +18,9 @@ id = "QEsuVjpBtge5-Uhycb_Xg"
 uri = "file://exports/ascend-os-source.zip"
 type = "unspecified"
 title = "Ascend OS — Source Code (80 MB, no videos)"
+
+[[outputs]]
+id = "-OuO4Zh0dkN1b1H6CzaAn"
+uri = "file://exports/ascend-os-full.zip"
+type = "unspecified"
+title = "Ascend OS — full app (with videos and assets)"
