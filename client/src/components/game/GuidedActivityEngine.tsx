@@ -257,7 +257,7 @@ function GetReadyCountdown({
   exerciseName: string;
   videoSrc?: string;
 }) {
-  const [count, setCount] = useState(3);
+  const [count, setCount] = useState(6);
   const beep = useBeepSound();
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
@@ -762,13 +762,19 @@ export function GuidedActivityEngine({
     if (nextIdx < activity.steps.length) {
       const currentStep = activity.steps[currentStepIdx];
       const nextStep = activity.steps[nextIdx];
-      const currentIsRest =
+      const isRestStep = (s?: ActivityStep) =>
+        !!s && s.type === "timer" &&
+        (s.label === "Rest" || s.id.startsWith("rest") || s.id === "set_break");
+      const currentIsRest = isRestStep(currentStep);
+      const nextIsRest = isRestStep(nextStep);
+      if (
+        activity.autoflow &&
         currentStep?.type === "timer" &&
-        (currentStep.label === "Rest" || currentStep.id.startsWith("rest"));
-      if (activity.autoflow && currentIsRest && nextStep?.type === "timer") {
-        // After an explicit rest step, skip the auto "Get Ready" countdown —
-        // the rest the user just sat through is already the prep, an extra
-        // 3s prep would feel like a double rest.
+        nextStep?.type === "timer" &&
+        (currentIsRest || nextIsRest)
+      ) {
+        // Skip the auto "Get Ready" countdown when entering or leaving a
+        // rest — the rest itself already serves as the transition prep.
         setTimeout(() => {
           setCurrentStepIdx(nextIdx);
           setStepPhase("ready");
@@ -896,9 +902,14 @@ export function GuidedActivityEngine({
       !stepsCompleted.has(currentStepIdx)
     ) {
       const prev = activity.steps[currentStepIdx - 1];
+      const current = activity.steps[currentStepIdx];
       const prevWasRest =
-        prev?.type === "timer" && (prev.label === "Rest" || prev.id.startsWith("rest"));
-      if (prevWasRest) {
+        prev?.type === "timer" &&
+        (prev.label === "Rest" || prev.id.startsWith("rest") || prev.id === "set_break");
+      const currentIsRest =
+        current?.type === "timer" &&
+        (current.label === "Rest" || current.id.startsWith("rest") || current.id === "set_break");
+      if (prevWasRest || currentIsRest) {
         const t = setTimeout(() => startTimer(), 200);
         return () => clearTimeout(t);
       }
