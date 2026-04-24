@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Palette, Sparkles, Upload, RotateCcw, Image as ImageIcon, Type, Check } from "lucide-react";
+import { X, Palette, Sparkles, Upload, RotateCcw, Image as ImageIcon, Type, Check, Save } from "lucide-react";
 import {
   useTheme,
   FONT_FAMILY_OPTIONS,
@@ -88,8 +88,37 @@ export function CustomizePanel({ open, onClose }: Props) {
   const [tab, setTab] = useState<"themes" | "custom">("themes");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showSavedToast, setShowSavedToast] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const colors = theme.colors;
+
+  // Draft state for the Custom tab — only commits on Save.
+  const [draftBgImage, setDraftBgImage] = useState<string | null>(customBackgroundImage);
+  const [draftPrimary, setDraftPrimary] = useState<string | null>(customPrimaryColor);
+  const [draftText, setDraftText] = useState<string | null>(customTextColor);
+  const [draftFontFamily, setDraftFontFamily] = useState<FontFamilyKey>(fontFamily);
+  const [draftFontSize, setDraftFontSize] = useState<FontSizeKey>(fontSize);
+
+  // Whenever the panel opens, snap the draft to the currently saved values
+  // so a previous unsaved session doesn't leak into a new one.
+  useEffect(() => {
+    if (open) {
+      setDraftBgImage(customBackgroundImage);
+      setDraftPrimary(customPrimaryColor);
+      setDraftText(customTextColor);
+      setDraftFontFamily(fontFamily);
+      setDraftFontSize(fontSize);
+      setUploadError(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const isDirty =
+    draftBgImage !== customBackgroundImage ||
+    draftPrimary !== customPrimaryColor ||
+    draftText !== customTextColor ||
+    draftFontFamily !== fontFamily ||
+    draftFontSize !== fontSize;
 
   const defaultThemes = allThemes.filter((t) => DEFAULT_THEME_IDS.includes(t.id));
 
@@ -99,6 +128,8 @@ export function CustomizePanel({ open, onClose }: Props) {
     // Clear custom overrides so the chosen theme shows cleanly.
     setCustomPrimaryColor(null);
     setCustomTextColor(null);
+    setDraftPrimary(null);
+    setDraftText(null);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,13 +143,44 @@ export function CustomizePanel({ open, onClose }: Props) {
     setUploading(true);
     try {
       const dataUrl = await processBackgroundImage(file);
-      setCustomBackgroundImage(dataUrl);
+      setDraftBgImage(dataUrl);
     } catch (err: any) {
       setUploadError(err?.message || "Could not load image.");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  };
+
+  const handleSave = () => {
+    setCustomBackgroundImage(draftBgImage);
+    setCustomPrimaryColor(draftPrimary);
+    setCustomTextColor(draftText);
+    setFontFamily(draftFontFamily);
+    setFontSize(draftFontSize);
+    setShowSavedToast(true);
+    window.setTimeout(() => {
+      setShowSavedToast(false);
+      onClose();
+    }, 700);
+  };
+
+  const handleCancel = () => {
+    // Discard draft; pop back to the saved values.
+    setDraftBgImage(customBackgroundImage);
+    setDraftPrimary(customPrimaryColor);
+    setDraftText(customTextColor);
+    setDraftFontFamily(fontFamily);
+    setDraftFontSize(fontSize);
+    onClose();
+  };
+
+  const handleResetDraft = () => {
+    setDraftBgImage(null);
+    setDraftPrimary(null);
+    setDraftText(null);
+    setDraftFontFamily("system");
+    setDraftFontSize("md");
   };
 
   return (
@@ -266,7 +328,7 @@ export function CustomizePanel({ open, onClose }: Props) {
               <div className="space-y-5" data-testid="section-custom">
                 {/* Background image */}
                 <Section title="Background image" icon={<ImageIcon size={12} />} colors={colors}>
-                  {customBackgroundImage ? (
+                  {draftBgImage ? (
                     <div
                       className="relative rounded-lg overflow-hidden"
                       style={{ border: `1px solid ${colors.surfaceBorder}` }}
@@ -274,7 +336,7 @@ export function CustomizePanel({ open, onClose }: Props) {
                       <div
                         className="w-full h-28"
                         style={{
-                          backgroundImage: `url("${customBackgroundImage}")`,
+                          backgroundImage: `url("${draftBgImage}")`,
                           backgroundSize: "cover",
                           backgroundPosition: "center",
                         }}
@@ -294,7 +356,7 @@ export function CustomizePanel({ open, onClose }: Props) {
                           Replace
                         </button>
                         <button
-                          onClick={() => setCustomBackgroundImage(null)}
+                          onClick={() => setDraftBgImage(null)}
                           className="flex-1 text-xs py-1.5 rounded-md"
                           style={{
                             backgroundColor: "rgba(255,80,80,0.15)",
@@ -344,9 +406,9 @@ export function CustomizePanel({ open, onClose }: Props) {
                 {/* Primary accent */}
                 <Section title="Primary accent" colors={colors}>
                   <ColorRow
-                    value={customPrimaryColor}
-                    onChange={setCustomPrimaryColor}
-                    onClear={() => setCustomPrimaryColor(null)}
+                    value={draftPrimary}
+                    onChange={setDraftPrimary}
+                    onClear={() => setDraftPrimary(null)}
                     presets={PRESET_COLORS}
                     colors={colors}
                     testid="row-primary-color"
@@ -356,9 +418,9 @@ export function CustomizePanel({ open, onClose }: Props) {
                 {/* Text color */}
                 <Section title="Text color" colors={colors}>
                   <ColorRow
-                    value={customTextColor}
-                    onChange={setCustomTextColor}
-                    onClear={() => setCustomTextColor(null)}
+                    value={draftText}
+                    onChange={setDraftText}
+                    onClear={() => setDraftText(null)}
                     presets={["#ffffff", "#e2e8f0", "#cbd5e1", "#fef3c7", "#0f172a", "#1e293b", "#2d1b4e"]}
                     colors={colors}
                     testid="row-text-color"
@@ -371,15 +433,15 @@ export function CustomizePanel({ open, onClose }: Props) {
                     {FONT_FAMILY_OPTIONS.map((f) => (
                       <button
                         key={f.key}
-                        onClick={() => setFontFamily(f.key as FontFamilyKey)}
+                        onClick={() => setDraftFontFamily(f.key as FontFamilyKey)}
                         className="px-3 py-2 rounded-lg text-sm transition-all active:scale-[0.98]"
                         style={{
                           backgroundColor:
-                            fontFamily === f.key
+                            draftFontFamily === f.key
                               ? `${colors.primary}20`
                               : colors.surface,
                           border: `1px solid ${
-                            fontFamily === f.key ? colors.primary : colors.surfaceBorder
+                            draftFontFamily === f.key ? colors.primary : colors.surfaceBorder
                           }`,
                           color: colors.text,
                           fontFamily: f.stack,
@@ -398,13 +460,13 @@ export function CustomizePanel({ open, onClose }: Props) {
                     {FONT_SIZE_OPTIONS.map((s) => (
                       <button
                         key={s.key}
-                        onClick={() => setFontSize(s.key as FontSizeKey)}
+                        onClick={() => setDraftFontSize(s.key as FontSizeKey)}
                         className="px-2 py-2 rounded-lg transition-all active:scale-[0.98]"
                         style={{
                           backgroundColor:
-                            fontSize === s.key ? `${colors.primary}20` : colors.surface,
+                            draftFontSize === s.key ? `${colors.primary}20` : colors.surface,
                           border: `1px solid ${
-                            fontSize === s.key ? colors.primary : colors.surfaceBorder
+                            draftFontSize === s.key ? colors.primary : colors.surfaceBorder
                           }`,
                           color: colors.text,
                           fontSize: `${Math.max(11, s.px - 2)}px`,
@@ -417,9 +479,9 @@ export function CustomizePanel({ open, onClose }: Props) {
                   </div>
                 </Section>
 
-                {/* Reset */}
+                {/* Reset draft to plain defaults */}
                 <button
-                  onClick={resetCustomization}
+                  onClick={handleResetDraft}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs"
                   style={{
                     backgroundColor: "rgba(255,255,255,0.05)",
@@ -429,7 +491,50 @@ export function CustomizePanel({ open, onClose }: Props) {
                   data-testid="button-reset-customization"
                 >
                   <RotateCcw size={12} />
-                  Reset all customization
+                  Reset to defaults
+                </button>
+
+                {/* Spacer so the sticky footer doesn't overlap the last item */}
+                <div className="h-16" />
+              </div>
+            )}
+
+            {/* Sticky Save / Cancel footer (Custom tab only) */}
+            {tab === "custom" && (
+              <div
+                className="sticky bottom-0 left-0 right-0 -mx-5 -mb-5 px-5 py-3 flex gap-2"
+                style={{
+                  backgroundColor: colors.background,
+                  borderTop: `1px solid ${colors.surfaceBorder}`,
+                  boxShadow: "0 -8px 20px rgba(0,0,0,0.35)",
+                }}
+              >
+                <button
+                  onClick={handleCancel}
+                  className="flex-1 py-3 rounded-lg text-sm font-display tracking-wider"
+                  style={{
+                    backgroundColor: colors.surface,
+                    color: colors.textMuted,
+                    border: `1px solid ${colors.surfaceBorder}`,
+                  }}
+                  data-testid="button-cancel-customize"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!isDirty}
+                  className="flex-[1.4] py-3 rounded-lg text-sm font-display tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                  style={{
+                    backgroundColor: isDirty ? colors.primary : `${colors.primary}40`,
+                    color: colors.background,
+                    boxShadow: isDirty ? `0 0 18px ${colors.primaryGlow}` : "none",
+                    opacity: isDirty ? 1 : 0.6,
+                  }}
+                  data-testid="button-save-customize"
+                >
+                  <Save size={14} />
+                  {showSavedToast ? "SAVED" : "SAVE CHANGES"}
                 </button>
               </div>
             )}
