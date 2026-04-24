@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -30,6 +31,7 @@ export default function ProfilePage() {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const [settingsToast, setSettingsToast] = useState<string | null>(null);
+  const [, navigate] = useLocation();
 
   const { data: homeData } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
@@ -76,9 +78,9 @@ export default function ProfilePage() {
     setTimeout(() => setSettingsToast(null), 2400);
   };
 
-  const SETTINGS_ITEMS = [
+  const SETTINGS_ITEMS: { icon: any; label: string; key: string; route?: string }[] = [
     { icon: User, label: "Edit Profile", key: "edit-profile" },
-    { icon: Bell, label: "Notification Preferences", key: "notifications" },
+    { icon: Bell, label: "Notification Settings", key: "notifications", route: "/notification-settings" },
     { icon: Clock, label: "Sectograph Preferences", key: "sectograph" },
     { icon: Settings, label: "App Settings", key: "app-settings" },
   ];
@@ -280,7 +282,7 @@ export default function ProfilePage() {
                 <button
                   key={item.key}
                   data-testid={`button-settings-${item.key}`}
-                  onClick={() => showSettingsToast(item.label)}
+                  onClick={() => item.route ? navigate(item.route) : showSettingsToast(item.label)}
                   className="w-full flex items-center justify-between px-4 py-3.5 transition-all active:scale-[0.99]"
                   style={{
                     backgroundColor: `${colors.surface}cc`,

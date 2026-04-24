@@ -107,12 +107,36 @@
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-ui);
+  font-family: var(--app-font-family, var(--font-ui));
+  font-size: var(--app-font-size, 16px);
   overflow-x: hidden;
   background-image: 
     radial-gradient(ellipse at 20% 0%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 0%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 100%, rgba(0, 255, 255, 0.08) 0%, transparent 50%);
+}
+
+/* When the user picked a custom image, drop the body's own background so the
+   ::before layer is fully visible regardless of stacking context. */
+body.has-custom-bg {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* User-uploaded background image — fixed, cover, behind everything. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image: var(--app-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  opacity: var(--app-bg-image-opacity, 1);
+  transition: opacity 0.3s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {

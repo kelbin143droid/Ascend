@@ -35,7 +35,9 @@ import GuidedSessionPage from "@/pages/GuidedSessionPage";
 import WakeFlowPage from "@/pages/WakeFlowPage";
 import NightFlowPage from "@/pages/NightFlowPage";
 import SleepSettingsPage from "@/pages/SleepSettingsPage";
+import NotificationSettingsPage from "@/pages/NotificationSettingsPage";
 import FlowApp from "@/pages/FlowApp";
+import { VoiceAlertEngine } from "@/components/game/VoiceAlertEngine";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
 import { IntroWrapper } from "@/components/game/IntroWrapper";
@@ -83,6 +85,7 @@ function Router() {
       <Route path="/wake-flow" component={WakeFlowPage} />
       <Route path="/night-flow" component={NightFlowPage} />
       <Route path="/sleep-settings" component={SleepSettingsPage} />
+      <Route path="/notification-settings" component={NotificationSettingsPage} />
       <Route path="/guided-session/:sessionId">
         {(params: { sessionId?: string }) => <GuidedSessionPage key={params?.sessionId ?? "session"} />}
       </Route>
@@ -161,6 +164,7 @@ function App() {
                 <PhaseUnlockOverlay />
                 <Toaster />
                 <NativeBootstrap />
+                <VoiceAlertEngine />
               </IntroWrapper>
             </PlanningProviders>
           </LanguageStageProvider>

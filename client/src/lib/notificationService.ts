@@ -5,6 +5,7 @@ import {
   type LocalNotificationSchema,
   type PermissionStatus,
 } from "@capacitor/local-notifications";
+import { shouldUsePhoneNotifications } from "@/lib/notificationModeStore";
 
 export const isNativePlatform = (): boolean => Capacitor.isNativePlatform();
 
@@ -197,6 +198,10 @@ export async function scheduleTaskNotification(
 
   if (!isNativePlatform()) {
     return { scheduled: false, reason: "not-native" };
+  }
+  if (!shouldUsePhoneNotifications()) {
+    // User chose voice-only alerts; suppress phone notifications.
+    return { scheduled: false, reason: "no-permission" };
   }
   if (resolvedDate == null) {
     console.warn("[notifications] scheduleTaskNotification: no date", id);

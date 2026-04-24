@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, Sparkles, X } from "lucide-react";
+import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, Sparkles, X, Palette } from "lucide-react";
+import { CustomizePanel } from "./CustomizePanel";
 import {
   shouldPromptAutoSwitch,
   setMode as setSleepMode,
@@ -67,6 +68,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [, navigate] = useLocation();
   const [flowActive, setFlowActive] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
+  const [showCustomize, setShowCustomize] = useState(false);
   const [flowCompletedDate, setFlowCompletedDate] = useState(() =>
     localStorage.getItem("ascend_light_movement_completed") ?? ""
   );
@@ -147,6 +149,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   return (
     <SystemLayout>
+      <CustomizePanel open={showCustomize} onClose={() => setShowCustomize(false)} />
       <AnimatePresence>
         {flowActive && (
           <DailyFlowEngine
@@ -181,7 +184,21 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 </p>
               )}
             </div>
-            <div className="flex flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCustomize(true)}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95"
+                style={{
+                  backgroundColor: `${colors.primary}15`,
+                  color: colors.primary,
+                  border: `1px solid ${colors.primary}35`,
+                  boxShadow: `0 0 10px ${colors.primaryGlow}`,
+                }}
+                data-testid="button-customize"
+                aria-label="Customize"
+              >
+                <Palette size={15} />
+              </button>
               <span
                 className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl"
                 style={{
