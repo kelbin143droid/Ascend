@@ -116,28 +116,24 @@ body {
     radial-gradient(ellipse at 50% 100%, rgba(0, 255, 255, 0.08) 0%, transparent 50%);
 }
 
-/* When the user picked a custom image, drop the body's own background so the
-   ::before layer is fully visible regardless of stacking context. */
+/* When the user picked a custom image, swap the body background entirely so it
+   sits behind everything reliably (the ::before approach can be hidden by
+   opaque app containers). */
 body.has-custom-bg {
-  background-color: transparent !important;
-  background-image: none !important;
+  background-image: var(--app-bg-image) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
 }
 
-/* User-uploaded background image — fixed, cover, behind everything. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  background-image: var(--app-bg-image, none);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  opacity: var(--app-bg-image-opacity, 1);
-  transition: opacity 0.3s ease;
+/* Make the root app container transparent when a custom bg is active so the
+   image actually shows through. */
+body.has-custom-bg #root,
+body.has-custom-bg #root > div {
+  background-color: transparent !important;
 }
+
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);

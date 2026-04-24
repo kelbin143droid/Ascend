@@ -190,7 +190,7 @@ export function CustomizePanel({ open, onClose }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center pb-24 sm:pb-0"
           data-testid="customize-panel"
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -199,7 +199,7 @@ export function CustomizePanel({ open, onClose }: Props) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: "spring", damping: 22 }}
-            className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[88vh] overflow-y-auto"
+            className="relative w-full sm:max-w-md rounded-2xl p-5 max-h-[78vh] sm:max-h-[88vh] overflow-y-auto mx-2"
             style={{
               backgroundColor: colors.background,
               border: `1px solid ${colors.surfaceBorder}`,
