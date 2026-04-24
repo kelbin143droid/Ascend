@@ -56,8 +56,6 @@ interface Props {
 }
 
 const SESSION_LIST = [
-  { id: "wake_flow", label: "Wake Flow", sublabel: "Triggered by your alarm · 5 phases", icon: Heart, color: "#f59e0b", stat: "HP" },
-  { id: "night_flow", label: "Night Flow", sublabel: "Wind-down 1hr before sleep", icon: Heart, color: "#8b5cf6", stat: "HP" },
   { id: "phase1_meditation", label: "Calm Breathing", sublabel: "4-4-6 breathing rhythm · 2 min", icon: Brain, color: "#3b82f6", stat: "Mana" },
   { id: "phase1_agility", label: "Agility Flow", sublabel: "Stretch circuit · 3 min", icon: Wind, color: "#22c55e", stat: "Agility" },
   { id: "phase1_strength", label: "Physical Circuit", sublabel: "Push-ups · Plank · Cardio", icon: Dumbbell, color: "#ef4444", stat: "Strength" },
@@ -345,12 +343,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   {SESSION_LIST.map((session, i) => {
                     const Icon = session.icon;
                     const done = flowCompletedToday;
-                    const route =
-                      session.id === "wake_flow"
-                        ? "/wake-flow"
-                        : session.id === "night_flow"
-                        ? "/night-flow"
-                        : `/guided-session/${session.id}`;
+                    const route = `/guided-session/${session.id}`;
                     return (
                       <button
                         type="button"

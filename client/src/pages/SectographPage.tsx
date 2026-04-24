@@ -526,38 +526,60 @@ export default function SectographPage() {
         });
       }
     }
-    // ── Night Flow / wind-down trigger.
-    // Honors the active Sleep Mode: minimal mode → simple ping (no auto-open),
-    // beginner/adaptive/custom → opens Night Flow at the configured offset.
+    // ── Night Flow / wind-down triggers (two-step).
+    //   1) -30min  "Stop eating + put phone in night mode"  (controlled by plan.foodCutoff)
+    //   2) -10min  "Wind down routine"                     (controlled by plan.windDownReminder)
+    // The 10-min ping opens Night Flow when the active mode includes a full flow;
+    // minimal mode → notification only, no auto-open.
     if (
       isNativePlatform() &&
       editingBlock.id.startsWith("sleep") &&
       typeof blockFinal.startHour === "number"
     ) {
+      const cutoffId = `${blockFinal.id}__cutoff`;
       const nightId = `${blockFinal.id}__nightflow`;
       try {
+        await cancelTaskNotification(cutoffId);
         await cancelTaskNotification(nightId);
       } catch (err) {
-        console.warn("[SectographPage] cancel prior night-flow failed", err);
+        console.warn("[SectographPage] cancel prior night pings failed", err);
       }
+
+      const now = new Date();
+      const sleepStart = new Date(now);
+      sleepStart.setHours(blockFinal.startHour, blockFinal.startMinute || 0, 0, 0);
       const plan = getNightPlan();
-      if (plan.windDownReminder) {
-        const now = new Date();
-        const sleepStart = new Date(now);
-        sleepStart.setHours(blockFinal.startHour, blockFinal.startMinute || 0, 0, 0);
-        const offsetMs = Math.max(5, plan.windDownOffsetMin) * 60 * 1000;
-        const nightAt = new Date(sleepStart.getTime() - offsetMs);
-        if (nightAt.getTime() <= now.getTime()) {
-          nightAt.setDate(nightAt.getDate() + 1);
+
+      // 30-min food-cutoff + phone night-mode ping
+      if (plan.foodCutoff) {
+        const cutoffAt = new Date(sleepStart.getTime() - 30 * 60 * 1000);
+        if (cutoffAt.getTime() <= now.getTime()) cutoffAt.setDate(cutoffAt.getDate() + 1);
+        try {
+          await scheduleTaskNotification(
+            cutoffId,
+            "Wind-down — 30 min",
+            "Stop eating now and switch your phone to night mode.",
+            cutoffAt,
+            { source: "night-cutoff" },
+          );
+        } catch (err) {
+          console.warn("[SectographPage] cutoff schedule failed", err);
         }
+      }
+
+      // 10-min wind-down ping
+      if (plan.windDownReminder) {
+        const offsetMin = Math.max(5, plan.windDownOffsetMin || 10);
+        const nightAt = new Date(sleepStart.getTime() - offsetMin * 60 * 1000);
+        if (nightAt.getTime() <= now.getTime()) nightAt.setDate(nightAt.getDate() + 1);
         const minimal = !plan.showFullFlow;
         try {
           await scheduleTaskNotification(
             nightId,
-            minimal ? "Start winding down" : "Wind-down",
+            minimal ? "Start winding down" : "Wind-down — start now",
             minimal
               ? "Time to wind down — open your tools when ready."
-              : `Start your Night Flow — sleep optimization in ${plan.windDownOffsetMin} min.`,
+              : "Begin your Night Flow routine.",
             nightAt,
             minimal
               ? { source: "night-flow-minimal" }
@@ -653,6 +675,7 @@ export default function SectographPage() {
           if (String(r.id).startsWith("sleep")) {
             await cancelTaskNotification(`${r.id}__alarm`);
             await cancelTaskNotification(`${r.id}__nightflow`);
+            await cancelTaskNotification(`${r.id}__cutoff`);
           }
         } catch (err) {
           console.warn("[SectographPage] cancel replaced block failed", r.id, err);
@@ -711,6 +734,7 @@ export default function SectographPage() {
         if (editingBlock.id.startsWith("sleep")) {
           await cancelTaskNotification(`${editingBlock.id}__alarm`);
           await cancelTaskNotification(`${editingBlock.id}__nightflow`);
+          await cancelTaskNotification(`${editingBlock.id}__cutoff`);
         }
       } catch (err) {
         console.warn("[SectographPage] cancel on delete failed", err);
@@ -819,7 +843,20 @@ export default function SectographPage() {
 
   const hasCustomSchedule = activeSchedule.length > 0;
 
-  const deleteScheduleBlock = (blockId: string) => {
+  const deleteScheduleBlock = async (blockId: string) => {
+    // Cancel any phone notifications tied to this block, including sleep sub-IDs.
+    if (isNativePlatform()) {
+      try {
+        await cancelTaskNotification(blockId);
+        if (blockId.startsWith("sleep")) {
+          await cancelTaskNotification(`${blockId}__alarm`);
+          await cancelTaskNotification(`${blockId}__nightflow`);
+          await cancelTaskNotification(`${blockId}__cutoff`);
+        }
+      } catch (err) {
+        console.warn("[SectographPage] cancel on inline delete failed", err);
+      }
+    }
     const updated = activeSchedule.filter((b: any) => b.id !== blockId);
     updatePlayer({ schedule: updated });
   };
@@ -1584,9 +1621,40 @@ export default function SectographPage() {
                           <span className="text-sm font-medium truncate block" style={{ color: colors.text }}>
                             {block.name}
                           </span>
-                          <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
-                            {formatTimeSlot(block.startHour, block.startMinute ?? 0)} — {formatTimeSlot(block.endHour, block.endMinute ?? 0)}
-                          </span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
+                              {formatTimeSlot(block.startHour, block.startMinute ?? 0)} — {formatTimeSlot(block.endHour, block.endMinute ?? 0)}
+                            </span>
+                            {block.id.startsWith("sleep") && (
+                              (block as any).alarmAt ? (
+                                <span
+                                  className="text-[9px] font-mono px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                                  style={{
+                                    backgroundColor: "rgba(129,140,248,0.15)",
+                                    color: "#a5b4fc",
+                                    border: "1px solid rgba(129,140,248,0.35)",
+                                  }}
+                                  data-testid={`badge-alarm-${block.id}`}
+                                >
+                                  <AlarmClock size={9} />
+                                  {(block as any).alarmAt}
+                                </span>
+                              ) : (
+                                <span
+                                  className="text-[9px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                                  style={{
+                                    backgroundColor: "rgba(255,255,255,0.04)",
+                                    color: colors.textMuted,
+                                    border: "1px dashed rgba(255,255,255,0.2)",
+                                  }}
+                                  data-testid={`badge-no-alarm-${block.id}`}
+                                >
+                                  <AlarmClock size={9} />
+                                  Set alarm
+                                </span>
+                              )
+                            )}
+                          </div>
                         </div>
                         {isCurrent && (
                           <span
@@ -2420,6 +2488,59 @@ export default function SectographPage() {
                         </span>
                       </div>
                     )}
+                    <p className="text-[10px] mt-2" style={{ color: colors.textMuted }}>
+                      Turning off the alarm opens your Wake Flow automatically.
+                    </p>
+                  </div>
+                )}
+
+                {/* ── Sleep block — Wake / Night flow shortcuts + sleep mode ───── */}
+                {editingBlock.id.startsWith("sleep") && !editingBlock.isNew && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: colors.textMuted }}>
+                      Sleep routines
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setEditingBlock(null); navigate("/wake-flow"); }}
+                        data-testid="button-open-wake-flow"
+                        className="rounded-lg px-3 py-2.5 text-left transition-all"
+                        style={{
+                          backgroundColor: "rgba(245,158,11,0.1)",
+                          border: "1px solid rgba(245,158,11,0.3)",
+                        }}
+                      >
+                        <p className="text-xs font-bold" style={{ color: "#fbbf24" }}>Wake Flow</p>
+                        <p className="text-[10px]" style={{ color: colors.textMuted }}>5 phases · activates after alarm</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingBlock(null); navigate("/night-flow"); }}
+                        data-testid="button-open-night-flow"
+                        className="rounded-lg px-3 py-2.5 text-left transition-all"
+                        style={{
+                          backgroundColor: "rgba(139,92,246,0.1)",
+                          border: "1px solid rgba(139,92,246,0.3)",
+                        }}
+                      >
+                        <p className="text-xs font-bold" style={{ color: "#c4b5fd" }}>Night Flow</p>
+                        <p className="text-[10px]" style={{ color: colors.textMuted }}>30m + 10m alerts before bed</p>
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setEditingBlock(null); navigate("/sleep-settings"); }}
+                      data-testid="button-open-sleep-settings"
+                      className="w-full rounded-lg px-3 py-2 text-[11px] font-medium"
+                      style={{
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        color: colors.text,
+                      }}
+                    >
+                      Sleep Optimization Settings ›
+                    </button>
                   </div>
                 )}
 

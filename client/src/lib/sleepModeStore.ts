@@ -47,7 +47,7 @@ const DEFAULT_CUSTOM: CustomConfig = {
   foodCutoff: true,
   lowStimulation: true,
   sleepPriming: true,
-  windDownOffsetMin: 60,
+  windDownOffsetMin: 10,
 };
 
 function defaultState(): SleepModeState {
