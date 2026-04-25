@@ -262,9 +262,9 @@ function LiveHeaderClock({
         style={{ color: primaryColor }}
       >
         {now.toLocaleTimeString([], {
-          hour: "2-digit",
+          hour: "numeric",
           minute: "2-digit",
-          hour12: false,
+          hour12: true,
         })}
       </span>
       <span
@@ -1885,7 +1885,7 @@ export default function SectographPage() {
                       {[...activeSchedule]
                         .sort((a, b) => (a.startHour * 60 + (a.startMinute ?? 0)) - (b.startHour * 60 + (b.startMinute ?? 0)))
                         .map((b: any) => {
-                          const fmt = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+                          const fmt = (h: number, m: number) => formatTimeSlot(h, m ?? 0);
                           return (
                             <div
                               key={`sched-${b.id}`}

@@ -60,31 +60,57 @@ export function EnergySettingsCard() {
 
       {/* Inputs grid */}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Weight (kg)">
+        <Field label="Weight (lb)">
           <input
             type="number"
             inputMode="decimal"
-            min={20}
-            max={400}
-            value={settings.weightKg}
-            onChange={(e) => update({ weightKg: clamp(parseFloat(e.target.value) || 0, 20, 400) })}
+            min={44}
+            max={882}
+            value={kgToLb(settings.weightKg)}
+            onChange={(e) => {
+              const lb = clamp(parseFloat(e.target.value) || 0, 44, 882);
+              update({ weightKg: Math.round(lbToKg(lb) * 10) / 10 });
+            }}
             className="w-full rounded-md px-2.5 py-2 text-sm outline-none"
             style={inputStyle}
             data-testid="input-weight"
           />
         </Field>
-        <Field label="Height (cm)">
-          <input
-            type="number"
-            inputMode="decimal"
-            min={80}
-            max={260}
-            value={settings.heightCm}
-            onChange={(e) => update({ heightCm: clamp(parseFloat(e.target.value) || 0, 80, 260) })}
-            className="w-full rounded-md px-2.5 py-2 text-sm outline-none"
-            style={inputStyle}
-            data-testid="input-height"
-          />
+        <Field label="Height (ft / in)">
+          <div className="flex gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={2}
+              max={8}
+              value={cmToFt(settings.heightCm)}
+              onChange={(e) => {
+                const ft = clamp(parseInt(e.target.value, 10) || 0, 2, 8);
+                const inches = cmToInRemainder(settings.heightCm);
+                update({ heightCm: clamp(ftInToCm(ft, inches), 80, 260) });
+              }}
+              className="w-1/2 rounded-md px-2.5 py-2 text-sm outline-none"
+              style={inputStyle}
+              data-testid="input-height-ft"
+              placeholder="ft"
+            />
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={11}
+              value={cmToInRemainder(settings.heightCm)}
+              onChange={(e) => {
+                const inches = clamp(parseInt(e.target.value, 10) || 0, 0, 11);
+                const ft = cmToFt(settings.heightCm);
+                update({ heightCm: clamp(ftInToCm(ft, inches), 80, 260) });
+              }}
+              className="w-1/2 rounded-md px-2.5 py-2 text-sm outline-none"
+              style={inputStyle}
+              data-testid="input-height-in"
+              placeholder="in"
+            />
+          </div>
         </Field>
         <Field label="Age">
           <input
@@ -174,6 +200,24 @@ export function EnergySettingsCard() {
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
+}
+
+function kgToLb(kg: number): number {
+  return Math.round(kg * 2.20462);
+}
+function lbToKg(lb: number): number {
+  return lb / 2.20462;
+}
+function cmToFt(cm: number): number {
+  const totalIn = cm / 2.54;
+  return Math.floor(totalIn / 12);
+}
+function cmToInRemainder(cm: number): number {
+  const totalIn = Math.round(cm / 2.54);
+  return totalIn % 12;
+}
+function ftInToCm(ft: number, inches: number): number {
+  return Math.round((ft * 12 + inches) * 2.54);
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
