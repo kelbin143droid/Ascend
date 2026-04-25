@@ -24,3 +24,21 @@ id = "-OuO4Zh0dkN1b1H6CzaAn"
 uri = "file://exports/ascend-os-full.zip"
 type = "unspecified"
 title = "Ascend OS — full app (with videos and assets)"
+
+[[outputs]]
+id = "0RH1QaG8aqnTJUnygmRC7"
+uri = "file://exports/ascend-os-videos-part1.zip"
+type = "unspecified"
+title = "Videos Part 1 of 3 (76 MB)"
+
+[[outputs]]
+id = "GYduzxoVQBc_edjshgTWA"
+uri = "file://exports/ascend-os-videos-part2.zip"
+type = "unspecified"
+title = "Videos Part 2 of 3 (76 MB)"
+
+[[outputs]]
+id = "ZTbyLnzkXcTbbyyaOa-gY"
+uri = "file://exports/ascend-os-videos-part3.zip"
+type = "unspecified"
+title = "Videos Part 3 of 3 (75 MB)"
