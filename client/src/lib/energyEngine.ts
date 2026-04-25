@@ -12,6 +12,7 @@ import {
   readExercises,
   type ExerciseTotals,
 } from "./exerciseStore";
+import { readSessions, totalSessionCalories } from "./workoutStore";
 
 export interface DailyEnergy {
   goalCalories: number;
@@ -29,6 +30,12 @@ export interface EnergyInput {
   nutritionTotals: NutritionTotals;
   exerciseTotals: ExerciseTotals;
   goalCalories: number;
+  /**
+   * Additional kcal burned from completed workout sessions for the day.
+   * Kept separate from `exerciseTotals` so the two systems can remain
+   * independently testable while sharing the same energy ledger.
+   */
+  workoutCaloriesBurned?: number;
 }
 
 /**
@@ -41,7 +48,10 @@ export interface EnergyInput {
 export function calculateDailyEnergy(input: EnergyInput): DailyEnergy {
   const goal = Math.max(0, Math.round(input.goalCalories));
   const consumed = Math.max(0, input.nutritionTotals.calories);
-  const burned = Math.max(0, input.exerciseTotals.totalCalories);
+  const burned = Math.max(
+    0,
+    input.exerciseTotals.totalCalories + (input.workoutCaloriesBurned ?? 0),
+  );
   const net = consumed - burned;
   const balance = goal - consumed + burned; // > 0 means under goal
   // Round only at the boundary so small per-rep burns aren't erased.
@@ -63,10 +73,12 @@ export function calculateDailyEnergy(input: EnergyInput): DailyEnergy {
 export function calculateDailyEnergyForDate(date?: string): DailyEnergy {
   const day = readDay(date);
   const exercises = readExercises(date);
+  const sessions = readSessions(date);
   const goal = calculateTarget(readEnergySettings());
   return calculateDailyEnergy({
     nutritionTotals: computeTotals(day.entries),
     exerciseTotals: computeExerciseTotals(exercises),
     goalCalories: goal,
+    workoutCaloriesBurned: totalSessionCalories(sessions),
   });
 }
