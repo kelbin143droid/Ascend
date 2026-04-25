@@ -859,6 +859,15 @@ export function GuidedActivityEngine({
           setCurrentStepIdx(nextIdx);
           setStepPhase("getready");
         }, 400);
+      } else if (activity.autoflow && currentStep?.type === "rep" && nextStep?.type === "timer") {
+        // Coming off active rep work into a timed hold (e.g. situps → plank)
+        // or a rest break. For an active timer, run the 6s "Get Ready"
+        // countdown then auto-start the timer; for a rest, skip the
+        // countdown and let the auto-start hook take over.
+        setTimeout(() => {
+          setCurrentStepIdx(nextIdx);
+          setStepPhase(nextIsRest ? "ready" : "getready");
+        }, 400);
       } else {
         setTimeout(() => {
           setCurrentStepIdx(nextIdx);

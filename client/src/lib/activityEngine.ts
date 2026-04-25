@@ -69,11 +69,11 @@ export interface TierConfig {
 }
 
 export const STRENGTH_TIERS: Record<number, TierConfig> = {
-  1: { cardioSeconds: 25, plankSeconds: 20, pushupReps:  8, situpReps: 10, squatReps: 10, restSeconds: 60 },
-  2: { cardioSeconds: 30, plankSeconds: 25, pushupReps: 12, situpReps: 14, squatReps: 14, restSeconds: 60 },
-  3: { cardioSeconds: 35, plankSeconds: 30, pushupReps: 16, situpReps: 18, squatReps: 18, restSeconds: 60 },
-  4: { cardioSeconds: 40, plankSeconds: 35, pushupReps: 20, situpReps: 22, squatReps: 22, restSeconds: 60 },
-  5: { cardioSeconds: 50, plankSeconds: 45, pushupReps: 26, situpReps: 28, squatReps: 28, restSeconds: 60 },
+  1: { cardioSeconds: 25, plankSeconds: 20, pushupReps:  8, situpReps: 10, squatReps: 10, restSeconds: 45 },
+  2: { cardioSeconds: 30, plankSeconds: 25, pushupReps: 12, situpReps: 14, squatReps: 14, restSeconds: 45 },
+  3: { cardioSeconds: 35, plankSeconds: 30, pushupReps: 16, situpReps: 18, squatReps: 18, restSeconds: 45 },
+  4: { cardioSeconds: 40, plankSeconds: 35, pushupReps: 20, situpReps: 22, squatReps: 22, restSeconds: 45 },
+  5: { cardioSeconds: 50, plankSeconds: 45, pushupReps: 26, situpReps: 28, squatReps: 28, restSeconds: 45 },
 };
 
 /** Rough seconds-per-rep used to estimate Physical Circuit duration. */
