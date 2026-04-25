@@ -28,17 +28,11 @@ import {
   subscribeEnergySettings,
 } from "@/lib/energySettingsStore";
 import {
-  computeExerciseTotals,
-  readExercises,
-  subscribeExercises,
-  type ExerciseEntry,
-} from "@/lib/exerciseStore";
-import {
-  readSessions,
+  readWorkouts,
   subscribeWorkouts,
-  totalSessionCalories,
-  type WorkoutSession,
-} from "@/lib/workoutStore";
+  totalCaloriesBurned,
+  type WorkoutEntry,
+} from "@/lib/workoutLogStore";
 import { calculateDailyEnergy } from "@/lib/energyEngine";
 
 type Tab = "log" | "energy" | "meals";
@@ -54,8 +48,7 @@ export default function NutritionPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>("log");
   const [day, setDay] = useState<NutritionDay>(() => readDay());
-  const [exercises, setExercises] = useState<ExerciseEntry[]>(() => readExercises());
-  const [workouts, setWorkouts] = useState<WorkoutSession[]>(() => readSessions());
+  const [workouts, setWorkouts] = useState<WorkoutEntry[]>(() => readWorkouts());
   const [createOpen, setCreateOpen] = useState(false);
 
   // Selected meal bucket for the next added entry — drives FoodSearch / QuickAdd
@@ -77,29 +70,21 @@ export default function NutritionPage() {
   }, []);
 
   useEffect(() => {
-    const refresh = () => setExercises(readExercises(todayIso()));
-    refresh();
-    return subscribeExercises(refresh);
-  }, []);
-
-  useEffect(() => {
-    const refresh = () => setWorkouts(readSessions(todayIso()));
+    const refresh = () => setWorkouts(readWorkouts(todayIso()));
     refresh();
     return subscribeWorkouts(refresh);
   }, []);
 
   const totals = useMemo(() => computeTotals(day.entries), [day.entries]);
-  const exerciseTotals = useMemo(() => computeExerciseTotals(exercises), [exercises]);
-  const workoutBurned = useMemo(() => totalSessionCalories(workouts), [workouts]);
+  const workoutBurned = useMemo(() => totalCaloriesBurned(workouts), [workouts]);
   const energy = useMemo(
     () =>
       calculateDailyEnergy({
         nutritionTotals: totals,
-        exerciseTotals,
+        workouts,
         goalCalories: calorieGoal,
-        workoutCaloriesBurned: workoutBurned,
       }),
-    [totals, exerciseTotals, workoutBurned, calorieGoal],
+    [totals, workouts, calorieGoal],
   );
 
   const entriesByMeal = useMemo(() => {
@@ -237,10 +222,10 @@ export default function NutritionPage() {
               ))}
             </div>
 
-            {/* Exercise log — burns flow into the energy ledger above */}
+            {/* Workout log — burns flow into the energy ledger above */}
             <ExerciseSection
-              entries={exercises}
-              totalCalories={exerciseTotals.totalCalories}
+              entries={workouts}
+              totalCalories={workoutBurned}
             />
           </div>
         )}

@@ -2,10 +2,31 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward, Info, Check } from "lucide-react";
+import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward, Info, Check, Plus, Minus } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
-import { logExercisesFromGuidedSession } from "@/lib/exerciseStore";
+import {
+  addWorkout,
+  caloriesForReps,
+  caloriesForTime,
+} from "@/lib/workoutLogStore";
+import { readEnergySettings } from "@/lib/energySettingsStore";
+
+/**
+ * Map a guided-session step id to its canonical exercise name used by
+ * the calorie tables in workoutLogStore. Returns null for steps that
+ * aren't trackable exercises (intros, rest breaks, completions, etc).
+ */
+function stepIdToExerciseName(stepId: string): string | null {
+  if (stepId.startsWith("pushups")) return "pushups";
+  if (stepId.startsWith("situps") || stepId.startsWith("abs")) return "situps";
+  if (stepId.startsWith("squats")) return "squats";
+  if (stepId.startsWith("jumping_jacks") || stepId === "cardio") return "jumping_jacks";
+  if (stepId.startsWith("jog")) return "jog_in_place";
+  if (stepId.startsWith("plank")) return "plank";
+  if (stepId.startsWith("shadow")) return "shadow_boxing";
+  return null;
+}
 
 const EXERCISE_ANIMATIONS: Record<string, { emoji: string; movementHint: string }> = {
   pushups: { emoji: "💪", movementHint: "Push up · Hold · Lower down" },
@@ -711,10 +732,19 @@ export function GuidedActivityEngine({
   const isTimerStep = step?.type === "timer";
   const isBreathStep = step?.type === "breath";
   const isCheckStep = step?.type === "check";
+  const isRepStep = step?.type === "rep";
   const [showCheckInfo, setShowCheckInfo] = useState(false);
+  // Per-step rep counter (resets every time the active step changes).
+  const [currentReps, setCurrentReps] = useState(0);
+  // Actual reps the user completed per step idx — used by the calorie
+  // sync so finishing early ("Done Set" before reaching target) doesn't
+  // overstate burn. Kept in a ref so the latest value is visible inside
+  // the completion mutation closure.
+  const actualRepsRef = useRef<Record<number, number>>({});
 
   useEffect(() => {
     setShowCheckInfo(false);
+    setCurrentReps(0);
   }, [currentStepIdx]);
 
   const completeMutation = useMutation({
@@ -750,18 +780,37 @@ export function GuidedActivityEngine({
         xpEarned: earned,
       }).catch(() => {});
 
-      // Auto-log rep-based strength steps into the daily energy ledger.
-      // Only log steps that were completed AND not skipped — `advanceStep`
-      // marks every step as completed (even skipped ones), so we filter
-      // skips out explicitly to avoid overstating burned calories.
+      // Sync calories burned from this circuit into the daily workout log.
+      // We log ONE summary entry per completed Daily Flow circuit:
+      //   { name: <activity name>, calories: <sum across completed steps> }
+      // Rep steps use the per-rep table; timer steps use the MET formula.
+      // Skipped steps are excluded so calories are never overstated.
       try {
         const completedSteps = activity.steps
           .map((s, idx) => ({ s, idx }))
           .filter(({ idx }) => stepsCompleted.has(idx) && !stepsSkipped.has(idx))
-          .map(({ s }) => ({ id: s.id, durationSeconds: s.durationSeconds }));
-        logExercisesFromGuidedSession(completedSteps);
+          .map(({ s }) => s);
+        const settings = readEnergySettings();
+        let totalCalories = 0;
+        for (const s of completedSteps) {
+          const name = stepIdToExerciseName(s.id);
+          if (!name) continue;
+          if (s.type === "rep" && s.repCount && s.repCount > 0) {
+            // Use ACTUAL reps the user counted, not the target — finishing
+            // the set early via "Done Set" must not inflate burn.
+            const idx = activity.steps.indexOf(s);
+            const actual = actualRepsRef.current[idx];
+            const reps = typeof actual === "number" ? Math.min(actual, s.repCount) : 0;
+            if (reps > 0) totalCalories += caloriesForReps(name, reps);
+          } else if (s.type === "timer" && s.durationSeconds && s.durationSeconds > 0) {
+            totalCalories += caloriesForTime(name, s.durationSeconds, settings.weightKg);
+          }
+        }
+        if (totalCalories > 0) {
+          addWorkout({ name: activity.activityName, calories: totalCalories });
+        }
       } catch (err) {
-        console.warn("[guided-session] exercise sync failed", err);
+        console.warn("[guided-session] workout sync failed", err);
       }
     },
   });
@@ -847,10 +896,31 @@ export function GuidedActivityEngine({
       setStepPhase("getready");
     } else if (isBreathStep) {
       setStepPhase("getready");
+    } else if (isRepStep) {
+      setStepPhase("getready");
     } else {
       advanceStep();
     }
-  }, [step, isTimerStep, isBreathStep, advanceStep]);
+  }, [step, isTimerStep, isBreathStep, isRepStep, advanceStep]);
+
+  const handleRepIncrement = useCallback(() => {
+    if (!isRepStep || !step?.repCount) return;
+    setCurrentReps((prev) => {
+      const next = prev + 1;
+      actualRepsRef.current[currentStepIdx] = next;
+      if (next >= (step.repCount ?? 0)) {
+        beep.playCompleteBeep();
+        // Defer advance so the user briefly sees the target reached state.
+        setTimeout(() => advanceStep(), 250);
+      }
+      return next;
+    });
+  }, [isRepStep, step, beep, advanceStep, currentStepIdx]);
+
+  const handleRepDoneEarly = useCallback(() => {
+    actualRepsRef.current[currentStepIdx] = currentReps;
+    advanceStep();
+  }, [currentStepIdx, currentReps, advanceStep]);
 
   const handleGetReadyComplete = useCallback(() => {
     if (isBreathStep) {
@@ -875,10 +945,12 @@ export function GuidedActivityEngine({
           }
         }, 1000);
       }
+    } else if (isRepStep) {
+      setStepPhase("running");
     } else {
       startTimer();
     }
-  }, [isBreathStep, step, startTimer, advanceStep, beep]);
+  }, [isBreathStep, isRepStep, step, startTimer, advanceStep, beep]);
 
   const handleSkip = useCallback(() => {
     if (intervalRef.current) {
@@ -941,7 +1013,7 @@ export function GuidedActivityEngine({
   }, []);
 
   const getActionLabel = (s: ActivityStep, stepIdx: number): string => {
-    if (s.type === "timer" || s.type === "breath") return "Start";
+    if (s.type === "timer" || s.type === "breath" || s.type === "rep") return "Start";
     return stepIdx === 0 ? "Begin" : "Done";
   };
 
@@ -1155,6 +1227,86 @@ export function GuidedActivityEngine({
                     </div>
                   </>
                 )
+              ) : (isRepStep && stepPhase === "running") ? (
+                <div className="flex flex-col items-center gap-5 w-full max-w-xs">
+                  {step.videoSrc && (
+                    <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "9/16", maxHeight: "260px" }}>
+                      <video
+                        ref={(el) => { if (el) el.play().catch(() => {}); }}
+                        src={step.videoSrc}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ filter: "brightness(0.55)" }}
+                      />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRepIncrement}
+                    data-testid="button-rep-increment"
+                    className="w-44 h-44 rounded-full flex flex-col items-center justify-center transition-transform active:scale-95"
+                    style={{
+                      backgroundColor: `${activity.color}18`,
+                      border: `3px solid ${activity.color}`,
+                      color: activity.color,
+                    }}
+                    aria-label="Tap to count rep"
+                  >
+                    <span className="text-6xl font-bold tabular-nums leading-none" data-testid="text-current-reps">
+                      {currentReps}
+                    </span>
+                    <span className="text-xs uppercase tracking-widest mt-1" style={{ color: colors.textMuted }}>
+                      of {step.repCount} {step.repLabel ?? "reps"}
+                    </span>
+                  </button>
+                  <p className="text-[11px] uppercase tracking-widest" style={{ color: colors.textMuted }}>
+                    Tap circle for each rep
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentReps((n) => {
+                        const next = Math.max(0, n - 1);
+                        actualRepsRef.current[currentStepIdx] = next;
+                        return next;
+                      })}
+                      data-testid="button-rep-decrement"
+                      className="w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-90"
+                      style={{
+                        backgroundColor: `${colors.textMuted}20`,
+                        color: colors.text,
+                      }}
+                      aria-label="Subtract one rep"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRepIncrement}
+                      data-testid="button-rep-plus"
+                      className="w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-90"
+                      style={{
+                        backgroundColor: `${activity.color}30`,
+                        color: activity.color,
+                      }}
+                      aria-label="Add one rep"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRepDoneEarly}
+                    data-testid="button-rep-done"
+                    className="px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider transition-transform active:scale-95"
+                    style={{ backgroundColor: activity.color, color: "#fff" }}
+                  >
+                    Done Set
+                  </button>
+                </div>
               ) : isCheckStep ? (
                 <div className="flex flex-col items-center gap-4 w-full max-w-sm">
                   <div

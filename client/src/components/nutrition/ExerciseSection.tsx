@@ -1,41 +1,20 @@
-import { useState } from "react";
-import { Dumbbell, Flame, Plus, X } from "lucide-react";
+import { Dumbbell, Flame, X } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
-import {
-  addExercise,
-  caloriesForExercise,
-  EXERCISE_LABEL,
-  EXERCISE_TYPES,
-  removeExercise,
-  type ExerciseEntry,
-  type ExerciseType,
-} from "@/lib/exerciseStore";
+import { removeWorkout, type WorkoutEntry } from "@/lib/workoutLogStore";
 
 interface ExerciseSectionProps {
-  entries: ExerciseEntry[];
+  entries: WorkoutEntry[];
   totalCalories: number;
 }
 
 /**
- * Quick-log exercises (push-ups / sit-ups / squats) and view today's
- * list. Calorie totals here flow directly into the daily energy ledger
- * via `exerciseStore` → `energyEngine`.
+ * Read-only display of completed Daily Flow workouts. All entries are
+ * written by the Daily Flow engines (Physical Circuit, Cardio Circuit) —
+ * Nutrition no longer logs exercises directly.
  */
 export function ExerciseSection({ entries, totalCalories }: ExerciseSectionProps) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
-
-  const [type, setType] = useState<ExerciseType>("pushups");
-  const [reps, setReps] = useState<string>("");
-
-  const numericReps = Math.max(0, Math.floor(parseInt(reps, 10) || 0));
-  const previewCalories = numericReps > 0 ? caloriesForExercise(type, numericReps) : 0;
-
-  const handleAdd = () => {
-    if (numericReps <= 0) return;
-    addExercise(type, numericReps);
-    setReps("");
-  };
 
   return (
     <div
@@ -66,70 +45,6 @@ export function ExerciseSection({ entries, totalCalories }: ExerciseSectionProps
         </div>
       </div>
 
-      {/* Quick-log form */}
-      <div className="px-4 py-3 flex flex-col gap-2" style={{ backgroundColor: `${colors.background}40` }}>
-        <div className="flex rounded-lg p-1 gap-1" style={{ border: `1px solid ${colors.surfaceBorder}` }}>
-          {EXERCISE_TYPES.map((t) => {
-            const active = t === type;
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
-                data-testid={`chip-exercise-${t}`}
-                className="flex-1 py-1.5 rounded-md text-[11px] font-bold transition-colors"
-                style={{
-                  backgroundColor: active ? `${colors.primary}25` : "transparent",
-                  color: active ? colors.primary : colors.textMuted,
-                  border: `1px solid ${active ? `${colors.primary}55` : "transparent"}`,
-                }}
-              >
-                {EXERCISE_LABEL[t]}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={1000}
-            placeholder="Reps"
-            value={reps}
-            onChange={(e) => setReps(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-            data-testid="input-exercise-reps"
-            className="flex-1 rounded-md px-3 py-2 text-sm outline-none"
-            style={{
-              backgroundColor: "transparent",
-              border: `1px solid ${colors.surfaceBorder}`,
-              color: colors.text,
-            }}
-          />
-          <span
-            className="text-[11px] font-mono w-20 text-right tabular-nums"
-            style={{ color: colors.textMuted }}
-            data-testid="exercise-preview-calories"
-          >
-            {previewCalories.toFixed(1)} kcal
-          </span>
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={numericReps <= 0}
-            data-testid="button-add-exercise"
-            className="inline-flex items-center gap-1 px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-opacity disabled:opacity-40"
-            style={{
-              backgroundColor: colors.primary,
-              color: colors.background,
-            }}
-          >
-            <Plus size={12} /> Log
-          </button>
-        </div>
-      </div>
-
       {/* Entries list */}
       <div className="px-4 py-3">
         {entries.length === 0 ? (
@@ -138,14 +53,14 @@ export function ExerciseSection({ entries, totalCalories }: ExerciseSectionProps
             style={{ color: colors.textMuted }}
             data-testid="exercise-empty"
           >
-            No exercise logged yet. Drop in a quick set above.
+            Complete a Daily Flow circuit to log calories burned.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {entries.map((e) => (
               <li
                 key={e.id}
-                data-testid={`exercise-entry-${e.id}`}
+                data-testid={`workout-entry-${e.id}`}
                 className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg"
                 style={{
                   backgroundColor: `${colors.primary}08`,
@@ -153,11 +68,11 @@ export function ExerciseSection({ entries, totalCalories }: ExerciseSectionProps
                 }}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold leading-tight" style={{ color: colors.text }}>
-                    {EXERCISE_LABEL[e.type]}
+                  <p className="text-sm font-bold leading-tight truncate" style={{ color: colors.text }}>
+                    {e.name}
                   </p>
                   <p className="text-[10px] font-mono mt-0.5" style={{ color: colors.textMuted }}>
-                    {e.reps} {e.reps === 1 ? "rep" : "reps"}
+                    {new Date(e.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -167,11 +82,11 @@ export function ExerciseSection({ entries, totalCalories }: ExerciseSectionProps
                   </span>
                   <button
                     type="button"
-                    onClick={() => removeExercise(e.id)}
-                    data-testid={`button-remove-exercise-${e.id}`}
+                    onClick={() => removeWorkout(e.id)}
+                    data-testid={`button-remove-workout-${e.id}`}
                     className="p-1 rounded-md transition-colors"
                     style={{ color: colors.textMuted }}
-                    aria-label="Remove exercise"
+                    aria-label="Remove workout"
                   >
                     <X size={12} />
                   </button>

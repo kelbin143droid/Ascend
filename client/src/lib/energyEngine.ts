@@ -1,26 +1,32 @@
 /**
- * Energy engine — single calculation pipeline that combines nutrition
- * (calories consumed), exercise (calories burned) and the user's daily
- * calorie target into one coherent ledger. Every UI surface that needs
- * an energy number should ask this engine, never re-derive on its own.
+ * Energy engine — pure calorie ledger logic for the day. The engine
+ * combines:
+ *  - nutrition totals (calories consumed from the food log)
+ *  - workout totals  (calories burned from completed Daily Flow circuits)
+ *  - the user's calorie goal
+ * into one coherent ledger. Every UI surface that needs an energy
+ * number should ask this engine, never re-derive on its own.
+ *
+ * Workouts come from a single source — the workout log store — so
+ * there's no double counting. Daily Flow circuits write one summary
+ * entry per completion; the engine simply sums them.
  */
 
 import { computeTotals, readDay, type NutritionTotals } from "./nutritionStore";
 import { calculateTarget, readEnergySettings } from "./energySettingsStore";
 import {
-  computeExerciseTotals,
-  readExercises,
-  type ExerciseTotals,
-} from "./exerciseStore";
-import { readSessions, totalSessionCalories } from "./workoutStore";
+  readWorkouts,
+  totalCaloriesBurned,
+  type WorkoutEntry,
+} from "./workoutLogStore";
 
 export interface DailyEnergy {
   goalCalories: number;
   caloriesConsumed: number;
   caloriesBurned: number;
-  /** consumed minus burned — the actual net intake */
+  /** consumed - burned (can be negative when burns exceed intake) */
   netCalories: number;
-  /** how many kcal are still available; clamped at 0 */
+  /** goal - consumed + burned (positive = under goal, negative = over) */
   remainingCalories: number;
   /** if net intake exceeds the goal, by how much */
   overshootCalories: number;
@@ -28,14 +34,8 @@ export interface DailyEnergy {
 
 export interface EnergyInput {
   nutritionTotals: NutritionTotals;
-  exerciseTotals: ExerciseTotals;
+  workouts: WorkoutEntry[];
   goalCalories: number;
-  /**
-   * Additional kcal burned from completed workout sessions for the day.
-   * Kept separate from `exerciseTotals` so the two systems can remain
-   * independently testable while sharing the same energy ledger.
-   */
-  workoutCaloriesBurned?: number;
 }
 
 /**
@@ -48,20 +48,17 @@ export interface EnergyInput {
 export function calculateDailyEnergy(input: EnergyInput): DailyEnergy {
   const goal = Math.max(0, Math.round(input.goalCalories));
   const consumed = Math.max(0, input.nutritionTotals.calories);
-  const burned = Math.max(
-    0,
-    input.exerciseTotals.totalCalories + (input.workoutCaloriesBurned ?? 0),
-  );
+  const burned = Math.max(0, totalCaloriesBurned(input.workouts));
   const net = consumed - burned;
   const balance = goal - consumed + burned; // > 0 means under goal
   // Round only at the boundary so small per-rep burns aren't erased.
   return {
     goalCalories: goal,
     caloriesConsumed: Math.round(consumed),
-    caloriesBurned: Math.round(burned),
+    caloriesBurned: Math.round(burned * 10) / 10,
     netCalories: Math.round(net),
     remainingCalories: Math.max(0, Math.round(balance)),
-    overshootCalories: Math.max(0, Math.round(-balance)),
+    overshootCalories: balance < 0 ? Math.round(-balance) : 0,
   };
 }
 
@@ -72,13 +69,11 @@ export function calculateDailyEnergy(input: EnergyInput): DailyEnergy {
  */
 export function calculateDailyEnergyForDate(date?: string): DailyEnergy {
   const day = readDay(date);
-  const exercises = readExercises(date);
-  const sessions = readSessions(date);
+  const workouts = readWorkouts(date);
   const goal = calculateTarget(readEnergySettings());
   return calculateDailyEnergy({
     nutritionTotals: computeTotals(day.entries),
-    exerciseTotals: computeExerciseTotals(exercises),
+    workouts,
     goalCalories: goal,
-    workoutCaloriesBurned: totalSessionCalories(sessions),
   });
 }

@@ -173,9 +173,9 @@ export function setWaterGoal(ml: number, date: string = todayIso()): NutritionDa
 
 /* ─────────────── Burned calories ─────────────── */
 /**
- * @deprecated Burned calories are now derived from `exerciseStore` via the
- * energy engine — that is the single source of truth. This setter is kept
- * for backward compatibility but should not be used by new code.
+ * @deprecated Burned calories are now derived from `workoutLogStore` via
+ * the energy engine — that is the single source of truth. This setter is
+ * kept for backward compatibility but should not be used by new code.
  */
 export function setBurnedCalories(kcal: number, date: string = todayIso()): NutritionDay {
   const day = readDay(date);
@@ -185,8 +185,8 @@ export function setBurnedCalories(kcal: number, date: string = todayIso()): Nutr
 }
 
 /**
- * @deprecated See `setBurnedCalories`. Use `addExercise` from
- * `exerciseStore` instead so the burn flows through the energy engine.
+ * @deprecated See `setBurnedCalories`. Use `addWorkout` from
+ * `workoutLogStore` instead so the burn flows through the energy engine.
  */
 export function addBurnedCalories(kcal: number, date: string = todayIso()): NutritionDay {
   const day = readDay(date);
