@@ -18,11 +18,10 @@ export function HydrationCard({ waterIntake, waterGoal }: HydrationCardProps) {
   return (
     <div
       data-testid="hydration-card"
-      className="w-full rounded-2xl p-4"
+      className="w-full rounded-2xl p-5"
       style={{
         backgroundColor: colors.surface,
         border: `1px solid ${colors.surfaceBorder}`,
-        boxShadow: `0 0 24px ${accent}18`,
       }}
     >
       <div className="flex items-center justify-between mb-2">

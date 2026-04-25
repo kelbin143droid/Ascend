@@ -4,13 +4,22 @@ import type { NutritionTotals } from "@/lib/nutritionStore";
 interface DailySummaryProps {
   totals: NutritionTotals;
   calorieGoal?: number;
+  burned?: number;
 }
 
-export function DailySummary({ totals, calorieGoal = 2200 }: DailySummaryProps) {
+/**
+ * Cronometer-style summary: Consumed / Remaining / Burned plus a clean macro
+ * grid. Glow has been pulled back so numbers carry the visual weight.
+ */
+export function DailySummary({ totals, calorieGoal = 2200, burned = 0 }: DailySummaryProps) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const primary = colors.primary;
-  const pct = Math.min(100, Math.max(0, (totals.calories / calorieGoal) * 100));
+
+  const consumed = totals.calories;
+  const remaining = Math.max(0, calorieGoal - consumed + burned);
+  const overshoot = Math.max(0, consumed - burned - calorieGoal);
+  const pct = Math.min(100, Math.max(0, ((consumed - burned) / Math.max(1, calorieGoal)) * 100));
 
   const macros: { key: string; label: string; value: number; color: string }[] = [
     { key: "p", label: "Protein", value: totals.protein, color: "#22c55e" },
@@ -21,43 +30,72 @@ export function DailySummary({ totals, calorieGoal = 2200 }: DailySummaryProps) 
   return (
     <div
       data-testid="nutrition-daily-summary"
-      className="w-full rounded-2xl p-4"
+      className="w-full rounded-2xl p-5"
       style={{
         backgroundColor: colors.surface,
         border: `1px solid ${colors.surfaceBorder}`,
-        boxShadow: `0 0 24px ${colors.primaryGlow}18`,
       }}
     >
-      <div className="flex items-end justify-between mb-2">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.2em]" style={{ color: colors.textMuted }}>
-            Today
+      <div className="flex items-baseline justify-between mb-1">
+        <p className="text-[10px] uppercase tracking-[0.25em] font-semibold" style={{ color: colors.textMuted }}>
+          Today
+        </p>
+        <p className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
+          Goal {calorieGoal} kcal
+        </p>
+      </div>
+
+      {/* Three-column ledger: Consumed · Remaining · Burned */}
+      <div className="grid grid-cols-3 gap-3 mt-2 mb-4">
+        <div data-testid="summary-consumed">
+          <p className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: colors.textMuted }}>
+            Consumed
           </p>
-          <p className="text-2xl font-bold leading-none" style={{ color: primary }} data-testid="text-total-calories">
-            {totals.calories}
-            <span className="text-xs font-mono ml-1" style={{ color: colors.textMuted }}>kcal</span>
+          <p className="text-2xl font-bold leading-tight tabular-nums" style={{ color: colors.text }}>
+            {consumed}
           </p>
+          <p className="text-[10px] font-mono" style={{ color: colors.textMuted }}>kcal</p>
         </div>
-        <div className="text-right">
-          <p className="text-[10px] uppercase tracking-[0.2em]" style={{ color: colors.textMuted }}>Goal</p>
-          <p className="text-sm font-mono" style={{ color: colors.text }}>{calorieGoal}</p>
+
+        <div data-testid="summary-remaining" className="border-l border-r px-3" style={{ borderColor: colors.surfaceBorder }}>
+          <p className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: colors.textMuted }}>
+            {overshoot > 0 ? "Over" : "Remaining"}
+          </p>
+          <p
+            className="text-2xl font-bold leading-tight tabular-nums"
+            style={{ color: overshoot > 0 ? "#ef4444" : primary }}
+          >
+            {overshoot > 0 ? overshoot : remaining}
+          </p>
+          <p className="text-[10px] font-mono" style={{ color: colors.textMuted }}>kcal</p>
+        </div>
+
+        <div data-testid="summary-burned">
+          <p className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: colors.textMuted }}>
+            Burned
+          </p>
+          <p className="text-2xl font-bold leading-tight tabular-nums" style={{ color: colors.text }}>
+            {burned}
+          </p>
+          <p className="text-[10px] font-mono" style={{ color: colors.textMuted }}>kcal</p>
         </div>
       </div>
 
+      {/* Progress bar */}
       <div
         className="w-full h-1.5 rounded-full overflow-hidden mb-4"
-        style={{ backgroundColor: `${primary}18` }}
+        style={{ backgroundColor: `${primary}14` }}
       >
         <div
           className="h-full rounded-full transition-[width] duration-500"
           style={{
             width: `${pct}%`,
-            background: primary,
-            boxShadow: `0 0 8px ${colors.primaryGlow}`,
+            background: overshoot > 0 ? "#ef4444" : primary,
           }}
         />
       </div>
 
+      {/* Macros */}
       <div className="grid grid-cols-3 gap-2">
         {macros.map((m) => (
           <div
@@ -65,14 +103,14 @@ export function DailySummary({ totals, calorieGoal = 2200 }: DailySummaryProps) 
             className="rounded-lg px-2.5 py-2"
             style={{
               backgroundColor: `${m.color}10`,
-              border: `1px solid ${m.color}28`,
+              border: `1px solid ${m.color}22`,
             }}
             data-testid={`macro-${m.label.toLowerCase()}`}
           >
             <p className="text-[9px] uppercase tracking-wider font-bold" style={{ color: m.color }}>
               {m.label}
             </p>
-            <p className="text-base font-mono font-bold" style={{ color: colors.text }}>
+            <p className="text-base font-mono font-bold tabular-nums" style={{ color: colors.text }}>
               {m.value}
               <span className="text-[10px] ml-0.5" style={{ color: colors.textMuted }}>g</span>
             </p>

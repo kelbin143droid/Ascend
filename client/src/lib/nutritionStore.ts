@@ -7,6 +7,16 @@
  * any subscribed view can re-render without a global store dependency.
  */
 
+export type MealType = "breakfast" | "lunch" | "dinner" | "snacks";
+
+export const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snacks"];
+export const MEAL_LABEL: Record<MealType, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  snacks: "Snacks",
+};
+
 export interface NutritionEntry {
   id: string;
   name: string;
@@ -16,6 +26,7 @@ export interface NutritionEntry {
   fat: number;
   quantity: number;        // multiplier applied to the macros above
   servingLabel?: string;   // e.g. "1 cup (158g)" — display only
+  mealType?: MealType;     // optional grouping; defaults to "snacks"
   addedAt: number;         // epoch ms
 }
 
@@ -24,6 +35,21 @@ export interface NutritionDay {
   entries: NutritionEntry[];
   waterIntake: number;     // ml consumed today
   waterGoal: number;       // ml goal (default 3000)
+  burnedCalories: number;  // optional manual / future-tracked exercise burn
+}
+
+/** Pick a sensible default meal bucket from current local time. */
+export function defaultMealForNow(d: Date = new Date()): MealType {
+  const h = d.getHours();
+  if (h >= 4 && h < 11) return "breakfast";
+  if (h >= 11 && h < 16) return "lunch";
+  if (h >= 16 && h < 21) return "dinner";
+  return "snacks";
+}
+
+/** Treat any legacy entry (no mealType) as a snack so it still renders. */
+export function entryMealType(e: NutritionEntry): MealType {
+  return e.mealType ?? "snacks";
 }
 
 const STORAGE_PREFIX = "ascend_nutrition_";
@@ -42,7 +68,7 @@ function storageKey(date: string): string {
 }
 
 export function readDay(date: string = todayIso()): NutritionDay {
-  const empty: NutritionDay = { date, entries: [], waterIntake: 0, waterGoal: DEFAULT_WATER_GOAL };
+  const empty: NutritionDay = { date, entries: [], waterIntake: 0, waterGoal: DEFAULT_WATER_GOAL, burnedCalories: 0 };
   try {
     const raw = localStorage.getItem(storageKey(date));
     if (!raw) return empty;
@@ -53,6 +79,7 @@ export function readDay(date: string = todayIso()): NutritionDay {
       entries: parsed.entries,
       waterIntake: typeof parsed.waterIntake === "number" ? parsed.waterIntake : 0,
       waterGoal: typeof parsed.waterGoal === "number" ? parsed.waterGoal : DEFAULT_WATER_GOAL,
+      burnedCalories: typeof parsed.burnedCalories === "number" ? parsed.burnedCalories : 0,
     };
   } catch {
     return empty;
@@ -140,6 +167,22 @@ export function setWaterIntake(ml: number, date: string = todayIso()): Nutrition
 export function setWaterGoal(ml: number, date: string = todayIso()): NutritionDay {
   const day = readDay(date);
   day.waterGoal = Math.max(500, Math.min(MAX_WATER_INTAKE, ml));
+  writeDay(day);
+  return day;
+}
+
+/* ─────────────── Burned calories ─────────────── */
+export function setBurnedCalories(kcal: number, date: string = todayIso()): NutritionDay {
+  const day = readDay(date);
+  day.burnedCalories = Math.max(0, Math.min(5000, Math.round(kcal)));
+  writeDay(day);
+  return day;
+}
+
+export function addBurnedCalories(kcal: number, date: string = todayIso()): NutritionDay {
+  const day = readDay(date);
+  const next = (day.burnedCalories ?? 0) + Math.round(kcal);
+  day.burnedCalories = Math.max(0, Math.min(5000, next));
   writeDay(day);
   return day;
 }

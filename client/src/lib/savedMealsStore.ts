@@ -6,7 +6,7 @@
  * global store dependency.
  */
 
-import { addEntry, computeTotals } from "./nutritionStore";
+import { addEntry, computeTotals, type MealType } from "./nutritionStore";
 
 export interface SavedMealFood {
   name: string;
@@ -100,7 +100,7 @@ export function deleteSavedMeal(id: string): void {
 }
 
 /** Add every food in a saved meal to today's nutrition log. */
-export function logSavedMealToToday(mealId: string): number {
+export function logSavedMealToToday(mealId: string, mealType?: MealType): number {
   const meal = getSavedMeal(mealId);
   if (!meal) return 0;
   for (const f of meal.foods) {
@@ -112,6 +112,7 @@ export function logSavedMealToToday(mealId: string): number {
       fat: f.fat,
       quantity: f.quantity,
       servingLabel: f.servingLabel,
+      mealType,
     });
   }
   return meal.foods.length;
