@@ -275,6 +275,7 @@ export function buildPhase1Activities(
           durationSeconds: st.plankSeconds,
           voiceText: `Plank hold. ${st.plankSeconds} seconds. Straight line.`,
           videoSrc: "/videos/plank_hold_loop.mp4",
+          loop: false,
         },
         // ── Break between rounds
         {
@@ -323,6 +324,7 @@ export function buildPhase1Activities(
           durationSeconds: st.plankSeconds,
           voiceText: `Final plank. ${st.plankSeconds} seconds. Squeeze your core.`,
           videoSrc: "/videos/plank_hold_loop.mp4",
+          loop: false,
         },
         {
           id: "strength_done",
