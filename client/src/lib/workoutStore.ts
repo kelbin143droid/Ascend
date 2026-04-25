@@ -71,6 +71,9 @@ export function addSession(input: {
   date?: string;
 }): WorkoutSession {
   const date = input.date ?? todayIso();
+  // First time the user completes this template, seed its progression
+  // clock so weekly increases start from this date.
+  markTemplateStarted(input.templateId, date);
   const session: WorkoutSession = {
     id: `wo_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
     date,
@@ -129,22 +132,31 @@ function writeProgressionMap(map: ProgressionMap): void {
 }
 
 /**
- * Get the ISO date the user first started this template; lazily seeds
- * "today" the first time it's asked for so progression begins at week 0.
+ * Get the ISO date the user first started this template, or null if it
+ * has never been started. Pure read — does not seed, so browsing the
+ * template list never advances progression.
  */
-export function getTemplateStartDate(templateId: string): string {
+export function getTemplateStartDate(templateId: string): string | null {
   const map = readProgressionMap();
-  if (map[templateId]) return map[templateId];
-  const today = todayIso();
-  map[templateId] = today;
+  return map[templateId] ?? null;
+}
+
+/**
+ * Seed the progression "start date" for a template the first time the
+ * user actually completes a session of it. Subsequent calls are no-ops.
+ */
+export function markTemplateStarted(templateId: string, date: string = todayIso()): void {
+  const map = readProgressionMap();
+  if (map[templateId]) return;
+  map[templateId] = date;
   writeProgressionMap(map);
-  return today;
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export function weeksElapsed(templateId: string, now: Date = new Date()): number {
   const start = getTemplateStartDate(templateId);
+  if (!start) return 0; // un-started template → still on week 1 (base values)
   const startDate = new Date(`${start}T00:00:00`);
   const todayDate = new Date(`${todayIso(now)}T00:00:00`);
   const diffMs = todayDate.getTime() - startDate.getTime();

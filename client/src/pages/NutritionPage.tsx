@@ -33,6 +33,12 @@ import {
   subscribeExercises,
   type ExerciseEntry,
 } from "@/lib/exerciseStore";
+import {
+  readSessions,
+  subscribeWorkouts,
+  totalSessionCalories,
+  type WorkoutSession,
+} from "@/lib/workoutStore";
 import { calculateDailyEnergy } from "@/lib/energyEngine";
 
 type Tab = "log" | "energy" | "meals";
@@ -49,6 +55,7 @@ export default function NutritionPage() {
   const [activeTab, setActiveTab] = useState<Tab>("log");
   const [day, setDay] = useState<NutritionDay>(() => readDay());
   const [exercises, setExercises] = useState<ExerciseEntry[]>(() => readExercises());
+  const [workouts, setWorkouts] = useState<WorkoutSession[]>(() => readSessions());
   const [createOpen, setCreateOpen] = useState(false);
 
   // Selected meal bucket for the next added entry — drives FoodSearch / QuickAdd
@@ -75,16 +82,24 @@ export default function NutritionPage() {
     return subscribeExercises(refresh);
   }, []);
 
+  useEffect(() => {
+    const refresh = () => setWorkouts(readSessions(todayIso()));
+    refresh();
+    return subscribeWorkouts(refresh);
+  }, []);
+
   const totals = useMemo(() => computeTotals(day.entries), [day.entries]);
   const exerciseTotals = useMemo(() => computeExerciseTotals(exercises), [exercises]);
+  const workoutBurned = useMemo(() => totalSessionCalories(workouts), [workouts]);
   const energy = useMemo(
     () =>
       calculateDailyEnergy({
         nutritionTotals: totals,
         exerciseTotals,
         goalCalories: calorieGoal,
+        workoutCaloriesBurned: workoutBurned,
       }),
-    [totals, exerciseTotals, calorieGoal],
+    [totals, exerciseTotals, workoutBurned, calorieGoal],
   );
 
   const entriesByMeal = useMemo(() => {

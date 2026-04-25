@@ -31,6 +31,8 @@ import CalendarPage from "@/pages/CalendarPage";
 import SectographPage from "@/pages/SectographPage";
 import HabitsPage from "@/pages/HabitsPage";
 import NutritionPage from "@/pages/NutritionPage";
+import WorkoutsPage from "@/pages/WorkoutsPage";
+import WorkoutSessionPage from "@/pages/WorkoutSessionPage";
 import GuidedSessionPage from "@/pages/GuidedSessionPage";
 import WakeFlowPage from "@/pages/WakeFlowPage";
 import NightFlowPage from "@/pages/NightFlowPage";
@@ -69,6 +71,8 @@ function Router() {
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/sectograph" component={SectographPage} />
       <Route path="/nutrition" component={NutritionPage} />
+      <Route path="/workouts" component={WorkoutsPage} />
+      <Route path="/workouts/:id" component={WorkoutSessionPage} />
       <Route path="/" component={HomePage} />
       <Route path="/schedule" component={StatusPage} />
       <Route path="/train" component={TrainPage} />
