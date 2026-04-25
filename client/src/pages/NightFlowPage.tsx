@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -13,15 +13,27 @@ import {
   ChevronRight,
   ArrowRight,
   Utensils,
+  Coffee,
+  Wine,
+  Settings2,
 } from "lucide-react";
 import {
   getState,
   markFoodCutoffHeld,
   markNightCompleted,
   recordSkip,
+  setTargetBedTime,
+  setCaffeineHoursAgo,
+  setHadAlcohol,
   type SkipReason,
 } from "@/lib/vitalityFlowStore";
-import { getNightPlan } from "@/lib/sleepModeStore";
+import { getNightPlan, type NightPlan } from "@/lib/sleepModeStore";
+import {
+  bedtimeForCycles,
+  formatHM,
+  recommendedCycles,
+  type CycleCount,
+} from "@/lib/remCycleEngine";
 
 type Phase = number;
 
@@ -137,12 +149,59 @@ function StepActions({
 }
 
 /* ─────────────── Phase 1: Wind-down initiation ─────────────── */
-function Phase1Init({ onContinue }: { onContinue: () => void }) {
+
+interface CycleTarget {
+  cycles: CycleCount;
+  bedtime: Date;
+  /** Minutes from now until the target bedtime (negative = already past). */
+  minutesAway: number;
+}
+
+function resolveCycleTarget(plan: NightPlan): CycleTarget | null {
+  if (!plan.wakeTime) return null;
+  const now = new Date();
+  let cycles: CycleCount;
+  if (plan.cycles) {
+    cycles = plan.cycles;
+  } else {
+    const best = recommendedCycles(plan.wakeTime, now);
+    cycles = best === 4 || best === 5 || best === 6 ? best : 5;
+  }
+  const bedtime = bedtimeForCycles(plan.wakeTime, cycles, now);
+  return {
+    cycles,
+    bedtime,
+    minutesAway: Math.round((bedtime.getTime() - now.getTime()) / 60_000),
+  };
+}
+
+function Phase1Init({
+  onContinue,
+  plan,
+  target,
+}: {
+  onContinue: () => void;
+  plan: NightPlan;
+  target: CycleTarget | null;
+}) {
+  const [, navigate] = useLocation();
   const [show, setShow] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  const onTime = target ? target.minutesAway >= -10 : false;
+  const headline = !target
+    ? "Start winding down"
+    : onTime
+    ? `${target.cycles} REM cycles tonight`
+    : `Bedtime target passed`;
+  const subline = !target
+    ? "The day is closing. Let your system rest."
+    : onTime
+    ? `Asleep by ${formatHM(target.bedtime)} → wake at ${formatHM(new Date(target.bedtime.getTime() + (target.cycles * 90 + 14) * 60_000))}.`
+    : `You wanted to be asleep ${Math.abs(target.minutesAway)} min ago. Aim for the next 90-minute boundary.`;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-6">
@@ -153,7 +212,7 @@ function Phase1Init({ onContinue }: { onContinue: () => void }) {
         }
       `}</style>
       <div
-        className="relative w-40 h-40 mb-8 transition-all duration-[1500ms] ease-out"
+        className="relative w-40 h-40 mb-6 transition-all duration-[1500ms] ease-out"
         style={{ opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(12px)" }}
       >
         <div
@@ -175,7 +234,7 @@ function Phase1Init({ onContinue }: { onContinue: () => void }) {
         Night Flow
       </p>
       <h1
-        className="text-3xl font-bold mb-2 transition-all duration-1000 delay-300"
+        className="text-2xl sm:text-3xl font-bold mb-2 transition-all duration-1000 delay-300"
         style={{
           color: "#e0e7ff",
           opacity: show ? 1 : 0,
@@ -184,14 +243,77 @@ function Phase1Init({ onContinue }: { onContinue: () => void }) {
         }}
         data-testid="night-greeting"
       >
-        Start winding down
+        {headline}
       </h1>
       <p
-        className="text-sm mb-10 transition-opacity duration-1000 delay-500"
+        className="text-sm max-w-xs mb-6 transition-opacity duration-1000 delay-500"
         style={{ color: "rgba(224,231,255,0.7)", opacity: show ? 1 : 0 }}
+        data-testid="night-target-subline"
       >
-        The day is closing. Let your system rest.
+        {subline}
       </p>
+
+      {/* Cycle math card */}
+      {target && (
+        <div
+          className="w-full max-w-sm rounded-xl px-4 py-3 mb-5 transition-opacity duration-1000 delay-700"
+          style={{
+            backgroundColor: "rgba(99,102,241,0.08)",
+            border: "1px solid rgba(99,102,241,0.25)",
+            opacity: show ? 1 : 0,
+          }}
+          data-testid="cycle-target-card"
+        >
+          <div className="flex items-center justify-between text-[10px] uppercase tracking-wider mb-1.5"
+               style={{ color: "rgba(165,180,252,0.7)" }}>
+            <span>Tonight's target</span>
+            <span>{target.cycles} × 90m + 14m</span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[11px]" style={{ color: "rgba(224,231,255,0.65)" }}>
+              Asleep by
+            </span>
+            <span
+              className="text-lg font-mono font-bold"
+              style={{ color: "#e0e7ff" }}
+              data-testid="text-tonight-bedtime"
+            >
+              {formatHM(target.bedtime)}
+            </span>
+          </div>
+          {onTime ? (
+            target.minutesAway > 0 && target.minutesAway < 30 ? (
+              <p className="text-[10px] mt-1.5" style={{ color: "#fbbf24" }}>
+                {target.minutesAway} min away — start winding down now.
+              </p>
+            ) : null
+          ) : (
+            <p className="text-[10px] mt-1.5" style={{ color: "#fbbf24" }}>
+              Aim for at least 4 cycles to protect REM.
+            </p>
+          )}
+        </div>
+      )}
+
+      {!plan.wakeTime && (
+        <button
+          type="button"
+          onClick={() => navigate("/sleep-settings")}
+          className="text-[10px] uppercase tracking-[0.2em] mb-4 px-3 py-1.5 rounded-full transition-opacity"
+          style={{
+            color: "#a5b4fc",
+            border: "1px solid rgba(99,102,241,0.3)",
+            backgroundColor: "rgba(99,102,241,0.06)",
+            opacity: show ? 1 : 0,
+            transitionDelay: "800ms",
+          }}
+          data-testid="button-set-wake-time"
+        >
+          <Settings2 size={11} className="inline mr-1" />
+          Set wake time for cycle math
+        </button>
+      )}
+
       <button
         type="button"
         onClick={onContinue}
@@ -207,6 +329,98 @@ function Phase1Init({ onContinue }: { onContinue: () => void }) {
       >
         Begin <ArrowRight size={12} className="inline ml-1" />
       </button>
+    </div>
+  );
+}
+
+/* ─────────────── Optional REM micro-prompt ─────────────── */
+
+const CAFFEINE_OPTIONS = [
+  { value: 0, label: "Just had" },
+  { value: 4, label: "<4h" },
+  { value: 8, label: "4-8h" },
+  { value: 12, label: ">8h" },
+];
+
+function RemPromptRow() {
+  const [caf, setCaf] = useState<number | null>(null);
+  const [alc, setAlc] = useState<boolean | null>(null);
+  return (
+    <div
+      className="w-full max-w-sm rounded-xl p-3 mb-5"
+      style={{
+        backgroundColor: "rgba(15,23,42,0.55)",
+        border: "1px solid rgba(99,102,241,0.18)",
+      }}
+      data-testid="rem-prompt-row"
+    >
+      <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: "rgba(165,180,252,0.7)" }}>
+        Quick check (optional)
+      </p>
+      <div className="flex items-center gap-2 mb-2">
+        <Coffee size={12} style={{ color: "#f59e0b" }} />
+        <span className="text-[11px]" style={{ color: "rgba(224,231,255,0.7)" }}>
+          Last caffeine
+        </span>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5 mb-3">
+        {CAFFEINE_OPTIONS.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => {
+              setCaf(o.value);
+              setCaffeineHoursAgo(o.value);
+            }}
+            data-testid={`caf-${o.value}`}
+            className="rounded-md py-1.5 text-[10px] font-bold"
+            style={{
+              backgroundColor: caf === o.value ? "rgba(245,158,11,0.2)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${caf === o.value ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
+              color: caf === o.value ? "#fbbf24" : "rgba(224,231,255,0.55)",
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Wine size={12} style={{ color: "#ec4899" }} />
+          <span className="text-[11px]" style={{ color: "rgba(224,231,255,0.7)" }}>
+            Alcohol tonight?
+          </span>
+        </div>
+        <div className="flex gap-1.5">
+          {[
+            { v: false, label: "No" },
+            { v: true, label: "Yes" },
+          ].map((b) => (
+            <button
+              key={String(b.v)}
+              type="button"
+              onClick={() => {
+                setAlc(b.v);
+                setHadAlcohol(b.v);
+              }}
+              data-testid={`alc-${b.v}`}
+              className="rounded-md px-3 py-1 text-[10px] font-bold"
+              style={{
+                backgroundColor: alc === b.v ? "rgba(236,72,153,0.2)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${alc === b.v ? "#ec4899" : "rgba(255,255,255,0.08)"}`,
+                color: alc === b.v ? "#f472b6" : "rgba(224,231,255,0.55)",
+              }}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {alc === true && (
+        <p className="text-[10px] mt-2" style={{ color: "#f472b6" }}>
+          Alcohol fragments REM. Try cutting it 3h before bed.
+        </p>
+      )}
     </div>
   );
 }
@@ -237,7 +451,7 @@ function Phase2FoodCutoff({ onDone, onSkip }: { onDone: () => void; onSkip: () =
         No eating for {minutes} min before bed
       </h2>
       <p className="text-xs text-center mb-5 max-w-xs" style={{ color: colors.textMuted }}>
-        Late food disrupts deep sleep. Hold the line tonight.
+        Late food fragments REM. Hold the line tonight to protect dream sleep.
       </p>
       <div
         className="w-full rounded-xl p-3 mb-5 flex items-center justify-between"
@@ -286,7 +500,7 @@ function Phase3LowStim({ onDone, onSkip }: { onDone: () => void; onSkip: () => v
         Reduce stimulation
       </h2>
       <p className="text-xs text-center mb-5 max-w-xs" style={{ color: colors.textMuted }}>
-        Close social media. Skip the dopamine apps.
+        Bright screens delay melatonin and push REM later. Dim things down.
       </p>
       <div
         className="w-full rounded-xl p-3 mb-5 flex items-center justify-between"
@@ -401,6 +615,8 @@ function Phase4Priming({ onDone, onSkip }: { onDone: () => void; onSkip: () => v
   const [picked, setPicked] = useState<string | null>(null);
   const [reflection, setReflection] = useState("");
   const [breathingActive, setBreathingActive] = useState(false);
+  // Tiny REM rationale shown above the priming options.
+  const remTip = "A calm nervous system enters REM faster. Pick what feels easiest tonight.";
 
   const handleAdvance = () => {
     if (picked === "reflection" && reflection.trim()) {
@@ -435,8 +651,11 @@ function Phase4Priming({ onDone, onSkip }: { onDone: () => void; onSkip: () => v
       <h2 className="text-xl font-bold mb-1 text-center" style={{ color: colors.text }}>
         Pick how to settle
       </h2>
-      <p className="text-xs text-center mb-5 max-w-xs" style={{ color: colors.textMuted }}>
+      <p className="text-xs text-center mb-2 max-w-xs" style={{ color: colors.textMuted }}>
         Choose one. Each takes 1-3 minutes.
+      </p>
+      <p className="text-[10px] text-center mb-5 max-w-xs italic" style={{ color: "rgba(165,180,252,0.6)" }} data-testid="text-rem-tip">
+        {remTip}
       </p>
       <div className="w-full grid grid-cols-1 gap-2 mb-4">
         {PRIMING_OPTIONS.map((o) => {
@@ -555,33 +774,14 @@ export default function NightFlowPage() {
 
   const handleSkip = (label: string) => setSkipFor(label);
 
-  const onSkipReason = (reason: SkipReason) => {
-    if (skipFor) recordSkip(skipFor, reason);
-    const wasPrimingSkip = skipFor === "priming";
-    setSkipFor(null);
-    if (wasPrimingSkip) {
-      finalize();
-    } else {
-      setPhase((p) => (p < 4 ? p + 1 : 5));
-    }
-  };
-
   // Resolve which phases run tonight from the active sleep mode.
   const plan = getNightPlan();
+  const target = useMemo(() => resolveCycleTarget(plan), [plan.wakeTime?.hour, plan.wakeTime?.minute, plan.cycles]);
   const enabledPhaseCount =
     1 + // Phase 1 (intro) always runs
     (plan.foodCutoff ? 1 : 0) +
     (plan.lowStimulation ? 1 : 0) +
     (plan.sleepPriming ? 1 : 0);
-
-  // Minimal mode (or custom-with-everything-off): no full flow exists.
-  // Bounce the user back to settings instead of stranding them on an empty intro.
-  useEffect(() => {
-    if (!plan.showFullFlow) {
-      navigate("/sleep-settings");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan.showFullFlow]);
 
   // Skip to the next ENABLED phase based on the plan.
   const nextEnabledPhase = (from: Phase): Phase => {
@@ -595,6 +795,37 @@ export default function NightFlowPage() {
     }
     return 5; // jump to completion
   };
+
+  const onSkipReason = (reason: SkipReason) => {
+    if (skipFor) recordSkip(skipFor, reason);
+    const wasPrimingSkip = skipFor === "priming";
+    setSkipFor(null);
+    if (wasPrimingSkip) {
+      finalize();
+      return;
+    }
+    // Honor the active plan: never route the user into a disabled phase.
+    const next = nextEnabledPhase(phase);
+    if (next >= 5) finalize();
+    else setPhase(next);
+  };
+
+  // Snapshot tonight's target bedtime once so the morning debrief can compare.
+  const snapshotted = useRef(false);
+  useEffect(() => {
+    if (snapshotted.current || !target) return;
+    setTargetBedTime(target.bedtime.getTime());
+    snapshotted.current = true;
+  }, [target]);
+
+  // Minimal mode (or custom-with-everything-off): no full flow exists.
+  // Bounce the user back to settings instead of stranding them on an empty intro.
+  useEffect(() => {
+    if (!plan.showFullFlow) {
+      navigate("/sleep-settings");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.showFullFlow]);
 
   const onAdvanceFromPhase = () => {
     const next = nextEnabledPhase(phase);
@@ -643,7 +874,16 @@ export default function NightFlowPage() {
       )}
 
       <div className={phase > 1 && phase < 5 ? "pt-12" : ""}>
-        {phase === 1 && <Phase1Init onContinue={onAdvanceFromPhase} />}
+        {phase === 1 && (
+          <>
+            <Phase1Init onContinue={onAdvanceFromPhase} plan={plan} target={target} />
+            {plan.remPromptsEnabled && (
+              <div className="px-6 -mt-4 pb-6 flex justify-center">
+                <RemPromptRow />
+              </div>
+            )}
+          </>
+        )}
         {phase === 2 && <Phase2FoodCutoff onDone={onAdvanceFromPhase} onSkip={() => handleSkip("food_cutoff")} />}
         {phase === 3 && <Phase3LowStim onDone={onAdvanceFromPhase} onSkip={() => handleSkip("low_stim")} />}
         {phase === 4 && <Phase4Priming onDone={goToCompletion} onSkip={() => handleSkip("priming")} />}

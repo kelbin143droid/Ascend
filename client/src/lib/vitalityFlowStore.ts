@@ -20,6 +20,8 @@ export type SkipReason =
   | "outside_routine"
   | "other";
 
+export type DreamRecall = "none" | "faint" | "vivid";
+
 export interface DailyFlowRecord {
   date: string;                // YYYY-MM-DD
   wakeCompleted: boolean;
@@ -34,6 +36,16 @@ export interface DailyFlowRecord {
   bedTime?: number;            // epoch ms (when night flow finished)
   wakeTime?: number;           // epoch ms (when wake flow started)
   skipped?: { phase: string; reason: SkipReason }[];
+  /** Subjective REM recall logged by the morning debrief. */
+  dreamRecall?: DreamRecall;
+  /** Self-reported sleep quality 1-5 from the morning debrief. */
+  sleepQuality?: number;
+  /** Target bedtime computed from cycle settings, snapshotted when night flow began. */
+  targetBedTime?: number;
+  /** Hours since last caffeine when night flow ran. */
+  caffeineHoursAgo?: number;
+  /** True if user logged alcohol consumption tonight. */
+  hadAlcohol?: boolean;
 }
 
 export interface VitalityFlowState {
@@ -230,6 +242,49 @@ export function markNightCompleted(): VitalityFlowState {
   return state;
 }
 
+/* ─────────────── REM-specific setters ─────────────── */
+
+/** Snapshot tonight's target bedtime so the morning debrief can compare. */
+export function setTargetBedTime(targetMs: number): void {
+  mutateToday((rec) => {
+    rec.targetBedTime = targetMs;
+    return rec;
+  });
+}
+
+export function setCaffeineHoursAgo(hours: number): void {
+  mutateToday((rec) => {
+    rec.caffeineHoursAgo = hours;
+    return rec;
+  });
+}
+
+export function setHadAlcohol(value: boolean): void {
+  mutateToday((rec) => {
+    rec.hadAlcohol = value;
+    return rec;
+  });
+}
+
+/**
+ * Log this morning's dream recall. Stored against TODAY (the morning the
+ * Wake Flow ran), not the previous night, so debriefs are simple to read.
+ */
+export function setDreamRecall(value: DreamRecall): void {
+  mutateToday((rec) => {
+    rec.dreamRecall = value;
+    return rec;
+  });
+}
+
+export function setSleepQuality(value: number): void {
+  const clamped = Math.max(1, Math.min(5, Math.round(value)));
+  mutateToday((rec) => {
+    rec.sleepQuality = clamped;
+    return rec;
+  });
+}
+
 /* ─────────────── Insights ─────────────── */
 
 export interface SleepInsight {
@@ -282,6 +337,69 @@ export function computeSleepInsight(days = 7): SleepInsight {
     averageWakeTime: wakes.length ? fmtMin(avg(wakes)) : null,
     consistencyScore: score,
     daysAnalyzed: Math.max(beds.length, wakes.length),
+  };
+}
+
+/* ─────────────── REM insights ─────────────── */
+
+export interface RemInsight {
+  daysAnalyzed: number;
+  recallCounts: { none: number; faint: number; vivid: number };
+  /** Average self-reported sleep quality (1-5), null if no logs. */
+  averageQuality: number | null;
+  /** Average bedtime delta vs target (minutes; positive = late). */
+  averageBedDeltaMin: number | null;
+  /** Count of nights where bedtime was >30 min later than target. */
+  lateNights: number;
+  /** Approximate average completed cycles, null if no logs. */
+  averageCycles: number | null;
+  /** Trailing 7-day count of vivid recalls — used by adaptive engine. */
+  vividRecallRate: number;  // 0..1
+}
+
+const CYCLE_MIN_LOCAL = 90;
+const SLEEP_LATENCY_MIN_LOCAL = 14;
+
+export function computeRemInsight(days = 7): RemInsight {
+  const state = read();
+  const dates = Object.keys(state.history).sort().slice(-days);
+
+  const recallCounts = { none: 0, faint: 0, vivid: 0 };
+  const qualities: number[] = [];
+  const deltas: number[] = [];
+  const cycles: number[] = [];
+  let lateNights = 0;
+  let recallTotal = 0;
+
+  for (const d of dates) {
+    const rec = state.history[d];
+    if (!rec) continue;
+    if (rec.dreamRecall) {
+      recallCounts[rec.dreamRecall] += 1;
+      recallTotal += 1;
+    }
+    if (typeof rec.sleepQuality === "number") qualities.push(rec.sleepQuality);
+    if (rec.bedTime && rec.targetBedTime) {
+      const delta = Math.round((rec.bedTime - rec.targetBedTime) / 60_000);
+      deltas.push(delta);
+      if (delta > 30) lateNights += 1;
+    }
+    if (rec.bedTime && rec.wakeTime && rec.wakeTime > rec.bedTime) {
+      const totalMin = (rec.wakeTime - rec.bedTime) / 60_000 - SLEEP_LATENCY_MIN_LOCAL;
+      if (totalMin > 0) cycles.push(totalMin / CYCLE_MIN_LOCAL);
+    }
+  }
+
+  const avg = (xs: number[]) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+
+  return {
+    daysAnalyzed: dates.length,
+    recallCounts,
+    averageQuality: qualities.length ? Math.round((avg(qualities) ?? 0) * 10) / 10 : null,
+    averageBedDeltaMin: deltas.length ? Math.round(avg(deltas) ?? 0) : null,
+    lateNights,
+    averageCycles: cycles.length ? Math.round((avg(cycles) ?? 0) * 10) / 10 : null,
+    vividRecallRate: recallTotal > 0 ? recallCounts.vivid / recallTotal : 0,
   };
 }
 

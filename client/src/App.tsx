@@ -10,6 +10,7 @@ import { RolesProvider } from "@/context/RolesContext";
 import { WeeklyGoalsProvider, useWeeklyGoals } from "@/context/WeeklyGoalsContext";
 import { TasksProvider } from "@/context/TasksContext";
 import { initNotifications, isNativePlatform } from "@/lib/notificationService";
+import { syncWindDownNotification, subscribeSleepMode } from "@/lib/sleepModeStore";
 import { installNativeFetchBase } from "@/lib/apiBase";
 import HomePage from "@/pages/HomePage";
 import StatusPage from "@/pages/StatusPage";
@@ -100,9 +101,19 @@ function NativeBootstrap() {
   useEffect(() => {
     if (!isNativePlatform()) return;
     installNativeFetchBase();
-    initNotifications().catch((err) =>
-      console.warn("[App] notification init failed", err),
-    );
+    initNotifications()
+      .then(() => syncWindDownNotification())
+      .catch((err) => console.warn("[App] notification init failed", err));
+  }, []);
+
+  // Re-schedule the wind-down ping whenever the user edits sleep settings.
+  useEffect(() => {
+    const unsub = subscribeSleepMode(() => {
+      syncWindDownNotification().catch((err) =>
+        console.warn("[App] wind-down sync failed", err),
+      );
+    });
+    return unsub;
   }, []);
 
   // Route the user when they tap a scheduled notification.

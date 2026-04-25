@@ -18,10 +18,22 @@ import {
   updateCustom,
   subscribeSleepMode,
   computeAdaptiveSnapshot,
+  setWakeTime,
+  setCycles,
+  setRemPromptsEnabled,
   SLEEP_MODE_META,
   type SleepMode,
   type SleepModeState,
 } from "@/lib/sleepModeStore";
+import {
+  bedtimeForCycles,
+  formatHM,
+  formatHM24,
+  parseHMString,
+  recommendedCycles,
+  VALID_CYCLES,
+  type CycleCount,
+} from "@/lib/remCycleEngine";
 
 const MODE_ORDER: SleepMode[] = ["beginner", "adaptive", "custom", "minimal"];
 
@@ -163,6 +175,17 @@ export default function SleepSettingsPage() {
     });
   };
 
+  // Cycle target preview based on current settings.
+  const wakeStr = state.wakeTime ? formatHM24(state.wakeTime) : "";
+  const resolvedCycles: CycleCount =
+    state.cycles ??
+    (state.wakeTime
+      ? (recommendedCycles(state.wakeTime) as CycleCount) || 5
+      : 5);
+  const targetBedtime = state.wakeTime
+    ? bedtimeForCycles(state.wakeTime, resolvedCycles)
+    : null;
+
   return (
     <div className="min-h-screen w-full" style={{ background: colors.background, color: colors.text }} data-testid="sleep-settings-page">
       {/* Top bar */}
@@ -184,6 +207,122 @@ export default function SleepSettingsPage() {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-4 space-y-4">
+        {/* REM cycle target — drives wind-down notification + Night Flow copy */}
+        <div
+          className="rounded-xl p-4 space-y-3"
+          style={{
+            backgroundColor: `${colors.surface}aa`,
+            border: `1px solid ${colors.surfaceBorder}`,
+          }}
+          data-testid="rem-cycle-card"
+        >
+          <div className="flex items-center justify-between">
+            <p
+              className="text-[10px] uppercase tracking-[0.2em]"
+              style={{ color: colors.textMuted }}
+            >
+              REM Cycle Target
+            </p>
+            {targetBedtime && (
+              <p
+                className="text-[10px] font-mono"
+                style={{ color: "#a5b4fc" }}
+                data-testid="text-target-bedtime"
+              >
+                Asleep by {formatHM(targetBedtime)}
+              </p>
+            )}
+          </div>
+
+          {/* Wake time picker */}
+          <div>
+            <label
+              className="text-xs font-medium mb-1.5 block"
+              style={{ color: colors.text }}
+            >
+              Wake time
+            </label>
+            <input
+              type="time"
+              value={wakeStr}
+              onChange={(e) => {
+                const parsed = parseHMString(e.target.value);
+                setWakeTime(parsed ?? undefined);
+              }}
+              data-testid="input-wake-time"
+              className="w-full rounded-lg px-3 py-2 text-sm font-mono outline-none"
+              style={{
+                backgroundColor: `${colors.surface}`,
+                border: `1px solid ${colors.surfaceBorder}`,
+                color: colors.text,
+                colorScheme: "dark",
+              }}
+            />
+          </div>
+
+          {/* Cycles selector */}
+          <div>
+            <p
+              className="text-xs font-medium mb-1.5"
+              style={{ color: colors.text }}
+            >
+              Cycles tonight
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {[undefined as CycleCount | undefined, ...VALID_CYCLES].map(
+                (c, idx) => {
+                  const isAuto = c === undefined;
+                  const active = state.cycles === c;
+                  const label = isAuto ? "Auto" : `${c}`;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCycles(c)}
+                      data-testid={`cycles-${isAuto ? "auto" : c}`}
+                      className="rounded-lg py-2 text-xs font-bold"
+                      style={{
+                        backgroundColor: active
+                          ? "rgba(99,102,241,0.25)"
+                          : `${colors.surface}`,
+                        border: `1px solid ${active ? "#6366f1" : colors.surfaceBorder}`,
+                        color: active ? "#a5b4fc" : colors.textMuted,
+                      }}
+                    >
+                      {label}
+                      {!isAuto && (
+                        <span
+                          className="block text-[9px] font-mono mt-0.5"
+                          style={{ opacity: 0.7 }}
+                        >
+                          {c}×90m
+                        </span>
+                      )}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+            <p
+              className="text-[10px] mt-2 leading-relaxed"
+              style={{ color: colors.textMuted }}
+            >
+              {state.wakeTime
+                ? `Cycle math: ${resolvedCycles} × 90m + 14m latency. Wind-down ping fires before this bedtime.`
+                : "Set a wake time to unlock cycle-aware bedtime targets."}
+            </p>
+          </div>
+
+          {/* REM micro-prompts toggle */}
+          <ToggleRow
+            label="Ask about caffeine & alcohol"
+            description="Quick check during Night Flow — REM-disruptive."
+            value={!!state.remPromptsEnabled}
+            onChange={(v) => setRemPromptsEnabled(v)}
+            testId="toggle-rem-prompts"
+          />
+        </div>
+
         {/* Insight strip */}
         <div
           className="rounded-xl p-3 flex items-center gap-3"

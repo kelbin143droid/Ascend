@@ -16,6 +16,8 @@ import {
   cancelTaskNotification,
 } from "@/lib/notificationService";
 import { getNightPlan } from "@/lib/sleepModeStore";
+import { computeRemInsight, computeSleepInsight } from "@/lib/vitalityFlowStore";
+import { Moon as MoonIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Quadrant } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1372,6 +1374,115 @@ export default function SectographPage() {
                     Fill with Task →
                   </span>
                 </button>
+              );
+            })()}
+
+            {!isDay5Mode && (() => {
+              const rem = computeRemInsight(7);
+              const sleep = computeSleepInsight(7);
+              const totalRecall = rem.recallCounts.none + rem.recallCounts.faint + rem.recallCounts.vivid;
+              const hasAnyData = totalRecall > 0 || rem.averageBedDeltaMin !== null || sleep.averageBedTime;
+              if (!hasAnyData) return null;
+              const vividPct = totalRecall ? Math.round((rem.recallCounts.vivid / totalRecall) * 100) : 0;
+              const deltaTone = rem.averageBedDeltaMin === null
+                ? "#a5b4fc"
+                : rem.averageBedDeltaMin > 30 ? "#fbbf24"
+                : rem.averageBedDeltaMin < -10 ? "#22d3ee"
+                : "#a5b4fc";
+              return (
+                <div
+                  className="w-full rounded-lg p-3"
+                  style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
+                  data-testid="sleep-rem-card"
+                >
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <MoonIcon size={11} style={{ color: "#a78bfa" }} />
+                    <h3
+                      className="text-[10px] font-display font-bold tracking-[0.18em]"
+                      style={{ color: "#a78bfa" }}
+                    >
+                      SLEEP &amp; REM
+                    </h3>
+                    <span className="text-[9px] ml-auto" style={{ color: colors.textMuted, opacity: 0.6 }}>
+                      Last 7 days
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Avg cycles */}
+                    <div className="rounded-md px-2 py-2" style={{ backgroundColor: "rgba(167,139,250,0.06)" }}>
+                      <p className="text-[9px] uppercase tracking-wide" style={{ color: colors.textMuted, opacity: 0.7 }}>
+                        Cycles
+                      </p>
+                      <p className="text-sm font-mono font-bold" style={{ color: "#c4b5fd" }} data-testid="text-avg-cycles">
+                        {rem.averageCycles !== null ? rem.averageCycles.toFixed(1) : "—"}
+                      </p>
+                    </div>
+                    {/* Vivid recall % */}
+                    <div className="rounded-md px-2 py-2" style={{ backgroundColor: "rgba(34,211,238,0.06)" }}>
+                      <p className="text-[9px] uppercase tracking-wide" style={{ color: colors.textMuted, opacity: 0.7 }}>
+                        Vivid
+                      </p>
+                      <p className="text-sm font-mono font-bold" style={{ color: "#22d3ee" }} data-testid="text-vivid-pct">
+                        {totalRecall ? `${vividPct}%` : "—"}
+                      </p>
+                    </div>
+                    {/* Bedtime delta avg */}
+                    <div className="rounded-md px-2 py-2" style={{ backgroundColor: `${deltaTone}10` }}>
+                      <p className="text-[9px] uppercase tracking-wide" style={{ color: colors.textMuted, opacity: 0.7 }}>
+                        Δ Bed
+                      </p>
+                      <p
+                        className="text-sm font-mono font-bold"
+                        style={{ color: deltaTone }}
+                        data-testid="text-avg-bed-delta"
+                      >
+                        {rem.averageBedDeltaMin === null
+                          ? "—"
+                          : rem.averageBedDeltaMin > 0
+                          ? `+${rem.averageBedDeltaMin}m`
+                          : `${rem.averageBedDeltaMin}m`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Recall distribution bar */}
+                  {totalRecall > 0 && (
+                    <div className="mt-2.5">
+                      <div className="flex h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                        {(["vivid", "faint", "none"] as const).map((k) => {
+                          const pct = (rem.recallCounts[k] / totalRecall) * 100;
+                          if (pct === 0) return null;
+                          const tone = k === "vivid" ? "#22d3ee" : k === "faint" ? "#a78bfa" : "#6b7280";
+                          return <div key={k} style={{ width: `${pct}%`, backgroundColor: tone }} />;
+                        })}
+                      </div>
+                      <div className="flex justify-between text-[9px] mt-1" style={{ color: colors.textMuted, opacity: 0.55 }}>
+                        <span>{rem.recallCounts.vivid} vivid</span>
+                        <span>{rem.recallCounts.faint} faint</span>
+                        <span>{rem.recallCounts.none} blank</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Insight line */}
+                  {(rem.lateNights > 2 || (totalRecall >= 5 && rem.vividRecallRate < 0.2)) && (
+                    <p
+                      className="text-[10px] mt-2.5 leading-relaxed"
+                      style={{ color: "#fbbf24" }}
+                      data-testid="text-rem-warning"
+                    >
+                      {rem.lateNights > 2
+                        ? `${rem.lateNights} late nights this week — earlier bedtime would protect REM.`
+                        : "Recall is fading. Try cutting alcohol or screens before bed."}
+                    </p>
+                  )}
+                  {totalRecall === 0 && (
+                    <p className="text-[10px] mt-2.5 leading-relaxed" style={{ color: colors.textMuted, opacity: 0.6 }}>
+                      Log dream recall in the morning Wake Flow to track REM quality.
+                    </p>
+                  )}
+                </div>
               );
             })()}
 

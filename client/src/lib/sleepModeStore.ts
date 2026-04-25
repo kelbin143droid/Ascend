@@ -14,7 +14,14 @@
  * `ascend:sleep-mode-changed` for in-page reactivity.
  */
 
-import { getState as getFlowState } from "./vitalityFlowStore";
+import { getState as getFlowState, computeRemInsight } from "./vitalityFlowStore";
+import {
+  cancelWindDownNotification,
+  scheduleWindDownNotification,
+  type CycleCount,
+  type WakeHM,
+  VALID_CYCLES,
+} from "./remCycleEngine";
 
 export type SleepMode = "beginner" | "adaptive" | "custom" | "minimal";
 
@@ -37,6 +44,12 @@ export interface SleepModeState {
   promotedToAdaptive?: boolean;
   /** First-use timestamp for gating the 7–14 day auto-switch logic. */
   firstSeenAt: number;
+  /** Desired wake time (24h) — drives cycle math across all modes. */
+  wakeTime?: WakeHM;
+  /** Targeted REM cycles tonight (4/5/6). Undefined → "auto" (best fit). */
+  cycles?: CycleCount;
+  /** When true, Night Flow asks the optional alcohol/caffeine prompt. */
+  remPromptsEnabled?: boolean;
 }
 
 const STORAGE_KEY = "ascend_sleep_mode";
@@ -73,6 +86,9 @@ function read(): SleepModeState {
       autoSwitchPromptDismissedAt: parsed.autoSwitchPromptDismissedAt,
       promotedToAdaptive: parsed.promotedToAdaptive,
       firstSeenAt: parsed.firstSeenAt ?? Date.now(),
+      wakeTime: parsed.wakeTime,
+      cycles: parsed.cycles && (VALID_CYCLES as readonly number[]).includes(parsed.cycles) ? parsed.cycles : undefined,
+      remPromptsEnabled: parsed.remPromptsEnabled ?? false,
     };
   } catch {
     return defaultState();
@@ -105,6 +121,24 @@ export function updateCustom(patch: Partial<CustomConfig>): void {
   write(state);
 }
 
+export function setWakeTime(wake: WakeHM | undefined): void {
+  const state = read();
+  state.wakeTime = wake;
+  write(state);
+}
+
+export function setCycles(cycles: CycleCount | undefined): void {
+  const state = read();
+  state.cycles = cycles;
+  write(state);
+}
+
+export function setRemPromptsEnabled(enabled: boolean): void {
+  const state = read();
+  state.remPromptsEnabled = enabled;
+  write(state);
+}
+
 export function dismissAutoSwitchPrompt(): void {
   const state = read();
   state.autoSwitchPromptDismissedAt = new Date().toISOString().slice(0, 10);
@@ -127,6 +161,12 @@ export interface AdaptiveSnapshot {
   windowDays: number;
   daysAnalyzed: number;
   daysSinceFirstUse: number;
+  /** Trailing 7-day REM signal: % vivid out of all recall logs. */
+  vividRecallRate: number;
+  /** Trailing 7-day count of nights where bedtime was >30 min late. */
+  lateNights: number;
+  /** Number of nights with any recall log in the trailing window. */
+  recallSampleSize: number;
 }
 
 const ADAPTIVE_WINDOW_DAYS = 5;
@@ -177,12 +217,19 @@ export function computeAdaptiveSnapshot(): AdaptiveSnapshot {
   const state = read();
   const daysSinceFirstUse = Math.floor((Date.now() - state.firstSeenAt) / 86_400_000);
 
+  const rem = computeRemInsight(7);
+  const recallSampleSize =
+    rem.recallCounts.none + rem.recallCounts.faint + rem.recallCounts.vivid;
+
   return {
     completionRate: Math.round(completionRate),
     consistencyScore,
     windowDays: ADAPTIVE_WINDOW_DAYS,
     daysAnalyzed: present,
     daysSinceFirstUse,
+    vividRecallRate: rem.vividRecallRate,
+    lateNights: rem.lateNights,
+    recallSampleSize,
   };
 }
 
@@ -198,6 +245,12 @@ export interface NightPlan {
   showFullFlow: boolean;       // false → minimal mode (notification only)
   windDownOffsetMin: number;   // minutes before sleep start
   reason: string;              // human readable, used in UI
+  /** Cycle-aware wake target (undefined if user hasn't set one yet). */
+  wakeTime?: WakeHM;
+  /** Resolved cycle count for tonight (user pick or adaptive default). */
+  cycles?: CycleCount;
+  /** When true, Night Flow surfaces the alcohol/caffeine micro-row. */
+  remPromptsEnabled: boolean;
 }
 
 const HIGH_PERFORMER_RATE = 80;     // %
@@ -206,6 +259,9 @@ const RECOVERY_RATE = 50;           // % — drop below this re-enables guidance
 export function getNightPlan(): NightPlan {
   const state = read();
   const offset = state.custom.windDownOffsetMin;
+  const remPromptsEnabled = !!state.remPromptsEnabled;
+  const wakeTime = state.wakeTime;
+  const cycles = state.cycles;
 
   if (state.mode === "minimal") {
     return {
@@ -216,6 +272,9 @@ export function getNightPlan(): NightPlan {
       showFullFlow: false,
       windDownOffsetMin: offset,
       reason: "Minimal mode — light reminder only.",
+      wakeTime,
+      cycles,
+      remPromptsEnabled,
     };
   }
   if (state.mode === "custom") {
@@ -229,16 +288,27 @@ export function getNightPlan(): NightPlan {
       showFullFlow: anyOn,
       windDownOffsetMin: c.windDownOffsetMin,
       reason: "Custom mode — your selected steps only.",
+      wakeTime,
+      cycles,
+      remPromptsEnabled,
     };
   }
   if (state.mode === "adaptive") {
     const snap = computeAdaptiveSnapshot();
+    // REM signal — drives a full-flow recall recovery if either:
+    //   • >2 late nights in the last 7
+    //   • <20% vivid recall over 5+ logged days
+    const remPoor =
+      snap.lateNights > 2 ||
+      (snap.recallSampleSize >= 5 && snap.vividRecallRate < 0.2);
     // High performer → trim non-essential prompts (low-stim).
     const highPerformer =
-      snap.daysAnalyzed >= 3 && snap.completionRate >= HIGH_PERFORMER_RATE;
+      snap.daysAnalyzed >= 3 &&
+      snap.completionRate >= HIGH_PERFORMER_RATE &&
+      !remPoor;
     // Slipping → force full flow back on regardless.
     const slipping =
-      snap.daysAnalyzed >= 3 && snap.completionRate < RECOVERY_RATE;
+      (snap.daysAnalyzed >= 3 && snap.completionRate < RECOVERY_RATE) || remPoor;
     return {
       windDownReminder: true,
       foodCutoff: true,
@@ -246,11 +316,16 @@ export function getNightPlan(): NightPlan {
       sleepPriming: true,
       showFullFlow: true,
       windDownOffsetMin: offset,
-      reason: slipping
+      reason: remPoor
+        ? "Adaptive — REM signals are weak, broadening guidance."
+        : slipping
         ? "Adaptive — guidance increased to help you re-establish the rhythm."
         : highPerformer
         ? "Adaptive — light touch, you've earned it."
         : "Adaptive — standard guided flow.",
+      wakeTime,
+      cycles,
+      remPromptsEnabled,
     };
   }
   // beginner (default)
@@ -262,7 +337,40 @@ export function getNightPlan(): NightPlan {
     showFullFlow: true,
     windDownOffsetMin: offset,
     reason: "Beginner mode — full guided routine.",
+    wakeTime,
+    cycles,
+    remPromptsEnabled,
   };
+}
+
+/* ─────────────── Wind-down notification sync ─────────────── */
+
+/**
+ * Apply current sleep settings to the OS wind-down notification.
+ * Web is a no-op (notification service short-circuits there).
+ *
+ * Call after settings change and once per app boot. Idempotent.
+ */
+export async function syncWindDownNotification(): Promise<void> {
+  const state = read();
+  const plan = getNightPlan();
+  if (!plan.windDownReminder || !state.wakeTime) {
+    await cancelWindDownNotification();
+    return;
+  }
+  // Resolve cycles: explicit pick > best fit > 5 (sane default).
+  let cycles: CycleCount = state.cycles ?? 5;
+  // If user didn't pick, prefer the engine's best-fit but bounded to 4-6.
+  if (!state.cycles) {
+    const { recommendedCycles } = await import("./remCycleEngine");
+    const best = recommendedCycles(state.wakeTime);
+    if (best === 4 || best === 5 || best === 6) cycles = best;
+  }
+  await scheduleWindDownNotification({
+    wake: state.wakeTime,
+    cycles,
+    leadMinutes: plan.windDownOffsetMin,
+  });
 }
 
 /* ─────────────── Auto-switch prompt ─────────────── */

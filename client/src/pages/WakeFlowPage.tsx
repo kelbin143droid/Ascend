@@ -12,6 +12,8 @@ import {
   X,
   ChevronRight,
   ArrowRight,
+  Moon,
+  Brain,
 } from "lucide-react";
 import {
   markWakeStarted,
@@ -20,8 +22,13 @@ import {
   markMovement,
   markWakeCompleted,
   recordSkip,
+  setDreamRecall,
+  setSleepQuality,
+  getState as getFlowState,
   type SkipReason,
+  type DreamRecall,
 } from "@/lib/vitalityFlowStore";
+import { formatHM, bedtimeDeltaMin } from "@/lib/remCycleEngine";
 
 type Phase = number;
 
@@ -34,7 +41,7 @@ const SKIP_REASONS: { value: SkipReason; label: string }[] = [
 
 /* ─────────────── Reusable bits ─────────────── */
 function PhaseProgress({ phase }: { phase: number }) {
-  const total = 5;
+  const total = 6;
   const pct = Math.min(100, ((phase) / total) * 100);
   return (
     <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
@@ -641,6 +648,178 @@ function Completion({ streak, onClose }: { streak: number; onClose: () => void }
   );
 }
 
+/* ─────────────── REM Debrief (Phase 2) ─────────────── */
+
+const RECALL_OPTIONS: { value: DreamRecall; label: string; tone: string }[] = [
+  { value: "none", label: "Blank", tone: "#6b7280" },
+  { value: "faint", label: "Faint", tone: "#a78bfa" },
+  { value: "vivid", label: "Vivid", tone: "#22d3ee" },
+];
+
+function PhaseRemDebrief({
+  onDone,
+  onSkip,
+}: {
+  onDone: () => void;
+  onSkip: () => void;
+}) {
+  const { backgroundTheme } = useTheme();
+  const colors = backgroundTheme.colors;
+  const [recall, setRecall] = useState<DreamRecall | null>(null);
+  const [quality, setQuality] = useState<number | null>(null);
+
+  const flow = getFlowState();
+  // Last night's Night Flow ran on the PREVIOUS day, so bedTime/targetBedTime
+  // live on yesterday's record. Wake Flow itself runs today and writes
+  // dreamRecall/sleepQuality to today's record.
+  const yesterdayKey = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+  const lastNight = flow.history[yesterdayKey];
+  const delta =
+    lastNight?.bedTime && lastNight?.targetBedTime
+      ? bedtimeDeltaMin(lastNight.bedTime, lastNight.targetBedTime)
+      : null;
+
+  const canFinish = recall !== null && quality !== null;
+
+  const handleDone = () => {
+    if (recall) setDreamRecall(recall);
+    if (quality) setSleepQuality(quality);
+    onDone();
+  };
+
+  return (
+    <div className="flex flex-col items-center px-6 py-10 max-w-md mx-auto w-full" data-testid="phase-rem-debrief">
+      <p className="text-[10px] uppercase tracking-[0.3em] mb-2" style={{ color: "#a78bfa" }}>
+        Phase 2 · REM Debrief
+      </p>
+      <div
+        className="w-20 h-20 rounded-full flex items-center justify-center mb-3"
+        style={{
+          backgroundColor: "rgba(167,139,250,0.15)",
+          border: "1px solid rgba(167,139,250,0.4)",
+          boxShadow: "0 0 20px rgba(167,139,250,0.25)",
+        }}
+      >
+        <Brain size={30} style={{ color: "#a78bfa" }} />
+      </div>
+      <h2 className="text-xl font-bold mb-1 text-center" style={{ color: colors.text }}>
+        How was sleep?
+      </h2>
+      <p className="text-xs text-center mb-4 max-w-xs" style={{ color: colors.textMuted }}>
+        Two quick reads while it's fresh. Recall reveals REM quality.
+      </p>
+
+      {/* Bedtime delta context (from last night's Night Flow) */}
+      {delta !== null && (
+        <div
+          className="w-full rounded-xl px-3 py-2 mb-4 flex items-center gap-2"
+          style={{
+            backgroundColor: "rgba(99,102,241,0.06)",
+            border: "1px solid rgba(99,102,241,0.18)",
+          }}
+          data-testid="bedtime-delta"
+        >
+          <Moon size={12} style={{ color: "#a5b4fc" }} />
+          <span className="text-[11px] flex-1" style={{ color: colors.textMuted }}>
+            Asleep at {lastNight?.bedTime ? formatHM(new Date(lastNight.bedTime)) : "—"}
+          </span>
+          <span
+            className="text-[10px] font-mono font-bold"
+            style={{ color: delta > 30 ? "#fbbf24" : delta < -10 ? "#22d3ee" : "#a5b4fc" }}
+          >
+            {delta > 0 ? `+${delta}m late` : delta < 0 ? `${Math.abs(delta)}m early` : "on target"}
+          </span>
+        </div>
+      )}
+
+      {/* Dream recall */}
+      <div className="w-full mb-4">
+        <p className="text-[11px] mb-2" style={{ color: colors.textMuted }}>
+          Dream recall
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {RECALL_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => setRecall(o.value)}
+              data-testid={`recall-${o.value}`}
+              className="rounded-lg py-2.5 text-xs font-bold transition-all"
+              style={{
+                backgroundColor: recall === o.value ? `${o.tone}25` : `${colors.surface}`,
+                border: `1px solid ${recall === o.value ? o.tone : colors.surfaceBorder}`,
+                color: recall === o.value ? o.tone : colors.textMuted,
+                boxShadow: recall === o.value ? `0 0 12px ${o.tone}40` : "none",
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sleep quality 1-5 */}
+      <div className="w-full mb-6">
+        <p className="text-[11px] mb-2" style={{ color: colors.textMuted }}>
+          Sleep quality
+        </p>
+        <div className="grid grid-cols-5 gap-1.5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setQuality(n)}
+              data-testid={`quality-${n}`}
+              className="rounded-lg py-2.5 text-sm font-bold transition-all"
+              style={{
+                backgroundColor: quality === n ? "rgba(34,211,238,0.2)" : `${colors.surface}`,
+                border: `1px solid ${quality === n ? "#22d3ee" : colors.surfaceBorder}`,
+                color: quality === n ? "#22d3ee" : colors.textMuted,
+              }}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-between text-[9px] mt-1.5 px-1" style={{ color: colors.textMuted, opacity: 0.6 }}>
+          <span>Rough</span>
+          <span>Deep</span>
+        </div>
+      </div>
+
+      <div className="w-full flex gap-2">
+        <Button
+          type="button"
+          onClick={handleDone}
+          disabled={!canFinish}
+          className="flex-1 h-11 text-xs font-bold uppercase tracking-wider"
+          style={{
+            backgroundColor: canFinish ? "#a78bfa" : "rgba(167,139,250,0.3)",
+            color: "#0a0a18",
+            opacity: canFinish ? 1 : 0.5,
+          }}
+          data-testid="button-debrief-done"
+        >
+          Continue <ChevronRight size={14} className="ml-1" />
+        </Button>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-[10px] uppercase tracking-wider px-3"
+          style={{ color: colors.textMuted }}
+          data-testid="button-debrief-skip"
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────── Page shell ─────────────── */
 export default function WakeFlowPage() {
   const [, navigate] = useLocation();
@@ -660,7 +839,11 @@ export default function WakeFlowPage() {
     if (phase === 1) {
       return "radial-gradient(ellipse at top, #1a1208 0%, #0a0a0f 70%)";
     }
-    if (phase === 6) {
+    if (phase === 2) {
+      // REM debrief — keep cooler purple while reflecting on dreams.
+      return "radial-gradient(ellipse at top, #1a1530 0%, #0a0a18 70%)";
+    }
+    if (phase === 7) {
       return "radial-gradient(ellipse at top, #2d1f0a 0%, #0f0e1a 70%)";
     }
     return "radial-gradient(ellipse at top, #221708 0%, #0c0c14 70%)";
@@ -677,10 +860,10 @@ export default function WakeFlowPage() {
     const wasMovementSkip = skipFor === "movement";
     setSkipFor(null);
     if (wasMovementSkip) {
-      // Last phase: finalize once the user has picked a skip reason.
+      // Last interactive phase: finalize once the user has picked a skip reason.
       finalize();
     } else {
-      setPhase((p) => (p < 5 ? p + 1 : 6));
+      setPhase((p) => (p < 6 ? p + 1 : 7));
     }
   };
 
@@ -689,7 +872,7 @@ export default function WakeFlowPage() {
   const finalize = () => {
     const s = markWakeCompleted();
     setStreak(s.wakeStreak);
-    setPhase(6 as Phase);
+    setPhase(7 as Phase);
   };
 
   return (
@@ -699,7 +882,7 @@ export default function WakeFlowPage() {
       data-testid="wake-flow-page"
     >
       {/* Top bar */}
-      {phase > 1 && phase < 6 && (
+      {phase > 1 && phase < 7 && (
         <div className="fixed top-0 inset-x-0 z-30 px-4 pt-3 pb-2" style={{ backdropFilter: "blur(8px)", backgroundColor: "rgba(0,0,0,0.3)" }}>
           <div className="max-w-md mx-auto flex items-center gap-3">
             <button
@@ -715,19 +898,20 @@ export default function WakeFlowPage() {
               <PhaseProgress phase={phase} />
             </div>
             <span className="text-[10px] font-mono w-10 text-right" style={{ color: colors.textMuted }}>
-              {phase}/5
+              {phase}/6
             </span>
           </div>
         </div>
       )}
 
-      <div className={phase > 1 && phase < 6 ? "pt-12" : ""}>
+      <div className={phase > 1 && phase < 7 ? "pt-12" : ""}>
         {phase === 1 && <Phase1Wake onContinue={advance} />}
-        {phase === 2 && <Phase2Activation onDone={advance} onSkip={() => handleSkip("activation")} />}
-        {phase === 3 && <Phase3Hydration onDone={advance} onSkip={() => handleSkip("hydration")} />}
-        {phase === 4 && <Phase4Light onDone={advance} onSkip={() => handleSkip("light")} />}
-        {phase === 5 && <Phase5Movement onDone={finalize} onSkip={() => handleSkip("movement")} />}
-        {phase === 6 && <Completion streak={streak} onClose={close} />}
+        {phase === 2 && <PhaseRemDebrief onDone={advance} onSkip={() => handleSkip("rem_debrief")} />}
+        {phase === 3 && <Phase2Activation onDone={advance} onSkip={() => handleSkip("activation")} />}
+        {phase === 4 && <Phase3Hydration onDone={advance} onSkip={() => handleSkip("hydration")} />}
+        {phase === 5 && <Phase4Light onDone={advance} onSkip={() => handleSkip("light")} />}
+        {phase === 6 && <Phase5Movement onDone={finalize} onSkip={() => handleSkip("movement")} />}
+        {phase === 7 && <Completion streak={streak} onClose={close} />}
       </div>
 
       <SkipDialog open={!!skipFor} onClose={() => setSkipFor(null)} onChoose={onSkipReason} />
