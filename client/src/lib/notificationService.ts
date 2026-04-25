@@ -215,12 +215,27 @@ export async function scheduleTaskNotification(
     return { scheduled: false, reason: "past-time" };
   }
 
+  // Android batches non-exact alarms (`setAndAllowWhileIdle`) which routinely
+  // pushes notifications ~30–60s past their target. Schedule a touch earlier
+  // so the alarm lands on the intended minute. Capped so we never end up in
+  // the past relative to "now".
+  const ANDROID_ALARM_LEAD_MS = 20_000;
+  const isAndroid =
+    typeof Capacitor.getPlatform === "function" &&
+    Capacitor.getPlatform() === "android";
+  let scheduleAt = at;
+  if (isAndroid) {
+    const earliest = Date.now() + 1500; // keep at least 1.5s of lead time
+    const adjusted = Math.max(at.getTime() - ANDROID_ALARM_LEAD_MS, earliest);
+    scheduleAt = new Date(adjusted);
+  }
+
   const numericId = stableNotificationId(id);
   const notification: LocalNotificationSchema = {
     id: numericId,
     title: resolvedTitle,
     body: resolvedBody,
-    schedule: { at, allowWhileIdle: true },
+    schedule: { at: scheduleAt, allowWhileIdle: true },
     channelId: "ascend-default",
     smallIcon: "ic_stat_icon",
     extra: { taskId: id, ...(extraData ?? {}) },

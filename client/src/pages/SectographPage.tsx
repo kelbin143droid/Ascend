@@ -238,6 +238,49 @@ function formatTimeSlot(hour: number, minute: number): string {
   return `${h}:${m} ${p}`;
 }
 
+// Self-contained per-second clock so the rest of the (large) Sectograph page
+// keeps re-rendering on its slower 60s cadence.
+function LiveHeaderClock({
+  primaryColor,
+  mutedColor,
+}: {
+  primaryColor: string;
+  mutedColor: string;
+}) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div
+      className="flex flex-col items-end leading-tight"
+      data-testid="text-current-time"
+    >
+      <span
+        className="text-base font-mono font-bold tabular-nums"
+        style={{ color: primaryColor }}
+      >
+        {now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })}
+      </span>
+      <span
+        className="text-[10px] uppercase tracking-wider"
+        style={{ color: mutedColor }}
+      >
+        {now.toLocaleDateString([], {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        })}
+      </span>
+    </div>
+  );
+}
+
 export default function SectographPage() {
   const [, navigate] = useLocation();
   const { backgroundTheme } = useTheme();
@@ -865,6 +908,7 @@ export default function SectographPage() {
   const awarenessInsight = useMemo(() => getAwarenessInsight(activeSchedule, freeWindows), [activeSchedule, freeWindows]);
 
   // Tick once a minute so the active/next block computation refreshes without re-rendering Sectograph internals.
+  // The live header clock has its own per-second tick inside <LiveHeaderClock /> so the rest of the page is untouched.
   const [nowTick, setNowTick] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNowTick(new Date()), 60_000);
@@ -942,7 +986,7 @@ export default function SectographPage() {
           <h1 className="text-lg font-display font-black tracking-wider" style={{ color: colors.text }}>
             SECTOGRAPH
           </h1>
-          <div className="w-14" />
+          <LiveHeaderClock primaryColor={colors.primary} mutedColor={colors.textMuted} />
         </div>
 
         {/* ── VIEW TABS (Timeline / Calendar) ──────────────────────── */}
