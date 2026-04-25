@@ -16,7 +16,7 @@ import {
   cancelTaskNotification,
 } from "@/lib/notificationService";
 import { getNightPlan } from "@/lib/sleepModeStore";
-import { computeRemInsight, computeSleepInsight } from "@/lib/vitalityFlowStore";
+import { computeRemInsight, computeSleepInsight, getState as getFlowState } from "@/lib/vitalityFlowStore";
 import { Moon as MoonIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Quadrant } from "@shared/schema";
@@ -1382,6 +1382,23 @@ export default function SectographPage() {
               const sleep = computeSleepInsight(7);
               const totalRecall = rem.recallCounts.none + rem.recallCounts.faint + rem.recallCounts.vivid;
               const hasAnyData = totalRecall > 0 || rem.averageBedDeltaMin !== null || sleep.averageBedTime;
+              // Pull last-7d caffeine/alcohol context for an adaptive nudge.
+              const flowState = getFlowState();
+              let alcoholNights = 0;
+              let lateCaffeineNights = 0;
+              {
+                const today = new Date();
+                for (let i = 0; i < 7; i++) {
+                  const d = new Date(today);
+                  d.setDate(today.getDate() - i);
+                  const rec = flowState.history[d.toISOString().slice(0, 10)];
+                  if (!rec) continue;
+                  if (rec.hadAlcohol) alcoholNights += 1;
+                  if (typeof rec.caffeineHoursAgo === "number" && rec.caffeineHoursAgo < 6) {
+                    lateCaffeineNights += 1;
+                  }
+                }
+              }
               if (!hasAnyData) return null;
               const vividPct = totalRecall ? Math.round((rem.recallCounts.vivid / totalRecall) * 100) : 0;
               const deltaTone = rem.averageBedDeltaMin === null
@@ -1512,18 +1529,32 @@ export default function SectographPage() {
                     </div>
                   )}
 
-                  {/* Insight line */}
-                  {(rem.lateNights > 2 || (totalRecall >= 5 && rem.vividRecallRate < 0.2)) && (
-                    <p
-                      className="text-[10px] mt-2.5 leading-relaxed"
-                      style={{ color: "#fbbf24" }}
-                      data-testid="text-rem-warning"
-                    >
-                      {rem.lateNights > 2
-                        ? `${rem.lateNights} late nights this week — earlier bedtime would protect REM.`
-                        : "Recall is fading. Try cutting alcohol or screens before bed."}
-                    </p>
-                  )}
+                  {/* Insight line — prioritize the strongest REM disruptor */}
+                  {(() => {
+                    const messages: string[] = [];
+                    if (rem.lateNights > 2) {
+                      messages.push(`${rem.lateNights} late nights this week — earlier bedtime would protect REM.`);
+                    }
+                    if (alcoholNights >= 2) {
+                      messages.push(`Alcohol on ${alcoholNights} nights — REM rebounds when you skip a night.`);
+                    }
+                    if (lateCaffeineNights >= 2) {
+                      messages.push(`Caffeine within 6h of bed on ${lateCaffeineNights} nights — try a 2pm cutoff.`);
+                    }
+                    if (totalRecall >= 5 && rem.vividRecallRate < 0.2 && messages.length === 0) {
+                      messages.push("Recall is fading. Try cutting alcohol or screens before bed.");
+                    }
+                    if (messages.length === 0) return null;
+                    return (
+                      <p
+                        className="text-[10px] mt-2.5 leading-relaxed"
+                        style={{ color: "#fbbf24" }}
+                        data-testid="text-rem-warning"
+                      >
+                        {messages[0]}
+                      </p>
+                    );
+                  })()}
                   {totalRecall === 0 && (
                     <p className="text-[10px] mt-2.5 leading-relaxed" style={{ color: colors.textMuted, opacity: 0.6 }}>
                       Log dream recall in the morning Wake Flow to track REM quality.

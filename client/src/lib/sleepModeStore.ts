@@ -382,27 +382,40 @@ async function cancelWindDownNotification(): Promise<void> {
   await cancelTaskNotification(WIND_DOWN_NOTIFICATION_ID);
 }
 
+/** Default wake target used when the user hasn't set one (preserves the
+ *  pre-REM behavior of always firing a nightly wind-down reminder). */
+const DEFAULT_WAKE: WakeHM = { hour: 7, minute: 0 };
+const DEFAULT_CYCLES: CycleCount = 5;
+
 /**
  * Apply current sleep settings to the OS wind-down notification.
  * Web is a no-op (notification service short-circuits there).
+ *
+ * Behavior:
+ *   - Reminder OFF → cancel the notification.
+ *   - Reminder ON  + wake time set → cycle-aware bedtime.
+ *   - Reminder ON  + NO wake time → fall back to a 7:00 / 5-cycle target
+ *     so users who haven't opted into REM tracking still get the nightly
+ *     wind-down nudge they had before.
  *
  * Call after settings change and once per app boot. Idempotent.
  */
 export async function syncWindDownNotification(): Promise<void> {
   const state = read();
   const plan = getNightPlan();
-  if (!plan.windDownReminder || !state.wakeTime) {
+  if (!plan.windDownReminder) {
     await cancelWindDownNotification();
     return;
   }
-  // Resolve cycles: explicit pick > best fit > 5 (sane default).
-  let cycles: CycleCount = state.cycles ?? 5;
+  const wake = state.wakeTime ?? DEFAULT_WAKE;
+  // Resolve cycles: explicit pick > best fit > sane default.
+  let cycles: CycleCount = state.cycles ?? DEFAULT_CYCLES;
   if (!state.cycles) {
-    const best = recommendedCycles(state.wakeTime);
+    const best = recommendedCycles(wake);
     if (best === 4 || best === 5 || best === 6) cycles = best;
   }
   await scheduleWindDownNotification({
-    wake: state.wakeTime,
+    wake,
     cycles,
     leadMinutes: plan.windDownOffsetMin,
   });

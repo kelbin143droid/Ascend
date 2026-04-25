@@ -736,6 +736,35 @@ function PhaseRemDebrief({
         </div>
       )}
 
+      {/* Caffeine + alcohol context from last night (REM disruptors) */}
+      {(lastNight?.hadAlcohol || typeof lastNight?.caffeineHoursAgo === "number") && (
+        <div
+          className="w-full rounded-xl px-3 py-2 mb-4"
+          style={{
+            backgroundColor: "rgba(251,191,36,0.06)",
+            border: "1px solid rgba(251,191,36,0.18)",
+          }}
+          data-testid="rem-context"
+        >
+          <p className="text-[10px] mb-1" style={{ color: "#fbbf24", letterSpacing: "0.05em" }}>
+            REM context
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]" style={{ color: colors.textMuted }}>
+            {typeof lastNight?.caffeineHoursAgo === "number" && (
+              <span data-testid="ctx-caffeine">
+                Caffeine ~{lastNight.caffeineHoursAgo}h before bed
+                {lastNight.caffeineHoursAgo < 6 ? " (may have shortened deep sleep)" : ""}
+              </span>
+            )}
+            {lastNight?.hadAlcohol && (
+              <span data-testid="ctx-alcohol">
+                Alcohol logged · expect lighter REM
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Dream recall */}
       <div className="w-full mb-4">
         <p className="text-[11px] mb-2" style={{ color: colors.textMuted }}>
