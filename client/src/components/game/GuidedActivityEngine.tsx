@@ -1454,7 +1454,10 @@ export function GuidedActivityEngine({
               )}
 
               {!isCheckStep && stepPhase === "ready" && !stepsCompleted.has(currentStepIdx) &&
-                (!activity.autoflow || currentStepIdx === 0) && (
+                // Rep steps require an explicit user start — they cannot
+                // auto-flow because the engine has no way to count reps
+                // without user input.
+                (!activity.autoflow || currentStepIdx === 0 || isRepStep) && (
                 <button
                   className="px-8 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
                   style={{ backgroundColor: activity.color, color: "#fff" }}
