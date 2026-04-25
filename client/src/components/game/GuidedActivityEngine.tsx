@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward, Info, Check } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
+import { logExercisesFromGuidedSession } from "@/lib/exerciseStore";
 
 const EXERCISE_ANIMATIONS: Record<string, { emoji: string; movementHint: string }> = {
   pushups: { emoji: "💪", movementHint: "Push up · Hold · Lower down" },
@@ -697,6 +698,7 @@ export function GuidedActivityEngine({
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [stepPhase, setStepPhase] = useState<"ready" | "getready" | "running" | "done" | "rest">("ready");
   const [stepsCompleted, setStepsCompleted] = useState<Set<number>>(new Set());
+  const [stepsSkipped, setStepsSkipped] = useState<Set<number>>(new Set());
   const [xpEarned, setXpEarned] = useState<number | null>(null);
   const [antiGrindMultiplier, setAntiGrindMultiplier] = useState<number>(1.0);
   const [dailyCapReached, setDailyCapReached] = useState(false);
@@ -747,6 +749,20 @@ export function GuidedActivityEngine({
         durationMinutes: Math.max(1, Math.ceil(activity.duration / 60)),
         xpEarned: earned,
       }).catch(() => {});
+
+      // Auto-log rep-based strength steps into the daily energy ledger.
+      // Only log steps that were completed AND not skipped — `advanceStep`
+      // marks every step as completed (even skipped ones), so we filter
+      // skips out explicitly to avoid overstating burned calories.
+      try {
+        const completedSteps = activity.steps
+          .map((s, idx) => ({ s, idx }))
+          .filter(({ idx }) => stepsCompleted.has(idx) && !stepsSkipped.has(idx))
+          .map(({ s }) => ({ id: s.id, durationSeconds: s.durationSeconds }));
+        logExercisesFromGuidedSession(completedSteps);
+      } catch (err) {
+        console.warn("[guided-session] exercise sync failed", err);
+      }
     },
   });
 
@@ -870,8 +886,10 @@ export function GuidedActivityEngine({
       intervalRef.current = null;
     }
     setBreathShouldFinish(false);
+    // Mark this step as skipped so it's excluded from exercise auto-logging.
+    setStepsSkipped((prev) => new Set(prev).add(currentStepIdx));
     advanceStep();
-  }, [advanceStep]);
+  }, [advanceStep, currentStepIdx]);
 
   useEffect(() => {
     if (isCompletionStep && !completeMutation.isPending && !completeMutation.isSuccess) {

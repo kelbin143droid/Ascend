@@ -1,25 +1,28 @@
 import { useTheme } from "@/context/ThemeContext";
 import type { NutritionTotals } from "@/lib/nutritionStore";
+import type { DailyEnergy } from "@/lib/energyEngine";
 
 interface DailySummaryProps {
   totals: NutritionTotals;
-  calorieGoal?: number;
-  burned?: number;
+  energy: DailyEnergy;
 }
 
 /**
  * Cronometer-style summary: Consumed / Remaining / Burned plus a clean macro
- * grid. Glow has been pulled back so numbers carry the visual weight.
+ * grid. All energy numbers are read from the shared `DailyEnergy` ledger so
+ * the same totals appear everywhere.
  */
-export function DailySummary({ totals, calorieGoal = 2200, burned = 0 }: DailySummaryProps) {
+export function DailySummary({ totals, energy }: DailySummaryProps) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const primary = colors.primary;
 
-  const consumed = totals.calories;
-  const remaining = Math.max(0, calorieGoal - consumed + burned);
-  const overshoot = Math.max(0, consumed - burned - calorieGoal);
-  const pct = Math.min(100, Math.max(0, ((consumed - burned) / Math.max(1, calorieGoal)) * 100));
+  const calorieGoal = energy.goalCalories;
+  const consumed = energy.caloriesConsumed;
+  const burned = energy.caloriesBurned;
+  const remaining = energy.remainingCalories;
+  const overshoot = energy.overshootCalories;
+  const pct = Math.min(100, Math.max(0, (energy.netCalories / Math.max(1, calorieGoal)) * 100));
 
   const macros: { key: string; label: string; value: number; color: string }[] = [
     { key: "p", label: "Protein", value: totals.protein, color: "#22c55e" },

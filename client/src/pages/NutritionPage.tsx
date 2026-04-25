@@ -9,6 +9,7 @@ import { SavedMealsList } from "@/components/nutrition/SavedMealsList";
 import { CreateMealModal } from "@/components/nutrition/CreateMealModal";
 import { MealGroupSection } from "@/components/nutrition/MealGroupSection";
 import { EnergySettingsCard } from "@/components/nutrition/EnergySettingsCard";
+import { ExerciseSection } from "@/components/nutrition/ExerciseSection";
 import {
   computeTotals,
   defaultMealForNow,
@@ -26,6 +27,13 @@ import {
   readEnergySettings,
   subscribeEnergySettings,
 } from "@/lib/energySettingsStore";
+import {
+  computeExerciseTotals,
+  readExercises,
+  subscribeExercises,
+  type ExerciseEntry,
+} from "@/lib/exerciseStore";
+import { calculateDailyEnergy } from "@/lib/energyEngine";
 
 type Tab = "log" | "energy" | "meals";
 const TABS: { id: Tab; label: string }[] = [
@@ -40,6 +48,7 @@ export default function NutritionPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>("log");
   const [day, setDay] = useState<NutritionDay>(() => readDay());
+  const [exercises, setExercises] = useState<ExerciseEntry[]>(() => readExercises());
   const [createOpen, setCreateOpen] = useState(false);
 
   // Selected meal bucket for the next added entry — drives FoodSearch / QuickAdd
@@ -60,7 +69,23 @@ export default function NutritionPage() {
     return subscribeNutrition(refresh);
   }, []);
 
+  useEffect(() => {
+    const refresh = () => setExercises(readExercises(todayIso()));
+    refresh();
+    return subscribeExercises(refresh);
+  }, []);
+
   const totals = useMemo(() => computeTotals(day.entries), [day.entries]);
+  const exerciseTotals = useMemo(() => computeExerciseTotals(exercises), [exercises]);
+  const energy = useMemo(
+    () =>
+      calculateDailyEnergy({
+        nutritionTotals: totals,
+        exerciseTotals,
+        goalCalories: calorieGoal,
+      }),
+    [totals, exerciseTotals, calorieGoal],
+  );
 
   const entriesByMeal = useMemo(() => {
     const groups: Record<MealType, typeof day.entries> = {
@@ -131,11 +156,7 @@ export default function NutritionPage() {
         {/* ─────────────── LOG ─────────────── */}
         {activeTab === "log" && (
           <div className="flex flex-col gap-4" data-testid="tab-panel-log">
-            <DailySummary
-              totals={totals}
-              calorieGoal={calorieGoal}
-              burned={day.burnedCalories ?? 0}
-            />
+            <DailySummary totals={totals} energy={energy} />
 
             {/* Add-food panel: meal selector + search + quick-add */}
             <div ref={addPanelRef} className="flex flex-col gap-2">
@@ -200,6 +221,12 @@ export default function NutritionPage() {
                 />
               ))}
             </div>
+
+            {/* Exercise log — burns flow into the energy ledger above */}
+            <ExerciseSection
+              entries={exercises}
+              totalCalories={exerciseTotals.totalCalories}
+            />
           </div>
         )}
 
