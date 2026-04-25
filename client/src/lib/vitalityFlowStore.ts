@@ -64,7 +64,12 @@ export interface VitalityFlowState {
 export const CUTOFF_LADDER = [30, 45, 60, 90];
 const STREAK_TO_PROGRESS_CUTOFF = 4; // 3-5 successful days → bump
 
-function todayIso(d = new Date()): string {
+/**
+ * Local-date key (`YYYY-MM-DD`) used for ALL daily history reads/writes.
+ * MUST be used by callers that look up records — using `toISOString` would
+ * shift days near UTC boundaries (especially evening local time).
+ */
+export function todayIso(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -383,7 +388,7 @@ export function computeRemInsight(days = 7): RemInsight {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = todayIso(d);
     const rec = state.history[key];
     if (!rec) {
       qualityTrend.push(null);

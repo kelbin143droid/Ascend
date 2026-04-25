@@ -25,6 +25,7 @@ import {
   setDreamRecall,
   setSleepQuality,
   getState as getFlowState,
+  todayIso,
   type SkipReason,
   type DreamRecall,
 } from "@/lib/vitalityFlowStore";
@@ -671,13 +672,11 @@ function PhaseRemDebrief({
   const flow = getFlowState();
   // Last night's Night Flow ran on the PREVIOUS day, so bedTime/targetBedTime
   // live on yesterday's record. Wake Flow itself runs today and writes
-  // dreamRecall/sleepQuality to today's record.
-  const yesterdayKey = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().slice(0, 10);
-  })();
-  const lastNight = flow.history[yesterdayKey];
+  // dreamRecall/sleepQuality to today's record. Use the same local-date
+  // helper as the store to avoid UTC-boundary off-by-one bugs.
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const lastNight = flow.history[todayIso(yesterday)];
   const delta =
     lastNight?.bedTime && lastNight?.targetBedTime
       ? bedtimeDeltaMin(lastNight.bedTime, lastNight.targetBedTime)

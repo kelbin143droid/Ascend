@@ -303,12 +303,29 @@ export default function SleepSettingsPage() {
                 },
               )}
             </div>
+            {state.wakeTime && (() => {
+              const totalMin = resolvedCycles * 90 + 14;
+              const h = Math.floor(totalMin / 60);
+              const m = totalMin % 60;
+              return (
+                <p
+                  className="text-[11px] mt-2 font-mono"
+                  style={{ color: "#a5b4fc" }}
+                  data-testid="text-total-sleep-duration"
+                >
+                  Total sleep: {h}h {m}m{" "}
+                  <span style={{ color: colors.textMuted, opacity: 0.7 }}>
+                    ({resolvedCycles} cycles + 14m latency)
+                  </span>
+                </p>
+              );
+            })()}
             <p
               className="text-[10px] mt-2 leading-relaxed"
               style={{ color: colors.textMuted }}
             >
               {state.wakeTime
-                ? `Cycle math: ${resolvedCycles} × 90m + 14m latency. Wind-down ping fires before this bedtime.`
+                ? `Wind-down ping fires before this bedtime.`
                 : "Set a wake time to unlock cycle-aware bedtime targets."}
             </p>
           </div>

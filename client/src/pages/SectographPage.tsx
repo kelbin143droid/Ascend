@@ -16,7 +16,12 @@ import {
   cancelTaskNotification,
 } from "@/lib/notificationService";
 import { getNightPlan } from "@/lib/sleepModeStore";
-import { computeRemInsight, computeSleepInsight, getState as getFlowState } from "@/lib/vitalityFlowStore";
+import {
+  computeRemInsight,
+  computeSleepInsight,
+  getState as getFlowState,
+  todayIso,
+} from "@/lib/vitalityFlowStore";
 import { Moon as MoonIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Quadrant } from "@shared/schema";
@@ -1391,7 +1396,7 @@ export default function SectographPage() {
                 for (let i = 0; i < 7; i++) {
                   const d = new Date(today);
                   d.setDate(today.getDate() - i);
-                  const rec = flowState.history[d.toISOString().slice(0, 10)];
+                  const rec = flowState.history[todayIso(d)];
                   if (!rec) continue;
                   if (rec.hadAlcohol) alcoholNights += 1;
                   if (typeof rec.caffeineHoursAgo === "number" && rec.caffeineHoursAgo < 6) {
