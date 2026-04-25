@@ -3,8 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { addWorkout, caloriesForTime } from "@/lib/workoutLogStore";
-import { readEnergySettings } from "@/lib/energySettingsStore";
 
 const COLOR = "#f97316";
 const REST_SECONDS = 7;
@@ -281,33 +279,14 @@ export function CardioSessionEngine({ playerId, onComplete, onCancel, noApiCall 
     };
   }, [phase]);
 
-  // Synchronous reentry guard — React state updates are async, so a
-  // rapid double-tap could otherwise run handleClaim's body twice
-  // before the next render. The ref locks immediately on first tap.
-  const claimedRef = useRef(false);
-
   const handleClaim = useCallback(() => {
-    if (claimedRef.current) return;
-    claimedRef.current = true;
-    setXpClaimed(true);
     onCompleteRef.current(XP_REWARD);
-    // Always log the workout summary on completion — independent of the
-    // server XP claim — so Daily Flow's burn always reaches Nutrition.
-    try {
-      const { weightKg } = readEnergySettings();
-      const total = EXERCISES.reduce(
-        (sum, ex) => sum + caloriesForTime(ex.id, ex.duration, weightKg),
-        0,
-      );
-      if (total > 0) addWorkout({ name: "Cardio Circuit", calories: total });
-    } catch (err) {
-      console.warn("[cardio-session] workout sync failed", err);
-    }
-    if (!noApiCall) {
+    if (!noApiCall && !xpClaimed) {
+      setXpClaimed(true);
       localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
       claimMutation.mutate();
     }
-  }, [noApiCall, claimMutation]);
+  }, [noApiCall, xpClaimed, claimMutation]);
 
   return (
     <motion.div

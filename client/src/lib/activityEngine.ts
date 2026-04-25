@@ -57,27 +57,19 @@ export const TIER_XP_MULTIPLIERS: Record<number, number> = {
 };
 
 export interface TierConfig {
-  /** Time-based warm-up + plank durations (seconds). */
   cardioSeconds: number;
+  pushupSeconds: number;
   plankSeconds: number;
-  /** Rep targets for the Physical Circuit (per round, 2 rounds total). */
-  pushupReps: number;
-  situpReps: number;
-  squatReps: number;
-  /** Rest seconds between rounds. */
   restSeconds: number;
 }
 
 export const STRENGTH_TIERS: Record<number, TierConfig> = {
-  1: { cardioSeconds: 25, plankSeconds: 20, pushupReps:  8, situpReps: 10, squatReps: 10, restSeconds: 45 },
-  2: { cardioSeconds: 30, plankSeconds: 25, pushupReps: 12, situpReps: 14, squatReps: 14, restSeconds: 45 },
-  3: { cardioSeconds: 35, plankSeconds: 30, pushupReps: 16, situpReps: 18, squatReps: 18, restSeconds: 45 },
-  4: { cardioSeconds: 40, plankSeconds: 35, pushupReps: 20, situpReps: 22, squatReps: 22, restSeconds: 45 },
-  5: { cardioSeconds: 50, plankSeconds: 45, pushupReps: 26, situpReps: 28, squatReps: 28, restSeconds: 45 },
+  1: { cardioSeconds: 25, pushupSeconds: 20, plankSeconds: 20, restSeconds: 6 },
+  2: { cardioSeconds: 30, pushupSeconds: 25, plankSeconds: 25, restSeconds: 6 },
+  3: { cardioSeconds: 35, pushupSeconds: 30, plankSeconds: 30, restSeconds: 6 },
+  4: { cardioSeconds: 40, pushupSeconds: 35, plankSeconds: 35, restSeconds: 6 },
+  5: { cardioSeconds: 50, pushupSeconds: 45, plankSeconds: 45, restSeconds: 6 },
 };
-
-/** Rough seconds-per-rep used to estimate Physical Circuit duration. */
-const SECONDS_PER_REP = 3;
 
 export interface AgilityTierConfig {
   crossArmSeconds: number;
@@ -126,7 +118,8 @@ export function buildPhase1Activities(
 
   const meditationDuration = 120 + (meditationTier - 1) * 30;
 
-  // ── Warm-up cardio (time-based)
+  // Jumping jacks always lead the circuit, jogging in place follows as the
+  // second warm-up move.
   const cardioLabel = "Jumping Jacks";
   const cardioVideo = "/videos/jumpingjacks_loop.mp4";
   const cardioInstruction = `Jumping jacks for ${st.cardioSeconds} seconds. Arms and legs in sync.`;
@@ -141,18 +134,23 @@ export function buildPhase1Activities(
   const pushUpVideo = "/videos/pushups_loop.mp4";
   const pushUpLabel = strengthTier <= 1 ? "Push-Ups (Knee if needed)" : "Push-Ups";
   const pushUpInstruction = strengthTier <= 1
-    ? `${st.pushupReps} push-ups. Use your knees if needed — control the movement.`
-    : `${st.pushupReps} push-ups. Slow and steady, full range.`;
+    ? `Push-ups for ${st.pushupSeconds} seconds. Use your knees if needed — control the movement.`
+    : `Push-ups for ${st.pushupSeconds} seconds. Slow and steady.`;
 
-  // Total ≈ jumping jacks + jog + 2 rounds × (rep work × 3s/rep + plank) + rest break.
+  // Squats are a fixed 15-second beat, regardless of strength tier.
+  const squatSeconds = 15;
+  // 60-second break between the two strength sets.
+  const setBreakSeconds = 60;
+
+  // Total = jumping jacks + jog + 2×(squats + push + sit + plank) + set break.
   // Each transition between exercises is a 6s "Get Ready" preview rendered
   // by the engine itself (not a separate timer step), so it is not counted
   // here.
   const strengthTotal =
     st.cardioSeconds +
     jogSeconds +
-    2 * ((st.pushupReps + st.situpReps + st.squatReps) * SECONDS_PER_REP + st.plankSeconds) +
-    st.restSeconds;
+    2 * (squatSeconds + st.pushupSeconds + st.pushupSeconds + st.plankSeconds) +
+    setBreakSeconds;
   const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   const DAILY_FLOW_ORDER = [
@@ -215,10 +213,10 @@ export function buildPhase1Activities(
           id: "intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: `Jumping Jacks → Jog in Place, then two rounds of Squats → Push-ups → Sit-ups → Plank. ${st.restSeconds}s break between rounds.`,
-          voiceText: "Get ready. Jumping jacks, then jog in place, then two full rounds.",
+          instruction: "Jumping Jacks → Jog in Place, then two sets of Squats → Push-ups → Sit-ups → Plank. 60s break between sets.",
+          voiceText: "Get ready. Jumping jacks, then jog in place, then two full sets.",
         },
-        // ── Warm-up cardio (time-based)
+        // ── Warm-up
         {
           id: "cardio",
           type: "timer",
@@ -237,94 +235,86 @@ export function buildPhase1Activities(
           voiceText: jogVoice,
           videoSrc: jogVideo,
         },
-        // ── Round 1 (rep work + plank hold)
+        // ── Set 1
         {
           id: "squats_1",
-          type: "rep",
-          label: "Squats — Round 1",
-          instruction: `${st.squatReps} squats. Chest up, knees track over toes.`,
-          repCount: st.squatReps,
-          repLabel: "reps",
-          voiceText: `Round one. ${st.squatReps} squats. Chest up.`,
+          type: "timer",
+          label: "Squats — Set 1",
+          instruction: `Squats for ${squatSeconds} seconds. Chest up, knees track over toes.`,
+          durationSeconds: squatSeconds,
+          voiceText: `Squats. Set one. ${squatSeconds} seconds. Chest up.`,
         },
         {
           id: "pushups_1",
-          type: "rep",
-          label: `${pushUpLabel} — Round 1`,
+          type: "timer",
+          label: `${pushUpLabel} — Set 1`,
           instruction: pushUpInstruction,
-          repCount: st.pushupReps,
-          repLabel: "reps",
-          voiceText: `${st.pushupReps} push-ups.`,
+          durationSeconds: st.pushupSeconds,
+          voiceText: `${pushUpLabel}. Set one. ${st.pushupSeconds} seconds.`,
           videoSrc: pushUpVideo,
         },
         {
-          id: "situps_1",
-          type: "rep",
-          label: "Sit-ups — Round 1",
-          instruction: `${st.situpReps} sit-ups. Curl up slowly, lower with control.`,
-          repCount: st.situpReps,
-          repLabel: "reps",
-          voiceText: `${st.situpReps} sit-ups. Core tight.`,
+          id: "abs_1",
+          type: "timer",
+          label: "Sit-ups — Set 1",
+          instruction: `Sit-ups for ${st.pushupSeconds} seconds. Curl up slowly, lower with control.`,
+          durationSeconds: st.pushupSeconds,
+          voiceText: `Sit-ups. Set one. ${st.pushupSeconds} seconds. Core tight.`,
           videoSrc: "/videos/abs_crunch_loop.mp4",
         },
         {
           id: "plank_1",
           type: "timer",
-          label: "Plank — Round 1",
+          label: "Plank — Set 1",
           instruction: `Hold a plank for ${st.plankSeconds} seconds. Straight line head to heels.`,
           durationSeconds: st.plankSeconds,
-          voiceText: `Plank hold. ${st.plankSeconds} seconds. Straight line.`,
+          voiceText: `Plank hold. Set one. ${st.plankSeconds} seconds. Straight line.`,
           videoSrc: "/videos/plank_hold_loop.mp4",
-          loop: false,
         },
-        // ── Break between rounds
+        // ── Break between sets
         {
           id: "set_break",
           type: "timer",
           label: "Rest",
-          instruction: `Rest ${st.restSeconds} seconds. Round 2 coming up — Squats → Push-ups → Sit-ups → Plank.`,
-          durationSeconds: st.restSeconds,
-          voiceText: `Rest ${st.restSeconds} seconds. Round two coming up.`,
+          instruction: `Rest ${setBreakSeconds} seconds. Set 2 coming up — Squats → Push-ups → Sit-ups → Plank.`,
+          durationSeconds: setBreakSeconds,
+          voiceText: `Rest ${setBreakSeconds} seconds. Set two coming up.`,
         },
-        // ── Round 2
+        // ── Set 2
         {
           id: "squats_2",
-          type: "rep",
-          label: "Squats — Round 2",
-          instruction: `${st.squatReps} squats. Drive through your heels.`,
-          repCount: st.squatReps,
-          repLabel: "reps",
-          voiceText: `Round two. ${st.squatReps} squats.`,
+          type: "timer",
+          label: "Squats — Set 2",
+          instruction: `Squats for ${squatSeconds} seconds. Drive through your heels.`,
+          durationSeconds: squatSeconds,
+          voiceText: `Squats. Set two. ${squatSeconds} seconds. Drive through your heels.`,
         },
         {
           id: "pushups_2",
-          type: "rep",
-          label: `${pushUpLabel} — Round 2`,
+          type: "timer",
+          label: `${pushUpLabel} — Set 2`,
           instruction: pushUpInstruction,
-          repCount: st.pushupReps,
-          repLabel: "reps",
-          voiceText: `Round two. ${st.pushupReps} push-ups.`,
+          durationSeconds: st.pushupSeconds,
+          voiceText: `${pushUpLabel}. Set two.`,
           videoSrc: pushUpVideo,
         },
         {
-          id: "situps_2",
-          type: "rep",
-          label: "Sit-ups — Round 2",
-          instruction: `${st.situpReps} sit-ups. Stay controlled.`,
-          repCount: st.situpReps,
-          repLabel: "reps",
-          voiceText: `Round two. ${st.situpReps} sit-ups.`,
+          id: "abs_2",
+          type: "timer",
+          label: "Sit-ups — Set 2",
+          instruction: `Sit-ups for ${st.pushupSeconds} seconds. Stay controlled.`,
+          durationSeconds: st.pushupSeconds,
+          voiceText: `Sit-ups. Set two.`,
           videoSrc: "/videos/abs_crunch_loop.mp4",
         },
         {
           id: "plank_2",
           type: "timer",
-          label: "Plank — Round 2",
+          label: "Plank — Set 2",
           instruction: `Final plank — hold for ${st.plankSeconds} seconds. Squeeze your core.`,
           durationSeconds: st.plankSeconds,
           voiceText: `Final plank. ${st.plankSeconds} seconds. Squeeze your core.`,
           videoSrc: "/videos/plank_hold_loop.mp4",
-          loop: false,
         },
         {
           id: "strength_done",

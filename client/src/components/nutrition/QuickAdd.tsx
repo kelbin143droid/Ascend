@@ -1,13 +1,9 @@
 import { useState } from "react";
 import { Plus, Zap } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
-import { addEntry, type MealType } from "@/lib/nutritionStore";
+import { addEntry } from "@/lib/nutritionStore";
 
-interface QuickAddProps {
-  mealType?: MealType;
-}
-
-export function QuickAdd({ mealType }: QuickAddProps = {}) {
+export function QuickAdd() {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const [open, setOpen] = useState(false);
@@ -36,7 +32,6 @@ export function QuickAdd({ mealType }: QuickAddProps = {}) {
       fat: parseFloat(fat) || 0,
       quantity: 1,
       servingLabel: "Quick",
-      mealType,
     });
     reset();
     setOpen(false);

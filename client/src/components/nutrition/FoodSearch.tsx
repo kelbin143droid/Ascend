@@ -2,13 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Search, Plus, Minus, X, Loader2 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { searchFoods, type FoodSearchResult } from "@/lib/foodApi";
-import { addEntry, type MealType } from "@/lib/nutritionStore";
+import { addEntry } from "@/lib/nutritionStore";
 
-interface FoodSearchProps {
-  mealType?: MealType;
-}
-
-export function FoodSearch({ mealType }: FoodSearchProps = {}) {
+export function FoodSearch() {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
 
@@ -55,7 +51,6 @@ export function FoodSearch({ mealType }: FoodSearchProps = {}) {
       fat: selected.fat,
       quantity,
       servingLabel: selected.servingLabel,
-      mealType,
     });
     setSelected(null);
     setQuery("");
