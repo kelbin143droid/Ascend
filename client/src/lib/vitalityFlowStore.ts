@@ -347,6 +347,11 @@ export interface RemInsight {
   recallCounts: { none: number; faint: number; vivid: number };
   /** Average self-reported sleep quality (1-5), null if no logs. */
   averageQuality: number | null;
+  /**
+   * Per-day sleep quality (1-5) for the analyzed window, oldest → newest.
+   * `null` entries indicate a missing log for that day. Used for sparkline.
+   */
+  qualityTrend: Array<number | null>;
   /** Average bedtime delta vs target (minutes; positive = late). */
   averageBedDeltaMin: number | null;
   /** Count of nights where bedtime was >30 min later than target. */
@@ -366,19 +371,34 @@ export function computeRemInsight(days = 7): RemInsight {
 
   const recallCounts = { none: 0, faint: 0, vivid: 0 };
   const qualities: number[] = [];
+  const qualityTrend: Array<number | null> = [];
   const deltas: number[] = [];
   const cycles: number[] = [];
   let lateNights = 0;
   let recallTotal = 0;
 
-  for (const d of dates) {
-    const rec = state.history[d];
-    if (!rec) continue;
+  // Walk every day in the trailing window (oldest → newest) so the trend
+  // array has a stable, gap-aware length even if some nights are missing.
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const rec = state.history[key];
+    if (!rec) {
+      qualityTrend.push(null);
+      continue;
+    }
     if (rec.dreamRecall) {
       recallCounts[rec.dreamRecall] += 1;
       recallTotal += 1;
     }
-    if (typeof rec.sleepQuality === "number") qualities.push(rec.sleepQuality);
+    if (typeof rec.sleepQuality === "number") {
+      qualities.push(rec.sleepQuality);
+      qualityTrend.push(rec.sleepQuality);
+    } else {
+      qualityTrend.push(null);
+    }
     if (rec.bedTime && rec.targetBedTime) {
       const delta = Math.round((rec.bedTime - rec.targetBedTime) / 60_000);
       deltas.push(delta);
@@ -396,6 +416,7 @@ export function computeRemInsight(days = 7): RemInsight {
     daysAnalyzed: dates.length,
     recallCounts,
     averageQuality: qualities.length ? Math.round((avg(qualities) ?? 0) * 10) / 10 : null,
+    qualityTrend,
     averageBedDeltaMin: deltas.length ? Math.round(avg(deltas) ?? 0) : null,
     lateNights,
     averageCycles: cycles.length ? Math.round((avg(cycles) ?? 0) * 10) / 10 : null,

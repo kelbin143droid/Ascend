@@ -1408,7 +1408,7 @@ export default function SectographPage() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {/* Avg cycles */}
                     <div className="rounded-md px-2 py-2" style={{ backgroundColor: "rgba(167,139,250,0.06)" }}>
                       <p className="text-[9px] uppercase tracking-wide" style={{ color: colors.textMuted, opacity: 0.7 }}>
@@ -1425,6 +1425,15 @@ export default function SectographPage() {
                       </p>
                       <p className="text-sm font-mono font-bold" style={{ color: "#22d3ee" }} data-testid="text-vivid-pct">
                         {totalRecall ? `${vividPct}%` : "—"}
+                      </p>
+                    </div>
+                    {/* Avg sleep quality */}
+                    <div className="rounded-md px-2 py-2" style={{ backgroundColor: "rgba(52,211,153,0.06)" }}>
+                      <p className="text-[9px] uppercase tracking-wide" style={{ color: colors.textMuted, opacity: 0.7 }}>
+                        Quality
+                      </p>
+                      <p className="text-sm font-mono font-bold" style={{ color: "#34d399" }} data-testid="text-avg-quality">
+                        {rem.averageQuality !== null ? `${rem.averageQuality.toFixed(1)}/5` : "—"}
                       </p>
                     </div>
                     {/* Bedtime delta avg */}
@@ -1445,6 +1454,44 @@ export default function SectographPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Sleep quality 7-day sparkline (only when at least one logged) */}
+                  {(() => {
+                    const trend = rem.qualityTrend;
+                    const hasAny = trend.some((q) => q !== null);
+                    if (!hasAny) return null;
+                    return (
+                      <div className="mt-3" data-testid="quality-trend">
+                        <div className="flex items-end justify-between gap-1 h-7">
+                          {trend.map((q, i) => {
+                            const heightPct = q === null ? 0 : (q / 5) * 100;
+                            const tone = q === null
+                              ? "rgba(255,255,255,0.06)"
+                              : q >= 4 ? "#34d399"
+                              : q >= 3 ? "#a3e635"
+                              : q >= 2 ? "#fbbf24"
+                              : "#f87171";
+                            return (
+                              <div
+                                key={i}
+                                className="flex-1 rounded-sm"
+                                style={{
+                                  height: q === null ? "4px" : `${Math.max(heightPct, 12)}%`,
+                                  backgroundColor: tone,
+                                  opacity: q === null ? 0.4 : 1,
+                                  alignSelf: q === null ? "flex-end" : "flex-end",
+                                }}
+                                title={q === null ? "No log" : `Quality ${q}/5`}
+                              />
+                            );
+                          })}
+                        </div>
+                        <p className="text-[9px] mt-1" style={{ color: colors.textMuted, opacity: 0.55 }}>
+                          Sleep quality · last {trend.length} days
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   {/* Recall distribution bar */}
                   {totalRecall > 0 && (

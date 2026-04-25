@@ -16,12 +16,19 @@
 
 import { getState as getFlowState, computeRemInsight } from "./vitalityFlowStore";
 import {
-  cancelWindDownNotification,
-  scheduleWindDownNotification,
+  bedtimeForCycles,
+  formatHM,
+  recommendedCycles,
   type CycleCount,
   type WakeHM,
   VALID_CYCLES,
 } from "./remCycleEngine";
+import {
+  isNativePlatform,
+  scheduleTaskNotification,
+  cancelTaskNotification,
+  type ScheduleResult,
+} from "./notificationService";
 
 export type SleepMode = "beginner" | "adaptive" | "custom" | "minimal";
 
@@ -345,6 +352,36 @@ export function getNightPlan(): NightPlan {
 
 /* ─────────────── Wind-down notification sync ─────────────── */
 
+/** Stable id for the wind-down notification so we can replace it. */
+export const WIND_DOWN_NOTIFICATION_ID = "ascend_wind_down";
+
+async function scheduleWindDownNotification(opts: {
+  wake: WakeHM;
+  cycles: CycleCount;
+  leadMinutes: number;
+}): Promise<ScheduleResult> {
+  if (!isNativePlatform()) {
+    return { scheduled: false, reason: "not-native" };
+  }
+  const bedtime = bedtimeForCycles(opts.wake, opts.cycles);
+  const fireAt = new Date(bedtime.getTime() - opts.leadMinutes * 60_000);
+  if (fireAt.getTime() <= Date.now()) {
+    await cancelTaskNotification(WIND_DOWN_NOTIFICATION_ID);
+    return { scheduled: false, reason: "past-time" };
+  }
+  return scheduleTaskNotification(
+    WIND_DOWN_NOTIFICATION_ID,
+    `Wind down in ${opts.leadMinutes} min`,
+    `Asleep by ${formatHM(bedtime)} for ${opts.cycles} REM cycles.`,
+    fireAt,
+    { source: "night-flow", route: "/night-flow" },
+  );
+}
+
+async function cancelWindDownNotification(): Promise<void> {
+  await cancelTaskNotification(WIND_DOWN_NOTIFICATION_ID);
+}
+
 /**
  * Apply current sleep settings to the OS wind-down notification.
  * Web is a no-op (notification service short-circuits there).
@@ -360,9 +397,7 @@ export async function syncWindDownNotification(): Promise<void> {
   }
   // Resolve cycles: explicit pick > best fit > 5 (sane default).
   let cycles: CycleCount = state.cycles ?? 5;
-  // If user didn't pick, prefer the engine's best-fit but bounded to 4-6.
   if (!state.cycles) {
-    const { recommendedCycles } = await import("./remCycleEngine");
     const best = recommendedCycles(state.wakeTime);
     if (best === 4 || best === 5 || best === 6) cycles = best;
   }

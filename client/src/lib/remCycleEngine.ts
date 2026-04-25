@@ -1,7 +1,7 @@
 /**
  * REM Cycle Engine.
  *
- * Pure helpers that turn a desired wake time + cycle count into a
+ * Pure math helpers that turn a desired wake time + cycle count into a
  * recommended bedtime, expressed in local time. Centralized here so the
  * Night Flow, Wake Flow, Sectograph and notification scheduler all
  * derive the same numbers.
@@ -9,14 +9,10 @@
  * Math: human sleep proceeds in ~90-minute cycles; we add a baseline
  * 14-minute sleep latency so a "5 cycle" target lands on completed REM
  * rather than mid-cycle wakes.
+ *
+ * NOTE: Intentionally has zero side-effect imports (no notification,
+ * storage, or DOM access) so it stays trivially testable.
  */
-
-import {
-  isNativePlatform,
-  scheduleTaskNotification,
-  cancelTaskNotification,
-  type ScheduleResult,
-} from "./notificationService";
 
 export const SLEEP_LATENCY_MIN = 14;
 export const CYCLE_MIN = 90;
@@ -108,40 +104,3 @@ export function bedtimeDeltaMin(actualMs: number, targetMs: number): number {
   return Math.round((actualMs - targetMs) / 60_000);
 }
 
-/* ─────────────── Notification scheduling ─────────────── */
-
-/** Stable id for the wind-down notification so we can replace it. */
-export const WIND_DOWN_NOTIFICATION_ID = "ascend_wind_down";
-
-/**
- * Schedule (or replace) the cycle-aware wind-down ping.
- *
- * Fires `leadMinutes` BEFORE the recommended bedtime. Web returns a
- * `not-native` no-op so the rest of the app can call this freely.
- */
-export async function scheduleWindDownNotification(opts: {
-  wake: WakeHM;
-  cycles: CycleCount;
-  leadMinutes: number;
-}): Promise<ScheduleResult> {
-  if (!isNativePlatform()) {
-    return { scheduled: false, reason: "not-native" };
-  }
-  const bedtime = bedtimeForCycles(opts.wake, opts.cycles);
-  const fireAt = new Date(bedtime.getTime() - opts.leadMinutes * 60_000);
-  if (fireAt.getTime() <= Date.now()) {
-    await cancelTaskNotification(WIND_DOWN_NOTIFICATION_ID);
-    return { scheduled: false, reason: "past-time" };
-  }
-  return scheduleTaskNotification(
-    WIND_DOWN_NOTIFICATION_ID,
-    `Wind down in ${opts.leadMinutes} min`,
-    `Asleep by ${formatHM(bedtime)} for ${opts.cycles} REM cycles.`,
-    fireAt,
-    { source: "night-flow", route: "/night-flow" },
-  );
-}
-
-export async function cancelWindDownNotification(): Promise<void> {
-  await cancelTaskNotification(WIND_DOWN_NOTIFICATION_ID);
-}
