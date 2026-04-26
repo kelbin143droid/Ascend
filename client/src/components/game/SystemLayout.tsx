@@ -31,13 +31,15 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const colors = backgroundTheme.colors;
   const hasCustomBg = !!customBackgroundImage;
   const isIronSovereign = backgroundTheme.id === "male" && !hasCustomBg;
-  // When the user uploaded a background OR the Iron Sovereign starfield is
-  // active, dial down the layout's own overlays so the underlying image stays
-  // visible instead of being painted over.
+  const isNeonEmpress = backgroundTheme.id === "female" && !hasCustomBg;
+  const usingThemeImage = isIronSovereign || isNeonEmpress;
+  // When the user uploaded a background OR a baked-in theme image is active,
+  // dial down the layout's own overlays so the underlying image stays visible
+  // instead of being painted over.
   const darkOverlayOpacity =
-    hasCustomBg || isIronSovereign ? 0 : (backgroundTheme.darkOverlayOpacity ?? 0.15);
+    hasCustomBg || usingThemeImage ? 0 : (backgroundTheme.darkOverlayOpacity ?? 0.15);
   const gridOpacity =
-    hasCustomBg || isIronSovereign ? 0 : (backgroundTheme.gridOpacity ?? 0.20);
+    hasCustomBg || usingThemeImage ? 0 : (backgroundTheme.gridOpacity ?? 0.20);
 
   return (
     <div
@@ -73,12 +75,21 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                 backgroundRepeat: "no-repeat",
                 backgroundColor: "#000000",
               }
+            : isNeonEmpress
+            ? {
+                backgroundImage: `url(${neonEmpressBg})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                backgroundColor: "#dde8f5",
+              }
             : { background: colors.backgroundGradient }
         }
       />
 
-      {/* Female theme — soft dreamy blobs */}
-      {backgroundTheme.id === "female" && (
+      {/* Female theme — soft dreamy blobs (skipped when the pastel image
+          background is active so the baked-in flowers/sparkles read clean). */}
+      {backgroundTheme.id === "female" && !isNeonEmpress && (
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           {[
             { w: 220, h: 180, top: "5%",  left: "5%",  color: "rgba(255,210,230,0.55)" },

@@ -66,6 +66,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const isIronSovereign = backgroundTheme.id === "male";
+  const isNeonEmpress = backgroundTheme.id === "female";
   // Iron Sovereign HUD palette — locked cyan/green/purple regardless of HP/MP %.
   const isHud = {
     cyan: "#22d3ee",
@@ -74,6 +75,21 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     greenGlow: "rgba(34,197,94,0.55)",
     purple: "#a855f7",
     purpleGlow: "rgba(168,85,247,0.45)",
+  };
+  // Neon Empress pastel palette — locked tones lifted from the reference HUD.
+  const fae = {
+    peach: "#fbcaad",
+    peachStrong: "#f4845f",
+    peachBorder: "#f4a78a",
+    skyBlue: "#a9d3f0",
+    mint: "#bce8c9",
+    mintFill: "#7ed8a0",
+    lavender: "#c8b9ee",
+    lavenderDeep: "#8d75c4",
+    purple: "#7c3aed",
+    inkText: "#2d1b4e",
+    gold: "#c89530",
+    goldGlow: "rgba(200,149,48,0.55)",
   };
   const [, navigate] = useLocation();
   const [flowActive, setFlowActive] = useState(false);
@@ -150,10 +166,20 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
 
   const displayLevel = playerData?.level ?? 2;
-  // Iron Sovereign locks HP/MP to fixed HUD colors (green/purple) per the
-  // reference design; other themes keep the dynamic threshold-aware palette.
-  const hpColor = isIronSovereign ? isHud.green : getHPColor((stats.hp / maxHp) * 100);
-  const manaColor = isIronSovereign ? isHud.purple : getManaColor((stats.mana / maxMana) * 100);
+  // Themed HP/MP colors:
+  //  - Iron Sovereign: locked cyan-HUD green / purple
+  //  - Neon Empress:   locked pastel green / royal purple
+  //  - Other themes:   dynamic threshold-aware palette (hp drops to red, etc.)
+  const hpColor = isIronSovereign
+    ? isHud.green
+    : isNeonEmpress
+      ? "#22c55e"
+      : getHPColor((stats.hp / maxHp) * 100);
+  const manaColor = isIronSovereign
+    ? isHud.purple
+    : isNeonEmpress
+      ? fae.purple
+      : getManaColor((stats.mana / maxMana) * 100);
   const hpPct = Math.min(100, Math.max(0, (stats.hp / maxHp) * 100));
   const manaBarPct = Math.min(100, Math.max(0, (stats.mana / maxMana) * 100));
 
@@ -239,6 +265,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     Lv {displayLevel}
                   </span>
                 </div>
+              ) : isNeonEmpress ? (
+                <LaurelLevel level={displayLevel} gold={fae.gold} glow={fae.goldGlow} />
               ) : (
                 <span
                   className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl"
@@ -271,6 +299,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 fill={isHud.cyan}
                 glow={isHud.cyanGlow}
               />
+            ) : isNeonEmpress ? (
+              <PastelGradientXpBar percent={xp.percent} />
             ) : (
               <div
                 className="w-full h-1.5 rounded-full overflow-hidden"
@@ -307,6 +337,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </div>
           ) : isIronSovereign ? (
             <IronSovereignFlowButton onStart={() => setFlowActive(true)} />
+          ) : isNeonEmpress ? (
+            <NeonEmpressFlowButton onStart={() => setFlowActive(true)} fae={fae} />
           ) : (
             <button
               data-testid="button-begin-flow"
@@ -332,24 +364,57 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.18 }}
-          className="rounded-xl px-4 py-3 flex items-start gap-3"
-          style={{ backgroundColor: `${colors.primary}08`, border: `1px solid ${colors.primary}15` }}
+          className={
+            isNeonEmpress
+              ? "rounded-xl px-4 py-3 flex items-start gap-3 relative overflow-hidden"
+              : "rounded-xl px-4 py-3 flex items-start gap-3"
+          }
+          style={
+            isNeonEmpress
+              ? {
+                  backgroundColor: fae.lavender,
+                  border: `1px solid ${fae.lavenderDeep}33`,
+                  backgroundImage:
+                    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' stroke='white' stroke-opacity='0.45' stroke-width='1.2' stroke-linecap='round'><path d='M10 50 Q 25 25, 45 40 T 80 35 T 115 50'/><path d='M5 80 Q 30 65, 50 85 T 90 80 T 120 95'/><path d='M60 10 Q 75 25, 65 45 T 80 75'/><path d='M20 110 Q 35 95, 55 105'/></g></svg>\")",
+                  backgroundSize: "180px 180px",
+                  backgroundRepeat: "repeat",
+                }
+              : { backgroundColor: `${colors.primary}08`, border: `1px solid ${colors.primary}15` }
+          }
           data-testid="coach-insight-card"
         >
           <div
-            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-            style={{ backgroundColor: `${colors.primary}20` }}
+            className={
+              isNeonEmpress
+                ? "w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                : "w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+            }
+            style={
+              isNeonEmpress
+                ? {
+                    backgroundColor: fae.lavenderDeep + "55",
+                    border: `1px solid ${fae.lavenderDeep}77`,
+                  }
+                : { backgroundColor: `${colors.primary}20` }
+            }
           >
-            <Brain size={12} style={{ color: colors.primary }} />
+            <Brain size={isNeonEmpress ? 16 : 12} style={{ color: isNeonEmpress ? fae.inkText : colors.primary }} />
           </div>
           <div>
             <p
-              className="text-[9px] uppercase tracking-[0.14em] font-bold mb-0.5"
-              style={{ color: `${colors.primary}80` }}
+              className={
+                isNeonEmpress
+                  ? "text-[10px] uppercase tracking-[0.18em] font-extrabold mb-0.5"
+                  : "text-[9px] uppercase tracking-[0.14em] font-bold mb-0.5"
+              }
+              style={{ color: isNeonEmpress ? fae.inkText : `${colors.primary}80` }}
             >
               Coach
             </p>
-            <p className="text-xs leading-relaxed" style={{ color: `${colors.text}cc` }}>
+            <p
+              className={isNeonEmpress ? "text-sm leading-relaxed" : "text-xs leading-relaxed"}
+              style={{ color: isNeonEmpress ? fae.inkText : `${colors.text}cc` }}
+            >
               {homeData.insight ?? "Consistency is becoming your baseline. Each session builds the next."}
             </p>
           </div>
@@ -364,31 +429,68 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           <button
             data-testid="button-toggle-sessions"
             onClick={() => setShowSessions(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all active:scale-[0.99]"
-            style={{
-              backgroundColor: `${colors.surface || colors.background}cc`,
-              border: `1px solid ${colors.surfaceBorder}`,
-            }}
+            className={
+              isNeonEmpress
+                ? "w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all active:scale-[0.99]"
+                : "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all active:scale-[0.99]"
+            }
+            style={
+              isNeonEmpress
+                ? {
+                    backgroundColor: fae.mint,
+                    border: `1px solid ${fae.mintFill}66`,
+                    boxShadow: "0 1px 0 rgba(255,255,255,0.6) inset",
+                  }
+                : {
+                    backgroundColor: `${colors.surface || colors.background}cc`,
+                    border: `1px solid ${colors.surfaceBorder}`,
+                  }
+            }
           >
             <div className="flex items-center gap-2">
-              <Zap size={12} style={{ color: colors.primary }} />
+              <Zap
+                size={isNeonEmpress ? 14 : 12}
+                style={{ color: isNeonEmpress ? fae.inkText : colors.primary }}
+                fill={isNeonEmpress ? fae.inkText : "none"}
+              />
               <span
-                className="text-[10px] uppercase tracking-wider font-bold"
-                style={{ color: colors.primary }}
+                className={
+                  isNeonEmpress
+                    ? "text-[11px] uppercase tracking-wider font-extrabold"
+                    : "text-[10px] uppercase tracking-wider font-bold"
+                }
+                style={{ color: isNeonEmpress ? fae.inkText : colors.primary }}
               >
                 Today's Sessions
               </span>
               <span
-                className="text-[9px] font-mono px-1.5 py-0.5 rounded-full"
-                style={{ backgroundColor: `${colors.primary}15`, color: `${colors.primary}90` }}
+                className={
+                  isNeonEmpress
+                    ? "text-[10px] font-mono px-1.5 py-0.5 rounded-full"
+                    : "text-[9px] font-mono px-1.5 py-0.5 rounded-full"
+                }
+                style={
+                  isNeonEmpress
+                    ? {
+                        backgroundColor: "rgba(45,27,78,0.10)",
+                        color: fae.inkText + "cc",
+                      }
+                    : { backgroundColor: `${colors.primary}15`, color: `${colors.primary}90` }
+                }
               >
                 ~{totalMins} min
               </span>
             </div>
             {showSessions ? (
-              <ChevronUp size={14} style={{ color: colors.textMuted }} />
+              <ChevronUp
+                size={isNeonEmpress ? 16 : 14}
+                style={{ color: isNeonEmpress ? fae.inkText : colors.textMuted }}
+              />
             ) : (
-              <ChevronDown size={14} style={{ color: colors.textMuted }} />
+              <ChevronDown
+                size={isNeonEmpress ? 16 : 14}
+                style={{ color: isNeonEmpress ? fae.inkText : colors.textMuted }}
+              />
             )}
           </button>
 
@@ -494,7 +596,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="rounded-xl px-4 py-3 space-y-3"
+            className={
+              isNeonEmpress
+                ? "rounded-2xl px-4 py-4 space-y-4"
+                : "rounded-xl px-4 py-3 space-y-3"
+            }
             style={
               isIronSovereign
                 ? {
@@ -502,10 +608,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     border: `1.5px solid ${isHud.green}`,
                     boxShadow: `0 0 18px ${isHud.greenGlow}, inset 0 0 12px rgba(34,197,94,0.10)`,
                   }
-                : {
-                    backgroundColor: `${colors.surface || colors.background}cc`,
-                    border: `1px solid ${colors.surfaceBorder}`,
-                  }
+                : isNeonEmpress
+                  ? {
+                      background:
+                        "linear-gradient(135deg, rgba(207,232,243,0.85) 0%, rgba(220,210,243,0.85) 55%, rgba(212,202,243,0.85) 100%)",
+                      border: `2px solid ${fae.peachBorder}`,
+                      boxShadow:
+                        `0 0 0 1px rgba(255,255,255,0.5) inset, 0 0 18px ${fae.peachStrong}40`,
+                    }
+                  : {
+                      backgroundColor: `${colors.surface || colors.background}cc`,
+                      border: `1px solid ${colors.surfaceBorder}`,
+                    }
             }
             data-testid="stat-bars-card"
           >
@@ -526,8 +640,16 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 </span>
               </div>
               <div
-                className="w-full h-2 rounded-full overflow-hidden"
-                style={{ backgroundColor: `${hpColor}18` }}
+                className={
+                  isNeonEmpress
+                    ? "w-full h-3 rounded-full overflow-hidden"
+                    : "w-full h-2 rounded-full overflow-hidden"
+                }
+                style={{
+                  backgroundColor: isNeonEmpress
+                    ? "rgba(255,255,255,0.45)"
+                    : `${hpColor}18`,
+                }}
                 data-testid="hp-bar-track"
               >
                 <motion.div
@@ -535,7 +657,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   initial={{ width: 0 }}
                   animate={{ width: `${hpPct}%` }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
-                  style={{ backgroundColor: hpColor, boxShadow: `0 0 6px ${hpColor}60` }}
+                  style={
+                    isNeonEmpress
+                      ? {
+                          background: `linear-gradient(90deg, #22c55e 0%, ${fae.peach} 100%)`,
+                          boxShadow: "0 0 4px rgba(255,255,255,0.5)",
+                        }
+                      : { backgroundColor: hpColor, boxShadow: `0 0 6px ${hpColor}60` }
+                  }
                   data-testid="hp-bar-fill"
                 />
               </div>
@@ -663,6 +792,166 @@ function IronSovereignFlowButton({ onStart }: { onStart: () => void }) {
         {/* Right waveform */}
         <Waveform side="right" />
       </div>
+    </button>
+  );
+}
+
+/**
+ * Neon Empress level marker — a script "Lv N" framed by gold laurel
+ * branches, matching the pastel header in the reference.
+ */
+function LaurelLevel({
+  level,
+  gold,
+  glow,
+}: {
+  level: number;
+  gold: string;
+  glow: string;
+}) {
+  return (
+    <div
+      className="flex items-center gap-1"
+      data-testid="text-player-level"
+    >
+      <LaurelBranch side="left" gold={gold} />
+      <span
+        style={{
+          color: gold,
+          fontFamily:
+            "'Brush Script MT', 'Apple Chancery', 'Lucida Handwriting', cursive, serif",
+          fontStyle: "italic",
+          fontWeight: 700,
+          fontSize: 24,
+          lineHeight: 1,
+          textShadow: `0 1px 0 rgba(255,255,255,0.65), 0 0 10px ${glow}`,
+          letterSpacing: "0.02em",
+        }}
+      >
+        Lv {level}
+      </span>
+      <LaurelBranch side="right" gold={gold} />
+    </div>
+  );
+}
+
+function LaurelBranch({ side, gold }: { side: "left" | "right"; gold: string }) {
+  const transform = side === "right" ? "scaleX(-1)" : undefined;
+  const leaves = [
+    { cx: 4,  cy: 28, rx: 1.6, ry: 3.6, rot: -55 },
+    { cx: 5,  cy: 22, rx: 1.6, ry: 3.6, rot: -50 },
+    { cx: 6,  cy: 16, rx: 1.6, ry: 3.4, rot: -45 },
+    { cx: 7.5,cy: 10, rx: 1.5, ry: 3.2, rot: -38 },
+    { cx: 9,  cy: 5,  rx: 1.4, ry: 2.8, rot: -28 },
+    { cx: 7,  cy: 26, rx: 1.5, ry: 3.4, rot:  60 },
+    { cx: 8,  cy: 19, rx: 1.5, ry: 3.2, rot:  55 },
+    { cx: 9,  cy: 13, rx: 1.4, ry: 3.0, rot:  48 },
+  ];
+  return (
+    <svg
+      width={22}
+      height={36}
+      viewBox="0 0 22 36"
+      style={{ transform, display: "block" }}
+      aria-hidden
+    >
+      <path
+        d="M3 34 Q 6 22 9 10 Q 10 6 11 3"
+        stroke={gold}
+        strokeWidth={1.3}
+        fill="none"
+        strokeLinecap="round"
+        opacity={0.85}
+      />
+      <g fill={gold} opacity={0.92}>
+        {leaves.map((l, i) => (
+          <ellipse
+            key={i}
+            cx={l.cx}
+            cy={l.cy}
+            rx={l.rx}
+            ry={l.ry}
+            transform={`rotate(${l.rot} ${l.cx} ${l.cy})`}
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * Neon Empress XP bar — pastel peach→pink→purple gradient on a soft
+ * cream rail, matching the reference level-1 HUD.
+ */
+function PastelGradientXpBar({ percent }: { percent: number }) {
+  const pct = Math.max(0, Math.min(100, percent));
+  return (
+    <div
+      className="w-full h-2.5 rounded-full overflow-hidden"
+      style={{
+        backgroundColor: "rgba(255,255,255,0.55)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.4)",
+      }}
+      data-testid="xp-bar-track"
+    >
+      <motion.div
+        className="h-full rounded-full"
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        style={{
+          background:
+            "linear-gradient(90deg, #f7e5b6 0%, #f4a6c8 50%, #b59cf2 100%)",
+          boxShadow: "0 0 6px rgba(180,150,240,0.55)",
+        }}
+        data-testid="xp-bar-fill"
+      />
+    </div>
+  );
+}
+
+/**
+ * Neon Empress daily-flow CTA — peach pastel pill with a soft sky-blue
+ * outer ring and dark navy text, matching the reference button.
+ */
+function NeonEmpressFlowButton({
+  onStart,
+  fae,
+}: {
+  onStart: () => void;
+  fae: {
+    peach: string;
+    peachStrong: string;
+    skyBlue: string;
+    inkText: string;
+  };
+}) {
+  return (
+    <button
+      data-testid="button-begin-flow"
+      onClick={onStart}
+      className="group relative w-full rounded-2xl transition-all active:scale-[0.985]"
+      style={{
+        padding: "18px 18px",
+        background:
+          `linear-gradient(180deg, ${fae.peach} 0%, #f7baa0 100%)`,
+        border: `2px solid ${fae.skyBlue}`,
+        boxShadow:
+          `0 0 0 4px rgba(255,255,255,0.55), 0 0 0 6px ${fae.skyBlue}66, 0 8px 18px rgba(244,132,95,0.20)`,
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      <span
+        className="flex items-center justify-center gap-3 font-extrabold uppercase"
+        style={{
+          color: fae.inkText,
+          fontSize: 16,
+          letterSpacing: "0.18em",
+        }}
+      >
+        <Play size={16} strokeWidth={2.4} />
+        Begin Daily Flow
+      </span>
     </button>
   );
 }
