@@ -1,0 +1,26 @@
+# Large dev-only archives at project root
+*.zip
+*.tar.gz
+*.tar
+
+# Export archives generated during development
+exports/
+
+# Reference images/videos uploaded during development (not served by the app)
+attached_assets/
+
+# Mockup sandbox — dev-only design tool
+artifacts/
+
+# Replit agent skills and local dev tooling
+.local/
+
+# Git history — not needed at runtime
+.git/
+
+# Development build output (rebuilt during deployment)
+dist/
+
+# OS / editor noise
+.DS_Store
+*.swp
