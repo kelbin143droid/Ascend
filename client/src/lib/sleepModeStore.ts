@@ -388,9 +388,7 @@ async function cancelWindDownNotification(): Promise<void> {
   await cancelTaskNotification(WIND_DOWN_NOTIFICATION_ID);
 }
 
-/** Default wake target used when the user hasn't set one (preserves the
- *  pre-REM behavior of always firing a nightly wind-down reminder). */
-const DEFAULT_WAKE: WakeHM = { hour: 7, minute: 0 };
+/** Default cycle count when the user has set a wake time but no preference. */
 const DEFAULT_CYCLES: CycleCount = 5;
 
 /**
@@ -399,21 +397,23 @@ const DEFAULT_CYCLES: CycleCount = 5;
  *
  * Behavior:
  *   - Reminder OFF → cancel the notification.
- *   - Reminder ON  + wake time set → cycle-aware bedtime.
- *   - Reminder ON  + NO wake time → fall back to a 7:00 / 5-cycle target
- *     so users who haven't opted into REM tracking still get the nightly
- *     wind-down nudge they had before.
+ *   - Reminder ON  + wake time set → cycle-aware bedtime (bedtime − leadTime).
+ *   - Reminder ON  + NO wake time → cancel any prior ping and no-op.
+ *     We deliberately do NOT fire at a hardcoded fallback hour, since that
+ *     would surprise users who never configured a wake time. They'll start
+ *     getting the wind-down nudge as soon as they set wake time in
+ *     Sleep Settings (this function re-runs on every settings change).
  *
  * Call after settings change and once per app boot. Idempotent.
  */
 export async function syncWindDownNotification(): Promise<void> {
   const state = read();
   const plan = getNightPlan();
-  if (!plan.windDownReminder) {
+  if (!plan.windDownReminder || !state.wakeTime) {
     await cancelWindDownNotification();
     return;
   }
-  const wake = state.wakeTime ?? DEFAULT_WAKE;
+  const wake = state.wakeTime;
   // Resolve cycles: explicit pick > best fit > sane default.
   let cycles: CycleCount = state.cycles ?? DEFAULT_CYCLES;
   if (!state.cycles) {

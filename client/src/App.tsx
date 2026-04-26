@@ -13,7 +13,6 @@ import {
   initNotifications,
   isNativePlatform,
   listPendingNotifications,
-  cancelTaskNotification,
 } from "@/lib/notificationService";
 import { syncWindDownNotification, subscribeSleepMode } from "@/lib/sleepModeStore";
 import { installNativeFetchBase } from "@/lib/apiBase";
@@ -104,35 +103,25 @@ function Router() {
 /**
  * One-time migration: cancel any pending per-block `__nightflow` wind-down
  * pings scheduled by older builds of SectographPage. Wind-down notifications
- * now flow through `syncWindDownNotification()` (cycle math) only, so leftover
- * legacy pings would cause duplicate reminders.
+ * now flow exclusively through `syncWindDownNotification()` (cycle math), so
+ * leftover legacy pings would cause duplicate reminders. We match by the
+ * `extra.source` payload tag the old scheduler set.
  */
 async function cancelLegacyWindDownPings(): Promise<void> {
   try {
     const pending = await listPendingNotifications();
-    const legacy = pending
-      .map((n) => (typeof n.extra === "object" && n.extra ? n.extra : null))
-      .filter(Boolean) as Array<Record<string, unknown>>;
-    // Capacitor pending notifications carry our `extra` payload; we tagged
-    // legacy night-flow pings with source: "night-flow" or "night-flow-minimal".
-    // Match by `source` and let cancelTaskNotification swallow misses.
-    for (const n of pending) {
-      const extra = (n.extra ?? {}) as Record<string, unknown>;
-      const src = typeof extra.source === "string" ? extra.source : "";
-      if (src === "night-flow" || src === "night-flow-minimal") {
-        // The numeric id is derived from a string taskId we can't recover here,
-        // so cancel by raw numeric id directly via the underlying plugin.
-        try {
-          const { LocalNotifications } = await import("@capacitor/local-notifications");
-          await LocalNotifications.cancel({ notifications: [{ id: n.id }] });
-        } catch (err) {
-          console.warn("[App] legacy wind-down cancel failed", err);
-        }
-      }
-    }
-    void legacy;
+    const legacyIds = pending
+      .filter((n) => {
+        const extra = (n.extra ?? {}) as Record<string, unknown>;
+        const src = typeof extra.source === "string" ? extra.source : "";
+        return src === "night-flow" || src === "night-flow-minimal";
+      })
+      .map((n) => ({ id: n.id }));
+    if (legacyIds.length === 0) return;
+    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    await LocalNotifications.cancel({ notifications: legacyIds });
   } catch (err) {
-    console.warn("[App] legacy wind-down scan failed", err);
+    console.warn("[App] legacy wind-down cleanup failed", err);
   }
 }
 
