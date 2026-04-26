@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, X } from "lucide-react";
-import inhaleUrl from "@assets/Inhale_1774271882288.mp3";
-import holdUrl from "@assets/Hold_1774271892968.mp3";
-import exhaleUrl from "@assets/Exhale_1774271901274.mp3";
+const inhaleUrl = "";
+const holdUrl = "";
+const exhaleUrl = "";
 
 const ACCENT     = "#22d3ee";
 const ACCENT_BG  = "#061018";

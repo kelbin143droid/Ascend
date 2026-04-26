@@ -7,7 +7,6 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { SidebarMenu } from "./SidebarMenu";
 import { DevPanel } from "./DevPanel";
 import { AppTutorialOverlay } from "./AppTutorialOverlay";
-import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 import ironSovereignBg from "@/assets/themes/iron_sovereign_starfield.png";
 import neonEmpressBg from "@/assets/themes/neon_empress_pastel.png";
 
@@ -119,9 +118,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       <div
         className="fixed inset-0 z-0 scale-110 blur-[2px]"
         style={{
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+          background: "radial-gradient(ellipse at 20% 40%, rgba(14,30,80,0.9) 0%, transparent 60%), radial-gradient(ellipse at 80% 70%, rgba(6,20,60,0.8) 0%, transparent 55%), radial-gradient(ellipse at 50% 10%, rgba(20,10,50,0.7) 0%, transparent 50%), #020510",
           opacity: darkOverlayOpacity,
           transition: "opacity 0.6s ease",
         }}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import warriorSheet from "@assets/warrior_sheet.png";
+const warriorSheet = "";
 
 export type WarriorAnimation = "idle" | "attack" | "walk" | "die";
 
