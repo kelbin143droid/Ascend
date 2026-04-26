@@ -246,12 +246,28 @@ function Phase1Init({
         {headline}
       </h1>
       <p
-        className="text-sm max-w-xs mb-6 transition-opacity duration-1000 delay-500"
+        className="text-sm max-w-xs mb-3 transition-opacity duration-1000 delay-500"
         style={{ color: "rgba(224,231,255,0.7)", opacity: show ? 1 : 0 }}
         data-testid="night-target-subline"
       >
         {subline}
       </p>
+
+      {/* Adaptive plan rationale (e.g. REM-poor week → narrowed flow) */}
+      {plan.reason && (
+        <p
+          className="text-[10px] max-w-xs mb-5 px-3 py-1.5 rounded-full transition-opacity duration-1000 delay-700"
+          style={{
+            color: "#a5b4fc",
+            backgroundColor: "rgba(99,102,241,0.08)",
+            border: "1px solid rgba(99,102,241,0.18)",
+            opacity: show ? 1 : 0,
+          }}
+          data-testid="night-plan-reason"
+        >
+          {plan.reason}
+        </p>
+      )}
 
       {/* Cycle math card */}
       {target && (
