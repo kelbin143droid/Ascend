@@ -533,11 +533,11 @@ export default function SectographPage() {
         });
       }
     }
-    // ── Night Flow / wind-down triggers (two-step).
-    //   1) -30min  "Stop eating + put phone in night mode"  (controlled by plan.foodCutoff)
-    //   2) -10min  "Wind down routine"                     (controlled by plan.windDownReminder)
-    // The 10-min ping opens Night Flow when the active mode includes a full flow;
-    // minimal mode → notification only, no auto-open.
+    // ── 30-min food-cutoff ping (separate from wind-down).
+    // Wind-down notifications are now centrally scheduled by
+    // `syncWindDownNotification()` in `sleepModeStore` using REM cycle math
+    // (bedtime − leadTime), so we no longer schedule a per-block `__nightflow`
+    // ping here. Any prior `__nightflow` ids are cancelled in App.tsx on boot.
     if (
       isNativePlatform() &&
       editingBlock.id.startsWith("sleep") &&
@@ -547,6 +547,7 @@ export default function SectographPage() {
       const nightId = `${blockFinal.id}__nightflow`;
       try {
         await cancelTaskNotification(cutoffId);
+        // Always cancel any leftover legacy wind-down ping for this block.
         await cancelTaskNotification(nightId);
       } catch (err) {
         console.warn("[SectographPage] cancel prior night pings failed", err);
@@ -571,29 +572,6 @@ export default function SectographPage() {
           );
         } catch (err) {
           console.warn("[SectographPage] cutoff schedule failed", err);
-        }
-      }
-
-      // 10-min wind-down ping
-      if (plan.windDownReminder) {
-        const offsetMin = Math.max(5, plan.windDownOffsetMin || 10);
-        const nightAt = new Date(sleepStart.getTime() - offsetMin * 60 * 1000);
-        if (nightAt.getTime() <= now.getTime()) nightAt.setDate(nightAt.getDate() + 1);
-        const minimal = !plan.showFullFlow;
-        try {
-          await scheduleTaskNotification(
-            nightId,
-            minimal ? "Start winding down" : "Wind-down — start now",
-            minimal
-              ? "Time to wind down — open your tools when ready."
-              : "Begin your Night Flow routine.",
-            nightAt,
-            minimal
-              ? { source: "night-flow-minimal" }
-              : { route: "/night-flow", source: "night-flow" },
-          );
-        } catch (err) {
-          console.warn("[SectographPage] night-flow schedule failed", err);
         }
       }
     }
