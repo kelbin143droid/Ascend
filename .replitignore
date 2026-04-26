@@ -18,8 +18,11 @@ artifacts/
 # Git history — not needed at runtime
 .git/
 
-# Development build output (rebuilt during deployment)
-dist/
+# npm packages — installed fresh by the build command during deployment
+node_modules/
+
+# Vite/build tool cache — regenerated automatically
+.cache/
 
 # OS / editor noise
 .DS_Store
