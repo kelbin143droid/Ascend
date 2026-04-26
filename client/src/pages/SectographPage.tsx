@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { Sectograph, DEFAULT_SEGMENTS, detectFreeWindows, type ScheduleBlock, type FreeWindow, type BehavioralAnchor, type ActiveFocusBlock, type RhythmWindowVisual, type SuggestedPlacement } from "@/components/game/Sectograph";
 import { CurrentMissionCard } from "@/components/game/CurrentMissionCard";
+import { SleepRemTrendChart } from "@/components/game/SleepRemTrendChart";
 import { useTheme } from "@/context/ThemeContext";
 import { useGame } from "@/context/GameContext";
 import { useRoles } from "@/context/RolesContext";
@@ -268,6 +269,7 @@ export default function SectographPage() {
   const [formReminder, setFormReminder] = useState<number | undefined>(undefined);
 
   const [showIntroOverlay, setShowIntroOverlay] = useState(false);
+  const [showSleepRemTrend, setShowSleepRemTrend] = useState(false);
 
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
@@ -1390,10 +1392,13 @@ export default function SectographPage() {
                 : rem.averageBedDeltaMin < -10 ? "#22d3ee"
                 : "#a5b4fc";
               return (
-                <div
-                  className="w-full rounded-lg p-3"
+                <button
+                  type="button"
+                  onClick={() => setShowSleepRemTrend(true)}
+                  className="w-full rounded-lg p-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none focus:ring-1 focus:ring-purple-400/40"
                   style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
                   data-testid="sleep-rem-card"
+                  aria-label="Open Sleep & REM trend"
                 >
                   <div className="flex items-center gap-2 mb-2.5">
                     <MoonIcon size={11} style={{ color: "#a78bfa" }} />
@@ -1403,8 +1408,12 @@ export default function SectographPage() {
                     >
                       SLEEP &amp; REM
                     </h3>
-                    <span className="text-[9px] ml-auto" style={{ color: colors.textMuted, opacity: 0.6 }}>
+                    <span
+                      className="text-[9px] ml-auto inline-flex items-center gap-1"
+                      style={{ color: colors.textMuted, opacity: 0.7 }}
+                    >
                       Last 7 days
+                      <ArrowRight size={9} style={{ opacity: 0.7 }} />
                     </span>
                   </div>
 
@@ -1543,7 +1552,14 @@ export default function SectographPage() {
                       Log dream recall in the morning Wake Flow to track REM quality.
                     </p>
                   )}
-                </div>
+                  <p
+                    className="text-[9px] mt-2 text-right tracking-wide"
+                    style={{ color: "#a78bfa", opacity: 0.75 }}
+                    data-testid="text-rem-trend-cta"
+                  >
+                    Tap for 14-night trend →
+                  </p>
+                </button>
               );
             })()}
 
@@ -2244,6 +2260,29 @@ export default function SectographPage() {
             )}
           </div>
         )}
+
+        <Dialog open={showSleepRemTrend} onOpenChange={setShowSleepRemTrend}>
+          <DialogContent
+            className="bg-black/95 border-white/10 max-w-md"
+            data-testid="dialog-sleep-rem-trend"
+          >
+            <DialogHeader>
+              <DialogTitle
+                className="font-display text-sm flex items-center gap-2"
+                style={{ color: "#a78bfa" }}
+              >
+                <MoonIcon size={13} />
+                SLEEP &amp; REM TREND
+              </DialogTitle>
+              <p className="text-[10px]" style={{ color: colors.textMuted, opacity: 0.7 }}>
+                Last 14 nights — recall, bedtime drift, and what may have disrupted REM.
+              </p>
+            </DialogHeader>
+            <div className="pt-1">
+              <SleepRemTrendChart days={14} textMutedColor={colors.textMuted} />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={showEventForm} onOpenChange={setShowEventForm}>
           <DialogContent className="bg-black/95 border-white/10 max-w-sm">
