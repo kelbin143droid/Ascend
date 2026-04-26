@@ -69,3 +69,12 @@ A 5-day modular onboarding system guides users with progressively unlocked featu
 -   **Three.js**: Core 3D rendering library.
 -   **@react-three/fiber**: React renderer for Three.js.
 -   **@react-three/drei**: Helpers for React Three Fiber.
+
+## Testing
+Pure-logic unit tests live next to the modules they cover (e.g. `client/src/lib/remCycleEngine.test.ts`) and run on Node's built-in test runner via `tsx`.
+
+Run all tests:
+```
+npx tsx --test client/src/lib/*.test.ts
+```
+The `remCycleEngine` suite locks in cycle-math edge cases (past wake target, too-short windows, midnight bedtime delta, HM round-trip) so the bedtime preview and wind-down notification stay in sync.
