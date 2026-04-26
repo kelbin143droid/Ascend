@@ -9,6 +9,7 @@ import { DevPanel } from "./DevPanel";
 import { AppTutorialOverlay } from "./AppTutorialOverlay";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
 import ironSovereignBg from "@/assets/themes/iron_sovereign_starfield.png";
+import neonEmpressBg from "@/assets/themes/neon_empress_pastel.png";
 
 interface NavItem {
   icon: typeof Home;
