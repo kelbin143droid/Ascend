@@ -21,6 +21,7 @@ import {
   setWakeTime,
   setCycles,
   setRemPromptsEnabled,
+  setWakeUpReminderEnabled,
   SLEEP_MODE_META,
   type SleepMode,
   type SleepModeState,
@@ -337,6 +338,19 @@ export default function SleepSettingsPage() {
             value={!!state.remPromptsEnabled}
             onChange={(v) => setRemPromptsEnabled(v)}
             testId="toggle-rem-prompts"
+          />
+
+          {/* Morning wake-up nudge toggle */}
+          <ToggleRow
+            label="Wake-up nudge"
+            description={
+              state.wakeTime
+                ? "Morning ping at your wake time → Wake Flow REM debrief."
+                : "Set a wake time to enable the morning ping."
+            }
+            value={!!state.wakeUpReminderEnabled}
+            onChange={(v) => setWakeUpReminderEnabled(v)}
+            testId="toggle-wake-up-reminder"
           />
         </div>
 

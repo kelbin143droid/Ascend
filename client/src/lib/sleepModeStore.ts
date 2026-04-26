@@ -18,6 +18,7 @@ import { getState as getFlowState, computeRemInsight } from "./vitalityFlowStore
 import {
   bedtimeForCycles,
   formatHM,
+  nextWakeDate,
   recommendedCycles,
   type CycleCount,
   type WakeHM,
@@ -57,6 +58,8 @@ export interface SleepModeState {
   cycles?: CycleCount;
   /** When true, Night Flow asks the optional alcohol/caffeine prompt. */
   remPromptsEnabled?: boolean;
+  /** When true, schedule a wake-up nudge at the chosen wake time (native only). */
+  wakeUpReminderEnabled?: boolean;
 }
 
 const STORAGE_KEY = "ascend_sleep_mode";
@@ -75,6 +78,7 @@ function defaultState(): SleepModeState {
     mode: "beginner",
     custom: { ...DEFAULT_CUSTOM },
     firstSeenAt: Date.now(),
+    wakeUpReminderEnabled: true,
   };
 }
 
@@ -96,6 +100,7 @@ function read(): SleepModeState {
       wakeTime: parsed.wakeTime,
       cycles: parsed.cycles && (VALID_CYCLES as readonly number[]).includes(parsed.cycles) ? parsed.cycles : undefined,
       remPromptsEnabled: parsed.remPromptsEnabled ?? false,
+      wakeUpReminderEnabled: parsed.wakeUpReminderEnabled ?? true,
     };
   } catch {
     return defaultState();
@@ -143,6 +148,12 @@ export function setCycles(cycles: CycleCount | undefined): void {
 export function setRemPromptsEnabled(enabled: boolean): void {
   const state = read();
   state.remPromptsEnabled = enabled;
+  write(state);
+}
+
+export function setWakeUpReminderEnabled(enabled: boolean): void {
+  const state = read();
+  state.wakeUpReminderEnabled = enabled;
   write(state);
 }
 
@@ -388,6 +399,37 @@ async function cancelWindDownNotification(): Promise<void> {
   await cancelTaskNotification(WIND_DOWN_NOTIFICATION_ID);
 }
 
+/** Stable id for the morning wake-up nudge so we can replace it. */
+export const WAKE_UP_NOTIFICATION_ID = "ascend_wake_up";
+
+/**
+ * Schedule the morning wake-up nudge at the user's configured wake time.
+ * Routes the user straight into the Wake Flow REM debrief on tap.
+ */
+async function scheduleWakeUpNotification(opts: {
+  wake: WakeHM;
+}): Promise<ScheduleResult> {
+  if (!isNativePlatform()) {
+    return { scheduled: false, reason: "not-native" };
+  }
+  const fireAt = nextWakeDate(opts.wake);
+  if (fireAt.getTime() <= Date.now()) {
+    await cancelTaskNotification(WAKE_UP_NOTIFICATION_ID);
+    return { scheduled: false, reason: "past-time" };
+  }
+  return scheduleTaskNotification(
+    WAKE_UP_NOTIFICATION_ID,
+    `Good morning — log your dream recall`,
+    `Tap to debrief last night's REM cycle while it's fresh.`,
+    fireAt,
+    { source: "wake-up-nudge", route: "/wake-flow" },
+  );
+}
+
+async function cancelWakeUpNotification(): Promise<void> {
+  await cancelTaskNotification(WAKE_UP_NOTIFICATION_ID);
+}
+
 /** Default cycle count when the user has set a wake time but no preference. */
 const DEFAULT_CYCLES: CycleCount = 5;
 
@@ -425,6 +467,25 @@ export async function syncWindDownNotification(): Promise<void> {
     cycles,
     leadMinutes: plan.windDownOffsetMin,
   });
+}
+
+/**
+ * Apply current sleep settings to the OS wake-up nudge.
+ * Web is a no-op (notification service short-circuits there).
+ *
+ * Behavior:
+ *   - Toggle OFF, no wake time set, or wake time falls in the past → cancel.
+ *   - Toggle ON + wake time set → schedule for the next occurrence of that time.
+ *
+ * Call after settings change and once per app boot. Idempotent.
+ */
+export async function syncWakeUpNotification(): Promise<void> {
+  const state = read();
+  if (!state.wakeUpReminderEnabled || !state.wakeTime) {
+    await cancelWakeUpNotification();
+    return;
+  }
+  await scheduleWakeUpNotification({ wake: state.wakeTime });
 }
 
 /* ─────────────── Auto-switch prompt ─────────────── */

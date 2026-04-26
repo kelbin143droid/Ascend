@@ -14,7 +14,11 @@ import {
   isNativePlatform,
   listPendingNotifications,
 } from "@/lib/notificationService";
-import { syncWindDownNotification, subscribeSleepMode } from "@/lib/sleepModeStore";
+import {
+  subscribeSleepMode,
+  syncWakeUpNotification,
+  syncWindDownNotification,
+} from "@/lib/sleepModeStore";
 import { installNativeFetchBase } from "@/lib/apiBase";
 import HomePage from "@/pages/HomePage";
 import StatusPage from "@/pages/StatusPage";
@@ -132,15 +136,20 @@ function NativeBootstrap() {
     installNativeFetchBase();
     initNotifications()
       .then(() => cancelLegacyWindDownPings())
-      .then(() => syncWindDownNotification())
+      .then(() =>
+        Promise.all([syncWindDownNotification(), syncWakeUpNotification()]),
+      )
       .catch((err) => console.warn("[App] notification init failed", err));
   }, []);
 
-  // Re-schedule the wind-down ping whenever the user edits sleep settings.
+  // Re-schedule sleep-related pings whenever the user edits sleep settings.
   useEffect(() => {
     const unsub = subscribeSleepMode(() => {
       syncWindDownNotification().catch((err) =>
         console.warn("[App] wind-down sync failed", err),
+      );
+      syncWakeUpNotification().catch((err) =>
+        console.warn("[App] wake-up sync failed", err),
       );
     });
     return unsub;
