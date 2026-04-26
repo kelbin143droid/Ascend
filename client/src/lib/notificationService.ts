@@ -243,6 +243,68 @@ export async function scheduleTaskNotification(
   }
 }
 
+/**
+ * Schedule a recurring daily notification at a fixed local hour:minute.
+ * Uses Capacitor's cron-like `schedule.on` so the OS keeps firing it every
+ * day without the app needing to be re-opened. Stable id (so re-syncing
+ * replaces the prior schedule rather than stacking duplicates).
+ */
+export async function scheduleRecurringDailyTaskNotification(
+  taskId: string,
+  title: string,
+  body: string,
+  hour: number,
+  minute: number,
+  extraData?: Record<string, unknown>,
+): Promise<ScheduleResult> {
+  if (!isNativePlatform()) {
+    return { scheduled: false, reason: "not-native" };
+  }
+  if (!shouldUsePhoneNotifications()) {
+    return { scheduled: false, reason: "no-permission" };
+  }
+  if (
+    !Number.isInteger(hour) || hour < 0 || hour > 23 ||
+    !Number.isInteger(minute) || minute < 0 || minute > 59
+  ) {
+    console.warn("[notifications] recurring: invalid time", { hour, minute });
+    return { scheduled: false, reason: "error" };
+  }
+  const granted = await initNotifications();
+  if (!granted) return { scheduled: false, reason: "no-permission" };
+
+  const numericId = stableNotificationId(taskId);
+  const notification: LocalNotificationSchema = {
+    id: numericId,
+    title,
+    body,
+    schedule: {
+      on: { hour, minute },
+      allowWhileIdle: true,
+    },
+    channelId: "ascend-default",
+    smallIcon: "ic_stat_icon",
+    extra: { taskId, ...(extraData ?? {}) },
+  };
+
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: numericId }] }).catch(() => {});
+    const opts: ScheduleOptions = { notifications: [notification] };
+    await LocalNotifications.schedule(opts);
+    console.log("[notifications] Recurring daily notification scheduled", {
+      id: numericId,
+      taskId,
+      hour,
+      minute,
+      title,
+    });
+    return { scheduled: true, notificationId: numericId };
+  } catch (err) {
+    console.warn("[notifications] recurring schedule failed", err);
+    return { scheduled: false, reason: "error" };
+  }
+}
+
 export async function cancelTaskNotification(taskId: string): Promise<void> {
   if (!isNativePlatform()) return;
   try {

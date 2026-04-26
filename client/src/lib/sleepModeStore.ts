@@ -18,7 +18,6 @@ import { getState as getFlowState, computeRemInsight } from "./vitalityFlowStore
 import {
   bedtimeForCycles,
   formatHM,
-  nextWakeDate,
   recommendedCycles,
   type CycleCount,
   type WakeHM,
@@ -27,6 +26,7 @@ import {
 import {
   isNativePlatform,
   scheduleTaskNotification,
+  scheduleRecurringDailyTaskNotification,
   cancelTaskNotification,
   type ScheduleResult,
 } from "./notificationService";
@@ -405,6 +405,10 @@ export const WAKE_UP_NOTIFICATION_ID = "ascend_wake_up";
 /**
  * Schedule the morning wake-up nudge at the user's configured wake time.
  * Routes the user straight into the Wake Flow REM debrief on tap.
+ *
+ * Uses a daily-recurring schedule (cron-like `on: { hour, minute }`) so the
+ * OS keeps firing the nudge every morning even if the user never re-opens
+ * the app. Re-syncing replaces the prior schedule via the stable id.
  */
 async function scheduleWakeUpNotification(opts: {
   wake: WakeHM;
@@ -412,16 +416,12 @@ async function scheduleWakeUpNotification(opts: {
   if (!isNativePlatform()) {
     return { scheduled: false, reason: "not-native" };
   }
-  const fireAt = nextWakeDate(opts.wake);
-  if (fireAt.getTime() <= Date.now()) {
-    await cancelTaskNotification(WAKE_UP_NOTIFICATION_ID);
-    return { scheduled: false, reason: "past-time" };
-  }
-  return scheduleTaskNotification(
+  return scheduleRecurringDailyTaskNotification(
     WAKE_UP_NOTIFICATION_ID,
     `Good morning — log your dream recall`,
     `Tap to debrief last night's REM cycle while it's fresh.`,
-    fireAt,
+    opts.wake.hour,
+    opts.wake.minute,
     { source: "wake-up-nudge", route: "/wake-flow" },
   );
 }
@@ -474,8 +474,10 @@ export async function syncWindDownNotification(): Promise<void> {
  * Web is a no-op (notification service short-circuits there).
  *
  * Behavior:
- *   - Toggle OFF, no wake time set, or wake time falls in the past → cancel.
- *   - Toggle ON + wake time set → schedule for the next occurrence of that time.
+ *   - Toggle OFF or no wake time set → cancel any pending nudge.
+ *   - Toggle ON + wake time set → register a daily recurring schedule that
+ *     fires every morning at the configured wake time, even if the user
+ *     never re-opens the app. Re-syncs replace the prior schedule.
  *
  * Call after settings change and once per app boot. Idempotent.
  */
