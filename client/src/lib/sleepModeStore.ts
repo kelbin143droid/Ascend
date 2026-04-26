@@ -14,7 +14,7 @@
  * `ascend:sleep-mode-changed` for in-page reactivity.
  */
 
-import { getState as getFlowState, computeRemInsight } from "./vitalityFlowStore";
+import { getState as getFlowState, computeRemInsight, todayIso } from "./vitalityFlowStore";
 import {
   bedtimeForCycles,
   formatHM,
@@ -22,6 +22,8 @@ import {
   type CycleCount,
   type WakeHM,
   VALID_CYCLES,
+  CYCLE_MIN,
+  SLEEP_LATENCY_MIN,
 } from "./remCycleEngine";
 import {
   isNativePlatform,
@@ -403,23 +405,93 @@ async function cancelWindDownNotification(): Promise<void> {
 export const WAKE_UP_NOTIFICATION_ID = "ascend_wake_up";
 
 /**
+ * Look at today's and yesterday's flow records and return the cycle
+ * count implied by the most recent night that has both bedTime and
+ * wakeTime logged. Returns `undefined` if neither has the data we need.
+ *
+ * The window is intentionally narrow ("last night") so the nudge never
+ * surfaces a stale cycle count from days ago — better to fall back to
+ * the targeted-cycles or generic copy in that case.
+ *
+ * Mirrors the cycle math in `computeRemInsight` so the morning nudge
+ * and the trend chart agree. Result is rounded to a whole cycle for
+ * friendly UI copy ("~5 cycles").
+ */
+function lastNightCompletedCycles(): number | undefined {
+  const flow = getFlowState();
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 86_400_000);
+  const todayKey = todayIso(today);
+  const yesterdayKey = todayIso(yesterday);
+
+  // Try same-day pairings first (today, then yesterday). Covers users who
+  // ran night flow after midnight or whose wake flow + night flow share
+  // the same calendar day.
+  for (const key of [todayKey, yesterdayKey]) {
+    const rec = flow.history[key];
+    if (rec?.bedTime && rec?.wakeTime && rec.wakeTime > rec.bedTime) {
+      const cycles = sleepSpanToCycles(rec.bedTime, rec.wakeTime);
+      if (cycles) return cycles;
+    }
+  }
+
+  // Cross-midnight pairing: bedTime stored on yesterday's record (typical
+  // — night flow finished before midnight) + wakeTime on today's record.
+  const yesterdayRec = flow.history[yesterdayKey];
+  const todayRec = flow.history[todayKey];
+  if (yesterdayRec?.bedTime && todayRec?.wakeTime && todayRec.wakeTime > yesterdayRec.bedTime) {
+    const cycles = sleepSpanToCycles(yesterdayRec.bedTime, todayRec.wakeTime);
+    if (cycles) return cycles;
+  }
+
+  return undefined;
+}
+
+/** Convert a bed→wake epoch span into whole REM cycles, or undefined. */
+function sleepSpanToCycles(bedMs: number, wakeMs: number): number | undefined {
+  const sleepMin = (wakeMs - bedMs) / 60_000 - SLEEP_LATENCY_MIN;
+  if (sleepMin <= 0) return undefined;
+  const cycles = Math.round(sleepMin / CYCLE_MIN);
+  return cycles >= 1 ? cycles : undefined;
+}
+
+/**
+ * Build the morning wake-up notification body. Personalizes with the
+ * completed cycle count from last night when available, otherwise falls
+ * back to the original generic copy. The personalized branch still
+ * routes the user into the Wake Flow REM debrief on tap.
+ */
+function wakeUpNotificationBody(opts: { completedCycles?: number }): string {
+  const completed = opts.completedCycles;
+  if (completed && completed > 0) {
+    const noun = completed === 1 ? "cycle" : "cycles";
+    return `You completed ~${completed} REM ${noun} — tap to log your dream recall while it's fresh.`;
+  }
+  return `Tap to debrief last night's REM cycle while it's fresh.`;
+}
+
+/**
  * Schedule the morning wake-up nudge at the user's configured wake time.
  * Routes the user straight into the Wake Flow REM debrief on tap.
  *
  * Uses a daily-recurring schedule (cron-like `on: { hour, minute }`) so the
  * OS keeps firing the nudge every morning even if the user never re-opens
- * the app. Re-syncing replaces the prior schedule via the stable id.
+ * the app. Re-syncing replaces the prior schedule via the stable id, which
+ * is also how the personalized cycle count gets refreshed each time the
+ * app boots after a logged night.
  */
 async function scheduleWakeUpNotification(opts: {
   wake: WakeHM;
+  completedCycles?: number;
 }): Promise<ScheduleResult> {
   if (!isNativePlatform()) {
     return { scheduled: false, reason: "not-native" };
   }
+  const body = wakeUpNotificationBody({ completedCycles: opts.completedCycles });
   return scheduleRecurringDailyTaskNotification(
     WAKE_UP_NOTIFICATION_ID,
     `Good morning — log your dream recall`,
-    `Tap to debrief last night's REM cycle while it's fresh.`,
+    body,
     opts.wake.hour,
     opts.wake.minute,
     { source: "wake-up-nudge", route: "/wake-flow" },
@@ -487,7 +559,14 @@ export async function syncWakeUpNotification(): Promise<void> {
     await cancelWakeUpNotification();
     return;
   }
-  await scheduleWakeUpNotification({ wake: state.wakeTime });
+  // Personalize the body with the cycle count from the night that just
+  // ended. When no recent bed/wake data exists, the scheduler falls back
+  // to generic copy (per task #6 acceptance criteria).
+  const completedCycles = lastNightCompletedCycles();
+  await scheduleWakeUpNotification({
+    wake: state.wakeTime,
+    completedCycles,
+  });
 }
 
 /* ─────────────── Auto-switch prompt ─────────────── */
