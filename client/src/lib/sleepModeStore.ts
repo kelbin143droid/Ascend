@@ -355,6 +355,12 @@ export function getNightPlan(): NightPlan {
 /** Stable id for the wind-down notification so we can replace it. */
 export const WIND_DOWN_NOTIFICATION_ID = "ascend_wind_down";
 
+/**
+ * Uses `scheduleTaskNotification` (stable string id) — NOT the generic
+ * `scheduleNotification` — because every settings change re-syncs and we
+ * need to replace the prior pending wind-down. `scheduleNotification`
+ * auto-generates a new numeric id each call and would leak duplicates.
+ */
 async function scheduleWindDownNotification(opts: {
   wake: WakeHM;
   cycles: CycleCount;

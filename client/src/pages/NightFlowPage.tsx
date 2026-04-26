@@ -289,7 +289,7 @@ function Phase1Init({
             ) : null
           ) : (
             <p className="text-[10px] mt-1.5" style={{ color: "#fbbf24" }}>
-              Aim for at least 4 cycles to protect REM.
+              Get to bed soon — you can still catch 4 cycles.
             </p>
           )}
         </div>
