@@ -8,6 +8,7 @@ import { SidebarMenu } from "./SidebarMenu";
 import { DevPanel } from "./DevPanel";
 import { AppTutorialOverlay } from "./AppTutorialOverlay";
 import bgImage from "@assets/generated_images/dark_cinematic_digital_void_background_with_blue_glowing_particles.png";
+import ironSovereignBg from "@/assets/themes/iron_sovereign_starfield.png";
 
 interface NavItem {
   icon: typeof Home;
@@ -28,10 +29,14 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const { t } = useLanguage();
   const colors = backgroundTheme.colors;
   const hasCustomBg = !!customBackgroundImage;
-  // When the user uploaded a background, dial down the layout's own
-  // overlays so their image stays visible instead of being painted over.
-  const darkOverlayOpacity = hasCustomBg ? 0 : (backgroundTheme.darkOverlayOpacity ?? 0.15);
-  const gridOpacity = hasCustomBg ? 0 : (backgroundTheme.gridOpacity ?? 0.20);
+  const isIronSovereign = backgroundTheme.id === "male" && !hasCustomBg;
+  // When the user uploaded a background OR the Iron Sovereign starfield is
+  // active, dial down the layout's own overlays so the underlying image stays
+  // visible instead of being painted over.
+  const darkOverlayOpacity =
+    hasCustomBg || isIronSovereign ? 0 : (backgroundTheme.darkOverlayOpacity ?? 0.15);
+  const gridOpacity =
+    hasCustomBg || isIronSovereign ? 0 : (backgroundTheme.gridOpacity ?? 0.20);
 
   return (
     <div
@@ -58,6 +63,14 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
+              }
+            : isIronSovereign
+            ? {
+                backgroundImage: `url(${ironSovereignBg})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center bottom",
+                backgroundRepeat: "no-repeat",
+                backgroundColor: "#000000",
               }
             : { background: colors.backgroundGradient }
         }
@@ -102,7 +115,10 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         }}
       />
 
-      <div className="fixed inset-0 z-10 pointer-events-none">
+      <div
+        className="fixed inset-0 z-10 pointer-events-none"
+        style={{ display: isIronSovereign ? "none" : undefined }}
+      >
         <div
           className="absolute inset-2 rounded-lg"
           style={{ border: `2px solid ${colors.surfaceBorder}` }}

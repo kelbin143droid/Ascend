@@ -13,7 +13,7 @@ import { DailyFlowEngine } from "./DailyFlowEngine";
 import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
-import { markFlowCompleted, getFlowCompletedToday } from "@/lib/userState";
+import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
 
 interface HomeData {
@@ -65,6 +65,16 @@ const SESSION_LIST = [
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
+  const isIronSovereign = backgroundTheme.id === "male";
+  // Iron Sovereign HUD palette — locked cyan/green/purple regardless of HP/MP %.
+  const isHud = {
+    cyan: "#22d3ee",
+    cyanGlow: "rgba(34,211,238,0.55)",
+    green: "#22c55e",
+    greenGlow: "rgba(34,197,94,0.55)",
+    purple: "#a855f7",
+    purpleGlow: "rgba(168,85,247,0.45)",
+  };
   const [, navigate] = useLocation();
   const [flowActive, setFlowActive] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
@@ -140,8 +150,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
 
   const displayLevel = playerData?.level ?? 2;
-  const hpColor = getHPColor((stats.hp / maxHp) * 100);
-  const manaColor = getManaColor((stats.mana / maxMana) * 100);
+  // Iron Sovereign locks HP/MP to fixed HUD colors (green/purple) per the
+  // reference design; other themes keep the dynamic threshold-aware palette.
+  const hpColor = isIronSovereign ? isHud.green : getHPColor((stats.hp / maxHp) * 100);
+  const manaColor = isIronSovereign ? isHud.purple : getManaColor((stats.mana / maxMana) * 100);
   const hpPct = Math.min(100, Math.max(0, (stats.hp / maxHp) * 100));
   const manaBarPct = Math.min(100, Math.max(0, (stats.mana / maxMana) * 100));
 
@@ -176,15 +188,15 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           className="pt-1"
           data-testid="daily-status-section"
         >
-          <div className="flex items-center justify-between mb-3">
-            <div>
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex flex-col gap-1.5">
               {consecutiveDays > 0 && (
                 <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
                   Day {consecutiveDays} streak
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               <button
                 onClick={() => setShowCustomize(true)}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-95"
@@ -199,17 +211,47 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               >
                 <Palette size={15} />
               </button>
-              <span
-                className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl"
-                style={{
-                  backgroundColor: `${colors.primary}18`,
-                  color: colors.primary,
-                  border: `1px solid ${colors.primary}30`,
-                }}
-                data-testid="text-player-level"
-              >
-                Lv {displayLevel}
-              </span>
+              {isIronSovereign ? (
+                <div
+                  className="flex flex-col items-end gap-1"
+                  data-testid="text-player-level"
+                >
+                  <span
+                    className="font-extrabold leading-none"
+                    style={{
+                      color: isHud.cyan,
+                      fontSize: 38,
+                      letterSpacing: "0.02em",
+                      textShadow: `0 0 14px ${isHud.cyanGlow}, 0 0 28px ${isHud.cyanGlow}`,
+                      fontFamily: "system-ui, sans-serif",
+                    }}
+                  >
+                    Lv {displayLevel}
+                  </span>
+                  <span
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                    style={{
+                      color: isHud.cyan,
+                      border: `1px solid ${isHud.cyan}66`,
+                      backgroundColor: `${isHud.cyan}10`,
+                    }}
+                  >
+                    Lv {displayLevel}
+                  </span>
+                </div>
+              ) : (
+                <span
+                  className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl"
+                  style={{
+                    backgroundColor: `${colors.primary}18`,
+                    color: colors.primary,
+                    border: `1px solid ${colors.primary}30`,
+                  }}
+                  data-testid="text-player-level"
+                >
+                  Lv {displayLevel}
+                </span>
+              )}
             </div>
           </div>
 
@@ -223,20 +265,28 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 {xp.exp} / {xp.maxExp}
               </span>
             </div>
-            <div
-              className="w-full h-1.5 rounded-full overflow-hidden"
-              style={{ backgroundColor: `${colors.primary}18` }}
-              data-testid="xp-bar-track"
-            >
-              <motion.div
-                className="h-full rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${xp.percent}%` }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
-                style={{ backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primaryGlow}` }}
-                data-testid="xp-bar-fill"
+            {isIronSovereign ? (
+              <SegmentedXpBar
+                percent={xp.percent}
+                fill={isHud.cyan}
+                glow={isHud.cyanGlow}
               />
-            </div>
+            ) : (
+              <div
+                className="w-full h-1.5 rounded-full overflow-hidden"
+                style={{ backgroundColor: `${colors.primary}18` }}
+                data-testid="xp-bar-track"
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${xp.percent}%` }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
+                  style={{ backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primaryGlow}` }}
+                  data-testid="xp-bar-fill"
+                />
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -255,6 +305,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               <CheckCircle2 size={16} />
               Flow completed today · {totalMins} min logged
             </div>
+          ) : isIronSovereign ? (
+            <IronSovereignFlowButton onStart={() => setFlowActive(true)} />
           ) : (
             <button
               data-testid="button-begin-flow"
@@ -443,7 +495,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
             className="rounded-xl px-4 py-3 space-y-3"
-            style={{ backgroundColor: `${colors.surface || colors.background}cc`, border: `1px solid ${colors.surfaceBorder}` }}
+            style={
+              isIronSovereign
+                ? {
+                    backgroundColor: "rgba(0, 0, 0, 0.55)",
+                    border: `1.5px solid ${isHud.green}`,
+                    boxShadow: `0 0 18px ${isHud.greenGlow}, inset 0 0 12px rgba(34,197,94,0.10)`,
+                  }
+                : {
+                    backgroundColor: `${colors.surface || colors.background}cc`,
+                    border: `1px solid ${colors.surfaceBorder}`,
+                  }
+            }
             data-testid="stat-bars-card"
           >
             {/* HP Bar */}
@@ -513,6 +576,122 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
       </div>
     </SystemLayout>
+  );
+}
+
+/**
+ * Iron Sovereign segmented XP bar — discrete cyan blocks against a dark
+ * channel, matching the level-1 reference HUD.
+ */
+function SegmentedXpBar({
+  percent,
+  fill,
+  glow,
+  segments = 24,
+}: {
+  percent: number;
+  fill: string;
+  glow: string;
+  segments?: number;
+}) {
+  const filled = Math.round((Math.max(0, Math.min(100, percent)) / 100) * segments);
+  return (
+    <div
+      className="w-full flex gap-[2px] h-3 items-center"
+      data-testid="xp-bar-track"
+    >
+      {Array.from({ length: segments }).map((_, i) => {
+        const on = i < filled;
+        return (
+          <div
+            key={i}
+            className="flex-1 h-full rounded-[2px]"
+            style={{
+              backgroundColor: on ? fill : "rgba(255,255,255,0.08)",
+              boxShadow: on ? `0 0 6px ${glow}` : "none",
+              transition: "background-color 0.4s ease, box-shadow 0.4s ease",
+            }}
+            data-testid={i === 0 ? "xp-bar-fill" : undefined}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Iron Sovereign daily-flow CTA — cyan glowing pill with green neon border
+ * and animated audio-waveform bookends, matching the reference button.
+ */
+function IronSovereignFlowButton({ onStart }: { onStart: () => void }) {
+  return (
+    <button
+      data-testid="button-begin-flow"
+      onClick={onStart}
+      className="group relative w-full rounded-2xl transition-all active:scale-[0.985] overflow-hidden"
+      style={{
+        padding: "18px 18px",
+        background:
+          "linear-gradient(180deg, rgba(34,211,238,0.95) 0%, rgba(14,165,233,0.95) 100%)",
+        border: "2.5px solid #22c55e",
+        boxShadow:
+          "0 0 0 1px rgba(34,197,94,0.35), 0 0 22px rgba(34,197,94,0.55), 0 0 38px rgba(34,211,238,0.45), inset 0 0 18px rgba(255,255,255,0.18)",
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      <style>{`
+        @keyframes ironWave {
+          0%, 100% { transform: scaleY(0.6); }
+          50%     { transform: scaleY(1); }
+        }
+      `}</style>
+      <div className="flex items-center justify-center gap-3">
+        {/* Left waveform */}
+        <Waveform side="left" />
+        <span
+          className="flex items-center gap-2 font-extrabold uppercase"
+          style={{
+            color: "#0a1f2c",
+            fontSize: 16,
+            letterSpacing: "0.14em",
+            textShadow: "0 0 10px rgba(255,255,255,0.45)",
+          }}
+        >
+          <Play size={16} fill="#0a1f2c" />
+          Begin Daily Flow
+        </span>
+        {/* Right waveform */}
+        <Waveform side="right" />
+      </div>
+    </button>
+  );
+}
+
+function Waveform({ side }: { side: "left" | "right" }) {
+  // Asymmetric bar heights for organic look. Mirrored on right side.
+  const heights = [6, 12, 18, 22, 14, 24, 10, 16];
+  const bars = side === "left" ? heights : [...heights].reverse();
+  return (
+    <div
+      className="flex items-center gap-[3px] h-6 shrink-0"
+      style={{ width: 56 }}
+      aria-hidden
+    >
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          style={{
+            width: 2,
+            height: h,
+            backgroundColor: "#0a1f2c",
+            borderRadius: 1,
+            opacity: 0.85,
+            transformOrigin: "center",
+            animation: `ironWave 1.1s ease-in-out ${i * 0.08}s infinite`,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
