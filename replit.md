@@ -24,6 +24,7 @@ Ascend OS is built on modular, interconnected systems:
 -   **Identity Engine**: Reinforces positive self-perception based on behavioral data, progressing through 4 identity stages.
 -   **Return Protocol System**: Intelligently responds to user inactivity with tiered absence protocols without guilt language.
 -   **Stability Engine**: A 3-state system (stabilizing/stable/expanding) with disruption detection, recovery mode, and progressive feature gating.
+-   **Workout Music System**: YouTube IFrame Player API integration for strength and agility workout screens. `workoutMusicStore.ts` owns the singleton player; `WorkoutMusicPlayer.tsx` renders the UI panel (Auto Workout / My Music modes, play/pause, skip, volume). Music auto-starts, mirrors workout pause, and stops on completion. Separate playlists per category (see `PLAYLIST_IDS` in the store). Spotify integration is a UI placeholder for a future phase.
 
 ### Gender Theme System
 After the intro splash, users select their gender (Male / Female), which applies a permanent game theme:

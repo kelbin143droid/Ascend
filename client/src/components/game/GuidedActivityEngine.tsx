@@ -8,6 +8,7 @@ import {
   loadSession,
   clearSession,
 } from "@/lib/sessionPersistenceStore";
+import { WorkoutMusicPlayer } from "@/components/game/WorkoutMusicPlayer";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
 import {
@@ -1571,6 +1572,16 @@ export function GuidedActivityEngine({
           ) : null}
         </AnimatePresence>
       </div>
+
+      {/* ── Workout music panel (strength + agility only) ─── */}
+      {(activity.category === "strength" || activity.category === "agility") && (
+        <WorkoutMusicPlayer
+          category={activity.category}
+          workoutPaused={isPaused}
+          workoutDone={isCompletionStep}
+          accentColor={activity.color}
+        />
+      )}
     </motion.div>
   );
 }
