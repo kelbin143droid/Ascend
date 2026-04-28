@@ -77,8 +77,31 @@ export function applyLevelUpStats(newLevel: number): { hp: number; mana: number;
 export function initLevelBaseline(level: number): void {
   try {
     const lvl = Math.max(1, Math.floor(level || 1));
-    if (!localStorage.getItem(LEVEL_APPLIED_KEY)) {
-      localStorage.setItem(LEVEL_APPLIED_KEY, String(lvl));
+    const lastApplied = parseInt(localStorage.getItem(LEVEL_APPLIED_KEY) || "0", 10) || 0;
+
+    if (lvl > lastApplied) {
+      // Level has increased beyond what was last recorded — fill HP/Mana to
+      // the new max without showing the level-up animation (silent catch-up).
+      // This covers: first-ever launch, page reload after leveling up, and
+      // any case where the XP/level was awarded server-side between sessions.
+      applyLevelUpStats(lvl);
+      return;
+    }
+
+    // LEVEL_APPLIED_KEY already equals the current level, but may have been
+    // written by an older version of initLevelBaseline that set the key
+    // without actually filling the stats.  Detect this by checking whether
+    // HP and Mana are still sitting at the original base defaults — if so,
+    // they were never initialized for this level and we correct them now.
+    if (lvl > 1) {
+      const s = getStats();
+      if (s.hp <= HP_BASE && s.mana <= MANA_MAX) {
+        const maxHp = getMaxHP(lvl);
+        const maxMana = getMaxMana(lvl);
+        s.hp = maxHp;
+        s.mana = maxMana;
+        saveStats(s);
+      }
     }
   } catch {}
 }
