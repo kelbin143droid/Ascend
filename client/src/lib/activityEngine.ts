@@ -80,6 +80,7 @@ export const STRENGTH_TIERS: Record<number, TierConfig> = {
 const SECONDS_PER_REP = 3;
 
 export interface AgilityTierConfig {
+  shoulderRollSeconds: number;
   crossArmSeconds: number;
   tricepSeconds: number;
   toeTouchSeconds: number;
@@ -88,11 +89,11 @@ export interface AgilityTierConfig {
 }
 
 export const AGILITY_TIERS: Record<number, AgilityTierConfig> = {
-  1: { crossArmSeconds: 15, tricepSeconds: 15, toeTouchSeconds: 20, hipOpenerSeconds: 20, restSeconds: 10 },
-  2: { crossArmSeconds: 18, tricepSeconds: 18, toeTouchSeconds: 25, hipOpenerSeconds: 25, restSeconds: 10 },
-  3: { crossArmSeconds: 20, tricepSeconds: 20, toeTouchSeconds: 30, hipOpenerSeconds: 30, restSeconds: 10 },
-  4: { crossArmSeconds: 25, tricepSeconds: 25, toeTouchSeconds: 35, hipOpenerSeconds: 35, restSeconds: 10 },
-  5: { crossArmSeconds: 30, tricepSeconds: 30, toeTouchSeconds: 40, hipOpenerSeconds: 40, restSeconds: 10 },
+  1: { shoulderRollSeconds: 10, crossArmSeconds: 15, tricepSeconds: 15, toeTouchSeconds: 20, hipOpenerSeconds: 20, restSeconds: 10 },
+  2: { shoulderRollSeconds: 12, crossArmSeconds: 18, tricepSeconds: 18, toeTouchSeconds: 25, hipOpenerSeconds: 25, restSeconds: 10 },
+  3: { shoulderRollSeconds: 15, crossArmSeconds: 20, tricepSeconds: 20, toeTouchSeconds: 30, hipOpenerSeconds: 30, restSeconds: 10 },
+  4: { shoulderRollSeconds: 18, crossArmSeconds: 25, tricepSeconds: 25, toeTouchSeconds: 35, hipOpenerSeconds: 35, restSeconds: 10 },
+  5: { shoulderRollSeconds: 20, crossArmSeconds: 30, tricepSeconds: 30, toeTouchSeconds: 40, hipOpenerSeconds: 40, restSeconds: 10 },
 };
 
 export function getMaxTierForPhase(phase: number): number {
@@ -153,7 +154,7 @@ export function buildPhase1Activities(
     jogSeconds +
     2 * ((st.pushupReps + st.situpReps + st.squatReps) * SECONDS_PER_REP + st.plankSeconds) +
     st.restSeconds;
-  const agilityTotal = ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
+  const agilityTotal = ag.shoulderRollSeconds * 2 + ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   const DAILY_FLOW_ORDER = [
     "phase1_meditation",
@@ -185,7 +186,7 @@ export function buildPhase1Activities(
           type: "breath",
           label: "Calm Breathing",
           instruction: "Follow the circle. Inhale 4s → Hold 4s → Exhale 6s.",
-          durationSeconds: meditationDuration,
+          durationSeconds: meditationDuration + 5,
           breathTiming: { inhaleSeconds: 4, holdSeconds: 4, exhaleSeconds: 6 },
           voiceText: "Follow the circle. Inhale for 4 seconds. Hold for 4. Exhale for 6.",
           videoSrc: "/videos/meditation_loop.mp4",
@@ -351,8 +352,26 @@ export function buildPhase1Activities(
           id: "intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: "Four stretches. Each side, follow the animation.",
-          voiceText: "Get ready. Four stretches. Follow the animation.",
+          instruction: "Six stretches. Starting with shoulder rolls, then four stretches each side.",
+          voiceText: "Get ready. Six stretches. We start with shoulder rolls.",
+        },
+        {
+          id: "shoulder_roll_forward",
+          type: "timer",
+          label: "Shoulder Rolls — Forward",
+          instruction: `Roll both shoulders forward in smooth slow circles. ${ag.shoulderRollSeconds} seconds.`,
+          durationSeconds: ag.shoulderRollSeconds,
+          voiceText: `Forward shoulder rolls. ${ag.shoulderRollSeconds} seconds. Slow and smooth.`,
+          loop: false,
+        },
+        {
+          id: "shoulder_roll_backward",
+          type: "timer",
+          label: "Shoulder Rolls — Backward",
+          instruction: `Reverse direction — roll both shoulders backward, opening the chest. ${ag.shoulderRollSeconds} seconds.`,
+          durationSeconds: ag.shoulderRollSeconds,
+          voiceText: `Backward shoulder rolls. ${ag.shoulderRollSeconds} seconds. Open the chest.`,
+          loop: false,
         },
         {
           id: "cross_arm_left",

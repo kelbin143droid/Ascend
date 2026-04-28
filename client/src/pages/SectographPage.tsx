@@ -84,6 +84,12 @@ import {
   markDayFiveSleepScheduled,
   markDayFiveFlowScheduled,
 } from "@/lib/userState";
+import {
+  loadTemplates,
+  saveTemplate,
+  deleteTemplate,
+  type BlockTemplate,
+} from "@/lib/customBlockTemplateStore";
 
 type ViewTab = "sectograph" | "calendar" | "plan";
 
@@ -274,6 +280,7 @@ export default function SectographPage() {
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [editingBlock, setEditingBlock] = useState<EditingBlock | null>(null);
   const [customBlockName, setCustomBlockName] = useState("");
+  const [blockTemplates, setBlockTemplates] = useState<BlockTemplate[]>(() => loadTemplates());
   const [showSegments, setShowSegments] = useState(false);
   const [showAnchors, setShowAnchors] = useState(false);
 
@@ -2504,6 +2511,79 @@ export default function SectographPage() {
                 );
               })}
             </div>
+
+            {/* ── Saved Templates ───────────────────── */}
+            {blockTemplates.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[10px] uppercase tracking-wider font-bold mb-2" style={{ color: colors.textMuted }}>
+                  Your Templates
+                </p>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {blockTemplates.map((tpl) => {
+                    const IconComp = ICON_BY_KEY[tpl.icon as keyof typeof ICON_BY_KEY] ?? Palette;
+                    return (
+                      <div
+                        key={tpl.id}
+                        className="flex items-center gap-2 rounded-lg p-2"
+                        style={{
+                          backgroundColor: `${tpl.color}15`,
+                          border: `1px solid ${tpl.color}40`,
+                        }}
+                      >
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: `${tpl.color}30` }}
+                        >
+                          <IconComp size={14} style={{ color: tpl.color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate" style={{ color: colors.text }}>{tpl.name}</p>
+                          <p className="text-[10px]" style={{ color: colors.textMuted }}>
+                            {String(tpl.startH).padStart(2,"0")}:{String(tpl.startM).padStart(2,"0")} – {String(tpl.endH).padStart(2,"0")}:{String(tpl.endM).padStart(2,"0")}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="px-2 py-1 rounded text-[10px] font-bold transition-all"
+                          style={{ backgroundColor: `${tpl.color}20`, color: tpl.color, border: `1px solid ${tpl.color}40` }}
+                          data-testid={`button-use-template-${tpl.id}`}
+                          onClick={() => {
+                            setShowAddBlock(false);
+                            const newBlock: EditingBlock = {
+                              id: `custom_${Date.now()}`,
+                              name: tpl.name,
+                              color: tpl.color,
+                              iconKey: tpl.icon,
+                              startHour: tpl.startH,
+                              startMinute: tpl.startM,
+                              endHour: tpl.endH,
+                              endMinute: tpl.endM,
+                              isNew: true,
+                            };
+                            setCustomBlockName(tpl.name);
+                            setEditingBlock(newBlock);
+                          }}
+                        >
+                          Use
+                        </button>
+                        <button
+                          type="button"
+                          className="w-6 h-6 flex items-center justify-center rounded"
+                          style={{ color: "#ef4444" }}
+                          data-testid={`button-delete-template-${tpl.id}`}
+                          onClick={() => {
+                            deleteTemplate(tpl.id);
+                            setBlockTemplates(loadTemplates());
+                          }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 
@@ -2844,6 +2924,37 @@ export default function SectographPage() {
                     )}
                   </span>
                 </div>
+                {/* Save as Template — only for custom blocks */}
+                {editingBlock.id.startsWith("custom") && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full text-xs border-white/10 gap-1.5"
+                    style={{ color: colors.textMuted }}
+                    data-testid="button-save-block-template"
+                    onClick={() => {
+                      const name = customBlockName.trim() || "Custom Block";
+                      const tpl: BlockTemplate = {
+                        id: `tpl_${Date.now()}`,
+                        name,
+                        color: editingBlock.color || "#6b7280",
+                        icon: editingBlock.iconKey ?? "palette",
+                        startH: editingBlock.startHour,
+                        startM: editingBlock.startMinute,
+                        endH: editingBlock.endHour,
+                        endM: editingBlock.endMinute,
+                        savedAt: Date.now(),
+                      };
+                      saveTemplate(tpl);
+                      setBlockTemplates(loadTemplates());
+                      toast({ title: "Template saved", description: `"${name}" saved as a reusable template.` });
+                    }}
+                  >
+                    <Bookmark size={12} />
+                    Save as Reusable Template
+                  </Button>
+                )}
+
                 <div className="flex gap-2 pt-1">
                   <Button
                     onClick={handleSaveBlock}

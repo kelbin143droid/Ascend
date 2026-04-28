@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Flame, Activity, Target } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import {
@@ -28,10 +28,60 @@ export function EnergySettingsCard() {
 
   const result = useMemo(() => calculateAll(settings), [settings]);
 
-  const update = (patch: Partial<EnergySettings>) => {
+  const update = useCallback((patch: Partial<EnergySettings>) => {
     const next = { ...settings, ...patch };
     setSettings(next);
     writeEnergySettings(next);
+  }, [settings]);
+
+  // --- Local string states for numeric inputs so the field doesn't snap while typing ---
+  const [weightStr, setWeightStr] = useState(() => String(kgToLb(settings.weightKg)));
+  const [ftStr, setFtStr] = useState(() => String(cmToFt(settings.heightCm)));
+  const [inStr, setInStr] = useState(() => String(cmToInRemainder(settings.heightCm)));
+  const [ageStr, setAgeStr] = useState(() => String(settings.age));
+
+  // Sync string states if settings change externally (e.g. from subscribeEnergySettings).
+  useEffect(() => {
+    setWeightStr(String(kgToLb(settings.weightKg)));
+    setFtStr(String(cmToFt(settings.heightCm)));
+    setInStr(String(cmToInRemainder(settings.heightCm)));
+    setAgeStr(String(settings.age));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const commitWeight = () => {
+    const lb = parseFloat(weightStr);
+    if (!isNaN(lb) && lb >= 44) {
+      const clamped = clamp(lb, 44, 882);
+      update({ weightKg: Math.round(lbToKg(clamped) * 10) / 10 });
+      setWeightStr(String(clamped));
+    } else {
+      setWeightStr(String(kgToLb(settings.weightKg)));
+    }
+  };
+
+  const commitHeight = () => {
+    const ft = parseInt(ftStr, 10);
+    const inch = parseInt(inStr, 10);
+    const validFt = !isNaN(ft) && ft >= 2 && ft <= 8;
+    const validIn = !isNaN(inch) && inch >= 0 && inch <= 11;
+    if (validFt && validIn) {
+      update({ heightCm: clamp(ftInToCm(ft, inch), 80, 260) });
+    } else {
+      setFtStr(String(cmToFt(settings.heightCm)));
+      setInStr(String(cmToInRemainder(settings.heightCm)));
+    }
+  };
+
+  const commitAge = () => {
+    const age = parseInt(ageStr, 10);
+    if (!isNaN(age) && age >= 10) {
+      const clamped = clamp(age, 10, 120);
+      update({ age: clamped });
+      setAgeStr(String(clamped));
+    } else {
+      setAgeStr(String(settings.age));
+    }
   };
 
   const inputStyle = {
@@ -62,49 +112,56 @@ export function EnergySettingsCard() {
       <div className="grid grid-cols-2 gap-3">
         <Field label="Weight (lb)">
           <input
-            type="number"
+            type="text"
             inputMode="decimal"
-            min={44}
-            max={882}
-            value={kgToLb(settings.weightKg)}
+            value={weightStr}
             onChange={(e) => {
-              const lb = clamp(parseFloat(e.target.value) || 0, 44, 882);
-              update({ weightKg: Math.round(lbToKg(lb) * 10) / 10 });
+              setWeightStr(e.target.value);
+              const lb = parseFloat(e.target.value);
+              if (!isNaN(lb) && lb >= 44 && lb <= 882) {
+                update({ weightKg: Math.round(lbToKg(lb) * 10) / 10 });
+              }
             }}
+            onBlur={commitWeight}
             className="w-full rounded-md px-2.5 py-2 text-sm outline-none"
             style={inputStyle}
             data-testid="input-weight"
+            placeholder="lbs"
           />
         </Field>
         <Field label="Height (ft / in)">
           <div className="flex gap-2">
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min={2}
-              max={8}
-              value={cmToFt(settings.heightCm)}
+              value={ftStr}
               onChange={(e) => {
-                const ft = clamp(parseInt(e.target.value, 10) || 0, 2, 8);
-                const inches = cmToInRemainder(settings.heightCm);
-                update({ heightCm: clamp(ftInToCm(ft, inches), 80, 260) });
+                setFtStr(e.target.value);
+                const ft = parseInt(e.target.value, 10);
+                const inch = parseInt(inStr, 10) || 0;
+                if (!isNaN(ft) && ft >= 2 && ft <= 8) {
+                  update({ heightCm: clamp(ftInToCm(ft, inch), 80, 260) });
+                }
               }}
+              onBlur={commitHeight}
               className="w-1/2 rounded-md px-2.5 py-2 text-sm outline-none"
               style={inputStyle}
               data-testid="input-height-ft"
               placeholder="ft"
             />
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min={0}
-              max={11}
-              value={cmToInRemainder(settings.heightCm)}
+              value={inStr}
               onChange={(e) => {
-                const inches = clamp(parseInt(e.target.value, 10) || 0, 0, 11);
-                const ft = cmToFt(settings.heightCm);
-                update({ heightCm: clamp(ftInToCm(ft, inches), 80, 260) });
+                setInStr(e.target.value);
+                const inch = parseInt(e.target.value, 10);
+                const ft = parseInt(ftStr, 10) || cmToFt(settings.heightCm);
+                if (!isNaN(inch) && inch >= 0 && inch <= 11) {
+                  update({ heightCm: clamp(ftInToCm(ft, inch), 80, 260) });
+                }
               }}
+              onBlur={commitHeight}
               className="w-1/2 rounded-md px-2.5 py-2 text-sm outline-none"
               style={inputStyle}
               data-testid="input-height-in"
@@ -114,15 +171,21 @@ export function EnergySettingsCard() {
         </Field>
         <Field label="Age">
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
-            min={10}
-            max={120}
-            value={settings.age}
-            onChange={(e) => update({ age: clamp(parseInt(e.target.value, 10) || 0, 10, 120) })}
+            value={ageStr}
+            onChange={(e) => {
+              setAgeStr(e.target.value);
+              const age = parseInt(e.target.value, 10);
+              if (!isNaN(age) && age >= 10 && age <= 120) {
+                update({ age });
+              }
+            }}
+            onBlur={commitAge}
             className="w-full rounded-md px-2.5 py-2 text-sm outline-none"
             style={inputStyle}
             data-testid="input-age"
+            placeholder="age"
           />
         </Field>
         <Field label="Gender">

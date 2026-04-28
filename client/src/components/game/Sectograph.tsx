@@ -94,8 +94,9 @@ export function inferBlockType(block: ScheduleBlock): BlockType {
   return "custom";
 }
 
-/** Always returns a deterministic palette color so the wheel reads consistently. */
+/** Returns the block's custom color if set, otherwise a deterministic palette color. */
 export function getBlockColor(block: ScheduleBlock): string {
+  if (block.color) return block.color;
   return TYPE_COLORS[inferBlockType(block)];
 }
 

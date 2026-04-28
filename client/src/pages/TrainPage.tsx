@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -7,8 +7,9 @@ import { SystemLayout } from "@/components/game/SystemLayout";
 import { GuidedActivityEngine } from "@/components/game/GuidedActivityEngine";
 import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
 import { buildPhase1Activities, TIER_XP_MULTIPLIERS, type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
-import { Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield, Zap, ListChecks } from "lucide-react";
+import { Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield, Zap, ListChecks, PlayCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { loadFlow, loadSession, clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 
 const CATEGORY_ICONS: Record<string, typeof Dumbbell> = {
   strength: Dumbbell,
@@ -71,6 +72,16 @@ export default function TrainPage() {
   const totalTime = activities.reduce((sum, a) => sum + a.duration, 0);
   const totalMins = Math.ceil(totalTime / 60);
 
+  // Detect if there's a saved flow or session to continue
+  const savedFlow = useMemo(() => loadFlow(), []);
+  const hasSavedFlow = !!savedFlow;
+  const savedSession = useMemo(() => loadSession(), []);
+  const savedSessionActivity = useMemo(() => {
+    if (!savedSession) return null;
+    return activities.find((a) => a.id === savedSession.activityId) ?? null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedSession?.activityId]);
+
   const handleActivityComplete = (activityId: string) => {
     setCompletedToday((prev) => new Set(prev).add(activityId));
     setActiveActivity(null);
@@ -125,6 +136,53 @@ export default function TrainPage() {
           </h1>
         </div>
 
+        {/* Continue banner — shown when there's a saved in-progress flow or activity */}
+        {(hasSavedFlow || savedSessionActivity) && !allComplete && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all active:scale-[0.98]"
+            style={{
+              background: `linear-gradient(135deg, ${colors.secondary}25, ${colors.secondary}08)`,
+              border: `1.5px solid ${colors.secondary}50`,
+            }}
+            onClick={() => {
+              if (hasSavedFlow) {
+                setFlowActive(true);
+              } else if (savedSessionActivity) {
+                setActiveActivity(savedSessionActivity);
+              }
+            }}
+            data-testid="button-continue-session"
+          >
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                backgroundColor: `${colors.secondary}20`,
+                border: `1px solid ${colors.secondary}40`,
+              }}
+            >
+              <PlayCircle size={24} style={{ color: colors.secondary }} />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-sm font-bold" style={{ color: colors.text }}>
+                Continue Where You Left Off
+              </div>
+              <div className="text-xs" style={{ color: colors.textMuted }}>
+                {hasSavedFlow
+                  ? `Daily Flow — ${activities[savedFlow.activityIdx]?.name ?? "In progress"}`
+                  : `${savedSessionActivity?.name ?? "Activity"} — step ${(savedSession?.stepIdx ?? 0) + 1}`}
+              </div>
+            </div>
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+              style={{ backgroundColor: `${colors.secondary}20`, color: colors.secondary }}
+            >
+              ▶
+            </div>
+          </motion.div>
+        )}
+
         {!allComplete && (
           <button
             className="w-full rounded-xl p-4 flex items-center gap-4 transition-all active:scale-[0.98]"
@@ -132,7 +190,7 @@ export default function TrainPage() {
               background: `linear-gradient(135deg, ${colors.primary}20, ${colors.primary}08)`,
               border: `1px solid ${colors.primary}30`,
             }}
-            onClick={() => setFlowActive(true)}
+            onClick={() => { clearFlow(); clearSession(); setFlowActive(true); }}
             data-testid="button-start-daily-flow"
           >
             <div

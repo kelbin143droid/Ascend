@@ -7,7 +7,15 @@ interface HydrationCardProps {
   waterGoal: number;
 }
 
-const QUICK_ADDS = [250, 500, 750];
+const ML_PER_OZ = 29.5735;
+const QUICK_ADDS_OZ = [8, 16, 24];
+
+function mlToOz(ml: number): number {
+  return Math.round(ml / ML_PER_OZ);
+}
+function ozToMl(oz: number): number {
+  return Math.round(oz * ML_PER_OZ);
+}
 
 export function HydrationCard({ waterIntake, waterGoal }: HydrationCardProps) {
   const { backgroundTheme } = useTheme();
@@ -41,9 +49,9 @@ export function HydrationCard({ waterIntake, waterGoal }: HydrationCardProps) {
               Hydration
             </p>
             <p className="text-base font-bold leading-none" style={{ color: colors.text }} data-testid="text-water-intake">
-              <span style={{ color: accent }}>{waterIntake}</span>
+              <span style={{ color: accent }}>{mlToOz(waterIntake)}</span>
               <span className="text-xs font-mono ml-1" style={{ color: colors.textMuted }}>
-                / {waterGoal} ml
+                / {mlToOz(waterGoal)} oz
               </span>
             </p>
           </div>
@@ -69,12 +77,12 @@ export function HydrationCard({ waterIntake, waterGoal }: HydrationCardProps) {
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        {QUICK_ADDS.map((ml) => (
+        {QUICK_ADDS_OZ.map((oz) => (
           <button
-            key={ml}
+            key={oz}
             type="button"
-            onClick={() => addWater(ml)}
-            data-testid={`button-add-water-${ml}`}
+            onClick={() => addWater(ozToMl(oz))}
+            data-testid={`button-add-water-${oz}`}
             className="rounded-lg py-1.5 text-xs font-bold transition-transform active:scale-95"
             style={{
               backgroundColor: `${accent}14`,
@@ -82,7 +90,7 @@ export function HydrationCard({ waterIntake, waterGoal }: HydrationCardProps) {
               color: accent,
             }}
           >
-            +{ml} ml
+            +{oz} oz
           </button>
         ))}
       </div>

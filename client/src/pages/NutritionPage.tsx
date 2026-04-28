@@ -10,6 +10,9 @@ import { CreateMealModal } from "@/components/nutrition/CreateMealModal";
 import { MealGroupSection } from "@/components/nutrition/MealGroupSection";
 import { EnergySettingsCard } from "@/components/nutrition/EnergySettingsCard";
 import { ExerciseSection } from "@/components/nutrition/ExerciseSection";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Camera, Loader2, X as XIcon, Plus } from "lucide-react";
+import { addEntry } from "@/lib/nutritionStore";
 import {
   computeTotals,
   defaultMealForNow,
@@ -108,6 +111,83 @@ export default function NutritionPage() {
     });
   };
 
+  // Camera scan state
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanResult, setScanResult] = useState<null | {
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    servingSize?: string | null;
+    fiber?: number | null;
+    sugar?: number | null;
+    sodium?: number | null;
+  }>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [noApiKey, setNoApiKey] = useState(false);
+
+  const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setScanLoading(true);
+    setScanError(null);
+    setScanResult(null);
+    setScanModalOpen(true);
+
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch("/api/nutrition/scan-label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error === "no_api_key") {
+          setNoApiKey(true);
+          setScanError(data.message ?? "OpenAI API key not configured.");
+        } else {
+          setScanError(data.message ?? "Failed to scan label.");
+        }
+      } else {
+        setScanResult(data.nutrition);
+        setNoApiKey(false);
+      }
+    } catch (err) {
+      setScanError("Network error. Please try again.");
+    } finally {
+      setScanLoading(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleAddScannedItem = () => {
+    if (!scanResult) return;
+    addEntry({
+      name: scanResult.name || "Scanned Item",
+      calories: scanResult.calories || 0,
+      protein: scanResult.protein || 0,
+      carbs: scanResult.carbs || 0,
+      fat: scanResult.fat || 0,
+      quantity: 1,
+      servingLabel: scanResult.servingSize ?? "1 serving",
+      mealType: selectedMeal,
+    });
+    setScanModalOpen(false);
+    setScanResult(null);
+  };
+
   return (
     <SystemLayout>
       <div
@@ -198,6 +278,31 @@ export default function NutritionPage() {
               </div>
               <FoodSearch mealType={selectedMeal} />
               <QuickAdd mealType={selectedMeal} />
+
+              {/* Camera scan button */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: "none" }}
+                onChange={handleImageCapture}
+                data-testid="input-camera-capture"
+              />
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+                style={{
+                  backgroundColor: `${colors.surface}80`,
+                  border: `1px dashed ${colors.surfaceBorder}`,
+                  color: colors.textMuted,
+                }}
+                data-testid="button-scan-label"
+              >
+                <Camera size={16} />
+                Scan Nutrition Label
+              </button>
             </div>
 
             {/* Meal groups */}
@@ -247,6 +352,93 @@ export default function NutritionPage() {
       </div>
 
       <CreateMealModal open={createOpen} onClose={() => setCreateOpen(false)} />
+
+      {/* Nutrition label scan result modal */}
+      <Dialog open={scanModalOpen} onOpenChange={(o) => { if (!scanLoading) setScanModalOpen(o); }}>
+        <DialogContent className="max-w-sm border-white/10" style={{ backgroundColor: "#0a0f1e" }}>
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2" style={{ color: "#e2e8f0" }}>
+              <Camera size={16} style={{ color: colors.primary }} />
+              Nutrition Label Scan
+            </DialogTitle>
+          </DialogHeader>
+
+          {scanLoading && (
+            <div className="flex flex-col items-center py-8 gap-3">
+              <Loader2 size={32} className="animate-spin" style={{ color: colors.primary }} />
+              <p className="text-sm" style={{ color: "#94a3b8" }}>Reading nutrition label…</p>
+            </div>
+          )}
+
+          {!scanLoading && scanError && (
+            <div className="space-y-3">
+              <div className="rounded-lg p-3" style={{ backgroundColor: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                <p className="text-sm" style={{ color: "#fca5a5" }}>{scanError}</p>
+                {noApiKey && (
+                  <p className="text-xs mt-2" style={{ color: "#94a3b8" }}>
+                    Add your OPENAI_API_KEY to the environment to enable AI-powered label scanning.
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setScanModalOpen(false)}
+                className="w-full py-2 rounded-lg text-sm font-semibold"
+                style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "#94a3b8" }}
+              >
+                Close
+              </button>
+            </div>
+          )}
+
+          {!scanLoading && scanResult && (
+            <div className="space-y-3">
+              <div className="rounded-lg p-3 space-y-2" style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-sm font-bold" style={{ color: "#e2e8f0" }}>{scanResult.name}</p>
+                {scanResult.servingSize && (
+                  <p className="text-[11px]" style={{ color: "#94a3b8" }}>Serving: {scanResult.servingSize}</p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "Calories", value: scanResult.calories, unit: "kcal" },
+                    { label: "Protein", value: scanResult.protein, unit: "g" },
+                    { label: "Carbs", value: scanResult.carbs, unit: "g" },
+                    { label: "Fat", value: scanResult.fat, unit: "g" },
+                    ...(scanResult.fiber != null ? [{ label: "Fiber", value: scanResult.fiber, unit: "g" }] : []),
+                    ...(scanResult.sugar != null ? [{ label: "Sugar", value: scanResult.sugar, unit: "g" }] : []),
+                    ...(scanResult.sodium != null ? [{ label: "Sodium", value: scanResult.sodium, unit: "mg" }] : []),
+                  ].map(({ label, value, unit }) => (
+                    <div key={label} className="rounded p-2 text-center" style={{ backgroundColor: "rgba(255,255,255,0.03)" }}>
+                      <p className="text-[10px] uppercase tracking-wider" style={{ color: "#64748b" }}>{label}</p>
+                      <p className="text-sm font-bold" style={{ color: colors.primary }}>{value ?? "—"}<span className="text-[10px] ml-0.5" style={{ color: "#64748b" }}>{unit}</span></p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddScannedItem}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: colors.primary, color: "#0a0f1e" }}
+                  data-testid="button-add-scanned-item"
+                >
+                  <Plus size={14} />
+                  Add to {MEAL_LABEL[selectedMeal]}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScanModalOpen(false)}
+                  className="px-3 py-2.5 rounded-xl"
+                  style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "#64748b" }}
+                >
+                  <XIcon size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </SystemLayout>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,6 +6,7 @@ import { GuidedActivityEngine } from "./GuidedActivityEngine";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition } from "@/lib/activityEngine";
 import { Sparkles, CheckCircle2, SkipForward, Play, Zap } from "lucide-react";
+import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
 const FLOW_BONUS_XP = 5;
 
@@ -28,8 +29,14 @@ export function DailyFlowEngine({
   const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
 
-  const [currentActivityIdx, setCurrentActivityIdx] = useState(0);
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  // Restore flow progress from localStorage if available.
+  const savedFlow = useMemo(() => loadFlow(), []);
+  const restoredIdx = savedFlow ? Math.min(savedFlow.activityIdx, activities.length - 1) : 0;
+
+  const [currentActivityIdx, setCurrentActivityIdx] = useState(restoredIdx);
+  const [completedIds, setCompletedIds] = useState<Set<string>>(
+    () => new Set(savedFlow?.completedIds ?? [])
+  );
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
   const [showTransition, setShowTransition] = useState(false);
   const [flowFinished, setFlowFinished] = useState(false);
@@ -120,12 +127,24 @@ export function DailyFlowEngine({
     }, 800);
   }, [activities, currentActivityIdx]);
 
+  // Persist flow progress
+  useEffect(() => {
+    if (flowFinished) return;
+    saveFlow({
+      activityIdx: currentActivityIdx,
+      completedIds: Array.from(completedIds),
+      savedAt: Date.now(),
+    });
+  }, [currentActivityIdx, completedIds, flowFinished]);
+
   const handleFlowFinish = useCallback(() => {
+    clearFlow();
     onComplete(Array.from(completedIds), bonusXpAwarded);
   }, [completedIds, bonusXpAwarded, onComplete]);
 
   useEffect(() => {
     if (!flowFinished) return;
+    clearFlow();
     const t = setTimeout(handleFlowFinish, 2500);
     return () => clearTimeout(t);
   }, [flowFinished]);

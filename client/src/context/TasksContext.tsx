@@ -104,7 +104,7 @@ export function TasksProvider({
       let okCount = 0;
       for (const task of upcoming) {
         try {
-          const r = await scheduleTaskNotification(task);
+          const r = await scheduleTaskNotification(task, undefined, undefined, undefined, { route: "/sectograph" });
           if (r.scheduled) okCount += 1;
         } catch (err) {
           console.warn("[TasksContext] schedule failed for task", task.id, err);
@@ -133,7 +133,7 @@ export function TasksProvider({
       if (!isNativePlatform()) return;
       if (!created?.id || !created?.startTime) return;
       try {
-        const r = await scheduleTaskNotification(created);
+        const r = await scheduleTaskNotification(created, undefined, undefined, undefined, { route: "/sectograph" });
         const at = new Date(created.startTime);
         if (r.scheduled) {
           toast({
@@ -168,7 +168,7 @@ export function TasksProvider({
       if (!isNativePlatform()) return;
       if (!updated?.id || !updated?.startTime) return;
       try {
-        const r = await scheduleTaskNotification(updated);
+        const r = await scheduleTaskNotification(updated, undefined, undefined, undefined, { route: "/sectograph" });
         const at = new Date(updated.startTime);
         if (r.scheduled) {
           toast({

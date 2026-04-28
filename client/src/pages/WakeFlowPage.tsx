@@ -333,10 +333,13 @@ function Phase2Activation({ onDone, onSkip }: { onDone: () => void; onSkip: () =
 }
 
 /* ─────────────── Phase 3: Hydration ─────────────── */
+const ML_PER_OZ = 29.5735;
+const HYDRATION_OPTIONS_OZ = [8, 16, 24];
+
 function Phase3Hydration({ onDone, onSkip }: { onDone: () => void; onSkip: () => void }) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
-  const [amount, setAmount] = useState(250);
+  const [amountOz, setAmountOz] = useState(8);
   return (
     <div className="flex flex-col items-center px-6 py-10 max-w-md mx-auto w-full">
       <p className="text-[10px] uppercase tracking-[0.3em] mb-2" style={{ color: "#06b6d4" }}>
@@ -360,27 +363,27 @@ function Phase3Hydration({ onDone, onSkip }: { onDone: () => void; onSkip: () =>
       </p>
 
       <div className="w-full grid grid-cols-3 gap-2 mb-5">
-        {[250, 500, 750].map((ml) => (
+        {HYDRATION_OPTIONS_OZ.map((oz) => (
           <button
-            key={ml}
+            key={oz}
             type="button"
-            onClick={() => setAmount(ml)}
-            data-testid={`button-water-${ml}`}
+            onClick={() => setAmountOz(oz)}
+            data-testid={`button-water-${oz}`}
             className="rounded-lg py-2 text-xs font-bold transition-transform active:scale-95"
             style={{
-              backgroundColor: amount === ml ? "rgba(6,182,212,0.3)" : "rgba(6,182,212,0.08)",
-              border: `1px solid ${amount === ml ? "#06b6d4" : "rgba(6,182,212,0.3)"}`,
-              color: amount === ml ? "#06b6d4" : colors.textMuted,
+              backgroundColor: amountOz === oz ? "rgba(6,182,212,0.3)" : "rgba(6,182,212,0.08)",
+              border: `1px solid ${amountOz === oz ? "#06b6d4" : "rgba(6,182,212,0.3)"}`,
+              color: amountOz === oz ? "#06b6d4" : colors.textMuted,
             }}
           >
-            {ml} ml
+            {oz} oz
           </button>
         ))}
       </div>
 
       <StepActions
         onDone={() => {
-          markHydrated(amount);
+          markHydrated(Math.round(amountOz * ML_PER_OZ));
           onDone();
         }}
         onSkip={onSkip}

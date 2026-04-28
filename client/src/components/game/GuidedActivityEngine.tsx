@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward, Info, Check, Plus, Minus } from "lucide-react";
+import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward, Info, Check, Plus, Minus, Pause } from "lucide-react";
+import {
+  saveSession,
+  loadSession,
+  clearSession,
+} from "@/lib/sessionPersistenceStore";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
 import {
@@ -716,15 +721,30 @@ export function GuidedActivityEngine({
   const audio = useAudioEnabled();
   const beep = useBeepSound();
 
-  const [currentStepIdx, setCurrentStepIdx] = useState(0);
-  const [stepPhase, setStepPhase] = useState<"ready" | "getready" | "running" | "done" | "rest">("ready");
-  const [stepsCompleted, setStepsCompleted] = useState<Set<number>>(new Set());
-  const [stepsSkipped, setStepsSkipped] = useState<Set<number>>(new Set());
+  // --- Restore from saved session if available ---
+  const savedSession = useMemo(() => {
+    const s = loadSession();
+    return s?.activityId === activity.id ? s : null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [currentStepIdx, setCurrentStepIdx] = useState(savedSession?.stepIdx ?? 0);
+  const [stepPhase, setStepPhase] = useState<"ready" | "getready" | "running" | "done" | "rest">(
+    savedSession?.stepPhase === "running" ? "ready" : (savedSession?.stepPhase ?? "ready")
+  );
+  const [stepsCompleted, setStepsCompleted] = useState<Set<number>>(
+    () => new Set(savedSession?.stepsCompleted ?? [])
+  );
+  const [stepsSkipped, setStepsSkipped] = useState<Set<number>>(
+    () => new Set(savedSession?.stepsSkipped ?? [])
+  );
   const [xpEarned, setXpEarned] = useState<number | null>(null);
   const [antiGrindMultiplier, setAntiGrindMultiplier] = useState<number>(1.0);
   const [dailyCapReached, setDailyCapReached] = useState(false);
-  const [timerRemaining, setTimerRemaining] = useState(0);
+  const [timerRemaining, setTimerRemaining] = useState(savedSession?.timerRemaining ?? 0);
   const [breathShouldFinish, setBreathShouldFinish] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const pausedRemainingRef = useRef<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const step = activity.steps[currentStepIdx];
@@ -740,12 +760,27 @@ export function GuidedActivityEngine({
   // sync so finishing early ("Done Set" before reaching target) doesn't
   // overstate burn. Kept in a ref so the latest value is visible inside
   // the completion mutation closure.
-  const actualRepsRef = useRef<Record<number, number>>({});
+  const actualRepsRef = useRef<Record<number, number>>(savedSession?.repsPerStep ?? {});
 
   useEffect(() => {
     setShowCheckInfo(false);
     setCurrentReps(0);
   }, [currentStepIdx]);
+
+  // --- Persist session state so the user can resume after navigating away ---
+  useEffect(() => {
+    if (isCompletionStep) return; // don't save on completion step
+    saveSession({
+      activityId: activity.id,
+      stepIdx: currentStepIdx,
+      stepPhase: stepPhase === "rest" || stepPhase === "getready" ? "ready" : stepPhase,
+      timerRemaining,
+      stepsCompleted: Array.from(stepsCompleted),
+      stepsSkipped: Array.from(stepsSkipped),
+      repsPerStep: actualRepsRef.current,
+      savedAt: Date.now(),
+    });
+  }, [currentStepIdx, stepPhase, timerRemaining, stepsCompleted, stepsSkipped, isCompletionStep, activity.id]);
 
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -764,6 +799,7 @@ export function GuidedActivityEngine({
       return res.json();
     },
     onSuccess: (data: any) => {
+      clearSession();
       const earned = data?.xpEarned ?? 0;
       setXpEarned(earned);
       setAntiGrindMultiplier(data?.antiGrindMultiplier ?? 1.0);
@@ -877,13 +913,12 @@ export function GuidedActivityEngine({
     }
   }, [currentStepIdx, activity]);
 
-  const startTimer = useCallback(() => {
-    if (!step?.durationSeconds) return;
-    setTimerRemaining(step.durationSeconds);
-    setStepPhase("running");
-
+  const startTimerFromRemaining = useCallback((initialRemaining: number) => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    let remaining = step.durationSeconds;
+    setStepPhase("running");
+    setIsPaused(false);
+    let remaining = initialRemaining;
+    setTimerRemaining(remaining);
     intervalRef.current = setInterval(() => {
       remaining -= 1;
       setTimerRemaining(remaining);
@@ -897,7 +932,25 @@ export function GuidedActivityEngine({
         advanceStep();
       }
     }, 1000);
-  }, [step, advanceStep, beep]);
+  }, [advanceStep, beep]);
+
+  const startTimer = useCallback(() => {
+    if (!step?.durationSeconds) return;
+    startTimerFromRemaining(step.durationSeconds);
+  }, [step, startTimerFromRemaining]);
+
+  const handlePause = useCallback(() => {
+    if (isPaused) {
+      startTimerFromRemaining(pausedRemainingRef.current);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      pausedRemainingRef.current = timerRemaining;
+      setIsPaused(true);
+    }
+  }, [isPaused, timerRemaining, startTimerFromRemaining]);
 
   const handleAction = useCallback(() => {
     if (!step) return;
@@ -967,6 +1020,7 @@ export function GuidedActivityEngine({
       intervalRef.current = null;
     }
     setBreathShouldFinish(false);
+    setIsPaused(false);
     // Mark this step as skipped so it's excluded from exercise auto-logging.
     setStepsSkipped((prev) => new Set(prev).add(currentStepIdx));
     advanceStep();
@@ -1072,7 +1126,11 @@ export function GuidedActivityEngine({
             )}
           </button>
           <button
-            onClick={() => { if (intervalRef.current) clearInterval(intervalRef.current); onCancel(); }}
+            onClick={() => {
+              if (intervalRef.current) clearInterval(intervalRef.current);
+              clearSession();
+              onCancel();
+            }}
             className="p-2 rounded-lg transition-colors"
             style={{ backgroundColor: `${colors.textMuted}15` }}
             data-testid="button-cancel-activity"
@@ -1447,19 +1505,38 @@ export function GuidedActivityEngine({
               )}
 
               {stepPhase === "running" && (
-                <button
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs transition-all active:scale-95"
-                  style={{
-                    backgroundColor: `${colors.textMuted}10`,
-                    color: colors.textMuted,
-                    border: `1px solid ${colors.textMuted}20`,
-                  }}
-                  onClick={handleSkip}
-                  data-testid="button-skip-step"
-                >
-                  <SkipForward size={14} />
-                  Skip
-                </button>
+                <div className="flex items-center gap-2">
+                  {isTimerStep && (
+                    <button
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs transition-all active:scale-95"
+                      style={{
+                        backgroundColor: isPaused ? `${activity.color}20` : `${colors.textMuted}10`,
+                        color: isPaused ? activity.color : colors.textMuted,
+                        border: `1px solid ${isPaused ? activity.color + "40" : colors.textMuted + "20"}`,
+                      }}
+                      onClick={handlePause}
+                      data-testid="button-pause-step"
+                    >
+                      {isPaused ? <Play size={14} /> : <Pause size={14} />}
+                      {isPaused ? "Resume" : "Pause"}
+                    </button>
+                  )}
+                  {!isPaused && (
+                    <button
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs transition-all active:scale-95"
+                      style={{
+                        backgroundColor: `${colors.textMuted}10`,
+                        color: colors.textMuted,
+                        border: `1px solid ${colors.textMuted}20`,
+                      }}
+                      onClick={handleSkip}
+                      data-testid="button-skip-step"
+                    >
+                      <SkipForward size={14} />
+                      Skip
+                    </button>
+                  )}
+                </div>
               )}
 
               {!isCheckStep && stepPhase === "ready" && !stepsCompleted.has(currentStepIdx) &&

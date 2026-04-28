@@ -2992,5 +2992,67 @@ export async function registerRoutes(
     }
   });
 
+  // ── Nutrition label OCR via OpenAI Vision ──────────────────────
+  app.post("/api/nutrition/scan-label", async (req, res) => {
+    const { imageBase64 } = req.body as { imageBase64?: string };
+    if (!imageBase64) {
+      return res.status(400).json({ error: "imageBase64 is required" });
+    }
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({
+        error: "no_api_key",
+        message: "OpenAI API key not configured. Add OPENAI_API_KEY to your environment to enable label scanning.",
+      });
+    }
+    try {
+      const { default: OpenAI } = await import("openai");
+      const client = new OpenAI({ apiKey });
+      const response = await client.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Look at this nutrition label image and extract the following fields. Return ONLY a JSON object with these exact keys (use null for any field not found):
+{
+  "name": "product name or description",
+  "calories": number,
+  "protein": number (grams),
+  "carbs": number (grams),
+  "fat": number (grams),
+  "fiber": number (grams) or null,
+  "sugar": number (grams) or null,
+  "sodium": number (mg) or null,
+  "servingSize": string (e.g. "1 cup (240g)") or null
+}
+All macros should be PER SERVING. Return only valid JSON, no explanation.`,
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
+                  detail: "high",
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 400,
+      });
+
+      const raw = response.choices[0]?.message?.content ?? "{}";
+      // Strip markdown code fences if present
+      const jsonStr = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(jsonStr);
+      return res.json({ success: true, nutrition: parsed });
+    } catch (err: any) {
+      console.error("Nutrition scan error:", err?.message ?? err);
+      return res.status(500).json({ error: "scan_failed", message: "Failed to parse nutrition label. Please try again." });
+    }
+  });
+
   return httpServer;
 }
