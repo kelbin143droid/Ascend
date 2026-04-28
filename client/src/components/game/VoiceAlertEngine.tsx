@@ -6,23 +6,27 @@ import {
   subscribeNotificationPrefs,
 } from "@/lib/notificationModeStore";
 import { speak } from "@/lib/voiceAlerts";
+import { useToast } from "@/hooks/use-toast";
 
 /**
- * Background ticker (mounted once near the app root) that watches the
- * sectograph schedule and announces the next upcoming block once it
- * enters the "voiceLeadMinutes" window. Each block is announced at most
- * once per day.
+ * Background ticker (mounted once near the app root) that:
+ *  1. Fires in-app visual toast alerts when a scheduled block is starting NOW
+ *     (within a 2-minute window) — works on web and native, no permission needed.
+ *  2. Optionally announces the block via voice when voice-alerts mode is on.
+ *
+ * Each block is alerted at most once per day to avoid spam.
  */
 export function VoiceAlertEngine() {
   const { player } = useGame();
+  const { toast } = useToast();
   const announcedRef = useRef<Set<string>>(new Set());
+  const toastedRef = useRef<Set<string>>(new Set());
   const lastDayRef = useRef<string>("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const tick = () => {
-      if (!shouldUseVoiceAlerts()) return;
       const schedule = (player as any)?.schedule as Array<{
         id: string;
         name: string;
@@ -35,6 +39,7 @@ export function VoiceAlertEngine() {
       const dayKey = now.toDateString();
       if (dayKey !== lastDayRef.current) {
         announcedRef.current = new Set();
+        toastedRef.current = new Set();
         lastDayRef.current = dayKey;
       }
 
@@ -42,34 +47,48 @@ export function VoiceAlertEngine() {
       const leadMin = Math.max(0, prefs.voiceLeadMinutes ?? 1);
       const nowMin = now.getHours() * 60 + now.getMinutes();
 
-      // Find the next block within the lead window that hasn't been announced.
       for (const block of schedule) {
         const startMin = block.startHour * 60 + (block.startMinute ?? 0);
         const delta = startMin - nowMin;
+
+        // ── Visual in-app toast: fires when the block starts (delta 0–2 min)
+        const toastKey = `toast:${dayKey}:${block.id}`;
+        if (delta >= 0 && delta <= 2 && !toastedRef.current.has(toastKey)) {
+          toastedRef.current.add(toastKey);
+          const label = delta === 0 ? "Starting now" : `Starting in ${delta} min`;
+          const isDailyFlow = block.id.startsWith("daily-flow") || block.id.startsWith("daily");
+          toast({
+            title: isDailyFlow ? "⚡ Daily Flow" : `🔔 ${block.name}`,
+            description: isDailyFlow
+              ? `${label} — open the app to begin your training.`
+              : `${block.name} — ${label}.`,
+            duration: 8000,
+          });
+        }
+
+        // ── Voice announcement: fires within voiceLeadMinutes window
+        if (!shouldUseVoiceAlerts()) continue;
         if (delta < 0 || delta > leadMin) continue;
-        const key = `${dayKey}:${block.id}`;
-        if (announcedRef.current.has(key)) continue;
-        announcedRef.current.add(key);
+        const voiceKey = `voice:${dayKey}:${block.id}`;
+        if (announcedRef.current.has(voiceKey)) continue;
+        announcedRef.current.add(voiceKey);
 
         const minLabel =
           delta <= 0 ? "now" : delta === 1 ? "in one minute" : `in ${delta} minutes`;
-        const message = `Heads up. ${block.name} ${minLabel}.`;
-        speak(message);
-        // Only one announcement per tick to avoid overlap.
+        speak(`Heads up. ${block.name} ${minLabel}.`);
         break;
       }
     };
 
-    // Re-run when prefs change so a freshly enabled toggle activates without reload.
     const unsub = subscribeNotificationPrefs(() => tick());
-    const id = window.setInterval(tick, 30_000); // every 30 seconds
-    tick(); // immediate check on mount / dep change
+    const id = window.setInterval(tick, 30_000);
+    tick();
 
     return () => {
       window.clearInterval(id);
       unsub();
     };
-  }, [player?.id, (player as any)?.schedule]);
+  }, [player?.id, (player as any)?.schedule, toast]);
 
   return null;
 }

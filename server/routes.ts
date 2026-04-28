@@ -471,6 +471,30 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/player/:id/training-feedback", async (req, res) => {
+    try {
+      const schema = z.object({
+        meditation: z.enum(["easy", "same", "challenging"]).optional(),
+        strength: z.enum(["easy", "same", "challenging"]).optional(),
+      });
+      const { meditation, strength } = schema.parse(req.body);
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const { ensureTrainingScaling, applyUserFeedback } = await import("./gameLogic/trainingScaling");
+      let scaling = ensureTrainingScaling(player.trainingScaling);
+      const phase = (player as any).currentPhase ?? 1;
+
+      if (meditation) scaling = applyUserFeedback(scaling, "meditation", meditation, phase);
+      if (strength)   scaling = applyUserFeedback(scaling, "strength",   strength,   phase);
+
+      await storage.updatePlayer(req.params.id, { trainingScaling: scaling });
+      res.json({ trainingScaling: scaling });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to apply training feedback" });
+    }
+  });
+
   app.post("/api/player/:id/record-activity", async (req, res) => {
     try {
       const schema = z.object({

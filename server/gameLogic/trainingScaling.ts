@@ -92,6 +92,33 @@ export function processMissedDay(
   return { ...scaling, [category]: cat };
 }
 
+/**
+ * Immediately adjust a category's tier based on explicit user feedback.
+ * "easy" → bump tier up 1 (cap at maxTier).
+ * "challenging" → drop tier down 1 (floor at 1).
+ * "same" → no change.
+ * Resets streaks/missed counters so the bump/drop takes clean effect.
+ */
+export function applyUserFeedback(
+  scaling: TrainingScaling,
+  category: keyof TrainingScaling,
+  feedback: "easy" | "same" | "challenging",
+  phase: number,
+): TrainingScaling {
+  if (feedback === "same") return scaling;
+  const cat = { ...scaling[category] };
+  const maxTier = getMaxTier(phase);
+  if (feedback === "easy") {
+    cat.tier = Math.min(cat.tier + 1, maxTier);
+    cat.completionStreak = 0;
+  } else {
+    cat.tier = Math.max(cat.tier - 1, 1);
+    cat.missedDays = 0;
+    cat.completionStreak = 0;
+  }
+  return { ...scaling, [category]: cat };
+}
+
 export function checkAndProcessMissedDays(
   scaling: TrainingScaling,
 ): TrainingScaling {

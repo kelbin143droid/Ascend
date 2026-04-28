@@ -5,10 +5,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GuidedActivityEngine } from "./GuidedActivityEngine";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition } from "@/lib/activityEngine";
-import { Sparkles, CheckCircle2, SkipForward, Play, Zap } from "lucide-react";
+import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Brain, Dumbbell, ChevronRight } from "lucide-react";
 import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
 const FLOW_BONUS_XP = 5;
+
+type FeedbackValue = "easy" | "same" | "challenging" | null;
+
+interface FeedbackState {
+  meditation: FeedbackValue;
+  strength: FeedbackValue;
+}
 
 interface DailyFlowEngineProps {
   activities: ActivityDefinition[];
@@ -17,6 +24,12 @@ interface DailyFlowEngineProps {
   onCancel: () => void;
   isOnboardingComplete?: boolean;
 }
+
+const FEEDBACK_OPTIONS: { value: FeedbackValue; label: string; emoji: string }[] = [
+  { value: "easy",        label: "Easy",       emoji: "😌" },
+  { value: "same",        label: "Just Right", emoji: "👌" },
+  { value: "challenging", label: "Hard",       emoji: "💪" },
+];
 
 export function DailyFlowEngine({
   activities,
@@ -29,7 +42,6 @@ export function DailyFlowEngine({
   const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
 
-  // Restore flow progress from localStorage if available.
   const savedFlow = useMemo(() => loadFlow(), []);
   const restoredIdx = savedFlow ? Math.min(savedFlow.activityIdx, activities.length - 1) : 0;
 
@@ -40,11 +52,18 @@ export function DailyFlowEngine({
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
   const [showTransition, setShowTransition] = useState(false);
   const [flowFinished, setFlowFinished] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackState>({ meditation: null, strength: null });
   const [runningActivity, setRunningActivity] = useState(false);
   const [bonusXpAwarded, setBonusXpAwarded] = useState(false);
 
   const currentActivity = activities[currentActivityIdx];
   const allCompleted = completedIds.size === activities.length;
+
+  const didComplete = (id: string) => completedIds.has(id);
+  const meditationCompleted = didComplete("phase1_meditation");
+  const strengthCompleted = didComplete("phase1_strength");
+  const hasFeedbackQuestions = meditationCompleted || strengthCompleted;
 
   const bonusMutation = useMutation({
     mutationFn: async () => {
@@ -59,6 +78,20 @@ export function DailyFlowEngine({
       setBonusXpAwarded(true);
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
+    },
+  });
+
+  const feedbackMutation = useMutation({
+    mutationFn: async (fb: { meditation?: string; strength?: string }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/player/${playerId}/training-feedback`,
+        fb
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["training-scaling"] });
     },
   });
 
@@ -127,7 +160,6 @@ export function DailyFlowEngine({
     }, 800);
   }, [activities, currentActivityIdx]);
 
-  // Persist flow progress
   useEffect(() => {
     if (flowFinished) return;
     saveFlow({
@@ -137,30 +169,159 @@ export function DailyFlowEngine({
     });
   }, [currentActivityIdx, completedIds, flowFinished]);
 
+  // When flow finishes, show feedback if any activities were completed
+  useEffect(() => {
+    if (!flowFinished) return;
+    clearFlow();
+    if (hasFeedbackQuestions) {
+      setShowFeedback(true);
+    }
+  }, [flowFinished]);
+
+  const handleFeedbackSubmit = useCallback(() => {
+    const payload: { meditation?: string; strength?: string } = {};
+    if (meditationCompleted && feedback.meditation) payload.meditation = feedback.meditation;
+    if (strengthCompleted && feedback.strength) payload.strength = feedback.strength;
+    if (Object.keys(payload).length > 0) {
+      feedbackMutation.mutate(payload);
+    }
+    setShowFeedback(false);
+  }, [feedback, meditationCompleted, strengthCompleted, feedbackMutation]);
+
   const handleFlowFinish = useCallback(() => {
     clearFlow();
     onComplete(Array.from(completedIds), bonusXpAwarded);
   }, [completedIds, bonusXpAwarded, onComplete]);
 
+  // Auto-dismiss completion screen 2.5s after it becomes visible.
+  // Runs when flowFinished=true and the feedback modal is closed (or never shown).
   useEffect(() => {
-    if (!flowFinished) return;
-    clearFlow();
+    if (!flowFinished || showFeedback) return;
     const t = setTimeout(handleFlowFinish, 2500);
     return () => clearTimeout(t);
-  }, [flowFinished]);
+  }, [flowFinished, showFeedback]);
 
-  if (runningActivity && currentActivity) {
+  // ── Feedback modal ────────────────────────────────────────────────────────
+  if (showFeedback) {
     return (
-      <GuidedActivityEngine
-        activity={currentActivity}
-        playerId={playerId}
-        onComplete={handleActivityComplete}
-        onCancel={() => setRunningActivity(false)}
-        isOnboardingComplete={isOnboardingComplete}
-      />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+        style={{ backgroundColor: colors.background }}
+        data-testid="flow-feedback-modal"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="w-full max-w-xs"
+        >
+          <div className="text-center mb-6">
+            <div className="text-xl font-bold mb-1" style={{ color: colors.text }}>
+              How did it go?
+            </div>
+            <div className="text-xs" style={{ color: colors.textMuted }}>
+              Your answer adjusts tomorrow's difficulty.
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-5">
+            {meditationCompleted && (
+              <div>
+                <div
+                  className="flex items-center gap-2 mb-2.5 text-sm font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  <Brain size={15} style={{ color: "#3b82f6" }} />
+                  Calm Breathing
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {FEEDBACK_OPTIONS.map((opt) => {
+                    const selected = feedback.meditation === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        data-testid={`feedback-meditation-${opt.value}`}
+                        onClick={() => setFeedback((f) => ({ ...f, meditation: opt.value }))}
+                        className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all active:scale-95"
+                        style={{
+                          backgroundColor: selected
+                            ? `#3b82f620`
+                            : `${colors.textMuted}10`,
+                          border: `1.5px solid ${selected ? "#3b82f6" : `${colors.textMuted}20`}`,
+                          color: selected ? "#3b82f6" : colors.textMuted,
+                        }}
+                      >
+                        <span className="text-base leading-none">{opt.emoji}</span>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {strengthCompleted && (
+              <div>
+                <div
+                  className="flex items-center gap-2 mb-2.5 text-sm font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  <Dumbbell size={15} style={{ color: "#ef4444" }} />
+                  Physical Circuit
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {FEEDBACK_OPTIONS.map((opt) => {
+                    const selected = feedback.strength === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        data-testid={`feedback-strength-${opt.value}`}
+                        onClick={() => setFeedback((f) => ({ ...f, strength: opt.value }))}
+                        className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all active:scale-95"
+                        style={{
+                          backgroundColor: selected
+                            ? `#ef444420`
+                            : `${colors.textMuted}10`,
+                          border: `1.5px solid ${selected ? "#ef4444" : `${colors.textMuted}20`}`,
+                          color: selected ? "#ef4444" : colors.textMuted,
+                        }}
+                      >
+                        <span className="text-base leading-none">{opt.emoji}</span>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            data-testid="button-submit-feedback"
+            onClick={handleFeedbackSubmit}
+            className="w-full mt-7 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+            style={{ backgroundColor: colors.primary, color: "#fff" }}
+          >
+            Save & Continue
+            <ChevronRight size={16} />
+          </button>
+
+          <button
+            data-testid="button-skip-feedback"
+            onClick={() => setShowFeedback(false)}
+            className="w-full mt-2 py-2 text-xs text-center"
+            style={{ color: colors.textMuted }}
+          >
+            Skip
+          </button>
+        </motion.div>
+      </motion.div>
     );
   }
 
+  // ── Flow completion screen ────────────────────────────────────────────────
   if (flowFinished) {
     return (
       <motion.div
@@ -261,6 +422,19 @@ export function DailyFlowEngine({
           Return Home
         </button>
       </motion.div>
+    );
+  }
+
+  // ── Activity list / runner ────────────────────────────────────────────────
+  if (runningActivity && currentActivity) {
+    return (
+      <GuidedActivityEngine
+        activity={currentActivity}
+        playerId={playerId}
+        onComplete={handleActivityComplete}
+        onCancel={() => setRunningActivity(false)}
+        isOnboardingComplete={isOnboardingComplete}
+      />
     );
   }
 
