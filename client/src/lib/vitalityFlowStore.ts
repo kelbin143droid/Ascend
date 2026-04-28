@@ -132,8 +132,14 @@ export function getToday(): DailyFlowRecord {
 }
 
 function mutateToday(updater: (rec: DailyFlowRecord) => DailyFlowRecord): VitalityFlowState {
+  return mutateDate(todayIso(), updater);
+}
+
+function mutateDate(
+  date: string,
+  updater: (rec: DailyFlowRecord) => DailyFlowRecord,
+): VitalityFlowState {
   const state = read();
-  const date = todayIso();
   const prev = state.history[date] ?? emptyDay(date);
   state.history[date] = updater({ ...prev });
   write(state);
@@ -286,6 +292,52 @@ export function setSleepQuality(value: number): void {
   const clamped = Math.max(1, Math.min(5, Math.round(value)));
   mutateToday((rec) => {
     rec.sleepQuality = clamped;
+    return rec;
+  });
+}
+
+/* ─────────────── Per-date setters (chart back-fill) ─────────────── */
+
+/**
+ * Variants that target an arbitrary ISO date instead of today. Used by the
+ * trend chart's tap-to-edit popover so users can correct or back-fill any
+ * recent night without waiting for tomorrow's Wake Flow. Pass `null` to
+ * clear a value.
+ */
+export function setDreamRecallForDate(date: string, value: DreamRecall | null): void {
+  mutateDate(date, (rec) => {
+    if (value === null) delete rec.dreamRecall;
+    else rec.dreamRecall = value;
+    return rec;
+  });
+}
+
+export function setSleepQualityForDate(date: string, value: number | null): void {
+  mutateDate(date, (rec) => {
+    if (value === null) {
+      delete rec.sleepQuality;
+    } else {
+      rec.sleepQuality = Math.max(1, Math.min(5, Math.round(value)));
+    }
+    return rec;
+  });
+}
+
+export function setHadAlcoholForDate(date: string, value: boolean | null): void {
+  mutateDate(date, (rec) => {
+    if (value === null) delete rec.hadAlcohol;
+    else rec.hadAlcohol = value;
+    return rec;
+  });
+}
+
+export function setCaffeineHoursAgoForDate(date: string, hours: number | null): void {
+  mutateDate(date, (rec) => {
+    if (hours === null) {
+      delete rec.caffeineHoursAgo;
+    } else {
+      rec.caffeineHoursAgo = Math.max(0, Math.round(hours * 10) / 10);
+    }
     return rec;
   });
 }
