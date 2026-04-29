@@ -1,24 +1,29 @@
 /**
  * workoutProgressStore.ts
- * Persists the user's chosen workout level, cardio config, and
- * completion history locally. Used to detect "suggest level-up" moments.
+ * Persists workout level choice, cardio config, full session history,
+ * and per-level micro-progression state in localStorage.
+ *
+ * Backward compatible — existing sessions without new fields degrade gracefully.
  */
 
 import type { WorkoutLevel, CardioIntensity, CardioPosition } from "./workoutPlans";
+import {
+  type TrackedWorkoutSession,
+  type DifficultyRating,
+  type MicroProgressState,
+  calculatePerformanceScore,
+  applyMicroProgression,
+  type ProgressionAction,
+} from "./workoutProgressionEngine";
 
-const KEY_LEVEL   = "ascend_workout_level";
-const KEY_CARDIO  = "ascend_workout_cardio";
-const KEY_HISTORY = "ascend_workout_history";
+export type { TrackedWorkoutSession, DifficultyRating, MicroProgressState };
 
-export interface WorkoutSession {
-  level: WorkoutLevel;
-  completedAt: string; // ISO date
-  hitMaxReps: boolean; // user completed all exercises at max rep count
-}
+// ── Storage keys ──────────────────────────────────────────────────────────────
 
-export interface WorkoutHistory {
-  sessions: WorkoutSession[];
-}
+const KEY_LEVEL        = "ascend_workout_level";
+const KEY_CARDIO       = "ascend_workout_cardio";
+const KEY_HISTORY      = "ascend_workout_history_v2"; // v2 — richer schema
+const KEY_MICRO        = "ascend_workout_micro";
 
 // ── Level preference ──────────────────────────────────────────────────────────
 
@@ -52,11 +57,14 @@ export function getCardioPrefs(): CardioPrefs {
 }
 
 export function setCardioPrefs(patch: Partial<CardioPrefs>): void {
-  const next = { ...getCardioPrefs(), ...patch };
-  try { localStorage.setItem(KEY_CARDIO, JSON.stringify(next)); } catch {}
+  try { localStorage.setItem(KEY_CARDIO, JSON.stringify({ ...getCardioPrefs(), ...patch })); } catch {}
 }
 
 // ── Session history ───────────────────────────────────────────────────────────
+
+interface WorkoutHistory {
+  sessions: TrackedWorkoutSession[];
+}
 
 function loadHistory(): WorkoutHistory {
   try {
@@ -70,37 +78,107 @@ function saveHistory(h: WorkoutHistory): void {
   try { localStorage.setItem(KEY_HISTORY, JSON.stringify(h)); } catch {}
 }
 
-export function recordWorkoutSession(level: WorkoutLevel, hitMaxReps: boolean): void {
-  const history = loadHistory();
-  history.sessions.push({
+/**
+ * Record a fully-tracked session.
+ * Computes performance score automatically from the raw inputs.
+ */
+export function recordTrackedSession(
+  level: WorkoutLevel,
+  workoutCompleted: boolean,
+  setsCompleted: number,
+  totalSets: number,
+  repsCompleted: number,
+  targetReps: number,
+  userDifficulty: DifficultyRating,
+): TrackedWorkoutSession {
+  const { total } = calculatePerformanceScore(
+    workoutCompleted,
+    setsCompleted,
+    totalSets,
+    repsCompleted,
+    targetReps,
+    userDifficulty,
+  );
+
+  const session: TrackedWorkoutSession = {
     level,
     completedAt: new Date().toISOString(),
-    hitMaxReps,
-  });
-  // Keep last 60 sessions max
-  if (history.sessions.length > 60) {
-    history.sessions = history.sessions.slice(-60);
-  }
+    workoutCompleted,
+    setsCompleted,
+    totalSets,
+    repsCompleted,
+    targetReps,
+    userDifficulty,
+    performanceScore: total,
+  };
+
+  const history = loadHistory();
+  history.sessions.push(session);
+  if (history.sessions.length > 60) history.sessions = history.sessions.slice(-60);
   saveHistory(history);
+
+  return session;
 }
 
-/**
- * Returns true if the user has completed the current level at max reps
- * in the last N consecutive sessions — suggesting they should level up.
- */
-export function shouldSuggestLevelUp(level: WorkoutLevel, consecutiveRequired = 2): boolean {
-  const history = loadHistory();
-  const forLevel = history.sessions.filter((s) => s.level === level);
-  if (forLevel.length < consecutiveRequired) return false;
-  const last = forLevel.slice(-consecutiveRequired);
-  return last.every((s) => s.hitMaxReps);
+/** Legacy shim for any remaining callers that only pass hitMaxReps. */
+export function recordWorkoutSession(level: WorkoutLevel, _hitMaxReps: boolean): void {
+  recordTrackedSession(level, true, 3, 3, 30, 30, "same");
 }
 
-export function getRecentSessions(level: WorkoutLevel, count = 5): WorkoutSession[] {
-  const history = loadHistory();
-  return history.sessions.filter((s) => s.level === level).slice(-count);
+export function getRecentSessions(level: WorkoutLevel, count = 5): TrackedWorkoutSession[] {
+  return loadHistory().sessions.filter((s) => s.level === level).slice(-count);
 }
 
 export function getTotalCompleted(level: WorkoutLevel): number {
-  return loadHistory().sessions.filter((s) => s.level === level).length;
+  return loadHistory().sessions.filter((s) => s.level === level && s.workoutCompleted).length;
+}
+
+// ── Micro-progression state ───────────────────────────────────────────────────
+
+const DEFAULT_MICRO: MicroProgressState = { repsBonus: 0, setsBonus: 0 };
+
+function loadAllMicro(): Record<string, MicroProgressState> {
+  try {
+    const raw = localStorage.getItem(KEY_MICRO);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
+export function getMicroProgress(level: WorkoutLevel): MicroProgressState {
+  return loadAllMicro()[level] ?? { ...DEFAULT_MICRO };
+}
+
+export function saveMicroProgress(level: WorkoutLevel, state: MicroProgressState): void {
+  const all = loadAllMicro();
+  all[level] = state;
+  try { localStorage.setItem(KEY_MICRO, JSON.stringify(all)); } catch {}
+}
+
+/**
+ * Apply a progression action to the level's micro state and persist it.
+ * Only applies actions that change local state (reps/sets bonuses).
+ * Level-up and level-down are handled by the caller in TrainPage.
+ */
+export function applyAndSaveMicroProgression(
+  level: WorkoutLevel,
+  action: ProgressionAction,
+): MicroProgressState {
+  const current = getMicroProgress(level);
+  const next = applyMicroProgression(current, action);
+  saveMicroProgress(level, next);
+  return next;
+}
+
+// ── Legacy compat ─────────────────────────────────────────────────────────────
+
+/**
+ * Still exported for the existing level-up suggestion banner.
+ * Now delegates to the engine's average-score check.
+ */
+export function shouldSuggestLevelUp(level: WorkoutLevel): boolean {
+  const sessions = getRecentSessions(level, 3);
+  if (sessions.length < 3) return false;
+  const avg = sessions.reduce((s, r) => s + r.performanceScore, 0) / sessions.length;
+  return avg >= 80 && !sessions.slice(-2).every((s) => s.userDifficulty === "hard");
 }
