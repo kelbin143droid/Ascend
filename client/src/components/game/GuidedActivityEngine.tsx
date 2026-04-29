@@ -1541,10 +1541,14 @@ export function GuidedActivityEngine({
               )}
 
               {!isCheckStep && stepPhase === "ready" && !stepsCompleted.has(currentStepIdx) &&
-                // Rep steps require an explicit user start — they cannot
-                // auto-flow because the engine has no way to count reps
-                // without user input.
-                (!activity.autoflow || currentStepIdx === 0 || isRepStep) && (
+                // Show the action button when:
+                //  • Not autoflow (user always taps to advance)
+                //  • First step of any autoflow activity
+                //  • Rep steps that need explicit user counting
+                //  • A session was restored mid-activity — always surface an
+                //    escape-hatch "Resume" button so the user isn't soft-locked
+                //    on a step that autoflow would normally skip-over
+                (!activity.autoflow || currentStepIdx === 0 || isRepStep || !!savedSession) && (
                 <button
                   className="px-8 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
                   style={{ backgroundColor: activity.color, color: "#fff" }}
@@ -1552,7 +1556,9 @@ export function GuidedActivityEngine({
                   data-testid="button-step-action"
                 >
                   <Play size={16} />
-                  {getActionLabel(step, currentStepIdx)}
+                  {savedSession && currentStepIdx > 0 && !isRepStep
+                    ? "Resume"
+                    : getActionLabel(step, currentStepIdx)}
                 </button>
               )}
 

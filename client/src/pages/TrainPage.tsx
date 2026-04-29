@@ -577,6 +577,7 @@ export default function TrainPage() {
       <AnimatePresence>
         {activeActivity && player && (
           <GuidedActivityEngine
+            key={`activity-${activeActivity.id}`}
             activity={activeActivity}
             playerId={player.id}
             onComplete={() => handleActivityComplete(activeActivity.id)}
@@ -586,6 +587,7 @@ export default function TrainPage() {
         )}
         {flowActive && player && (
           <DailyFlowEngine
+            key="daily-flow"
             activities={activities}
             playerId={player.id}
             onComplete={handleFlowComplete}
@@ -595,6 +597,7 @@ export default function TrainPage() {
         )}
         {builderActivity && player && (
           <GuidedActivityEngine
+            key={`builder-${builderActivity.id}`}
             activity={builderActivity}
             playerId={player.id}
             onComplete={handleBuilderComplete}
