@@ -45,7 +45,6 @@ interface YTPlayer {
 // Listeners so React hooks can re-render on state change.
 type Listener = () => void;
 const listeners = new Set<Listener>();
-function emit() { listeners.forEach((fn) => fn()); }
 
 const STORAGE_KEY_MODE = "ascend_music_mode";
 
@@ -57,6 +56,16 @@ const state: MusicState = {
   playerReady: false,
   player: null,
 };
+
+// Stable snapshot reference — only replaced when emit() is called so that
+// useSyncExternalStore's Object.is comparison doesn't trigger a re-render
+// on every call to getSnapshot() (which would cause an infinite loop).
+let cachedSnapshot: MusicState = { ...state };
+
+function emit() {
+  cachedSnapshot = { ...state };
+  listeners.forEach((fn) => fn());
+}
 
 // ── YouTube IFrame API bootstrap ───────────────────────────────────────────
 declare global {
@@ -203,7 +212,7 @@ export function setMusicMode(mode: MusicMode): void {
 }
 
 export function getSnapshot(): MusicState {
-  return { ...state };
+  return cachedSnapshot;
 }
 
 export function subscribe(fn: Listener): () => void {
