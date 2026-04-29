@@ -127,7 +127,7 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
     exercises: [
       { id: "wall_push",    name: "Wall Push-ups",     sets: 3, reps: "8-12",  isPlaceholder: true,  voiceCue: "Wall push-ups." },
       { id: "incline_push", name: "Incline Push-ups",  sets: 3, reps: "8-12",  isPlaceholder: true,  voiceCue: "Incline push-ups." },
-      { id: "asst_squat",   name: "Assisted Squats",   sets: 3, reps: "10-15", isPlaceholder: true,  voiceCue: "Assisted squats." },
+      { id: "asst_squat",   name: "Assisted Squats",   sets: 3, reps: "10-15", videoSrc: "/videos/squats_loop.mp4", voiceCue: "Assisted squats." },
       { id: "glute_bridge", name: "Glute Bridges",     sets: 3, reps: "12-15", isPlaceholder: true,  voiceCue: "Glute bridges." },
       { id: "entry_plank",  name: "Plank Hold",        sets: 3, durationSeconds: 20, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank hold. 20 seconds." },
     ],
@@ -141,7 +141,7 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
       { id: "beg_push",   name: "Push-ups",       sets: 3, reps: "8-12",  videoSrc: "/videos/pushups_loop.mp4",     voiceCue: "Push-ups." },
       { id: "beg_situp",  name: "Sit-ups",         sets: 3, reps: "10-15", videoSrc: "/videos/abs_crunch_loop.mp4",  voiceCue: "Sit-ups. Core tight." },
       { id: "beg_plank",  name: "Plank Hold",      sets: 3, durationSeconds: 25, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank. 25 seconds." },
-      { id: "beg_squat",  name: "Squats",          sets: 3, reps: "12-15", isPlaceholder: true, voiceCue: "Squats." },
+      { id: "beg_squat",  name: "Squats",          sets: 3, reps: "12-15", videoSrc: "/videos/squats_loop.mp4", voiceCue: "Squats." },
       { id: "beg_glute",  name: "Glute Bridges",   sets: 3, reps: "12-15", isPlaceholder: true, voiceCue: "Glute bridges." },
     ],
   },
@@ -152,7 +152,7 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
     color: "#f59e0b",
     exercises: [
       { id: "int_push",    name: "Push-ups",              sets: 4, reps: "12-15", videoSrc: "/videos/pushups_loop.mp4",     voiceCue: "Push-ups." },
-      { id: "int_split",   name: "Bulgarian Split Squats", sets: 3, reps: "8-10",  isPlaceholder: true, voiceCue: "Bulgarian split squats." },
+      { id: "int_split",   name: "Bulgarian Split Squats", sets: 3, reps: "8-10",  videoSrc: "/videos/squats_loop.mp4", voiceCue: "Bulgarian split squats." },
       { id: "int_dips",    name: "Dips",                  sets: 3, reps: "8-12",  isPlaceholder: true, voiceCue: "Dips." },
       { id: "int_pike",    name: "Pike Push-ups",         sets: 3, reps: "8-12",  isPlaceholder: true, voiceCue: "Pike push-ups." },
       { id: "int_plank",   name: "Plank Hold",            sets: 3, durationSeconds: 40, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank. 40 seconds." },
@@ -166,7 +166,7 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
     exercises: [
       { id: "adv_wpush",   name: "Weighted Push-ups",    sets: 4, reps: "10-15", isPlaceholder: true, voiceCue: "Weighted push-ups." },
       { id: "adv_pullup",  name: "Pull-ups",             sets: 4, reps: "6-10",  isPlaceholder: true, voiceCue: "Pull-ups." },
-      { id: "adv_squat",   name: "Squats",               sets: 4, reps: "15-20", isPlaceholder: true, voiceCue: "Squats." },
+      { id: "adv_squat",   name: "Squats",               sets: 4, reps: "15-20", videoSrc: "/videos/squats_loop.mp4", voiceCue: "Squats." },
       { id: "adv_dips",    name: "Dips",                 sets: 4, reps: "10-15", isPlaceholder: true, voiceCue: "Dips." },
       { id: "adv_core",    name: "Sit-ups",              sets: 3, reps: "20-25", videoSrc: "/videos/abs_crunch_loop.mp4", voiceCue: "Core work. Sit-ups." },
       { id: "adv_plank",   name: "Plank Hold",           sets: 3, durationSeconds: 60, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank. 60 seconds." },

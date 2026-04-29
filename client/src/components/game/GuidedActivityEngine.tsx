@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward, Info, Check, Plus, Minus, Pause } from "lucide-react";
+import { X, Play, CheckCircle2, Sparkles, Volume2, VolumeX, SkipForward, Info, Check, Plus, Minus, Pause, Music } from "lucide-react";
 import {
   saveSession,
   loadSession,
   clearSession,
 } from "@/lib/sessionPersistenceStore";
 import { WorkoutMusicPlayer } from "@/components/game/WorkoutMusicPlayer";
+import { useWorkoutMusic, playMusic, pauseMusic } from "@/lib/workoutMusicStore";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition, ActivityStep, BreathTiming } from "@/lib/activityEngine";
 import {
@@ -745,6 +746,7 @@ export function GuidedActivityEngine({
   const [timerRemaining, setTimerRemaining] = useState(savedSession?.timerRemaining ?? 0);
   const [breathShouldFinish, setBreathShouldFinish] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const music = useWorkoutMusic();
   const pausedRemainingRef = useRef<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -1535,6 +1537,38 @@ export function GuidedActivityEngine({
                     >
                       <SkipForward size={14} />
                       Skip
+                    </button>
+                  )}
+
+                  {/* ── Compact music toggle (strength / agility only) ── */}
+                  {(activity.category === "strength" || activity.category === "agility") && (
+                    <button
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-all active:scale-95"
+                      style={{
+                        backgroundColor: music.isPlaying
+                          ? `${activity.color}20`
+                          : `${colors.textMuted}10`,
+                        color: music.isPlaying ? activity.color : colors.textMuted,
+                        border: `1px solid ${music.isPlaying ? activity.color + "50" : colors.textMuted + "20"}`,
+                      }}
+                      onClick={() => (music.isPlaying ? pauseMusic() : playMusic())}
+                      data-testid="button-music-inline"
+                    >
+                      {music.isPlaying ? (
+                        <span className="flex items-end gap-[2px] h-3.5" aria-hidden>
+                          {[0.6, 1, 0.4, 0.8].map((h, i) => (
+                            <motion.span
+                              key={i}
+                              className="w-[2px] rounded-full"
+                              style={{ backgroundColor: activity.color }}
+                              animate={{ scaleY: [h, 1, h * 0.5, 1, h] }}
+                              transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.1, ease: "easeInOut" }}
+                            />
+                          ))}
+                        </span>
+                      ) : (
+                        <Music size={13} />
+                      )}
                     </button>
                   )}
                 </div>
