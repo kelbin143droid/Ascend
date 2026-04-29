@@ -1540,8 +1540,8 @@ export function GuidedActivityEngine({
                     </button>
                   )}
 
-                  {/* ── Compact music toggle (strength / agility only) ── */}
-                  {(activity.category === "strength" || activity.category === "agility") && (
+                  {/* ── Compact music toggle (strength / agility / meditation) ── */}
+                  {(activity.category === "strength" || activity.category === "agility" || activity.category === "meditation") && (
                     <button
                       className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-all active:scale-95"
                       style={{
@@ -1613,8 +1613,8 @@ export function GuidedActivityEngine({
         </AnimatePresence>
       </div>
 
-      {/* ── Workout music panel (strength + agility only) ─── */}
-      {(activity.category === "strength" || activity.category === "agility") && (
+      {/* ── Music panel (strength / agility / meditation) ─── */}
+      {(activity.category === "strength" || activity.category === "agility" || activity.category === "meditation") && (
         <WorkoutMusicPlayer
           category={activity.category}
           workoutPaused={isPaused}

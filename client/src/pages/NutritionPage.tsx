@@ -131,19 +131,34 @@ export default function NutritionPage() {
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [noApiKey, setNoApiKey] = useState(false);
 
-  const compressImage = (dataUrl: string, maxPx = 1024, quality = 0.75): Promise<string> =>
-    new Promise((resolve) => {
+  /**
+   * Compress a photo File to a JPEG DataURL without ever holding the full
+   * resolution base64 in memory. Uses a blob URL so the browser streams
+   * the pixel data directly to a canvas, then discards it.
+   */
+  const compressImage = (file: File, maxPx = 1024, quality = 0.8): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const objUrl = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
-        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        URL.revokeObjectURL(objUrl);
+        try {
+          const scale = Math.min(1, maxPx / Math.max(img.width || 1, img.height || 1));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { reject(new Error("canvas unavailable")); return; }
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        } catch (err) {
+          reject(err);
+        }
       };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
+      img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error("image load failed")); };
+      img.src = objUrl;
     });
 
   const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,13 +171,7 @@ export default function NutritionPage() {
     setScanModalOpen(true);
 
     try {
-      const rawBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const base64 = await compressImage(rawBase64);
+      const base64 = await compressImage(file);
 
       const res = await fetch("/api/nutrition/scan-label", {
         method: "POST",

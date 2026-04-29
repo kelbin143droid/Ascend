@@ -24,8 +24,9 @@ interface WorkoutMusicPlayerProps {
 }
 
 const CATEGORY_LABELS: Partial<Record<WorkoutCategory, { title: string; vibe: string }>> = {
-  strength: { title: "Power Mix", vibe: "High-energy beats to push harder" },
-  agility: { title: "Flow State", vibe: "Calm rhythm for deep stretches" },
+  strength:   { title: "Power Mix",      vibe: "High-energy beats to push harder" },
+  agility:    { title: "Flow State",     vibe: "Calm rhythm for deep stretches" },
+  meditation: { title: "Meditation Soundscape", vibe: "Ambient calm to deepen your breath" },
 };
 
 function MusicBars({ color }: { color: string }) {
@@ -60,7 +61,7 @@ export function WorkoutMusicPlayer({
   const prevDone = useRef(workoutDone);
 
   useEffect(() => {
-    if (category !== "strength" && category !== "agility") return;
+    if (category !== "strength" && category !== "agility" && category !== "meditation") return;
     initYouTubePlayer().then(() => setInitDone(true));
   }, [category]);
 
@@ -94,7 +95,7 @@ export function WorkoutMusicPlayer({
     }
   }, [workoutDone]);
 
-  if (category !== "strength" && category !== "agility") return null;
+  if (category !== "strength" && category !== "agility" && category !== "meditation") return null;
 
   const info = CATEGORY_LABELS[category];
 

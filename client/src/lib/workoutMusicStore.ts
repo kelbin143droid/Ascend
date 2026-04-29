@@ -13,8 +13,9 @@ export type WorkoutCategory = "strength" | "agility" | "meditation" | "vitality"
 
 // ── Playlist IDs ──────────────────────────────────────────────────────────
 export const PLAYLIST_IDS: Partial<Record<WorkoutCategory, string>> = {
-  strength: "PLFsQleAWXsj_4yDeebiIADdH5FMayBiOs",
-  agility: "PLx65qkgCWNJIs3RMxMM0qMfVrItL0Vmfm",
+  strength:   "PLFsQleAWXsj_4yDeebiIADdH5FMayBiOs", // high-energy workout
+  agility:    "PLx65qkgCWNJIs3RMxMM0qMfVrItL0Vmfm",  // calm stretch / flow
+  meditation: "PLQ_PIlf6OzqLwC9ZXNFBZFZsFGy0Qa9Md",  // relaxing / ambient
 };
 
 // ── Internal state ─────────────────────────────────────────────────────────
