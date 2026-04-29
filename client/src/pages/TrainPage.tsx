@@ -46,6 +46,7 @@ import {
   Zap, ListChecks, PlayCircle, Flame, RotateCcw, Star, X, ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { loadFlow, loadSession, clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -574,61 +575,64 @@ export default function TrainPage() {
   return (
     <SystemLayout>
       {/* ── Full-screen overlays ─────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {activeActivity && player && (
-          <GuidedActivityEngine
-            key={`activity-${activeActivity.id}`}
-            activity={activeActivity}
-            playerId={player.id}
-            onComplete={() => handleActivityComplete(activeActivity.id)}
-            onCancel={() => setActiveActivity(null)}
-            isOnboardingComplete={homeData?.isOnboardingComplete}
-          />
-        )}
-        {flowActive && player && (
-          <DailyFlowEngine
-            key="daily-flow"
-            activities={activities}
-            playerId={player.id}
-            onComplete={handleFlowComplete}
-            onCancel={() => setFlowActive(false)}
-            isOnboardingComplete={homeData?.isOnboardingComplete}
-          />
-        )}
-        {builderActivity && player && (
-          <GuidedActivityEngine
-            key={`builder-${builderActivity.id}`}
-            activity={builderActivity}
-            playerId={player.id}
-            onComplete={handleBuilderComplete}
-            onCancel={() => setBuilderActivity(null)}
-            isOnboardingComplete={homeData?.isOnboardingComplete}
-          />
-        )}
+      {createPortal(
+        <AnimatePresence>
+          {activeActivity && player && (
+            <GuidedActivityEngine
+              key={`activity-${activeActivity.id}`}
+              activity={activeActivity}
+              playerId={player.id}
+              onComplete={() => handleActivityComplete(activeActivity.id)}
+              onCancel={() => setActiveActivity(null)}
+              isOnboardingComplete={homeData?.isOnboardingComplete}
+            />
+          )}
+          {flowActive && player && (
+            <DailyFlowEngine
+              key="daily-flow"
+              activities={activities}
+              playerId={player.id}
+              onComplete={handleFlowComplete}
+              onCancel={() => setFlowActive(false)}
+              isOnboardingComplete={homeData?.isOnboardingComplete}
+            />
+          )}
+          {builderActivity && player && (
+            <GuidedActivityEngine
+              key={`builder-${builderActivity.id}`}
+              activity={builderActivity}
+              playerId={player.id}
+              onComplete={handleBuilderComplete}
+              onCancel={() => setBuilderActivity(null)}
+              isOnboardingComplete={homeData?.isOnboardingComplete}
+            />
+          )}
 
-        {/* Post-workout difficulty modal */}
-        {showFeedbackModal && (
-          <WorkoutFeedbackModal
-            key="feedback-modal"
-            onSubmit={handleFeedbackSubmit}
-            planColor={planColor}
-          />
-        )}
+          {/* Post-workout difficulty modal */}
+          {showFeedbackModal && (
+            <WorkoutFeedbackModal
+              key="feedback-modal"
+              onSubmit={handleFeedbackSubmit}
+              planColor={planColor}
+            />
+          )}
 
-        {/* Score + recommendation card */}
-        {recommendation && (
-          <RecommendationCard
-            key="recommendation-card"
-            recommendation={recommendation}
-            onClose={handleCloseRecommendation}
-            onLevelUp={handleConfirmLevelUp}
-            onLevelDown={handleConfirmLevelDown}
-            nextLevel={nextLevel}
-            prevLevel={prevLevel}
-            planColor={planColor}
-          />
-        )}
-      </AnimatePresence>
+          {/* Score + recommendation card */}
+          {recommendation && (
+            <RecommendationCard
+              key="recommendation-card"
+              recommendation={recommendation}
+              onClose={handleCloseRecommendation}
+              onLevelUp={handleConfirmLevelUp}
+              onLevelDown={handleConfirmLevelDown}
+              nextLevel={nextLevel}
+              prevLevel={prevLevel}
+              planColor={planColor}
+            />
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <div className="p-4 space-y-4 max-w-4xl mx-auto pb-24">
         {/* ── Header ─────────────────────────────────────────────────────────── */}

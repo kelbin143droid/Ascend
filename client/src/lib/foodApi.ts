@@ -1,7 +1,10 @@
 /**
- * Food data lookup. Uses USDA FoodData Central when an API key is provided
- * via `VITE_USDA_API_KEY`; otherwise falls back to a small mock catalogue so
- * the Nutrition screen always returns useful results.
+ * Food data lookup.
+ *
+ * Search priority:
+ *   1. Open Food Facts (free, no key, great brand coverage) — always queried
+ *   2. USDA FoodData Central (VITE_USDA_API_KEY) — queried when key is present
+ *   3. Local mock catalogue — fallback when no API returns results
  *
  * All values are normalized to a single canonical `FoodSearchResult`:
  *   - calories / protein / carbs / fat are PER SERVING (the listed serving)
@@ -17,7 +20,7 @@ export interface FoodSearchResult {
   carbs: number;
   fat: number;
   servingLabel: string;
-  source: "usda" | "mock";
+  source: "usda" | "off" | "mock";
 }
 
 const MOCK_FOODS: FoodSearchResult[] = [
@@ -51,6 +54,68 @@ function mockSearch(query: string): FoodSearchResult[] {
   return MOCK_FOODS.filter((f) => f.name.toLowerCase().includes(q));
 }
 
+// ── Open Food Facts ────────────────────────────────────────────────────────
+
+interface OFFNutriments {
+  "energy-kcal_serving"?: number;
+  "energy-kcal_100g"?: number;
+  "proteins_serving"?: number;
+  "proteins_100g"?: number;
+  "carbohydrates_serving"?: number;
+  "carbohydrates_100g"?: number;
+  "fat_serving"?: number;
+  "fat_100g"?: number;
+}
+interface OFFProduct {
+  id?: string;
+  product_name?: string;
+  brands?: string;
+  serving_size?: string;
+  nutriments?: OFFNutriments;
+}
+
+function parseOFFProduct(p: OFFProduct, idx: number): FoodSearchResult | null {
+  const name = p.product_name?.trim();
+  if (!name) return null;
+  const n = p.nutriments ?? {};
+
+  const hasSrv = n["energy-kcal_serving"] != null;
+  const cal = hasSrv ? (n["energy-kcal_serving"] ?? 0) : (n["energy-kcal_100g"] ?? 0);
+  const pro = hasSrv ? (n["proteins_serving"] ?? 0) : (n["proteins_100g"] ?? 0);
+  const carb = hasSrv ? (n["carbohydrates_serving"] ?? 0) : (n["carbohydrates_100g"] ?? 0);
+  const fat = hasSrv ? (n["fat_serving"] ?? 0) : (n["fat_100g"] ?? 0);
+
+  if (cal === 0 && pro === 0 && carb === 0) return null;
+
+  return {
+    id: `off-${p.id ?? idx}`,
+    name,
+    brand: p.brands?.split(",")[0]?.trim(),
+    calories: Math.round(cal),
+    protein: +pro.toFixed(1),
+    carbs: +carb.toFixed(1),
+    fat: +fat.toFixed(1),
+    servingLabel: p.serving_size ? p.serving_size : hasSrv ? "1 serving" : "100 g",
+    source: "off",
+  };
+}
+
+async function searchOpenFoodFacts(query: string, limit = 15): Promise<FoodSearchResult[]> {
+  const url =
+    `https://world.openfoodfacts.org/cgi/search.pl` +
+    `?search_terms=${encodeURIComponent(query)}` +
+    `&json=1&page_size=${limit}` +
+    `&fields=id,product_name,brands,serving_size,nutriments`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+  if (!res.ok) throw new Error(`OFF ${res.status}`);
+  const data = (await res.json()) as { products?: OFFProduct[] };
+  return (data.products ?? [])
+    .map((p, i) => parseOFFProduct(p, i))
+    .filter((r): r is FoodSearchResult => r !== null);
+}
+
+// ── USDA FoodData Central ─────────────────────────────────────────────────
+
 interface UsdaNutrient {
   nutrientName?: string;
   nutrientNumber?: string;
@@ -67,9 +132,6 @@ interface UsdaFood {
   foodNutrients?: UsdaNutrient[];
 }
 
-/** USDA returns nutrients per 100g for SR Legacy / Foundation foods, and per
- *  serving for Branded foods. We always normalize to the listed serving so the
- *  UI can multiply by the user-chosen quantity (1 serving = 1.0). */
 function parseUsdaFood(f: UsdaFood): FoodSearchResult {
   const lookup = (numbers: string[], names: string[]) => {
     const arr = f.foodNutrients ?? [];
@@ -89,7 +151,6 @@ function parseUsdaFood(f: UsdaFood): FoodSearchResult {
 
   const serving = f.servingSize && f.servingSize > 0 ? f.servingSize : 100;
   const isBranded = !!f.brandOwner || !!f.brandName;
-  // For branded foods USDA reports per serving; for SR/Foundation it's per 100g.
   const factor = isBranded ? 1 : serving / 100;
 
   const servingLabel = f.householdServingFullText
@@ -111,21 +172,59 @@ function parseUsdaFood(f: UsdaFood): FoodSearchResult {
   };
 }
 
-export async function searchFoods(query: string, limit = 20): Promise<FoodSearchResult[]> {
+async function searchUsda(query: string, limit = 15): Promise<FoodSearchResult[]> {
   const key = getApiKey();
-  if (!key) return mockSearch(query).slice(0, limit);
+  if (!key) return [];
+  const url =
+    `https://api.nal.usda.gov/fdc/v1/foods/search` +
+    `?api_key=${encodeURIComponent(key)}` +
+    `&query=${encodeURIComponent(query)}` +
+    `&pageSize=${limit}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`USDA ${res.status}`);
+  const data = (await res.json()) as { foods?: UsdaFood[] };
+  return (data.foods ?? []).map(parseUsdaFood);
+}
 
-  try {
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(key)}&query=${encodeURIComponent(query)}&pageSize=${limit}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`USDA ${res.status}`);
-    const data = (await res.json()) as { foods?: UsdaFood[] };
-    const foods = data.foods ?? [];
-    return foods.map(parseUsdaFood);
-  } catch (err) {
-    console.warn("[foodApi] USDA fetch failed, falling back to mock", err);
+// ── Public API ─────────────────────────────────────────────────────────────
+
+export async function searchFoods(query: string, limit = 25): Promise<FoodSearchResult[]> {
+  const [offResults, usdaResults] = await Promise.allSettled([
+    searchOpenFoodFacts(query, Math.ceil(limit * 0.6)),
+    searchUsda(query, Math.ceil(limit * 0.5)),
+  ]);
+
+  const off = offResults.status === "fulfilled" ? offResults.value : [];
+  const usda = usdaResults.status === "fulfilled" ? usdaResults.value : [];
+
+  if (offResults.status === "rejected") {
+    console.warn("[foodApi] Open Food Facts failed", (offResults as PromiseRejectedResult).reason);
+  }
+  if (usdaResults.status === "rejected") {
+    console.warn("[foodApi] USDA failed", (usdaResults as PromiseRejectedResult).reason);
+  }
+
+  if (off.length === 0 && usda.length === 0) {
     return mockSearch(query).slice(0, limit);
   }
+
+  const seen = new Set<string>();
+  const merged: FoodSearchResult[] = [];
+  for (const item of [...off, ...usda]) {
+    const key = item.name.toLowerCase().slice(0, 40);
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(item);
+    }
+    if (merged.length >= limit) break;
+  }
+
+  if (merged.length < 5) {
+    const mock = mockSearch(query).filter((m) => !seen.has(m.name.toLowerCase().slice(0, 40)));
+    merged.push(...mock.slice(0, limit - merged.length));
+  }
+
+  return merged.slice(0, limit);
 }
 
 export const isUsdaConfigured = (): boolean => !!getApiKey();

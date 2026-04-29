@@ -11,8 +11,9 @@ import { MealGroupSection } from "@/components/nutrition/MealGroupSection";
 import { EnergySettingsCard } from "@/components/nutrition/EnergySettingsCard";
 import { ExerciseSection } from "@/components/nutrition/ExerciseSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Camera, Loader2, X as XIcon, Plus } from "lucide-react";
+import { Camera, Loader2, X as XIcon, Plus, Sparkles } from "lucide-react";
 import { addEntry } from "@/lib/nutritionStore";
+import { AutoMealPlanModal } from "@/components/nutrition/AutoMealPlanModal";
 import {
   computeTotals,
   defaultMealForNow,
@@ -113,6 +114,7 @@ export default function NutritionPage() {
 
   // Camera scan state
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [autoMealPlanOpen, setAutoMealPlanOpen] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanResult, setScanResult] = useState<null | {
     name: string;
@@ -129,6 +131,21 @@ export default function NutritionPage() {
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [noApiKey, setNoApiKey] = useState(false);
 
+  const compressImage = (dataUrl: string, maxPx = 1024, quality = 0.75): Promise<string> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+
   const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -139,12 +156,13 @@ export default function NutritionPage() {
     setScanModalOpen(true);
 
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
+      const rawBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+      const base64 = await compressImage(rawBase64);
 
       const res = await fetch("/api/nutrition/scan-label", {
         method: "POST",
@@ -346,12 +364,37 @@ export default function NutritionPage() {
         {/* ─────────────── MEALS ─────────────── */}
         {activeTab === "meals" && (
           <div className="flex flex-col gap-4" data-testid="tab-panel-meals">
+            {/* Auto meal plan */}
+            <button
+              type="button"
+              onClick={() => setAutoMealPlanOpen(true)}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl text-left transition-all active:scale-[0.98]"
+              style={{
+                background: `linear-gradient(135deg, ${colors.primary}20, ${colors.primary}08)`,
+                border: `1px solid ${colors.primary}35`,
+              }}
+              data-testid="button-auto-meal-plan"
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${colors.primary}20` }}
+              >
+                <Sparkles size={18} style={{ color: colors.primary }} />
+              </div>
+              <div>
+                <p className="text-sm font-bold" style={{ color: colors.text }}>Auto-Fill Meal Plan</p>
+                <p className="text-[11px] mt-0.5" style={{ color: colors.textMuted }}>
+                  Generate a full day's meals for your goal and diet
+                </p>
+              </div>
+            </button>
             <SavedMealsList onCreate={() => setCreateOpen(true)} />
           </div>
         )}
       </div>
 
       <CreateMealModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <AutoMealPlanModal open={autoMealPlanOpen} onClose={() => setAutoMealPlanOpen(false)} />
 
       {/* Nutrition label scan result modal */}
       <Dialog open={scanModalOpen} onOpenChange={(o) => { if (!scanLoading) setScanModalOpen(o); }}>

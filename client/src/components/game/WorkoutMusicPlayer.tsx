@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Music, Play, Pause, SkipForward, Volume2, ChevronUp, ChevronDown } from "lucide-react";
+import { Music, Play, Pause, SkipForward, Volume2, ChevronUp, ChevronDown, Youtube, X, Check } from "lucide-react";
 import {
   initYouTubePlayer,
   loadPlaylist,
@@ -9,15 +9,16 @@ import {
   stopMusic,
   setVolume,
   setMusicMode,
+  setCustomPlaylist,
+  clearCustomPlaylist,
+  loadCustomPlaylist,
   useWorkoutMusic,
   type WorkoutCategory,
 } from "@/lib/workoutMusicStore";
 
 interface WorkoutMusicPlayerProps {
   category: WorkoutCategory;
-  /** Mirror the workout's own paused state so music auto-pauses. */
   workoutPaused?: boolean;
-  /** When true the workout has ended — music stops. */
   workoutDone?: boolean;
   accentColor: string;
 }
@@ -27,7 +28,6 @@ const CATEGORY_LABELS: Partial<Record<WorkoutCategory, { title: string; vibe: st
   agility: { title: "Flow State", vibe: "Calm rhythm for deep stretches" },
 };
 
-// Animated music-bar icon for "now playing"
 function MusicBars({ color }: { color: string }) {
   return (
     <span className="flex items-end gap-[2px] h-4" aria-hidden>
@@ -54,16 +54,16 @@ export function WorkoutMusicPlayer({
   const [expanded, setExpanded] = useState(false);
   const [volumeLocal, setVolumeLocal] = useState(music.volume);
   const [initDone, setInitDone] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [urlError, setUrlError] = useState(false);
   const prevPaused = useRef(workoutPaused);
   const prevDone = useRef(workoutDone);
 
-  // Initialise YouTube player once on mount
   useEffect(() => {
     if (category !== "strength" && category !== "agility") return;
     initYouTubePlayer().then(() => setInitDone(true));
   }, [category]);
 
-  // Auto-load playlist when player is ready and mode is "auto"
   useEffect(() => {
     if (!initDone || !music.playerReady || music.mode !== "auto") return;
     if (music.currentCategory !== category) {
@@ -71,7 +71,13 @@ export function WorkoutMusicPlayer({
     }
   }, [initDone, music.playerReady, music.mode, category, music.currentCategory]);
 
-  // Mirror workout pause/resume → music
+  useEffect(() => {
+    if (!initDone || !music.playerReady || music.mode !== "user") return;
+    if (music.customPlaylistId && !music.isPlaying) {
+      loadCustomPlaylist();
+    }
+  }, [initDone, music.playerReady, music.mode, music.customPlaylistId]);
+
   useEffect(() => {
     if (music.mode !== "auto") return;
     if (workoutPaused !== prevPaused.current) {
@@ -81,7 +87,6 @@ export function WorkoutMusicPlayer({
     }
   }, [workoutPaused, music.mode, music.currentCategory, category]);
 
-  // Stop music when workout completes
   useEffect(() => {
     if (workoutDone && !prevDone.current) {
       prevDone.current = true;
@@ -89,10 +94,9 @@ export function WorkoutMusicPlayer({
     }
   }, [workoutDone]);
 
-  const info = CATEGORY_LABELS[category];
-
-  // Only show for supported categories
   if (category !== "strength" && category !== "agility") return null;
+
+  const info = CATEGORY_LABELS[category];
 
   const handleVolumeChange = (v: number) => {
     setVolumeLocal(v);
@@ -100,13 +104,34 @@ export function WorkoutMusicPlayer({
   };
 
   const handleSkip = () => {
-    // Pause then play restarts at next track in the playlist
     if (music.player) {
-      try {
-        (music.player as any).nextVideo?.();
-      } catch {}
+      try { (music.player as any).nextVideo?.(); } catch {}
     }
   };
+
+  const handleLoadPlaylist = () => {
+    setUrlError(false);
+    const id = setCustomPlaylist(urlInput);
+    if (!id) {
+      setUrlError(true);
+      return;
+    }
+    setUrlInput("");
+  };
+
+  const isUserPlaying = music.mode === "user" && music.isPlaying;
+  const headerSubtitle =
+    music.mode === "auto"
+      ? music.isPlaying
+        ? info?.vibe ?? "Playing…"
+        : workoutPaused
+        ? "Paused with workout"
+        : "Ready to play"
+      : music.customPlaylistId
+      ? music.isPlaying
+        ? "Your YouTube playlist"
+        : "Your playlist — tap play"
+      : "Paste a YouTube playlist URL";
 
   return (
     <div
@@ -117,7 +142,7 @@ export function WorkoutMusicPlayer({
         backdropFilter: "blur(12px)",
       }}
     >
-      {/* ── Collapsed header row ─────────────────────────── */}
+      {/* ── Collapsed header ─────────────────────────────── */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -128,7 +153,7 @@ export function WorkoutMusicPlayer({
           className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: `${accentColor}20`, border: `1px solid ${accentColor}35` }}
         >
-          {music.isPlaying && music.mode === "auto" ? (
+          {(music.isPlaying && (music.mode === "auto" || isUserPlaying)) ? (
             <MusicBars color={accentColor} />
           ) : (
             <Music size={14} style={{ color: accentColor }} />
@@ -137,8 +162,8 @@ export function WorkoutMusicPlayer({
 
         <div className="flex-1 text-left min-w-0">
           <p className="text-[11px] font-bold truncate" style={{ color: "#e2e8f0" }}>
-            {info?.title ?? "Workout Music"}
-            {music.mode === "auto" && music.isPlaying && (
+            {music.mode === "user" ? "My Music" : (info?.title ?? "Workout Music")}
+            {music.isPlaying && (
               <span
                 className="ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
                 style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
@@ -147,19 +172,11 @@ export function WorkoutMusicPlayer({
               </span>
             )}
           </p>
-          <p className="text-[10px] truncate" style={{ color: "#64748b" }}>
-            {music.mode === "auto"
-              ? music.isPlaying
-                ? info?.vibe ?? "Playing…"
-                : workoutPaused
-                ? "Paused with workout"
-                : "Ready to play"
-              : "My Music (coming soon)"}
-          </p>
+          <p className="text-[10px] truncate" style={{ color: "#64748b" }}>{headerSubtitle}</p>
         </div>
 
-        {/* Quick play/pause pill for auto mode — visible in collapsed state */}
-        {music.mode === "auto" && (
+        {/* Quick play/pause in collapsed state */}
+        {(music.mode === "auto" || (music.mode === "user" && music.customPlaylistId)) && (
           <button
             type="button"
             onClick={(e) => {
@@ -198,7 +215,7 @@ export function WorkoutMusicPlayer({
               className="px-4 pb-4 space-y-3"
               style={{ borderTop: `1px solid ${accentColor}15` }}
             >
-              {/* ── Mode toggle ──────────────────────────── */}
+              {/* Mode toggle */}
               <div
                 className="flex rounded-xl p-1 gap-1 mt-3"
                 style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
@@ -222,16 +239,13 @@ export function WorkoutMusicPlayer({
                 ))}
               </div>
 
-              {/* ── Auto Workout mode ────────────────────── */}
+              {/* Auto Workout mode */}
               {music.mode === "auto" && (
                 <div className="space-y-3">
                   <p className="text-[10px] text-center" style={{ color: "#475569" }}>
                     Workout music plays automatically — {info?.vibe}
                   </p>
-
-                  {/* Controls row */}
                   <div className="flex items-center justify-center gap-3">
-                    {/* Play / Pause */}
                     <button
                       type="button"
                       onClick={() => (music.isPlaying ? pauseMusic() : playMusic())}
@@ -249,8 +263,6 @@ export function WorkoutMusicPlayer({
                         <Play size={18} style={{ color: accentColor }} />
                       )}
                     </button>
-
-                    {/* Skip */}
                     <button
                       type="button"
                       onClick={handleSkip}
@@ -264,8 +276,6 @@ export function WorkoutMusicPlayer({
                       <SkipForward size={15} style={{ color: "#94a3b8" }} />
                     </button>
                   </div>
-
-                  {/* Volume */}
                   <div className="flex items-center gap-2.5">
                     <Volume2 size={13} style={{ color: "#475569" }} />
                     <input
@@ -291,27 +301,138 @@ export function WorkoutMusicPlayer({
                 </div>
               )}
 
-              {/* ── My Music mode ─────────────────────────── */}
+              {/* My Music mode — YouTube playlist */}
               {music.mode === "user" && (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 opacity-40 cursor-not-allowed"
-                    style={{
-                      backgroundColor: "#1db954",
-                      color: "#fff",
-                    }}
-                    data-testid="button-connect-spotify"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.496 17.27c-.214.336-.67.44-1.008.222-2.761-1.688-6.239-2.069-10.333-1.133-.394.09-.788-.155-.879-.549-.09-.394.155-.788.549-.879 4.475-1.022 8.313-.582 11.41 1.31.337.208.44.67.222 1.008l.039.021zm1.467-3.267c-.268.42-.84.551-1.26.283-3.158-1.942-7.97-2.505-11.705-1.37-.48.143-.985-.127-1.131-.607-.143-.48.127-.985.607-1.131 4.267-1.297 9.566-.669 13.205 1.565.42.268.551.84.284 1.26zm.127-3.399c-3.789-2.25-10.043-2.458-13.664-1.36-.577.175-1.187-.152-1.362-.73-.175-.578.152-1.188.73-1.363 4.154-1.262 11.062-1.018 15.426 1.574.52.309.694.98.384 1.5-.309.519-.981.693-1.5.384l-.014-.005z"/>
-                    </svg>
-                    Connect Spotify (Coming Soon)
-                  </button>
-                  <p className="text-[10px] text-center" style={{ color: "#475569" }}>
-                    Spotify integration is on the roadmap. Use Auto Workout in the meantime.
-                  </p>
+                <div className="space-y-3">
+                  {music.customPlaylistId ? (
+                    <>
+                      <div
+                        className="rounded-xl p-3 flex items-center gap-2"
+                        style={{ backgroundColor: "rgba(255,0,0,0.08)", border: "1px solid rgba(255,0,0,0.2)" }}
+                      >
+                        <Youtube size={14} style={{ color: "#ff4444", flexShrink: 0 }} />
+                        <p className="text-[10px] flex-1 truncate" style={{ color: "#e2e8f0" }}>
+                          {music.customPlaylistId}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={clearCustomPlaylist}
+                          className="shrink-0 p-1 rounded-md transition-colors"
+                          style={{ color: "#64748b" }}
+                          data-testid="button-clear-playlist"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => (music.isPlaying ? pauseMusic() : playMusic())}
+                          className="w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90"
+                          style={{
+                            background: `linear-gradient(135deg, ${accentColor}40, ${accentColor}20)`,
+                            border: `1px solid ${accentColor}60`,
+                            boxShadow: music.isPlaying ? `0 0 16px ${accentColor}50` : "none",
+                          }}
+                          data-testid="button-music-play-pause-user"
+                        >
+                          {music.isPlaying ? (
+                            <Pause size={18} style={{ color: accentColor }} />
+                          ) : (
+                            <Play size={18} style={{ color: accentColor }} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSkip}
+                          className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                          style={{
+                            backgroundColor: "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                          }}
+                        >
+                          <SkipForward size={15} style={{ color: "#94a3b8" }} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div
+                      className="rounded-xl p-3 flex items-center gap-2"
+                      style={{ backgroundColor: "rgba(255,0,0,0.05)", border: "1px dashed rgba(255,0,0,0.2)" }}
+                    >
+                      <Youtube size={14} style={{ color: "#ff4444", flexShrink: 0 }} />
+                      <p className="text-[10px]" style={{ color: "#64748b" }}>
+                        Paste a YouTube playlist URL below
+                      </p>
+                    </div>
+                  )}
+
+                  {/* URL input */}
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="youtube.com/playlist?list=..."
+                        value={urlInput}
+                        onChange={(e) => { setUrlInput(e.target.value); setUrlError(false); }}
+                        className="flex-1 text-[11px] rounded-lg px-3 py-2 outline-none"
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.06)",
+                          border: `1px solid ${urlError ? "#ef4444" : "rgba(255,255,255,0.1)"}`,
+                          color: "#e2e8f0",
+                        }}
+                        data-testid="input-yt-playlist-url"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleLoadPlaylist}
+                        disabled={!urlInput.trim()}
+                        className="px-3 py-2 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 disabled:opacity-40"
+                        style={{
+                          backgroundColor: `${accentColor}25`,
+                          color: accentColor,
+                          border: `1px solid ${accentColor}50`,
+                        }}
+                        data-testid="button-load-playlist"
+                      >
+                        <Check size={13} />
+                        Load
+                      </button>
+                    </div>
+                    {urlError && (
+                      <p className="text-[10px]" style={{ color: "#ef4444" }}>
+                        Couldn't find a playlist ID. Paste the full URL or just the playlist ID.
+                      </p>
+                    )}
+                    <p className="text-[10px]" style={{ color: "#475569" }}>
+                      Open a YouTube playlist → copy the URL from the address bar
+                    </p>
+                  </div>
+
+                  {/* Volume */}
+                  {music.customPlaylistId && (
+                    <div className="flex items-center gap-2.5">
+                      <Volume2 size={13} style={{ color: "#475569" }} />
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={volumeLocal}
+                        onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                        className="flex-1 h-1.5 rounded-full cursor-pointer appearance-none"
+                        style={
+                          {
+                            background: `linear-gradient(to right, ${accentColor} ${volumeLocal}%, rgba(255,255,255,0.1) ${volumeLocal}%)`,
+                            accentColor,
+                          } as React.CSSProperties
+                        }
+                      />
+                      <span className="text-[10px] w-7 text-right tabular-nums" style={{ color: "#475569" }}>
+                        {volumeLocal}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
