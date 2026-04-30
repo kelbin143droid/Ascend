@@ -81,6 +81,7 @@ const SECONDS_PER_REP = 3;
 
 export interface AgilityTierConfig {
   shoulderRollSeconds: number;
+  armCircleSeconds: number;
   crossArmSeconds: number;
   tricepSeconds: number;
   toeTouchSeconds: number;
@@ -89,11 +90,11 @@ export interface AgilityTierConfig {
 }
 
 export const AGILITY_TIERS: Record<number, AgilityTierConfig> = {
-  1: { shoulderRollSeconds: 10, crossArmSeconds: 15, tricepSeconds: 15, toeTouchSeconds: 20, hipOpenerSeconds: 20, restSeconds: 10 },
-  2: { shoulderRollSeconds: 12, crossArmSeconds: 18, tricepSeconds: 18, toeTouchSeconds: 25, hipOpenerSeconds: 25, restSeconds: 10 },
-  3: { shoulderRollSeconds: 15, crossArmSeconds: 20, tricepSeconds: 20, toeTouchSeconds: 30, hipOpenerSeconds: 30, restSeconds: 10 },
-  4: { shoulderRollSeconds: 18, crossArmSeconds: 25, tricepSeconds: 25, toeTouchSeconds: 35, hipOpenerSeconds: 35, restSeconds: 10 },
-  5: { shoulderRollSeconds: 20, crossArmSeconds: 30, tricepSeconds: 30, toeTouchSeconds: 40, hipOpenerSeconds: 40, restSeconds: 10 },
+  1: { shoulderRollSeconds: 10, armCircleSeconds: 20, crossArmSeconds: 15, tricepSeconds: 15, toeTouchSeconds: 20, hipOpenerSeconds: 20, restSeconds: 10 },
+  2: { shoulderRollSeconds: 12, armCircleSeconds: 25, crossArmSeconds: 18, tricepSeconds: 18, toeTouchSeconds: 25, hipOpenerSeconds: 25, restSeconds: 10 },
+  3: { shoulderRollSeconds: 15, armCircleSeconds: 30, crossArmSeconds: 20, tricepSeconds: 20, toeTouchSeconds: 30, hipOpenerSeconds: 30, restSeconds: 10 },
+  4: { shoulderRollSeconds: 18, armCircleSeconds: 35, crossArmSeconds: 25, tricepSeconds: 25, toeTouchSeconds: 35, hipOpenerSeconds: 35, restSeconds: 10 },
+  5: { shoulderRollSeconds: 20, armCircleSeconds: 40, crossArmSeconds: 30, tricepSeconds: 30, toeTouchSeconds: 40, hipOpenerSeconds: 40, restSeconds: 10 },
 };
 
 export function getMaxTierForPhase(phase: number): number {
@@ -154,7 +155,7 @@ export function buildPhase1Activities(
     jogSeconds +
     2 * ((st.pushupReps + st.situpReps + st.squatReps) * SECONDS_PER_REP + st.plankSeconds) +
     st.restSeconds;
-  const agilityTotal = ag.shoulderRollSeconds * 2 + ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
+  const agilityTotal = ag.shoulderRollSeconds * 2 + ag.armCircleSeconds * 2 + ag.crossArmSeconds * 2 + ag.tricepSeconds * 2 + ag.toeTouchSeconds + ag.hipOpenerSeconds + ag.restSeconds;
 
   const DAILY_FLOW_ORDER = [
     "phase1_meditation",
@@ -352,8 +353,8 @@ export function buildPhase1Activities(
           id: "intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: "Six stretches. Starting with shoulder rolls, then four stretches each side.",
-          voiceText: "Get ready. Six stretches. We start with shoulder rolls.",
+          instruction: "Shoulder rolls, arm circles, then six stretches. Breathe slow and easy.",
+          voiceText: "Get ready. Shoulder rolls, arm circles, then stretches. Nice and easy.",
         },
         {
           id: "shoulder_roll_forward",
@@ -372,6 +373,26 @@ export function buildPhase1Activities(
           durationSeconds: ag.shoulderRollSeconds,
           voiceText: `Backward shoulder rolls. ${ag.shoulderRollSeconds} seconds. Open the chest.`,
           loop: false,
+        },
+        {
+          id: "arm_circles_forward",
+          type: "timer",
+          label: "Arm Circles — Forward",
+          instruction: `Extend both arms out wide and rotate them forward in big smooth circles. ${ag.armCircleSeconds} seconds.`,
+          durationSeconds: ag.armCircleSeconds,
+          voiceText: `Forward arm circles. ${ag.armCircleSeconds} seconds. Keep the circles big and smooth.`,
+          videoSrc: "/videos/arm_circles_forward_loop.mp4",
+          loop: true,
+        },
+        {
+          id: "arm_circles_backward",
+          type: "timer",
+          label: "Arm Circles — Backward",
+          instruction: `Reverse direction — rotate both arms backward in big smooth circles. ${ag.armCircleSeconds} seconds.`,
+          durationSeconds: ag.armCircleSeconds,
+          voiceText: `Backward arm circles. ${ag.armCircleSeconds} seconds. Open up the chest.`,
+          videoSrc: "/videos/arm_circles_backward_loop.mp4",
+          loop: true,
         },
         {
           id: "cross_arm_left",

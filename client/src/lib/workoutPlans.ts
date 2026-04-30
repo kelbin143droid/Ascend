@@ -125,10 +125,10 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
     description: "Prep Stage — build foundational strength",
     color: "#22c55e",
     exercises: [
-      { id: "wall_push",    name: "Wall Push-ups",     sets: 3, reps: "8-12",  isPlaceholder: true,  voiceCue: "Wall push-ups." },
-      { id: "incline_push", name: "Incline Push-ups",  sets: 3, reps: "8-12",  isPlaceholder: true,  voiceCue: "Incline push-ups." },
-      { id: "asst_squat",   name: "Assisted Squats",   sets: 3, reps: "10-15", videoSrc: "/videos/squats_loop.mp4", voiceCue: "Assisted squats." },
-      { id: "glute_bridge", name: "Glute Bridges",     sets: 3, reps: "12-15", isPlaceholder: true,  voiceCue: "Glute bridges." },
+      { id: "wall_push",    name: "Wall Push-ups",     sets: 3, reps: "8-12",  videoSrc: "/videos/wall_pushups_loop.mp4",    voiceCue: "Wall push-ups." },
+      { id: "incline_push", name: "Incline Push-ups",  sets: 3, reps: "8-12",  videoSrc: "/videos/incline_pushups_loop.mp4", voiceCue: "Incline push-ups." },
+      { id: "asst_squat",   name: "Assisted Squats",   sets: 3, reps: "10-15", videoSrc: "/videos/squats_loop.mp4",          voiceCue: "Assisted squats." },
+      { id: "glute_bridge", name: "Glute Bridges",     sets: 3, reps: "12-15", videoSrc: "/videos/glute_bridges_loop.mp4",   voiceCue: "Glute bridges." },
       { id: "entry_plank",  name: "Plank Hold",        sets: 3, durationSeconds: 20, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank hold. 20 seconds." },
     ],
   },
@@ -142,7 +142,7 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
       { id: "beg_situp",  name: "Sit-ups",         sets: 3, reps: "10-15", videoSrc: "/videos/abs_crunch_loop.mp4",  voiceCue: "Sit-ups. Core tight." },
       { id: "beg_plank",  name: "Plank Hold",      sets: 3, durationSeconds: 25, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank. 25 seconds." },
       { id: "beg_squat",  name: "Squats",          sets: 3, reps: "12-15", videoSrc: "/videos/squats_loop.mp4", voiceCue: "Squats." },
-      { id: "beg_glute",  name: "Glute Bridges",   sets: 3, reps: "12-15", isPlaceholder: true, voiceCue: "Glute bridges." },
+      { id: "beg_glute",  name: "Glute Bridges",   sets: 3, reps: "12-15", videoSrc: "/videos/glute_bridges_loop.mp4", voiceCue: "Glute bridges." },
     ],
   },
   intermediate: {
