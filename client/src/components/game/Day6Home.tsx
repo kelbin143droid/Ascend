@@ -18,6 +18,7 @@ import { getWorkoutLevel, getCardioPrefs } from "@/lib/workoutProgressStore";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
+import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -357,13 +358,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               Flow completed today · {totalMins} min logged
             </div>
           ) : isIronSovereign ? (
-            <IronSovereignFlowButton onStart={() => setFlowActive(true)} />
+            <IronSovereignFlowButton onStart={() => { clearFlow(); clearSession(); setFlowActive(true); }} />
           ) : isNeonEmpress ? (
-            <NeonEmpressFlowButton onStart={() => setFlowActive(true)} fae={fae} />
+            <NeonEmpressFlowButton onStart={() => { clearFlow(); clearSession(); setFlowActive(true); }} fae={fae} />
           ) : (
             <button
               data-testid="button-begin-flow"
-              onClick={() => setFlowActive(true)}
+              onClick={() => { clearFlow(); clearSession(); setFlowActive(true); }}
               className="w-full py-4 rounded-xl font-bold text-sm uppercase tracking-[0.18em] transition-all active:scale-[0.98]"
               style={{
                 backgroundColor: colors.primary,
