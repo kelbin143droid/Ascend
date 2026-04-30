@@ -10,6 +10,7 @@ import {
 import { useLocation } from "wouter";
 import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
+import { WorkoutBuilderSection } from "./WorkoutBuilderSection";
 import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
@@ -590,6 +591,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             )}
           </AnimatePresence>
         </motion.div>
+
+        {/* ── WORKOUT BUILDER ────────────────────────────────────────── */}
+        <WorkoutBuilderSection playerId={player.id} />
 
         {/* ── STAT BARS ──────────────────────────────────────────────── */}
         <motion.div
