@@ -206,7 +206,8 @@ function RecommendationCard({ recommendation, onClose, onLevelUp, onLevelDown, n
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function WorkoutBuilderSection({ playerId }: { playerId: string }) {
-  const { colors } = useTheme();
+  const { backgroundTheme } = useTheme();
+  const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
 
   const [expanded, setExpanded] = useState(false);
