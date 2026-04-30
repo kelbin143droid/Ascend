@@ -13,6 +13,8 @@ import { DailyFlowEngine } from "./DailyFlowEngine";
 import { WorkoutBuilderSection } from "./WorkoutBuilderSection";
 import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
+import { buildWorkoutActivity, WORKOUT_PLANS } from "@/lib/workoutPlans";
+import { getWorkoutLevel, getCardioPrefs } from "@/lib/workoutProgressStore";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
@@ -57,11 +59,15 @@ interface Props {
   scalingData: ScalingData | null;
 }
 
-const SESSION_LIST = [
-  { id: "phase1_meditation", label: "Calm Breathing", sublabel: "4-4-6 breathing rhythm · 2 min", icon: Brain, color: "#3b82f6", stat: "Mana" },
-  { id: "phase1_agility", label: "Agility Flow", sublabel: "Stretch circuit · 3 min", icon: Wind, color: "#22c55e", stat: "Agility" },
-  { id: "phase1_strength", label: "Physical Circuit", sublabel: "Push-ups · Plank · Cardio", icon: Dumbbell, color: "#ef4444", stat: "Strength" },
-];
+function buildSessionList(workoutLevel: string) {
+  const plan = WORKOUT_PLANS[workoutLevel as keyof typeof WORKOUT_PLANS];
+  const exerciseNames = plan ? plan.exercises.slice(0, 3).map(e => e.name).join(" · ") : "Push-ups · Plank · Cardio";
+  return [
+    { id: "phase1_meditation", label: "Calm Breathing", sublabel: "4-4-6 breathing rhythm · 2 min", icon: Brain, color: "#3b82f6", stat: "Mana" },
+    { id: "phase1_agility", label: "Agility Flow", sublabel: "Stretch circuit · 3 min", icon: Wind, color: "#22c55e", stat: "Agility" },
+    { id: "phase1_strength", label: `${plan?.label ?? "Entry"} Workout`, sublabel: exerciseNames, icon: Dumbbell, color: plan?.color ?? "#ef4444", stat: "Strength" },
+  ];
+}
 
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const { backgroundTheme } = useTheme();
@@ -109,7 +115,21 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     meditation: scalingData?.trainingScaling?.meditation?.tier ?? 1,
     vitality: scalingData?.trainingScaling?.vitality?.tier ?? 1,
   };
-  const activities = buildPhase1Activities(homeData.onboardingDay, tiers);
+  const [currentWorkoutLevel] = useState(() => getWorkoutLevel());
+  const activities = (() => {
+    const raw = buildPhase1Activities(homeData.onboardingDay, tiers);
+    const cardioPrefs = getCardioPrefs();
+    return raw.map(a => {
+      if (a.id === "phase1_strength") {
+        const levelActivity = buildWorkoutActivity(currentWorkoutLevel, {
+          intensity: cardioPrefs.intensity,
+          position: cardioPrefs.position,
+        });
+        return { ...levelActivity, id: "phase1_strength" };
+      }
+      return a;
+    });
+  })();
   const totalMins = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
   const xp = computeXPState(
@@ -512,7 +532,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     border: `1px solid ${colors.surfaceBorder}`,
                   }}
                 >
-                  {SESSION_LIST.map((session, i) => {
+                  {buildSessionList(currentWorkoutLevel).map((session, i) => {
                     const Icon = session.icon;
                     const done = flowCompletedToday;
                     const route = `/guided-session/${session.id}`;

@@ -539,7 +539,20 @@ export default function TrainPage() {
   };
 
   const dayNumber = homeData?.onboardingDay ?? 1;
-  const activities = buildPhase1Activities(dayNumber, tiers);
+  const activities = (() => {
+    const raw = buildPhase1Activities(dayNumber, tiers);
+    const cardioPrefs = getCardioPrefs();
+    return raw.map(a => {
+      if (a.id === "phase1_strength") {
+        const levelActivity = buildWorkoutActivity(workoutLevel, {
+          intensity: cardioPrefs.intensity,
+          position: cardioPrefs.position,
+        });
+        return { ...levelActivity, id: "phase1_strength" };
+      }
+      return a;
+    });
+  })();
   const totalTime = activities.reduce((sum, a) => sum + a.duration, 0);
   const totalMins = Math.ceil(totalTime / 60);
 
