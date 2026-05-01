@@ -78,14 +78,6 @@ export const WARMUP_EXERCISES: ExerciseDef[] = [
     videoSrc: "/videos/joginplace_loop.mp4",
     voiceCue: `Jog in place for ${WARMUP_DURATION} seconds.`,
   },
-  {
-    id: "warmup_arms",
-    name: "Arm Circles",
-    sets: 1,
-    durationSeconds: WARMUP_DURATION,
-    isPlaceholder: true,
-    voiceCue: `Arm circles for ${WARMUP_DURATION} seconds. Forward and back.`,
-  },
 ];
 
 // ── Cardio exercises pool ──────────────────────────────────────────────────────
@@ -236,8 +228,8 @@ function buildWarmupSteps(): ActivityStep[] {
       id: "warmup_intro",
       type: "instruction",
       label: "Warm-up",
-      instruction: "3-minute warm-up before we start. Jumping Jacks → Jog → Arm Circles.",
-      voiceText: "Let's warm up. Three exercises, 30 seconds each.",
+      instruction: "Warm-up before we start. Jumping Jacks → Jog in Place.",
+      voiceText: "Let's warm up. Two exercises, 30 seconds each.",
     },
   ];
   for (const ex of WARMUP_EXERCISES) {

@@ -136,19 +136,22 @@ export function BreathingFeedbackModal({ playerId, colors, onComplete }: Breathi
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="fixed inset-0 z-50 flex flex-col overflow-y-auto px-5 py-8"
-        style={{ backgroundColor: colors.background }}
+        className="fixed inset-0 z-50 overflow-y-auto"
+        style={{
+          backgroundColor: colors.background,
+          WebkitOverflowScrolling: "touch",
+        }}
         data-testid="breathing-feedback-modal"
       >
-        <div className="max-w-xs mx-auto w-full flex flex-col gap-6">
-          <div className="text-center">
+        <div className="max-w-xs mx-auto w-full flex flex-col gap-4 px-5 pt-6 pb-10">
+          <div className="text-center mb-1">
             <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+              className="w-11 h-11 rounded-full flex items-center justify-center mx-auto mb-2.5"
               style={{ backgroundColor: `${primary}20`, border: `1.5px solid ${primary}40` }}
             >
-              <Wind size={22} style={{ color: primary }} />
+              <Wind size={20} style={{ color: primary }} />
             </div>
-            <div className="text-lg font-bold mb-1" style={{ color: colors.text }}>
+            <div className="text-base font-bold mb-0.5" style={{ color: colors.text }}>
               Breathing Check-In
             </div>
             <div className="text-xs" style={{ color: colors.textMuted }}>
@@ -190,7 +193,7 @@ export function BreathingFeedbackModal({ playerId, colors, onComplete }: Breathi
             data-testid="button-submit-breathing-feedback"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+            className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 mt-2"
             style={{
               backgroundColor: canSubmit ? primary : `${colors.textMuted}30`,
               color: canSubmit ? "#fff" : colors.textMuted,
@@ -215,11 +218,11 @@ export function BreathingFeedbackModal({ playerId, colors, onComplete }: Breathi
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex flex-col overflow-y-auto px-5 py-8"
-      style={{ backgroundColor: colors.background }}
+      className="fixed inset-0 z-50 overflow-y-auto"
+      style={{ backgroundColor: colors.background, WebkitOverflowScrolling: "touch" }}
       data-testid="breathing-results-screen"
     >
-      <div className="max-w-xs mx-auto w-full flex flex-col gap-5">
+      <div className="max-w-xs mx-auto w-full flex flex-col gap-4 px-5 pt-6 pb-10">
         <div className="text-center">
           <motion.div
             initial={{ scale: 0 }}
@@ -401,14 +404,19 @@ function Question<T extends string>({
               key={opt.value}
               data-testid={`breathing-q${number}-${opt.value}`}
               onClick={() => onSelect(opt.value)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all active:scale-98"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all active:scale-98"
               style={{
                 backgroundColor: selected ? `${primary}18` : `${colors.textMuted}08`,
                 border: `1.5px solid ${selected ? primary : `${colors.textMuted}18`}`,
               }}
             >
-              <span className="text-lg leading-none">{opt.emoji}</span>
-              <div>
+              <span
+                className="flex-shrink-0 flex items-center justify-center"
+                style={{ width: 28, height: 28, fontSize: 18, lineHeight: 1 }}
+              >
+                {opt.emoji}
+              </span>
+              <div className="min-w-0">
                 <div className="text-xs font-semibold" style={{ color: selected ? primary : colors.text }}>
                   {opt.label}
                 </div>

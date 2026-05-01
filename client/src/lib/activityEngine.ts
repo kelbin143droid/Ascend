@@ -379,7 +379,8 @@ export function buildPhase1Activities(
           instruction: `Roll both shoulders forward in smooth slow circles. ${ag.shoulderRollSeconds} seconds.`,
           durationSeconds: ag.shoulderRollSeconds,
           voiceText: `Forward shoulder rolls. ${ag.shoulderRollSeconds} seconds. Slow and smooth.`,
-          loop: false,
+          videoSrc: "/videos/shoulder-roll-forward.mp4",
+          loop: true,
         },
         {
           id: "shoulder_roll_backward",
@@ -388,7 +389,8 @@ export function buildPhase1Activities(
           instruction: `Reverse direction — roll both shoulders backward, opening the chest. ${ag.shoulderRollSeconds} seconds.`,
           durationSeconds: ag.shoulderRollSeconds,
           voiceText: `Backward shoulder rolls. ${ag.shoulderRollSeconds} seconds. Open the chest.`,
-          loop: false,
+          videoSrc: "/videos/shoulder-roll-backward.mp4",
+          loop: true,
         },
         {
           id: "arm_circles_forward",
