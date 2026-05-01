@@ -3,9 +3,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { GuidedActivityEngine } from "./GuidedActivityEngine";
+import { BreathingFeedbackModal } from "./BreathingFeedbackModal";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition } from "@/lib/activityEngine";
-import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Brain, Dumbbell, ChevronRight } from "lucide-react";
+import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Dumbbell, ChevronRight } from "lucide-react";
 import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
 const FLOW_BONUS_XP = 5;
@@ -13,7 +14,6 @@ const FLOW_BONUS_XP = 5;
 type FeedbackValue = "easy" | "same" | "challenging" | null;
 
 interface FeedbackState {
-  meditation: FeedbackValue;
   strength: FeedbackValue;
 }
 
@@ -53,17 +53,18 @@ export function DailyFlowEngine({
   const [showTransition, setShowTransition] = useState(false);
   const [flowFinished, setFlowFinished] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [feedback, setFeedback] = useState<FeedbackState>({ meditation: null, strength: null });
+  const [feedback, setFeedback] = useState<FeedbackState>({ strength: null });
   const [runningActivity, setRunningActivity] = useState(false);
   const [bonusXpAwarded, setBonusXpAwarded] = useState(false);
+  const [showBreathingFeedback, setShowBreathingFeedback] = useState(false);
+  const [pendingAdvanceIdx, setPendingAdvanceIdx] = useState<number | null>(null);
 
   const currentActivity = activities[currentActivityIdx];
   const allCompleted = completedIds.size === activities.length;
 
   const didComplete = (id: string) => completedIds.has(id);
-  const meditationCompleted = didComplete("phase1_meditation");
   const strengthCompleted = didComplete("phase1_strength");
-  const hasFeedbackQuestions = meditationCompleted || strengthCompleted;
+  const hasFeedbackQuestions = strengthCompleted;
 
   const bonusMutation = useMutation({
     mutationFn: async () => {
@@ -82,7 +83,7 @@ export function DailyFlowEngine({
   });
 
   const feedbackMutation = useMutation({
-    mutationFn: async (fb: { meditation?: string; strength?: string }) => {
+    mutationFn: async (fb: { strength?: string }) => {
       const res = await apiRequest(
         "POST",
         `/api/player/${playerId}/training-feedback`,
@@ -112,32 +113,50 @@ export function DailyFlowEngine({
     }, 1200);
   }, [currentActivityIdx, activities.length, completedIds, skippedIds, bonusMutation]);
 
-  const handleActivityComplete = useCallback((_xpEarned: number) => {
-    const actId = activities[currentActivityIdx].id;
-    setCompletedIds((prev) => {
-      const next = new Set(prev);
-      next.add(actId);
-      return next;
-    });
+  const doAdvance = useCallback((fromIdx: number, newCompletedSize: number) => {
     queryClient.invalidateQueries({ queryKey: ["training-scaling"] });
-
-    const nextIdx = currentActivityIdx + 1;
+    const nextIdx = fromIdx + 1;
     if (nextIdx >= activities.length) {
-      const allDone = completedIds.size + 1 === activities.length;
-      if (allDone) {
-        bonusMutation.mutate();
-      }
+      const allDone = newCompletedSize === activities.length;
+      if (allDone) bonusMutation.mutate();
       setFlowFinished(true);
       return;
     }
-
     setShowTransition(true);
     setTimeout(() => {
       setCurrentActivityIdx(nextIdx);
       setShowTransition(false);
       setRunningActivity(false);
     }, 1200);
-  }, [activities, currentActivityIdx, completedIds, queryClient, bonusMutation]);
+  }, [activities.length, queryClient, bonusMutation]);
+
+  const handleActivityComplete = useCallback((_xpEarned: number) => {
+    const actId = activities[currentActivityIdx].id;
+    let newSize = 0;
+    setCompletedIds((prev) => {
+      const next = new Set(prev);
+      next.add(actId);
+      newSize = next.size;
+      return next;
+    });
+
+    if (actId === "phase1_meditation") {
+      setPendingAdvanceIdx(currentActivityIdx);
+      setRunningActivity(false);
+      setShowBreathingFeedback(true);
+      return;
+    }
+
+    doAdvance(currentActivityIdx, newSize);
+  }, [activities, currentActivityIdx, doAdvance]);
+
+  const handleBreathingFeedbackComplete = useCallback((_bonusXp: number) => {
+    setShowBreathingFeedback(false);
+    const fromIdx = pendingAdvanceIdx ?? currentActivityIdx;
+    const size = completedIds.size;
+    setPendingAdvanceIdx(null);
+    doAdvance(fromIdx, size);
+  }, [pendingAdvanceIdx, currentActivityIdx, completedIds.size, doAdvance]);
 
   const handleSkip = useCallback(() => {
     const actId = activities[currentActivityIdx].id;
@@ -179,14 +198,13 @@ export function DailyFlowEngine({
   }, [flowFinished]);
 
   const handleFeedbackSubmit = useCallback(() => {
-    const payload: { meditation?: string; strength?: string } = {};
-    if (meditationCompleted && feedback.meditation) payload.meditation = feedback.meditation;
+    const payload: { strength?: string } = {};
     if (strengthCompleted && feedback.strength) payload.strength = feedback.strength;
     if (Object.keys(payload).length > 0) {
       feedbackMutation.mutate(payload);
     }
     setShowFeedback(false);
-  }, [feedback, meditationCompleted, strengthCompleted, feedbackMutation]);
+  }, [feedback, strengthCompleted, feedbackMutation]);
 
   const handleFlowFinish = useCallback(() => {
     clearFlow();
@@ -201,7 +219,23 @@ export function DailyFlowEngine({
     return () => clearTimeout(t);
   }, [flowFinished, showFeedback]);
 
-  // ── Feedback modal ────────────────────────────────────────────────────────
+  // ── Breathing progression feedback (shown right after meditation) ─────────
+  if (showBreathingFeedback) {
+    return (
+      <BreathingFeedbackModal
+        playerId={playerId}
+        colors={{
+          background: colors.background,
+          text: colors.text,
+          textMuted: colors.textMuted,
+          primary: colors.primary,
+        }}
+        onComplete={handleBreathingFeedbackComplete}
+      />
+    );
+  }
+
+  // ── End-of-flow feedback modal (strength only) ────────────────────────────
   if (showFeedback) {
     return (
       <motion.div
@@ -227,41 +261,6 @@ export function DailyFlowEngine({
           </div>
 
           <div className="flex flex-col gap-5">
-            {meditationCompleted && (
-              <div>
-                <div
-                  className="flex items-center gap-2 mb-2.5 text-sm font-semibold"
-                  style={{ color: colors.text }}
-                >
-                  <Brain size={15} style={{ color: "#3b82f6" }} />
-                  Calm Breathing
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {FEEDBACK_OPTIONS.map((opt) => {
-                    const selected = feedback.meditation === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        data-testid={`feedback-meditation-${opt.value}`}
-                        onClick={() => setFeedback((f) => ({ ...f, meditation: opt.value }))}
-                        className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all active:scale-95"
-                        style={{
-                          backgroundColor: selected
-                            ? `#3b82f620`
-                            : `${colors.textMuted}10`,
-                          border: `1.5px solid ${selected ? "#3b82f6" : `${colors.textMuted}20`}`,
-                          color: selected ? "#3b82f6" : colors.textMuted,
-                        }}
-                      >
-                        <span className="text-base leading-none">{opt.emoji}</span>
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {strengthCompleted && (
               <div>
                 <div
@@ -535,6 +534,18 @@ export function DailyFlowEngine({
                   <span style={{ color: currentActivity.color }}> · Tier {currentActivity.tier}</span>
                 )}
               </div>
+              {currentActivity.breathingPhase && (
+                <div
+                  className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                  style={{
+                    backgroundColor: `${currentActivity.color}18`,
+                    color: currentActivity.color,
+                    border: `1px solid ${currentActivity.color}30`,
+                  }}
+                >
+                  Phase {currentActivity.breathingPhase} · Breathing Level
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-3 w-full max-w-xs">

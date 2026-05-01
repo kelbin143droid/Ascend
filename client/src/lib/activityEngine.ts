@@ -1,3 +1,6 @@
+import { getBreathingProfile } from "./breathingStore";
+import { BREATHING_PHASES } from "./breathingProgressionSystem";
+
 export type StepType = "instruction" | "timer" | "rep" | "breath" | "completion" | "check";
 
 export interface BreathTiming {
@@ -39,6 +42,7 @@ export interface ActivityDefinition {
   tier?: number;
   xpMultiplier?: number;
   autoflow?: boolean;
+  breathingPhase?: number;
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -126,7 +130,11 @@ export function buildPhase1Activities(
 
   const ag = AGILITY_TIERS[agilityTier] ?? AGILITY_TIERS[1];
 
-  const meditationDuration = 123 + (meditationTier - 1) * 30;
+  const breathProfile = getBreathingProfile();
+  const meditationDuration = breathProfile.durationSeconds;
+  const breathPattern = breathProfile.pattern;
+  const breathingPhaseNum = breathProfile.phase;
+  const breathPhaseDef = BREATHING_PHASES[breathingPhaseNum];
 
   // ── Warm-up cardio (time-based)
   const cardioLabel = "Jumping Jacks";
@@ -174,22 +182,27 @@ export function buildPhase1Activities(
       color: CATEGORY_COLORS.meditation,
       tier: meditationTier,
       xpMultiplier: meditationMultiplier,
+      breathingPhase: breathingPhaseNum,
       steps: [
         {
           id: "calm_intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: `Find a comfortable position. Close your eyes or soften your gaze. We'll breathe together for ${Math.round(meditationDuration / 60)} minutes.`,
+          instruction: `Find a comfortable position. Close your eyes or soften your gaze. We'll breathe together for ${Math.round(meditationDuration / 60)} minutes.\n\n${breathPhaseDef.label} phase · ${breathPattern.inhaleSeconds}-${breathPattern.holdSeconds}-${breathPattern.exhaleSeconds} rhythm.`,
           voiceText: `Find a comfortable position. Close your eyes. We'll breathe together for ${Math.round(meditationDuration / 60)} minutes.`,
         },
         {
           id: "calm_breathing",
           type: "breath",
           label: "Calm Breathing",
-          instruction: "Follow the circle. Inhale 4s → Hold 4s → Exhale 6s.",
+          instruction: `Follow the circle. Inhale ${breathPattern.inhaleSeconds}s → Hold ${breathPattern.holdSeconds}s → Exhale ${breathPattern.exhaleSeconds}s.`,
           durationSeconds: meditationDuration + 5,
-          breathTiming: { inhaleSeconds: 4, holdSeconds: 4, exhaleSeconds: 6 },
-          voiceText: "Follow the circle. Inhale for 4 seconds. Hold for 4. Exhale for 6.",
+          breathTiming: {
+            inhaleSeconds: breathPattern.inhaleSeconds,
+            holdSeconds: breathPattern.holdSeconds,
+            exhaleSeconds: breathPattern.exhaleSeconds,
+          },
+          voiceText: `Follow the circle. Inhale for ${breathPattern.inhaleSeconds} seconds. Hold for ${breathPattern.holdSeconds}. Exhale for ${breathPattern.exhaleSeconds}.`,
           videoSrc: "/videos/meditation_loop.mp4",
         },
         {
