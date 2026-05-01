@@ -126,7 +126,7 @@ export function buildPhase1Activities(
 
   const ag = AGILITY_TIERS[agilityTier] ?? AGILITY_TIERS[1];
 
-  const meditationDuration = 120 + (meditationTier - 1) * 30;
+  const meditationDuration = 123 + (meditationTier - 1) * 30;
 
   // ── Warm-up cardio (time-based)
   const cardioLabel = "Jumping Jacks";
