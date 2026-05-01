@@ -489,6 +489,61 @@ function BreathingVisual({
     map[p].current?.play().catch(() => {});
   }, [audioEnabled]);
 
+  // ── Ambient meditation drone via Web Audio API ─────────────────────────
+  useEffect(() => {
+    if (!active || !audioEnabled) return;
+    let ctx: AudioContext | null = null;
+    let masterGain: GainNode | null = null;
+    let stopped = false;
+
+    try {
+      ctx = new AudioContext();
+      masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0, ctx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 4);
+      masterGain.connect(ctx.destination);
+
+      const addTone = (freq: number, vol: number) => {
+        if (!ctx || !masterGain) return;
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.value = vol;
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start();
+      };
+
+      addTone(174, 0.55);  // Solfeggio healing base
+      addTone(177, 0.35);  // 3 Hz beat for gentle depth
+      addTone(348, 0.12);  // octave harmonic (softer)
+
+      // Slow tremolo LFO
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 0.06;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 0.04;
+      lfo.connect(lfoGain);
+      lfoGain.connect(masterGain.gain);
+      lfo.start();
+    } catch {}
+
+    return () => {
+      stopped = true;
+      if (!ctx || !masterGain) return;
+      try {
+        const now = ctx.currentTime;
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+        masterGain.gain.linearRampToValueAtTime(0, now + 2.5);
+        setTimeout(() => { if (stopped) ctx?.close(); }, 2600);
+      } catch { ctx.close(); }
+    };
+  }, [active, audioEnabled]);
+
+  // ── Breath animation loop ───────────────────────────────────────────────
   useEffect(() => {
     cancelledRef.current = false;
     if (!active) return;
@@ -496,6 +551,12 @@ function BreathingVisual({
     const animate = async () => {
       const frameMs = 50;
       while (!cancelledRef.current) {
+        // Check at the START of each cycle — fires the moment the last exhale ends
+        if (shouldFinishRef.current) {
+          cancelledRef.current = true;
+          onCompleteRef.current?.();
+          return;
+        }
         setPhase("inhale");
         playBreathAudio("inhale");
         const inhaleFrames = Math.floor((timing.inhaleSeconds * 1000) / frameMs);
@@ -519,11 +580,6 @@ function BreathingVisual({
           if (cancelledRef.current) return;
           setScale(1 - (i / exhaleFrames) * 0.5);
           await new Promise((r) => setTimeout(r, frameMs));
-        }
-        if (shouldFinishRef.current) {
-          cancelledRef.current = true;
-          onCompleteRef.current?.();
-          return;
         }
       }
     };

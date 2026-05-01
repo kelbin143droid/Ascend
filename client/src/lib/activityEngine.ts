@@ -196,7 +196,10 @@ export function buildPhase1Activities(
           type: "breath",
           label: "Calm Breathing",
           instruction: `Follow the circle. Inhale ${breathPattern.inhaleSeconds}s → Hold ${breathPattern.holdSeconds}s → Exhale ${breathPattern.exhaleSeconds}s.`,
-          durationSeconds: meditationDuration + 5,
+          durationSeconds: (() => {
+            const cycle = breathPattern.inhaleSeconds + breathPattern.holdSeconds + breathPattern.exhaleSeconds;
+            return Math.max(cycle, Math.round(meditationDuration / cycle) * cycle);
+          })(),
           breathTiming: {
             inhaleSeconds: breathPattern.inhaleSeconds,
             holdSeconds: breathPattern.holdSeconds,
