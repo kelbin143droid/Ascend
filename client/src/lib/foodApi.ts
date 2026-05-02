@@ -173,14 +173,14 @@ function parseUsdaFood(f: UsdaFood): FoodSearchResult {
 }
 
 async function searchUsda(query: string, limit = 15): Promise<FoodSearchResult[]> {
-  const key = getApiKey();
-  if (!key) return [];
+  const key = getApiKey() ?? "DEMO_KEY";
   const url =
     `https://api.nal.usda.gov/fdc/v1/foods/search` +
     `?api_key=${encodeURIComponent(key)}` +
     `&query=${encodeURIComponent(query)}` +
+    `&dataType=Foundation,SR%20Legacy,Branded` +
     `&pageSize=${limit}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
   if (!res.ok) throw new Error(`USDA ${res.status}`);
   const data = (await res.json()) as { foods?: UsdaFood[] };
   return (data.foods ?? []).map(parseUsdaFood);
@@ -189,13 +189,19 @@ async function searchUsda(query: string, limit = 15): Promise<FoodSearchResult[]
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export async function searchFoods(query: string, limit = 25): Promise<FoodSearchResult[]> {
+  // Mock whole-food entries always go first so natural foods are never buried
+  const matchingMock = mockSearch(query);
+
   const [offResults, usdaResults] = await Promise.allSettled([
     searchOpenFoodFacts(query, Math.ceil(limit * 0.6)),
-    searchUsda(query, Math.ceil(limit * 0.5)),
+    searchUsda(query, Math.ceil(limit * 0.6)),
   ]);
 
   const off = offResults.status === "fulfilled" ? offResults.value : [];
-  const usda = usdaResults.status === "fulfilled" ? usdaResults.value : [];
+  // USDA Foundation / SR Legacy entries come before branded results
+  const usdaAll = usdaResults.status === "fulfilled" ? usdaResults.value : [];
+  const usdaWhole = usdaAll.filter((f) => f.source === "usda" && !f.brand);
+  const usdaBranded = usdaAll.filter((f) => f.source === "usda" && !!f.brand);
 
   if (offResults.status === "rejected") {
     console.warn("[foodApi] Open Food Facts failed", (offResults as PromiseRejectedResult).reason);
@@ -204,24 +210,17 @@ export async function searchFoods(query: string, limit = 25): Promise<FoodSearch
     console.warn("[foodApi] USDA failed", (usdaResults as PromiseRejectedResult).reason);
   }
 
-  if (off.length === 0 && usda.length === 0) {
-    return mockSearch(query).slice(0, limit);
-  }
-
   const seen = new Set<string>();
   const merged: FoodSearchResult[] = [];
-  for (const item of [...off, ...usda]) {
+
+  // Priority order: local whole-food entries → USDA whole foods → branded/packaged (OFF + USDA)
+  for (const item of [...matchingMock, ...usdaWhole, ...off, ...usdaBranded]) {
     const key = item.name.toLowerCase().slice(0, 40);
     if (!seen.has(key)) {
       seen.add(key);
       merged.push(item);
     }
     if (merged.length >= limit) break;
-  }
-
-  if (merged.length < 5) {
-    const mock = mockSearch(query).filter((m) => !seen.has(m.name.toLowerCase().slice(0, 40)));
-    merged.push(...mock.slice(0, limit - merged.length));
   }
 
   return merged.slice(0, limit);

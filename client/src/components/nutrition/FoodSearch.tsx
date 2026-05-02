@@ -142,8 +142,8 @@ export function FoodSearch({ mealType }: FoodSearchProps = {}) {
       {/* Add modal */}
       {selected && (
         <div
-          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          className="fixed inset-0 z-[120] flex items-center justify-center px-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
           onClick={() => setSelected(null)}
           data-testid="food-add-modal"
         >
@@ -153,6 +153,8 @@ export function FoodSearch({ mealType }: FoodSearchProps = {}) {
               backgroundColor: colors.surface,
               border: `1px solid ${colors.primary}55`,
               boxShadow: `0 12px 40px rgba(0,0,0,0.6), 0 0 32px ${colors.primaryGlow}30`,
+              maxHeight: "80vh",
+              overflowY: "auto",
             }}
             onClick={(e) => e.stopPropagation()}
           >
