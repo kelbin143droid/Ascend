@@ -781,6 +781,7 @@ export default function GuidedSessionPage() {
   useEffect(() => {
     // These sessions use their own engines and manage timing independently
     if (sessionId === "light-movement" || sessionId === "focus-block") return;
+    if (!session) return;
     if (state !== "active" || session.type === "instant") return;
 
     intervalRef.current = setInterval(() => {
@@ -801,16 +802,17 @@ export default function GuidedSessionPage() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [state, session.type, session.durationSeconds, sessionId]);
+  }, [state, session?.type, session?.durationSeconds, sessionId]);
 
   useEffect(() => {
     if (sessionId === "light-movement" || sessionId === "focus-block") return;
+    if (!session) return;
     // Breathing sessions manage their own completion via onDone callback (ends on exhale)
     if (session.type === "breathing") return;
     if (session.type !== "instant" && elapsed >= session.durationSeconds && state === "active") {
       handleComplete();
     }
-  }, [elapsed, session.durationSeconds, state, sessionId, session.type]);
+  }, [elapsed, session?.durationSeconds, state, sessionId, session?.type]);
 
   const handleComplete = useCallback(() => {
     if (state !== "active") return;
