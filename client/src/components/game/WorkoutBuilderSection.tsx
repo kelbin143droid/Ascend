@@ -182,10 +182,10 @@ export function WorkoutBuilderSection({ playerId: _playerId }: { playerId: strin
                     return (
                       <button key={level} onClick={() => handleLevelChange(level)}
                         data-testid={`button-level-${level}`}
-                        className="flex flex-col items-center gap-1 py-3 rounded-xl text-xs font-semibold transition-all active:scale-95"
+                        className="flex flex-col items-center gap-1 py-3 rounded-xl text-xs font-semibold transition-all active:scale-95 outline-none focus:outline-none"
                         style={{
-                          backgroundColor: isActive ? `${lColor}20` : `${colors.textMuted}08`,
-                          border: `1.5px solid ${isActive ? lColor : `${colors.textMuted}20`}`,
+                          backgroundColor: isActive ? `${lColor}20` : "rgba(255,255,255,0.04)",
+                          border: `1.5px solid ${isActive ? lColor : "transparent"}`,
                           color: isActive ? lColor : colors.textMuted,
                         }}>
                         <span className="text-base">{levelEmoji[level]}</span>
@@ -215,10 +215,10 @@ export function WorkoutBuilderSection({ playerId: _playerId }: { playerId: strin
                     return (
                       <button key={lvl} onClick={() => { setCardioIntensity(lvl); setCardioPrefs({ intensity: lvl }); }}
                         data-testid={`button-cardio-${lvl}`}
-                        className="py-2 rounded-lg text-[10px] font-semibold transition-all active:scale-95 capitalize"
+                        className="py-2 rounded-lg text-[10px] font-semibold transition-all active:scale-95 capitalize outline-none focus:outline-none"
                         style={{
-                          backgroundColor: active ? "#ef444420" : `${colors.textMuted}08`,
-                          border: `1.5px solid ${active ? "#ef4444" : `${colors.textMuted}20`}`,
+                          backgroundColor: active ? "#ef444420" : "rgba(255,255,255,0.04)",
+                          border: `1.5px solid ${active ? "#ef4444" : "transparent"}`,
                           color: active ? "#ef4444" : colors.textMuted,
                         }}>
                         {lvl === "off" ? "Off" : lvl === "light" ? "Light" : lvl === "moderate" ? "Mod." : "Intense"}
@@ -233,10 +233,10 @@ export function WorkoutBuilderSection({ playerId: _playerId }: { playerId: strin
                       {(["before", "after"] as CardioPosition[]).map((pos) => (
                         <button key={pos} onClick={() => { setCardioPosition(pos); setCardioPrefs({ position: pos }); }}
                           data-testid={`button-cardio-position-${pos}`}
-                          className="flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-all active:scale-95"
+                          className="flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-all active:scale-95 outline-none focus:outline-none"
                           style={{
-                            backgroundColor: cardioPosition === pos ? "#ef444420" : `${colors.textMuted}08`,
-                            border: `1.5px solid ${cardioPosition === pos ? "#ef4444" : `${colors.textMuted}20`}`,
+                            backgroundColor: cardioPosition === pos ? "#ef444420" : "rgba(255,255,255,0.04)",
+                            border: `1.5px solid ${cardioPosition === pos ? "#ef4444" : "transparent"}`,
                             color: cardioPosition === pos ? "#ef4444" : colors.textMuted,
                           }}>
                           {pos} Workout

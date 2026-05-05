@@ -94,11 +94,11 @@ export interface AgilityTierConfig {
 }
 
 export const AGILITY_TIERS: Record<number, AgilityTierConfig> = {
-  1: { shoulderRollSeconds: 10, armCircleSeconds: 20, crossArmSeconds: 15, tricepSeconds: 15, toeTouchSeconds: 20, hipOpenerSeconds: 20, restSeconds: 10 },
-  2: { shoulderRollSeconds: 12, armCircleSeconds: 25, crossArmSeconds: 18, tricepSeconds: 18, toeTouchSeconds: 25, hipOpenerSeconds: 25, restSeconds: 10 },
-  3: { shoulderRollSeconds: 15, armCircleSeconds: 30, crossArmSeconds: 20, tricepSeconds: 20, toeTouchSeconds: 30, hipOpenerSeconds: 30, restSeconds: 10 },
-  4: { shoulderRollSeconds: 18, armCircleSeconds: 35, crossArmSeconds: 25, tricepSeconds: 25, toeTouchSeconds: 35, hipOpenerSeconds: 35, restSeconds: 10 },
-  5: { shoulderRollSeconds: 20, armCircleSeconds: 40, crossArmSeconds: 30, tricepSeconds: 30, toeTouchSeconds: 40, hipOpenerSeconds: 40, restSeconds: 10 },
+  1: { shoulderRollSeconds: 15, armCircleSeconds: 15, crossArmSeconds: 15, tricepSeconds: 15, toeTouchSeconds: 20, hipOpenerSeconds: 20, restSeconds: 10 },
+  2: { shoulderRollSeconds: 17, armCircleSeconds: 20, crossArmSeconds: 18, tricepSeconds: 18, toeTouchSeconds: 25, hipOpenerSeconds: 25, restSeconds: 10 },
+  3: { shoulderRollSeconds: 20, armCircleSeconds: 25, crossArmSeconds: 20, tricepSeconds: 20, toeTouchSeconds: 30, hipOpenerSeconds: 30, restSeconds: 10 },
+  4: { shoulderRollSeconds: 23, armCircleSeconds: 30, crossArmSeconds: 25, tricepSeconds: 25, toeTouchSeconds: 35, hipOpenerSeconds: 35, restSeconds: 10 },
+  5: { shoulderRollSeconds: 25, armCircleSeconds: 35, crossArmSeconds: 30, tricepSeconds: 30, toeTouchSeconds: 40, hipOpenerSeconds: 40, restSeconds: 10 },
 };
 
 export function getMaxTierForPhase(phase: number): number {

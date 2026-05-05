@@ -175,7 +175,8 @@ function doLoadCustomPlaylist(): void {
     startSeconds: 0,
   });
   try { state.player.setShuffle(true); } catch {}
-  state.isPlaying = true;
+  try { state.player.pauseVideo(); } catch {}
+  state.isPlaying = false;
   emit();
 }
 
@@ -192,7 +193,8 @@ export function loadPlaylist(category: WorkoutCategory): void {
     startSeconds: 0,
   });
   try { state.player.setShuffle(true); } catch {}
-  state.isPlaying = true;
+  try { state.player.pauseVideo(); } catch {}
+  state.isPlaying = false;
   emit();
 }
 

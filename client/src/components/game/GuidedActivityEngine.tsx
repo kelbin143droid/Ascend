@@ -1671,12 +1671,14 @@ export function GuidedActivityEngine({
 
       {/* ── Music panel (strength / agility / meditation) ─── */}
       {(activity.category === "strength" || activity.category === "agility" || activity.category === "meditation") && (
-        <WorkoutMusicPlayer
-          category={activity.category}
-          workoutPaused={isPaused}
-          workoutDone={isCompletionStep}
-          accentColor={activity.color}
-        />
+        <div style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 16px)" }}>
+          <WorkoutMusicPlayer
+            category={activity.category}
+            workoutPaused={isPaused}
+            workoutDone={isCompletionStep}
+            accentColor={activity.color}
+          />
+        </div>
       )}
     </motion.div>
   );
