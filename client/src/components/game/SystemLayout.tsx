@@ -78,13 +78,22 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       {(isIronSovereign || isNeonEmpress) && animatedBg ? (
         <video
           key="animated-bg"
-          className="fixed inset-0 z-0 w-full h-full object-cover"
+          className="fixed z-0 object-cover"
           src={isIronSovereign ? "/videos/male_bg_animated.mp4" : "/videos/female_bg_animated.mp4"}
           autoPlay
           loop
           muted
           playsInline
-          style={{ backgroundColor: "#000000" }}
+          style={{
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            minWidth: "100vw",
+            minHeight: "100vh",
+            width: "auto",
+            height: "auto",
+            backgroundColor: "#000000",
+          }}
         />
       ) : (
         <div
