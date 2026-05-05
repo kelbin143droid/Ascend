@@ -75,11 +75,11 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       `}</style>
 
       {/* Background layer — static image / animated video / gradient */}
-      {isIronSovereign && animatedBg ? (
+      {(isIronSovereign || isNeonEmpress) && animatedBg ? (
         <video
           key="animated-bg"
           className="fixed inset-0 z-0 w-full h-full object-cover"
-          src="/videos/male_bg_animated.mp4"
+          src={isIronSovereign ? "/videos/male_bg_animated.mp4" : "/videos/female_bg_animated.mp4"}
           autoPlay
           loop
           muted
@@ -158,7 +158,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
       <div
         className="fixed inset-0 z-10 pointer-events-none"
-        style={{ display: isIronSovereign ? "none" : undefined }}
+        style={{ display: (isIronSovereign || (isNeonEmpress && animatedBg)) ? "none" : undefined }}
       >
         <div
           className="absolute inset-2 rounded-lg"
@@ -218,8 +218,8 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         }}
       />
 
-      {/* Animated background toggle — only shown for Iron Sovereign (male) theme */}
-      {isIronSovereign && (
+      {/* Animated background toggle — shown for Iron Sovereign (male) and Neon Empress (female) themes */}
+      {(isIronSovereign || isNeonEmpress) && (
         <button
           data-testid="button-toggle-animated-bg"
           onClick={toggleAnimatedBg}
