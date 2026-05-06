@@ -658,6 +658,7 @@ function CompletionScreen({
   onRetry,
   isPending,
   isError,
+  savingTooLong,
   antiGrindMultiplier,
   dailyCapReached,
   isOnboardingComplete,
@@ -669,6 +670,7 @@ function CompletionScreen({
   onRetry: () => void;
   isPending: boolean;
   isError: boolean;
+  savingTooLong?: boolean;
   antiGrindMultiplier?: number;
   dailyCapReached?: boolean;
   isOnboardingComplete?: boolean;
@@ -742,17 +744,32 @@ function CompletionScreen({
           >
             Retry
           </button>
+          <button
+            className="px-8 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95"
+            style={{ backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.5)" }}
+            onClick={onFinish}
+            data-testid="button-finish-activity-anyway"
+          >
+            Continue anyway
+          </button>
         </div>
       ) : (
-        <button
-          className="px-10 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 mt-2"
-          style={{ backgroundColor: activity.color, color: "#fff" }}
-          onClick={onFinish}
-          disabled={isPending}
-          data-testid="button-finish-activity"
-        >
-          {isPending ? "Saving..." : "Continue"}
-        </button>
+        <div className="flex flex-col items-center gap-2">
+          <button
+            className="px-10 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 mt-2"
+            style={{ backgroundColor: activity.color, color: "#fff" }}
+            onClick={onFinish}
+            disabled={isPending && !savingTooLong}
+            data-testid="button-finish-activity"
+          >
+            {isPending && !savingTooLong ? "Saving..." : "Continue"}
+          </button>
+          {isPending && savingTooLong && (
+            <p className="text-[10px] opacity-50" style={{ color: colors.textMuted }}>
+              Saving in background…
+            </p>
+          )}
+        </div>
       )}
     </motion.div>
   );
@@ -796,12 +813,17 @@ export function GuidedActivityEngine({
   const [stepsSkipped, setStepsSkipped] = useState<Set<number>>(
     () => new Set(savedSession?.stepsSkipped ?? [])
   );
+  // Refs that always hold the latest Set values so mutation closures never go stale.
+  const stepsCompletedRef = useRef<Set<number>>(new Set(savedSession?.stepsCompleted ?? []));
+  const stepsSkippedRef = useRef<Set<number>>(new Set(savedSession?.stepsSkipped ?? []));
   const [xpEarned, setXpEarned] = useState<number | null>(null);
   const [antiGrindMultiplier, setAntiGrindMultiplier] = useState<number>(1.0);
   const [dailyCapReached, setDailyCapReached] = useState(false);
   const [timerRemaining, setTimerRemaining] = useState(savedSession?.timerRemaining ?? 0);
   const [breathShouldFinish, setBreathShouldFinish] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  // When the completion save is taking too long, let the user continue anyway.
+  const [savingTooLong, setSavingTooLong] = useState(false);
   const music = useWorkoutMusic();
   const pausedRemainingRef = useRef<number>(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -880,10 +902,12 @@ export function GuidedActivityEngine({
       //   { name: <activity name>, calories: <sum across completed steps> }
       // Rep steps use the per-rep table; timer steps use the MET formula.
       // Skipped steps are excluded so calories are never overstated.
+      // Use the refs so we always read the final post-completion Sets even
+      // if the React state update hasn't propagated to this closure yet.
       try {
         const completedSteps = activity.steps
           .map((s, idx) => ({ s, idx }))
-          .filter(({ idx }) => stepsCompleted.has(idx) && !stepsSkipped.has(idx))
+          .filter(({ idx }) => stepsCompletedRef.current.has(idx) && !stepsSkippedRef.current.has(idx))
           .map(({ s }) => s);
         const settings = readEnergySettings();
         let totalCalories = 0;
@@ -910,13 +934,21 @@ export function GuidedActivityEngine({
     },
   });
 
+  // Keep refs in sync with state so mutation onSuccess never reads stale Sets.
+  useEffect(() => { stepsCompletedRef.current = stepsCompleted; }, [stepsCompleted]);
+  useEffect(() => { stepsSkippedRef.current = stepsSkipped; }, [stepsSkipped]);
+
   const advanceStep = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
     setStepPhase("done");
-    setStepsCompleted((prev) => new Set(prev).add(currentStepIdx));
+    setStepsCompleted((prev) => {
+      const next = new Set(prev).add(currentStepIdx);
+      stepsCompletedRef.current = next;
+      return next;
+    });
 
     const nextIdx = currentStepIdx + 1;
     if (nextIdx < activity.steps.length) {
@@ -1091,6 +1123,17 @@ export function GuidedActivityEngine({
     }
   }, [isCompletionStep]);
 
+  // Safety valve: if the save is still pending after 8 seconds, show "Continue Anyway"
+  // so the user is never permanently stuck. The request keeps running in the background.
+  useEffect(() => {
+    if (!isCompletionStep || !completeMutation.isPending) {
+      setSavingTooLong(false);
+      return;
+    }
+    const t = setTimeout(() => setSavingTooLong(true), 8000);
+    return () => clearTimeout(t);
+  }, [isCompletionStep, completeMutation.isPending]);
+
   useEffect(() => {
     if (
       activity.autoflow &&
@@ -1219,6 +1262,7 @@ export function GuidedActivityEngine({
               onRetry={() => completeMutation.mutate()}
               isPending={completeMutation.isPending}
               isError={completeMutation.isError}
+              savingTooLong={savingTooLong}
               antiGrindMultiplier={antiGrindMultiplier}
               dailyCapReached={dailyCapReached}
               isOnboardingComplete={isOnboardingComplete}
@@ -1671,7 +1715,7 @@ export function GuidedActivityEngine({
 
       {/* ── Music panel (strength / agility / meditation) ─── */}
       {(activity.category === "strength" || activity.category === "agility" || activity.category === "meditation") && (
-        <div style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 16px)" }}>
+        <div style={{ paddingBottom: "max(calc(env(safe-area-inset-bottom, 0px) + 80px), 96px)" }}>
           <WorkoutMusicPlayer
             category={activity.category}
             workoutPaused={isPaused}

@@ -498,7 +498,16 @@ function Phase3LowStim({ onDone, onSkip }: { onDone: () => void; onSkip: () => v
   const colors = backgroundTheme.colors;
   const [focusOn, setFocusOn] = useState(false);
   return (
-    <div className="flex flex-col items-center px-6 py-10 max-w-md mx-auto w-full">
+    <>
+      {/* Screen-dim overlay — covers the entire viewport when Focus Mode is on */}
+      {focusOn && (
+        <div
+          className="fixed inset-0 z-40 pointer-events-none"
+          style={{ backgroundColor: "rgba(0,0,0,0.72)" }}
+          aria-hidden
+        />
+      )}
+    <div className="flex flex-col items-center px-6 py-10 max-w-md mx-auto w-full relative z-50">
       <p className="text-[10px] uppercase tracking-[0.3em] mb-2" style={{ color: "#a5b4fc" }}>
         Phase 3 · Low Stimulation
       </p>
@@ -550,6 +559,7 @@ function Phase3LowStim({ onDone, onSkip }: { onDone: () => void; onSkip: () => v
       </div>
       <StepActions onDone={onDone} onSkip={onSkip} />
     </div>
+    </>
   );
 }
 
@@ -563,6 +573,8 @@ const PRIMING_OPTIONS = [
 function NightBreathingMini({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
   const [cycles, setCycles] = useState(0);
+  const [countdown, setCountdown] = useState(120);
+
   useEffect(() => {
     let mounted = true;
     let t1: number, t2: number, t3: number;
@@ -591,7 +603,20 @@ function NightBreathingMini({ onDone }: { onDone: () => void }) {
       window.clearTimeout(t3!);
     };
   }, []);
+
+  useEffect(() => {
+    setCountdown(120);
+    const id = setInterval(() => {
+      setCountdown((c) => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const label = phase === "in" ? "INHALE" : phase === "hold" ? "HOLD" : "EXHALE";
+  const mins = Math.floor(countdown / 60);
+  const secs = countdown % 60;
+  const timerDisplay = `${mins}:${secs.toString().padStart(2, "0")}`;
+
   return (
     <div className="flex flex-col items-center my-4">
       <div
@@ -611,6 +636,16 @@ function NightBreathingMini({ onDone }: { onDone: () => void }) {
       </p>
       <p className="mt-1 text-[10px]" style={{ color: "rgba(165,180,252,0.6)" }}>
         Cycle {cycles + 1} · 4-4-6
+      </p>
+      <p
+        className="mt-3 text-2xl font-bold font-mono tabular-nums"
+        style={{ color: countdown <= 15 ? "#f97316" : "#a5b4fc" }}
+        data-testid="night-breath-countdown"
+      >
+        {timerDisplay}
+      </p>
+      <p className="text-[10px] mt-0.5" style={{ color: "rgba(165,180,252,0.5)" }}>
+        {countdown > 0 ? "remaining" : "done — take your time"}
       </p>
       <Button
         type="button"

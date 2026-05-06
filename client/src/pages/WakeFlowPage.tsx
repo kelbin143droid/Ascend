@@ -247,6 +247,8 @@ const ACTIVATION_STEPS: { id: ActivationStep; label: string; instruction: string
 
 function BreathingCircle() {
   const [phase, setPhase] = useState<"in" | "out">("in");
+  const [countdown, setCountdown] = useState(60);
+
   useEffect(() => {
     let mounted = true;
     const cycle = () => {
@@ -261,6 +263,19 @@ function BreathingCircle() {
       clearInterval(id);
     };
   }, []);
+
+  useEffect(() => {
+    setCountdown(60);
+    const id = setInterval(() => {
+      setCountdown((c) => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const mins = Math.floor(countdown / 60);
+  const secs = countdown % 60;
+  const display = mins > 0 ? `${mins}:${secs.toString().padStart(2, "0")}` : `${secs}s`;
+
   return (
     <div className="flex flex-col items-center my-6">
       <div
@@ -278,6 +293,16 @@ function BreathingCircle() {
       />
       <p className="mt-4 text-sm font-bold tracking-[0.3em]" style={{ color: "#fbbf24" }}>
         {phase === "in" ? "INHALE" : "EXHALE"}
+      </p>
+      <p
+        className="mt-2 text-xl font-bold font-mono tabular-nums"
+        style={{ color: countdown <= 10 ? "#f97316" : "#fbbf24" }}
+        data-testid="breath-countdown"
+      >
+        {display}
+      </p>
+      <p className="text-[10px] mt-0.5" style={{ color: "rgba(251,191,36,0.5)" }}>
+        {countdown > 0 ? "remaining" : "complete"}
       </p>
     </div>
   );
