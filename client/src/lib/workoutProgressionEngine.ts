@@ -12,6 +12,8 @@ import type { WorkoutLevel } from "./workoutPlans";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type DifficultyRating = "easy" | "same" | "hard";
+export type RecoveryFeedback = "energized" | "normal" | "fatigued";
+export type FormQuality     = "yes" | "mostly" | "no";
 
 export type ProgressionAction =
   | "increase_reps"
@@ -33,6 +35,9 @@ export interface TrackedWorkoutSession {
   targetReps: number;
   userDifficulty: DifficultyRating;
   performanceScore: number;      // cached score at time of recording
+  // Optional — available from 3-step feedback; absent on legacy sessions
+  recoveryFeedback?: RecoveryFeedback;
+  formQuality?: FormQuality;
 }
 
 /** Micro-progression state per workout level. */
@@ -62,8 +67,9 @@ export interface ScoreBreakdownItem {
 /**
  * Compute the performance score for a single session.
  *
- * Maximum:  40 (sets) + 30 (reps) + 20 (completion) + 10 (easy)  = 100
- * Minimum:   0        +  0        +  0               - 15 (hard)  = -15
+ * Core:     completion(20) + sets(40) + reps(30) + difficulty(-15…+10) = max 100
+ * Bonuses:  recovery(+8/-8) + form(+5/-8)  — can push total above/below core
+ * Final score is clamped to [-15, 100] for display sanity.
  */
 export function calculatePerformanceScore(
   workoutCompleted: boolean,
@@ -72,34 +78,55 @@ export function calculatePerformanceScore(
   repsCompleted: number,
   targetReps: number,
   difficulty: DifficultyRating,
+  recoveryFeedback?: RecoveryFeedback,
+  formQuality?: FormQuality,
 ): { total: number; breakdown: ScoreBreakdownItem[] } {
   const allSets = workoutCompleted && setsCompleted >= totalSets;
   const hitReps = workoutCompleted && repsCompleted >= targetReps;
 
-  const diffPoints = difficulty === "easy" ? 10 : difficulty === "hard" ? -15 : 0;
+  const diffPoints     = difficulty === "easy" ? 10 : difficulty === "hard" ? -15 : 0;
+  const recoveryPoints = recoveryFeedback === "energized" ? 8 : recoveryFeedback === "fatigued" ? -8 : 0;
+  const formPoints     = formQuality === "yes" ? 5 : formQuality === "no" ? -8 : 0;
 
   const breakdown: ScoreBreakdownItem[] = [
-    { label: "Workout completed",    points: 20, earned: workoutCompleted },
-    { label: "All sets completed",   points: 40, earned: allSets },
-    { label: "Target reps achieved", points: 30, earned: hitReps },
+    { label: "Workout completed",    points: 20,             earned: workoutCompleted },
+    { label: "All sets completed",   points: 40,             earned: allSets },
+    { label: "Target reps achieved", points: 30,             earned: hitReps },
     {
-      label: difficulty === "easy"
-        ? "Felt easy (+10)"
-        : difficulty === "hard"
-        ? "Felt hard (-15)"
-        : "Felt just right",
+      label: difficulty === "easy"  ? "Felt easy (+10)"
+           : difficulty === "hard"  ? "Felt hard (-15)"
+           : "Felt just right",
       points: diffPoints,
       earned: true,
     },
   ];
 
-  const total =
+  if (recoveryFeedback) {
+    breakdown.push({
+      label: recoveryFeedback === "energized" ? "Energized recovery (+8)"
+           : recoveryFeedback === "fatigued"  ? "Fatigued (-8)"
+           : "Normal recovery",
+      points: recoveryPoints,
+      earned: true,
+    });
+  }
+  if (formQuality) {
+    breakdown.push({
+      label: formQuality === "yes"    ? "Solid form (+5)"
+           : formQuality === "no"     ? "Form struggled (-8)"
+           : "Mostly good form",
+      points: formPoints,
+      earned: true,
+    });
+  }
+
+  const raw =
     (workoutCompleted ? 20 : 0) +
     (allSets          ? 40 : 0) +
     (hitReps          ? 30 : 0) +
-    diffPoints;
+    diffPoints + recoveryPoints + formPoints;
 
-  return { total, breakdown };
+  return { total: Math.min(raw, 100), breakdown };
 }
 
 // ── Progression decision ──────────────────────────────────────────────────────
@@ -256,3 +283,103 @@ export const DIFFICULTY_LABELS: Record<DifficultyRating, string> = {
   same: "👌 Just Right",
   hard: "💪 Hard",
 };
+
+export const RECOVERY_LABELS: Record<RecoveryFeedback, string> = {
+  energized: "⚡ Energized",
+  normal:    "😐 Normal",
+  fatigued:  "😴 Fatigued",
+};
+
+export const FORM_LABELS: Record<FormQuality, string> = {
+  yes:    "✅ Yes, solid",
+  mostly: "🟡 Mostly",
+  no:     "❌ Struggled",
+};
+
+// ── Adaptive readiness & recovery helpers ─────────────────────────────────────
+
+/**
+ * Returns readiness percentage (0–100) toward the next level.
+ * Weighted: 80% from rolling 5-session performance average, 20% from streak.
+ */
+export function getReadinessPercent(sessions: TrackedWorkoutSession[]): number {
+  if (!sessions.length) return 0;
+  const avg   = rollingAverage(sessions, 5);
+  const base  = Math.min(Math.round((avg / 80) * 80), 80);
+  const streak = getConsistencyStreak(sessions);
+  const bonus = Math.min(streak * 2, 20);
+  return Math.min(base + bonus, 100);
+}
+
+/**
+ * Count consecutive days (ending today or yesterday) with at least one session.
+ */
+export function getConsistencyStreak(sessions: TrackedWorkoutSession[]): number {
+  if (!sessions.length) return 0;
+  const days = Array.from(new Set(sessions.map((s) => s.completedAt.slice(0, 10)))).sort();
+  if (!days.length) return 0;
+  const today     = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const last = days[days.length - 1];
+  // Streak is stale if last session was more than 1 day ago
+  if (last !== today && last !== yesterday) return 0;
+  let streak = 0;
+  const anchor = new Date(last);
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(anchor);
+    d.setDate(anchor.getDate() - i);
+    if (days.includes(d.toISOString().slice(0, 10))) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+/**
+ * Returns the dominant recovery status from the last 3 sessions that have
+ * recovery feedback. Falls back to "normal" for legacy sessions.
+ */
+export function getFatigueStatus(sessions: TrackedWorkoutSession[]): RecoveryFeedback {
+  const recent = sessions.slice(-3).filter((s) => s.recoveryFeedback);
+  if (!recent.length) return "normal";
+  const fatigued  = recent.filter((s) => s.recoveryFeedback === "fatigued").length;
+  const energized = recent.filter((s) => s.recoveryFeedback === "energized").length;
+  if (fatigued  >= 2) return "fatigued";
+  if (energized >= 2) return "energized";
+  return "normal";
+}
+
+/**
+ * Suggest today's training intensity based on recent fatigue + performance.
+ */
+export function getSuggestedIntensity(
+  sessions: TrackedWorkoutSession[],
+): "light" | "normal" | "push" {
+  const fatigue = getFatigueStatus(sessions);
+  const avg     = rollingAverage(sessions, 3);
+  if (fatigue === "fatigued") return "light";
+  if (avg >= 80 && fatigue === "energized") return "push";
+  return "normal";
+}
+
+/**
+ * Returns a short, positive motivational message based on the user's trend.
+ */
+export function getProgressMessage(sessions: TrackedWorkoutSession[]): string {
+  if (!sessions.length) return "Start your first session to begin tracking your progress.";
+  const avg       = rollingAverage(sessions, 3);
+  const streak    = getConsistencyStreak(sessions);
+  const intensity = getSuggestedIntensity(sessions);
+  const fatigue   = getFatigueStatus(sessions);
+  if (avg >= 90)            return "You're adapting exceptionally well. Next level is within reach.";
+  if (avg >= 80)            return "Outstanding consistency. You're ready to begin transition training.";
+  if (avg >= 70)            return "Your endurance is steadily improving. Keep showing up.";
+  if (fatigue === "fatigued") return "Recovery is part of the process. A lighter session today builds long-term resilience.";
+  if (streak >= 5)          return `${streak} days strong. Momentum is your greatest tool.`;
+  if (streak >= 3)          return "Three days in a row. Consistency is the only secret.";
+  if (avg >= 60)            return "Solid foundation forming. Each session compounds over time.";
+  if (intensity === "light") return "Ease in today. Sustainable progress is the goal.";
+  return "Every session moves you forward. Consistency over intensity.";
+}

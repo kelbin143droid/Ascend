@@ -408,3 +408,105 @@ export const CARDIO_LABELS: Record<CardioIntensity, string> = {
   moderate: "Moderate ~10 min",
   intense:  "Intense ~15 min",
 };
+
+// ── Transition workout builder ────────────────────────────────────────────────
+
+/**
+ * Build a "Transition" workout blending 70% current-level exercises with
+ * 30% next-level exercises at reduced intensity for gentle exposure.
+ * Converts directly to ActivityDefinition so GuidedActivityEngine can run it.
+ */
+export function buildTransitionWorkout(
+  currentLevel: WorkoutLevel,
+  nextLevel: WorkoutLevel,
+  cardio: CardioConfig = { intensity: "off", position: "after" },
+): ActivityDefinition {
+  const current = WORKOUT_PLANS[currentLevel];
+  const next    = WORKOUT_PLANS[nextLevel];
+
+  // 70 % current (up to first 3 exercises), 30% next (first 2 at 75% load)
+  const currentExes = current.exercises.slice(0, Math.min(3, current.exercises.length));
+  const nextExes    = next.exercises.slice(0, 2).map((ex) => ({
+    ...ex,
+    id:   `transition_${ex.id}`,
+    name: `${ex.name} (Intro)`,
+    sets: Math.max(1, ex.sets - 1),
+    reps: ex.reps
+      ? ex.reps
+          .split("-")
+          .map((n) => String(Math.max(1, Math.round(parseInt(n) * 0.75))))
+          .join("-")
+      : ex.reps,
+    durationSeconds: ex.durationSeconds
+      ? Math.round(ex.durationSeconds * 0.7)
+      : undefined,
+    voiceCue: `Transition: ${ex.voiceCue ?? ex.name}`,
+  }));
+
+  const blended: ExerciseDef[] = [...currentExes, ...nextExes];
+
+  // Build steps (warm-up → [cardio before] → intro → exercises → [cardio after] → done)
+  const allSteps: ActivityStep[] = [];
+  allSteps.push(...buildWarmupSteps());
+
+  if (cardio.intensity !== "off" && cardio.position === "before") {
+    allSteps.push(...buildCardioSteps(cardio.intensity));
+  }
+
+  allSteps.push({
+    id: "transition_intro",
+    type: "instruction",
+    label: "Transition Workout",
+    instruction: `Transition training: ${currentExes.length} familiar exercises + ${nextExes.length} ${next.label} previews at reduced load. You're ready for this.`,
+    voiceText: `Transition workout. Familiar moves first, then a taste of what's next. Let's go.`,
+  });
+
+  for (let i = 0; i < blended.length; i++) {
+    const ex      = blended[i];
+    const setLbl  = (idx: number) => `${ex.name} — Set ${idx + 1}/${ex.sets}`;
+    const restSec = ex.restSeconds ?? REST_BETWEEN_SETS;
+    allSteps.push(...exerciseToSteps(ex, setLbl, restSec));
+    if (i < blended.length - 1) {
+      allSteps.push({
+        id: `${ex.id}_exercise_rest`,
+        type: "timer",
+        label: "Rest",
+        instruction: "Good work. Rest 30 seconds before the next exercise.",
+        durationSeconds: 30,
+        voiceText: "Rest 30 seconds.",
+      });
+    }
+  }
+
+  if (cardio.intensity !== "off" && cardio.position === "after") {
+    allSteps.push(...buildCardioSteps(cardio.intensity));
+  }
+
+  allSteps.push({
+    id: "workout_done",
+    type: "completion",
+    label: "Transition Complete",
+    instruction: "Transition workout complete.\nYou're building steadily toward the next level.",
+    voiceText: "Transition complete. You're getting there.",
+  });
+
+  const totalSec = allSteps.reduce((sum, s) => {
+    if (s.durationSeconds) return sum + s.durationSeconds;
+    if (s.repCount)        return sum + s.repCount * 3;
+    return sum + 6;
+  }, 0);
+
+  const levelIdx = (["entry", "beginner", "intermediate", "advanced"] as WorkoutLevel[]).indexOf(currentLevel);
+
+  return {
+    id:           `transition_${currentLevel}_to_${nextLevel}`,
+    activityName: `Transition: ${current.label} → ${next.label}`,
+    category:     "strength",
+    stat:         "strength",
+    duration:     totalSec,
+    xpReward:     15 + levelIdx * 5,
+    color:        current.color,
+    steps:        allSteps,
+    tier:         levelIdx + 1,
+  } as ActivityDefinition;
+}

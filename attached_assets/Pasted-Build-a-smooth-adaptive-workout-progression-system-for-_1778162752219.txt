@@ -1,0 +1,241 @@
+Build a smooth adaptive workout progression system for a gamified productivity/fitness app.
+
+The app already has 4 workout tiers:
+
+- Entry
+- Beginner
+- Intermediate
+- Advanced
+
+The goal is to transition users between levels naturally with minimal friction, avoiding sudden difficulty spikes while still maintaining a sense of progression and achievement.
+
+---
+
+Core Philosophy
+
+The system should:
+
+- Reward consistency over intensity
+- Progress users gradually
+- Prevent burnout
+- Adapt based on user performance and recovery
+- Make level transitions feel earned but smooth
+- Prioritize long-term adherence
+
+Users should feel:
+
+- challenged but capable
+- improving steadily
+- confident entering the next level
+
+---
+
+Progression Structure
+
+Each level should contain:
+
+- Workout circuits
+- Difficulty rating
+- Recommended recovery intensity
+- Expected completion consistency
+
+Each user profile should track:
+
+- currentWorkoutLevel
+- workoutXP
+- consistencyStreak
+- fatigueScore
+- completionRate
+- averageSessionDifficulty
+- recoveryFeedback
+- failedSessions
+- skippedSessions
+- transitionProgress
+
+---
+
+Adaptive Transition System
+
+Instead of instantly moving users to the next level, implement a “Transition Phase.”
+
+Example:
+Beginner → Beginner+
+
+During transition:
+
+- Mix 70–80% current-level exercises
+- Add 20–30% next-level exercises
+- Slightly increase intensity
+- Preserve familiarity
+
+Example:
+If user is moving from Beginner to Intermediate:
+
+- Keep most Beginner movements
+- Add 1–2 Intermediate exercises
+- Slightly reduce reps on harder exercises initially
+
+The goal is gradual exposure.
+
+---
+
+Promotion Requirements
+
+A user becomes eligible for transition if they meet MOST of these conditions over recent sessions:
+
+- 80%+ workout completion rate
+- Low/moderate fatigue reports
+- Consistent activity streak
+- Stable performance for 1–2 weeks
+- Exercises marked “manageable” or “easy”
+- Few skipped workouts
+
+Do NOT promote users solely based on time.
+
+---
+
+Regression Protection
+
+If user struggles:
+
+- Automatically reduce intensity slightly
+- Decrease reps or rounds
+- Offer recovery-focused sessions
+- Keep user in transition phase longer
+
+Never hard punish the user.
+
+Avoid:
+
+- abrupt downgrades
+- “failure” language
+- aggressive progression
+
+Instead use:
+
+- “recovery week”
+- “stabilization phase”
+- “refinement phase”
+
+---
+
+Smart Scaling Variables
+
+Scale difficulty gradually using:
+
+1. Reps
+2. Rest time
+3. Circuit rounds
+4. Tempo/control
+5. Exercise complexity
+
+DO NOT increase all variables at once.
+
+Preferred order:
+
+- Increase reps slightly
+- Then reduce rest
+- Then add rounds
+- Then introduce harder exercise variations
+
+---
+
+Session Feedback System
+
+After workouts ask:
+
+1. How difficult was this workout?
+   
+   - Easy
+   - Manageable
+   - Hard
+   - Exhausting
+
+2. How was your recovery afterward?
+   
+   - Energized
+   - Normal
+   - Fatigued
+
+3. Could you maintain proper form?
+   
+   - Yes
+   - Mostly
+   - No
+
+Use this feedback for adaptive progression decisions.
+
+---
+
+Friction Reduction Features
+
+To make progression feel smooth:
+
+- Preview upcoming exercises before promotion
+- Show “You’re almost ready for the next tier”
+- Allow optional “trial workouts”
+- Introduce only 1–2 new exercise types at a time
+- Keep familiar movement patterns
+
+Avoid overwhelming the user with entirely new routines immediately.
+
+---
+
+Gamification
+
+- XP per completed workout
+- Bonus XP for consistency
+- Bonus XP for perfect form streaks
+- Unlock badges for milestones
+- Separate endurance, strength, and consistency stats
+
+Transition phases should feel like:
+“Training for the next rank”
+rather than:
+“You passed a test.”
+
+---
+
+Recovery Integration
+
+Add adaptive recovery logic:
+
+- If fatigue score rises → reduce intensity temporarily
+- After multiple hard sessions → suggest lighter day
+- Encourage deload/recovery weeks automatically
+
+Recovery should be treated as progression, not failure.
+
+---
+
+UI/UX Requirements
+
+Show:
+
+- Level progression bar
+- Transition readiness meter
+- Workout consistency streak
+- Recovery status
+- Suggested intensity for the day
+
+Use positive reinforcement messaging:
+
+- “Your endurance is improving”
+- “You’re adapting well”
+- “Ready to begin transition training”
+
+Avoid negative or punishing wording.
+
+---
+
+Goal
+
+Create a progression system that feels:
+
+- rewarding
+- intelligent
+- sustainable
+- low friction
+- personalized
+
+The user should naturally grow into higher workout tiers without abrupt jumps in difficulty or motivation loss.

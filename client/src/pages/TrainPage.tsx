@@ -8,19 +8,6 @@ import { GuidedActivityEngine } from "@/components/game/GuidedActivityEngine";
 import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
 import { buildPhase1Activities, type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
 import {
-  WORKOUT_PLANS,
-  LEVEL_COLORS,
-  CARDIO_LABELS,
-  WARMUP_EXERCISES,
-  buildWorkoutActivity,
-  getNextLevel,
-  parseMaxReps,
-  type WorkoutLevel,
-  type CardioIntensity,
-  type CardioPosition,
-  type ExerciseDef,
-} from "@/lib/workoutPlans";
-import {
   getWorkoutLevel,
   setWorkoutLevel,
   getCardioPrefs,
@@ -31,6 +18,7 @@ import {
   getMicroProgress,
   applyAndSaveMicroProgression,
   getRecentSessions,
+  getAllSessions,
 } from "@/lib/workoutProgressStore";
 import {
   getProgressionRecommendation,
@@ -38,12 +26,36 @@ import {
   ZONE_COLORS,
   ZONE_ICONS,
   DIFFICULTY_LABELS,
+  RECOVERY_LABELS,
+  FORM_LABELS,
+  getReadinessPercent,
+  getConsistencyStreak,
+  getFatigueStatus,
+  getSuggestedIntensity,
+  getProgressMessage,
   type DifficultyRating,
+  type RecoveryFeedback,
+  type FormQuality,
   type ProgressionRecommendation,
 } from "@/lib/workoutProgressionEngine";
 import {
+  WORKOUT_PLANS,
+  LEVEL_COLORS,
+  CARDIO_LABELS,
+  WARMUP_EXERCISES,
+  buildWorkoutActivity,
+  buildTransitionWorkout,
+  getNextLevel,
+  parseMaxReps,
+  type WorkoutLevel,
+  type CardioIntensity,
+  type CardioPosition,
+  type ExerciseDef,
+} from "@/lib/workoutPlans";
+import {
   Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield,
   Zap, ListChecks, PlayCircle, Flame, RotateCcw, Star, X, ChevronRight,
+  ArrowRight, Activity,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
@@ -128,16 +140,62 @@ function ExerciseRow({ ex, color, bonusReps, bonusSets }: {
   );
 }
 
-// ── Post-workout feedback modal ───────────────────────────────────────────────
+// ── Post-workout feedback modal (3-step) ──────────────────────────────────────
 
 function WorkoutFeedbackModal({
   onSubmit,
   planColor,
 }: {
-  onSubmit: (d: DifficultyRating) => void;
+  onSubmit: (d: DifficultyRating, r: RecoveryFeedback, f: FormQuality) => void;
   planColor: string;
 }) {
-  const [selected, setSelected] = useState<DifficultyRating | null>(null);
+  const [step, setStep]           = useState<1 | 2 | 3>(1);
+  const [difficulty, setDifficulty] = useState<DifficultyRating | null>(null);
+  const [recovery, setRecovery]   = useState<RecoveryFeedback | null>(null);
+  const [form, setForm]           = useState<FormQuality | null>(null);
+
+  const STEP_LABELS = ["Difficulty", "Recovery", "Form"];
+
+  const stepContent = {
+    1: {
+      emoji: "🏁",
+      title: "Workout Complete!",
+      subtitle: "How difficult was this session?",
+      options: (["easy", "same", "hard"] as DifficultyRating[]).map((d) => ({
+        key: d, label: DIFFICULTY_LABELS[d],
+        active: difficulty === d,
+        onSelect: () => setDifficulty(d),
+      })),
+      canAdvance: !!difficulty,
+      onNext: () => setStep(2),
+    },
+    2: {
+      emoji: "⚡",
+      title: "Recovery Check",
+      subtitle: "How did you feel afterward?",
+      options: (["energized", "normal", "fatigued"] as RecoveryFeedback[]).map((r) => ({
+        key: r, label: RECOVERY_LABELS[r],
+        active: recovery === r,
+        onSelect: () => setRecovery(r),
+      })),
+      canAdvance: !!recovery,
+      onNext: () => setStep(3),
+    },
+    3: {
+      emoji: "🎯",
+      title: "Form Check",
+      subtitle: "Could you maintain proper form?",
+      options: (["yes", "mostly", "no"] as FormQuality[]).map((f) => ({
+        key: f, label: FORM_LABELS[f],
+        active: form === f,
+        onSelect: () => setForm(f),
+      })),
+      canAdvance: !!form,
+      onNext: () => {
+        if (difficulty && recovery && form) onSubmit(difficulty, recovery, form);
+      },
+    },
+  }[step];
 
   return (
     <motion.div
@@ -145,54 +203,88 @@ function WorkoutFeedbackModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
+      style={{ backgroundColor: "rgba(0,0,0,0.80)", backdropFilter: "blur(6px)" }}
     >
       <motion.div
-        initial={{ y: 80, opacity: 0 }}
+        key={step}
+        initial={{ y: 60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 80, opacity: 0 }}
+        exit={{ y: 60, opacity: 0 }}
         transition={{ type: "spring", damping: 22, stiffness: 300 }}
         className="w-full max-w-md rounded-t-3xl p-6 pb-10"
         style={{ backgroundColor: "#0f172a", border: "1px solid #1e293b" }}
       >
-        <div className="w-10 h-1 rounded-full mx-auto mb-6" style={{ backgroundColor: "#334155" }} />
-        <div className="text-center mb-6">
-          <div className="text-2xl mb-2">🏁</div>
-          <div className="text-base font-bold text-white mb-1">Workout Complete!</div>
-          <div className="text-sm" style={{ color: "#94a3b8" }}>How did that feel?</div>
+        <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ backgroundColor: "#334155" }} />
+
+        {/* Step indicator */}
+        <div className="flex items-center justify-center gap-2 mb-5">
+          {STEP_LABELS.map((lbl, i) => (
+            <div key={lbl} className="flex items-center gap-2">
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all"
+                style={{
+                  backgroundColor: i + 1 === step ? `${planColor}25` : i + 1 < step ? `${planColor}15` : "#1e293b",
+                  color: i + 1 <= step ? planColor : "#475569",
+                  border: `1px solid ${i + 1 === step ? planColor + "60" : "transparent"}`,
+                }}
+              >
+                {i + 1 < step ? "✓" : i + 1} {lbl}
+              </div>
+              {i < STEP_LABELS.length - 1 && (
+                <div className="w-4 h-px" style={{ backgroundColor: "#1e293b" }} />
+              )}
+            </div>
+          ))}
         </div>
 
-        <div className="flex flex-col gap-3 mb-6">
-          {(["easy", "same", "hard"] as DifficultyRating[]).map((d) => (
+        <div className="text-center mb-5">
+          <div className="text-2xl mb-2">{stepContent.emoji}</div>
+          <div className="text-base font-bold text-white mb-1">{stepContent.title}</div>
+          <div className="text-sm" style={{ color: "#94a3b8" }}>{stepContent.subtitle}</div>
+        </div>
+
+        <div className="flex flex-col gap-2.5 mb-5">
+          {stepContent.options.map((opt) => (
             <button
-              key={d}
-              onClick={() => setSelected(d)}
-              data-testid={`button-difficulty-${d}`}
+              key={opt.key}
+              onClick={opt.onSelect}
+              data-testid={`button-feedback-${opt.key}`}
               className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
               style={{
-                backgroundColor: selected === d ? `${planColor}25` : "#1e293b",
-                border: `2px solid ${selected === d ? planColor : "#334155"}`,
-                color: selected === d ? planColor : "#cbd5e1",
+                backgroundColor: opt.active ? `${planColor}20` : "#1e293b",
+                border: `2px solid ${opt.active ? planColor : "#334155"}`,
+                color: opt.active ? planColor : "#cbd5e1",
               }}
             >
-              {DIFFICULTY_LABELS[d]}
+              {opt.label}
             </button>
           ))}
         </div>
 
-        <button
-          onClick={() => selected && onSubmit(selected)}
-          disabled={!selected}
-          data-testid="button-submit-difficulty"
-          className="w-full py-3.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
-          style={{
-            backgroundColor: selected ? planColor : "#334155",
-            color: "#fff",
-            opacity: selected ? 1 : 0.5,
-          }}
-        >
-          See My Score
-        </button>
+        <div className="flex gap-2">
+          {step > 1 && (
+            <button
+              onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3)}
+              className="py-3.5 px-5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+              style={{ backgroundColor: "#1e293b", color: "#64748b" }}
+            >
+              Back
+            </button>
+          )}
+          <button
+            onClick={stepContent.onNext}
+            disabled={!stepContent.canAdvance}
+            data-testid={step === 3 ? "button-submit-feedback" : `button-next-step-${step}`}
+            className="flex-1 py-3.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+            style={{
+              backgroundColor: stepContent.canAdvance ? planColor : "#334155",
+              color: "#fff",
+              opacity: stepContent.canAdvance ? 1 : 0.45,
+            }}
+          >
+            {step === 3 ? "See My Score" : "Next →"}
+          </button>
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -205,6 +297,7 @@ function RecommendationCard({
   onClose,
   onLevelUp,
   onLevelDown,
+  onTryTransition,
   nextLevel,
   prevLevel,
   planColor,
@@ -213,6 +306,7 @@ function RecommendationCard({
   onClose: () => void;
   onLevelUp: () => void;
   onLevelDown: () => void;
+  onTryTransition?: () => void;
   nextLevel: WorkoutLevel | null;
   prevLevel: WorkoutLevel | null;
   planColor: string;
@@ -319,15 +413,29 @@ function RecommendationCard({
 
           {/* Action buttons for level change */}
           {recommendation.action === "level_up" && nextLevel && (
-            <button
-              onClick={onLevelUp}
-              data-testid="button-confirm-level-up"
-              className="w-full py-3 rounded-xl text-sm font-bold mb-3 flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-              style={{ backgroundColor: `${zoneColor}20`, color: zoneColor, border: `1.5px solid ${zoneColor}50` }}
-            >
-              Switch to {WORKOUT_PLANS[nextLevel].label} level
-              <ChevronRight size={15} />
-            </button>
+            <div className="space-y-2 mb-3">
+              {/* Transition workout — gentle on-ramp before full level switch */}
+              {onTryTransition && (
+                <button
+                  onClick={onTryTransition}
+                  data-testid="button-try-transition"
+                  className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                  style={{ backgroundColor: `${zoneColor}10`, color: zoneColor, border: `1.5px solid ${zoneColor}35` }}
+                >
+                  <ArrowRight size={14} />
+                  Try a Transition Workout first
+                </button>
+              )}
+              <button
+                onClick={onLevelUp}
+                data-testid="button-confirm-level-up"
+                className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                style={{ backgroundColor: `${zoneColor}22`, color: zoneColor, border: `1.5px solid ${zoneColor}55` }}
+              >
+                Switch to {WORKOUT_PLANS[nextLevel].label} level now
+                <ChevronRight size={15} />
+              </button>
+            </div>
           )}
           {recommendation.action === "level_down" && prevLevel && (
             <button
@@ -336,7 +444,7 @@ function RecommendationCard({
               className="w-full py-3 rounded-xl text-sm font-bold mb-3 flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
               style={{ backgroundColor: "#f59e0b15", color: "#f59e0b", border: "1.5px solid #f59e0b40" }}
             >
-              Switch to {WORKOUT_PLANS[prevLevel].label} level
+              Enter Stabilization Phase
               <ChevronRight size={15} />
             </button>
           )}
@@ -352,6 +460,123 @@ function RecommendationCard({
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+// ── Progression Dashboard ─────────────────────────────────────────────────────
+
+function ProgressionDashboard({
+  sessions,
+  level,
+  nextLevel,
+  colors,
+}: {
+  sessions: ReturnType<typeof getAllSessions>;
+  level: WorkoutLevel;
+  nextLevel: WorkoutLevel | null;
+  colors: { primary: string; textMuted: string; text: string };
+}) {
+  if (!sessions.length) return null;
+
+  const planColor        = LEVEL_COLORS[level];
+  const readiness        = getReadinessPercent(sessions);
+  const streak           = getConsistencyStreak(sessions);
+  const fatigue          = getFatigueStatus(sessions);
+  const intensitySuggest = getSuggestedIntensity(sessions);
+  const message          = getProgressMessage(sessions);
+  const nextLabel        = nextLevel ? WORKOUT_PLANS[nextLevel].label : null;
+
+  const fatigueStyle: Record<typeof fatigue, { bg: string; border: string; text: string; label: string }> = {
+    energized: { bg: "#22c55e15", border: "#22c55e40", text: "#22c55e", label: "⚡ Energized" },
+    normal:    { bg: "#3b82f615", border: "#3b82f640", text: "#3b82f6", label: "😐 Normal" },
+    fatigued:  { bg: "#f59e0b15", border: "#f59e0b40", text: "#f59e0b", label: "😴 Fatigued" },
+  };
+  const intensityStyle: Record<typeof intensitySuggest, { color: string; label: string }> = {
+    push:   { color: "#22c55e", label: "🔥 Push it" },
+    normal: { color: "#3b82f6", label: "🎯 Steady pace" },
+    light:  { color: "#f59e0b", label: "🔄 Take it easy" },
+  };
+
+  const fc = fatigueStyle[fatigue];
+  const ic = intensityStyle[intensitySuggest];
+
+  return (
+    <div
+      className="rounded-2xl p-4 space-y-3.5"
+      style={{ backgroundColor: `${planColor}08`, border: `1px solid ${planColor}22` }}
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Activity size={13} style={{ color: planColor }} />
+          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: planColor }}>
+            Progression Status
+          </span>
+        </div>
+        {streak > 0 && (
+          <div
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full"
+            style={{ backgroundColor: `${planColor}20`, border: `1px solid ${planColor}40` }}
+          >
+            <Flame size={10} style={{ color: planColor }} />
+            <span className="text-[10px] font-bold" style={{ color: planColor }}>
+              {streak} day streak
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Readiness bar */}
+      {nextLabel && (
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span className="text-[10px]" style={{ color: colors.textMuted }}>
+              Readiness for {nextLabel}
+            </span>
+            <span className="text-[10px] font-bold" style={{ color: planColor }}>
+              {readiness}%
+            </span>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: `${planColor}18` }}>
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: planColor }}
+              initial={{ width: 0 }}
+              animate={{ width: `${readiness}%` }}
+              transition={{ duration: 0.9, ease: "easeOut" }}
+            />
+          </div>
+          {readiness >= 100 && (
+            <p className="text-[10px] font-semibold" style={{ color: "#22c55e" }}>
+              ✓ Ready to begin transition training
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Recovery + suggested intensity row */}
+      <div className="flex gap-2">
+        <div
+          className="flex-1 rounded-xl px-3 py-2"
+          style={{ backgroundColor: fc.bg, border: `1px solid ${fc.border}` }}
+        >
+          <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: fc.text }}>Recovery</p>
+          <p className="text-xs font-semibold" style={{ color: fc.text }}>{fc.label}</p>
+        </div>
+        <div
+          className="flex-1 rounded-xl px-3 py-2"
+          style={{ backgroundColor: `${ic.color}12`, border: `1px solid ${ic.color}30` }}
+        >
+          <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: ic.color }}>Today's Pace</p>
+          <p className="text-xs font-semibold" style={{ color: ic.color }}>{ic.label}</p>
+        </div>
+      </div>
+
+      {/* Motivational message */}
+      <p className="text-[11px] leading-relaxed" style={{ color: colors.textMuted }}>
+        {message}
+      </p>
+    </div>
   );
 }
 
@@ -439,8 +664,12 @@ export default function TrainPage() {
     setShowFeedbackModal(true); // intercept — ask for difficulty before recording
   };
 
-  // ── Called when the user submits their difficulty rating
-  const handleFeedbackSubmit = (difficulty: DifficultyRating) => {
+  // ── Called when the user completes all 3 feedback questions
+  const handleFeedbackSubmit = (
+    difficulty: DifficultyRating,
+    recovery: RecoveryFeedback,
+    form: FormQuality,
+  ) => {
     setShowFeedbackModal(false);
 
     const pending = pendingWorkoutRef.current;
@@ -448,25 +677,28 @@ export default function TrainPage() {
 
     const { totalSets, targetReps, level } = pending;
 
-    // Record the full session
-    const session = recordTrackedSession(
+    // Record the full session with all 3 feedback signals
+    recordTrackedSession(
       level,
-      true,           // workoutCompleted
-      totalSets,      // setsCompleted (full completion assumed)
-      totalSets,      // totalSets
-      targetReps,     // repsCompleted
-      targetReps,     // targetReps
+      true,        // workoutCompleted
+      totalSets,   // setsCompleted (full completion assumed)
+      totalSets,
+      targetReps,  // repsCompleted
+      targetReps,
       difficulty,
+      recovery,
+      form,
     );
 
     // Score for UI display
     const { total } = calculatePerformanceScore(
-      true, totalSets, totalSets, targetReps, targetReps, difficulty,
+      true, totalSets, totalSets, targetReps, targetReps,
+      difficulty, recovery, form,
     );
 
-    // Get updated sessions (including the one just saved)
+    // Get updated sessions (includes the one just saved)
     const recentSessions = getRecentSessions(level, 5);
-    const currentMicro = getMicroProgress(level);
+    const currentMicro   = getMicroProgress(level);
 
     const rec = getProgressionRecommendation(
       recentSessions,
@@ -476,7 +708,7 @@ export default function TrainPage() {
       difficulty,
     );
 
-    // Apply micro-progression (reps/sets adjustments) immediately
+    // Apply reps/sets micro-adjustments immediately
     if (
       rec.action === "increase_reps" ||
       rec.action === "decrease_reps" ||
@@ -490,6 +722,26 @@ export default function TrainPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/player"] });
     pendingWorkoutRef.current = null;
   };
+
+  // ── Transition workout — blended current + next level
+  const handleTryTransition = useCallback(() => {
+    if (!nextLevel) return;
+    setRecommendation(null);
+    const activity = buildTransitionWorkout(workoutLevel, nextLevel, {
+      intensity: cardioIntensity,
+      position:  cardioPosition,
+    });
+    // Re-use pendingWorkoutRef so feedback still runs on completion
+    const exercises = [...WORKOUT_PLANS[workoutLevel].exercises.slice(0, 3)];
+    const totalSets   = exercises.reduce((s, ex) => s + ex.sets, 0);
+    const targetReps  = exercises.reduce((s, ex) => {
+      if (ex.reps) return s + parseMaxReps(ex.reps) * ex.sets;
+      if (ex.durationSeconds) return s + ex.durationSeconds * ex.sets;
+      return s;
+    }, 0);
+    pendingWorkoutRef.current = { totalSets, targetReps, level: workoutLevel };
+    setBuilderActivity(activity);
+  }, [nextLevel, workoutLevel, cardioIntensity, cardioPosition]);
 
   // ── Close the recommendation card
   const handleCloseRecommendation = () => setRecommendation(null);
@@ -638,6 +890,7 @@ export default function TrainPage() {
               onClose={handleCloseRecommendation}
               onLevelUp={handleConfirmLevelUp}
               onLevelDown={handleConfirmLevelDown}
+              onTryTransition={nextLevel ? handleTryTransition : undefined}
               nextLevel={nextLevel}
               prevLevel={prevLevel}
               planColor={planColor}
@@ -878,6 +1131,14 @@ export default function TrainPage() {
         ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === "builder" && (
           <div className="space-y-4">
+
+            {/* ── Progression Dashboard ──────────────────────────────────────── */}
+            <ProgressionDashboard
+              sessions={getAllSessions()}
+              level={workoutLevel}
+              nextLevel={nextLevel}
+              colors={colors as { primary: string; textMuted: string; text: string }}
+            />
 
             {/* ── Level-up suggestion banner ─────────────────────────────────── */}
             {showLevelUpSuggestion && nextLevel && (

@@ -10,13 +10,15 @@ import type { WorkoutLevel, CardioIntensity, CardioPosition } from "./workoutPla
 import {
   type TrackedWorkoutSession,
   type DifficultyRating,
+  type RecoveryFeedback,
+  type FormQuality,
   type MicroProgressState,
   calculatePerformanceScore,
   applyMicroProgression,
   type ProgressionAction,
 } from "./workoutProgressionEngine";
 
-export type { TrackedWorkoutSession, DifficultyRating, MicroProgressState };
+export type { TrackedWorkoutSession, DifficultyRating, RecoveryFeedback, FormQuality, MicroProgressState };
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
@@ -81,6 +83,7 @@ function saveHistory(h: WorkoutHistory): void {
 /**
  * Record a fully-tracked session.
  * Computes performance score automatically from the raw inputs.
+ * recoveryFeedback and formQuality are optional (absent on legacy sessions).
  */
 export function recordTrackedSession(
   level: WorkoutLevel,
@@ -90,6 +93,8 @@ export function recordTrackedSession(
   repsCompleted: number,
   targetReps: number,
   userDifficulty: DifficultyRating,
+  recoveryFeedback?: RecoveryFeedback,
+  formQuality?: FormQuality,
 ): TrackedWorkoutSession {
   const { total } = calculatePerformanceScore(
     workoutCompleted,
@@ -98,6 +103,8 @@ export function recordTrackedSession(
     repsCompleted,
     targetReps,
     userDifficulty,
+    recoveryFeedback,
+    formQuality,
   );
 
   const session: TrackedWorkoutSession = {
@@ -110,6 +117,8 @@ export function recordTrackedSession(
     targetReps,
     userDifficulty,
     performanceScore: total,
+    ...(recoveryFeedback ? { recoveryFeedback } : {}),
+    ...(formQuality      ? { formQuality }      : {}),
   };
 
   const history = loadHistory();
@@ -127,6 +136,11 @@ export function recordWorkoutSession(level: WorkoutLevel, _hitMaxReps: boolean):
 
 export function getRecentSessions(level: WorkoutLevel, count = 5): TrackedWorkoutSession[] {
   return loadHistory().sessions.filter((s) => s.level === level).slice(-count);
+}
+
+/** All sessions across all levels — used for cross-level streak calculation. */
+export function getAllSessions(): TrackedWorkoutSession[] {
+  return loadHistory().sessions;
 }
 
 export function getTotalCompleted(level: WorkoutLevel): number {
