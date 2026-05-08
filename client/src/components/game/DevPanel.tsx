@@ -1,72 +1,36 @@
 import { useState } from "react";
 import { useGame } from "@/context/GameContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap, RotateCcw, Info, SkipForward } from "lucide-react";
-import { clearOnboardingTimestamps } from "@/features/onboarding/onboardingConfig";
-import { HABITS_TUTORIAL_KEY } from "@/lib/progressionService";
-
-const DAY_SESSION_MAP: Record<number, { sessionId: string; stat: string; durationMinutes: number }> = {
-  1: { sessionId: "calm-breathing",  stat: "sense",   durationMinutes: 2 },
-  2: { sessionId: "light-movement",  stat: "agility", durationMinutes: 3 },
-  3: { sessionId: "hydration-check", stat: "vitality", durationMinutes: 1 },
-  4: { sessionId: "focus-block",     stat: "sense",   durationMinutes: 3 },
-  5: { sessionId: "plan-tomorrow",   stat: "vitality", durationMinutes: 1 },
-};
+import { ChevronUp, ChevronDown, Zap, RotateCcw, SkipForward, TrendingUp, Flame } from "lucide-react";
 
 interface DevStatus {
-  onboardingDay: number;
-  onboardingCompleted: boolean;
   streak: number;
   phase: number;
   level: number;
   stabilityScore: number;
-  stabilityState: string;
-  totalCompletions: number;
-  totalActiveHabits: number;
-  distinctActiveDays: number;
-  lastActiveDate: string | null;
-  daysSinceLastActivity: number;
-  tabUnlocks: Record<string, { unlockDay: number; unlocked: boolean }>;
 }
-
-interface SimulateResult {
-  success: boolean;
-  daysSimulated: number;
-  completionsCreated: number;
-  newOnboardingDay: number;
-  newStreak: number;
-  distinctActiveDays: number;
-  onboardingCompleted?: boolean;
-}
-
-const POST_DAYS_KEY = (id: string) => `ascend_dev_postdays_${id}`;
-const getPostDays = (id: string) => parseInt(localStorage.getItem(POST_DAYS_KEY(id)) || "0", 10);
-const setPostDays = (id: string, n: number) => localStorage.setItem(POST_DAYS_KEY(id), String(n));
-const clearPostDays = (id: string) => localStorage.removeItem(POST_DAYS_KEY(id));
 
 export function DevPanel() {
-  const { player } = useGame();
+  const { player, levelUp } = useGame();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<DevStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
-  const [daysInput, setDaysInput] = useState(1);
-  const [postOnboardingDays, setPostOnboardingDays] = useState(() =>
-    player?.id ? getPostDays(player.id) : 0
-  );
-
-  const displayDay = status
-    ? (status.onboardingCompleted
-      ? 5 + postOnboardingDays + 1
-      : status.onboardingDay)
-    : null;
 
   const fetchStatus = async () => {
     if (!player?.id) return;
     try {
       const res = await fetch(`/api/player/${player.id}/dev/status`);
-      if (res.ok) setStatus(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setStatus({
+          streak: data.streak,
+          phase: data.phase,
+          level: data.level,
+          stabilityScore: data.stabilityScore,
+        });
+      }
     } catch {}
   };
 
@@ -75,251 +39,27 @@ export function DevPanel() {
     if (!open) fetchStatus();
   };
 
-  const simulateDays = async (days: number, completeHabits: boolean) => {
+  const skipToNextDay = async () => {
     if (!player?.id || loading) return;
     setLoading(true);
     setLastResult(null);
-    clearOnboardingTimestamps();
     sessionStorage.removeItem("ascend_just_completed_day");
     try {
       const res = await fetch(`/api/player/${player.id}/dev/simulate-day`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ days, completeHabits }),
-      });
-      if (res.ok) {
-        const data: SimulateResult = await res.json();
-        const wasPostOnboarding = status?.onboardingCompleted ?? false;
-        // Also treat simulation as post-onboarding if it just completed onboarding
-        const nowPostOnboarding = wasPostOnboarding || (data.onboardingCompleted ?? false);
-        let newPostDays = postOnboardingDays;
-        if (wasPostOnboarding) {
-          newPostDays = postOnboardingDays + data.daysSimulated;
-          setPostOnboardingDays(newPostDays);
-          setPostDays(player.id, newPostDays);
-        } else if (data.onboardingCompleted) {
-          // Just crossed into post-onboarding — set localStorage so sectograph/day6 flags are ready
-          localStorage.setItem("ascend_day5_sleep_scheduled", "true");
-          localStorage.setItem("ascend_day5_flow_scheduled", "true");
-          localStorage.setItem("ascend_day5_sectograph_intro_seen", "true");
-          localStorage.setItem("ascend_sectograph_tutorial_done", "true");
-          localStorage.setItem("ascend_sectograph_tutorial_step", "3");
-        }
-        const shownDay = nowPostOnboarding ? 5 + newPostDays + 1 : data.newOnboardingDay;
-        setLastResult(`+${data.daysSimulated}d → Day ${shownDay}, streak ${data.newStreak}`);
-        queryClient.invalidateQueries();
-        fetchStatus();
-      } else {
-        setLastResult("Error simulating");
-      }
-    } catch {
-      setLastResult("Error simulating");
-    }
-    setLoading(false);
-  };
-
-  const goBackDay = async () => {
-    if (!player?.id || loading) return;
-    // If post-onboarding, just decrement our counter (no DB changes needed)
-    if (status?.onboardingCompleted && postOnboardingDays > 0) {
-      const newCount = postOnboardingDays - 1;
-      setPostOnboardingDays(newCount);
-      setPostDays(player.id, newCount);
-      setLastResult(`← Day ${5 + newCount + 1}`);
-      return;
-    }
-    setLoading(true);
-    setLastResult(null);
-    clearOnboardingTimestamps();
-    sessionStorage.removeItem("ascend_just_completed_day");
-    try {
-      const res = await fetch(`/api/player/${player.id}/dev/go-back-day`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days: 1, completeHabits: true }),
       });
       if (res.ok) {
         const data = await res.json();
-        setLastResult(`← Day ${data.newOnboardingDay}, removed ${data.removedCompletions} completions`);
+        setLastResult(`Skipped to next day — streak ${data.newStreak}`);
         queryClient.invalidateQueries();
         fetchStatus();
       } else {
-        setLastResult("Error going back");
+        setLastResult("Error skipping day");
       }
     } catch {
-      setLastResult("Error going back");
-    }
-    setLoading(false);
-  };
-
-  const goForwardDay = async () => {
-    if (!player?.id || loading) return;
-    await simulateDays(1, true);
-  };
-
-  const fixOnboardingXP = async () => {
-    if (!player?.id || loading) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/player/${player.id}/dev/fix-onboarding-xp`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        setLastResult(`XP fixed: Level ${data.level} · ${data.exp}/${data.totalExp} XP`);
-      } else {
-        setLastResult("Failed to fix XP");
-      }
-      queryClient.invalidateQueries();
-      fetchStatus();
-    } catch {
-      setLastResult("Error fixing XP");
-    }
-    setLoading(false);
-  };
-
-  const resetProgress = async () => {
-    if (!player?.id || loading) return;
-    setLoading(true);
-    clearOnboardingTimestamps();
-    sessionStorage.removeItem("ascend_just_completed_day");
-    localStorage.removeItem("ascend_day3_hydration_done");
-    localStorage.removeItem("ascend_day5_sleep_scheduled");
-    localStorage.removeItem("ascend_day5_flow_scheduled");
-    localStorage.removeItem("ascend_day5_sectograph_intro_seen");
-    localStorage.removeItem("ascend_sectograph_tutorial_done");
-    localStorage.removeItem("ascend_sectograph_tutorial_step");
-    localStorage.removeItem("ascend_sectograph_intro_seen");
-    localStorage.removeItem(HABITS_TUTORIAL_KEY);
-    localStorage.removeItem("ascend_habits_pointer_seen");
-    localStorage.removeItem("ascend_game_section_unlocked");
-    clearPostDays(player.id);
-    setPostOnboardingDays(0);
-    try {
-      const res = await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
-      localStorage.removeItem("ascend_light_movement_completed");
-      if (res.ok) {
-        setLastResult("Progress reset to Day 1");
-      } else {
-        setLastResult("Reset partial — refresh if needed");
-      }
-      queryClient.invalidateQueries();
-      fetchStatus();
-    } catch {
-      setLastResult("Error resetting");
-      queryClient.invalidateQueries();
-    }
-    setLoading(false);
-  };
-
-  const resetToIntro = async () => {
-    if (!player?.id || loading) return;
-    setLoading(true);
-    clearOnboardingTimestamps();
-    sessionStorage.removeItem("ascend_just_completed_day");
-    localStorage.removeItem("ascend_day3_hydration_done");
-    localStorage.removeItem("ascend_day5_sleep_scheduled");
-    localStorage.removeItem("ascend_day5_flow_scheduled");
-    localStorage.removeItem("ascend_day5_sectograph_intro_seen");
-    localStorage.removeItem("ascend_sectograph_tutorial_done");
-    localStorage.removeItem("ascend_sectograph_tutorial_step");
-    localStorage.removeItem("ascend_sectograph_intro_seen");
-    localStorage.removeItem(HABITS_TUTORIAL_KEY);
-    localStorage.removeItem("ascend_habits_pointer_seen");
-    localStorage.removeItem("ascend_game_section_unlocked");
-    localStorage.removeItem("ascend_light_movement_completed");
-    localStorage.removeItem("ascend_gender");
-    localStorage.removeItem("background-theme");
-    localStorage.removeItem("clock-theme");
-    localStorage.removeItem("ascend_app_tutorial_seen");
-    clearPostDays(player.id);
-    setPostOnboardingDays(0);
-    try {
-      await fetch(`/api/player/${player.id}/reset-progress`, { method: "POST" });
-      setLastResult("→ Resetting to Intro…");
-      queryClient.invalidateQueries();
-      setTimeout(() => window.location.reload(), 400);
-    } catch {
-      setLastResult("Error resetting to intro");
-      setLoading(false);
-    }
-  };
-
-  const jumpToDaily = async () => {
-    if (!player?.id || loading) return;
-    setLoading(true);
-    setLastResult(null);
-    clearOnboardingTimestamps();
-    sessionStorage.removeItem("ascend_just_completed_day");
-    localStorage.removeItem("ascend_day3_hydration_done");
-    // Always reset post-onboarding counter — "Jump to Daily" means Day 6
-    clearPostDays(player.id);
-    setPostOnboardingDays(0);
-    try {
-      const statusRes = await fetch(`/api/player/${player.id}/dev/status`);
-      const currentStatus: DevStatus = statusRes.ok ? await statusRes.json() : null;
-      const alreadyComplete = currentStatus?.onboardingCompleted ?? false;
-      if (!alreadyComplete) {
-        const currentDay = currentStatus?.onboardingDay ?? 0;
-        const daysNeeded = Math.max(0, 5 - currentDay + 1);
-        if (daysNeeded > 0) {
-          const simRes = await fetch(`/api/player/${player.id}/dev/simulate-day`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ days: daysNeeded, completeHabits: true }),
-          });
-          if (!simRes.ok) { setLastResult("Error simulating onboarding days"); setLoading(false); return; }
-        }
-        // Finalize onboarding — sets onboardingCompleted=1, level=2, XP=0
-        await fetch(`/api/player/${player.id}/onboarding-complete`, { method: "POST" });
-      }
-      localStorage.removeItem("ascend_light_movement_completed");
-      localStorage.setItem("ascend_day5_sleep_scheduled", "true");
-      localStorage.setItem("ascend_day5_flow_scheduled", "true");
-      localStorage.setItem("ascend_day5_sectograph_intro_seen", "true");
-      localStorage.setItem("ascend_sectograph_tutorial_done", "true");
-      localStorage.setItem("ascend_sectograph_tutorial_step", "3");
-      setLastResult("→ Day 6 · Post-onboarding home");
-      queryClient.invalidateQueries();
-      fetchStatus();
-    } catch {
-      setLastResult("Error jumping to Daily Flow");
-    }
-    setLoading(false);
-  };
-
-  const skipSession = async () => {
-    if (!player?.id || loading) return;
-    setLoading(true);
-    setLastResult(null);
-    clearOnboardingTimestamps();
-    sessionStorage.removeItem("ascend_just_completed_day");
-    localStorage.removeItem("ascend_day3_hydration_done");
-    try {
-      const currentStatus: DevStatus | null = status ?? await (async () => {
-        const r = await fetch(`/api/player/${player.id}/dev/status`);
-        return r.ok ? r.json() : null;
-      })();
-      const day = currentStatus?.onboardingDay ?? 1;
-      const sessionInfo = DAY_SESSION_MAP[day];
-      if (!sessionInfo) {
-        setLastResult(`No session to skip on Day ${day}`);
-        setLoading(false);
-        return;
-      }
-      const res = await fetch(`/api/player/${player.id}/complete-guided-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sessionInfo),
-      });
-      if (res.ok) {
-        if (day === 2) localStorage.removeItem("ascend_light_movement_completed");
-        setLastResult(`Session skipped — Day ${day} (${sessionInfo.sessionId})`);
-        queryClient.invalidateQueries();
-        fetchStatus();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setLastResult(`Skip failed: ${err.error ?? res.status}`);
-      }
-    } catch {
-      setLastResult("Error skipping session");
+      setLastResult("Error skipping day");
     }
     setLoading(false);
   };
@@ -346,13 +86,30 @@ export function DevPanel() {
     setLoading(false);
   };
 
+  const triggerLevelUp = () => {
+    levelUp();
+    setLastResult("Level up triggered");
+  };
+
+  const triggerStreakAnim = () => {
+    const streak = player?.streak ?? status?.streak ?? 7;
+    window.dispatchEvent(
+      new CustomEvent("ascend:show-streak-animation", { detail: { streak } })
+    );
+    setLastResult(`Streak animation shown (${streak} days)`);
+  };
+
+  const resetToIntro = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    setLastResult("Wiping data — reloading…");
+    setTimeout(() => window.location.reload(), 300);
+  };
+
   if (!player?.id) return null;
 
   return (
-    <div
-      className="fixed bottom-20 right-3 z-[60]"
-      style={{ maxWidth: "280px" }}
-    >
+    <div className="fixed bottom-20 right-3 z-[60]" style={{ maxWidth: "260px" }}>
       <button
         onClick={handleOpen}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider"
@@ -370,7 +127,7 @@ export function DevPanel() {
 
       {open && (
         <div
-          className="absolute bottom-10 right-0 rounded-xl p-4 w-72"
+          className="absolute bottom-10 right-0 rounded-xl p-4 w-64"
           style={{
             backgroundColor: "rgba(15,15,20,0.97)",
             border: "1px solid rgba(234,179,8,0.2)",
@@ -383,64 +140,23 @@ export function DevPanel() {
               Test Tools
             </span>
             <button onClick={fetchStatus} className="text-[9px]" style={{ color: "rgba(255,255,255,0.3)" }}>
-              <Info className="w-3 h-3 inline mr-0.5" />refresh
+              refresh
             </button>
           </div>
 
-          {status && (
-            <div className="space-y-1.5 mb-3">
-              <div className="grid grid-cols-2 gap-1.5">
-                <StatusItem label="Day" value={displayDay !== null ? String(displayDay) : String(status.onboardingDay)} />
-                <StatusItem label="Streak" value={String(status.streak)} />
-                <StatusItem label="Phase" value={String(status.phase)} />
-                <StatusItem label="Level" value={String(status.level)} />
-                <StatusItem label="Stability" value={`${status.stabilityScore}`} />
-                <StatusItem label="State" value={status.stabilityState} />
-                <StatusItem label="Active Days" value={String(status.distinctActiveDays)} />
-                <StatusItem label="Last Active" value={status.lastActiveDate ?? "never"} />
-              </div>
-
-              <div className="mt-2">
-                <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>
-                  Tab Unlocks
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {Object.entries(status.tabUnlocks).map(([tab, info]) => (
-                    <span
-                      key={tab}
-                      className="text-[9px] px-1.5 py-0.5 rounded"
-                      style={{
-                        backgroundColor: info.unlocked ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)",
-                        color: info.unlocked ? "rgba(34,197,94,0.8)" : "rgba(255,255,255,0.25)",
-                        border: `1px solid ${info.unlocked ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.06)"}`,
-                      }}
-                    >
-                      {tab} (d{info.unlockDay})
-                    </span>
-                  ))}
-                </div>
-              </div>
+          {(status || player) && (
+            <div className="grid grid-cols-2 gap-1.5 mb-3">
+              <StatusItem label="Level" value={String(status?.level ?? player?.level ?? "—")} />
+              <StatusItem label="Streak" value={String(status?.streak ?? player?.streak ?? "—")} />
+              <StatusItem label="Phase" value={String(status?.phase ?? player?.phase ?? "—")} />
+              <StatusItem label="Stability" value={String(status?.stabilityScore ?? "—")} />
             </div>
           )}
 
           <div className="space-y-2">
-            <div className="flex gap-2 mb-1">
+            <div className="flex gap-2">
               <button
-                onClick={goBackDay}
-                disabled={loading}
-                className="flex-1 text-[10px] font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
-                style={{
-                  backgroundColor: loading ? "rgba(168,85,247,0.05)" : "rgba(168,85,247,0.12)",
-                  border: "1px solid rgba(168,85,247,0.2)",
-                  color: loading ? "rgba(168,85,247,0.4)" : "rgba(168,85,247,0.9)",
-                }}
-                data-testid="button-prev-day"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                Previous Day
-              </button>
-              <button
-                onClick={goForwardDay}
+                onClick={skipToNextDay}
                 disabled={loading}
                 className="flex-1 text-[10px] font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
                 style={{
@@ -448,32 +164,15 @@ export function DevPanel() {
                   border: "1px solid rgba(34,197,94,0.2)",
                   color: loading ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.9)",
                 }}
-                data-testid="button-next-day"
-              >
-                Next Day
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={skipSession}
-                disabled={loading}
-                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
-                style={{
-                  backgroundColor: loading ? "rgba(234,179,8,0.04)" : "rgba(234,179,8,0.12)",
-                  border: "1px solid rgba(234,179,8,0.25)",
-                  color: loading ? "rgba(234,179,8,0.35)" : "rgba(234,179,8,0.9)",
-                }}
-                data-testid="button-skip-session"
+                data-testid="button-skip-next-day"
               >
                 <SkipForward className="w-3 h-3" />
-                Skip Session
+                Skip Day
               </button>
               <button
                 onClick={resetToday}
                 disabled={loading}
-                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
+                className="flex-1 text-[10px] font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
                 style={{
                   backgroundColor: loading ? "rgba(34,211,238,0.04)" : "rgba(34,211,238,0.1)",
                   border: "1px solid rgba(34,211,238,0.2)",
@@ -486,167 +185,47 @@ export function DevPanel() {
               </button>
             </div>
 
-            <button
-              onClick={() => {
-                localStorage.removeItem("ascend_game_section_unlocked");
-                setLastResult("Game tutorial reset — visit Profile tab to replay");
-              }}
-              className="w-full text-[10px] font-medium py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
-              style={{
-                backgroundColor: "rgba(168,85,247,0.08)",
-                border: "1px solid rgba(168,85,247,0.25)",
-                color: "rgba(168,85,247,0.85)",
-              }}
-              data-testid="button-reset-game-tutorial"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Reset Game Tutorial
-            </button>
-
-            <div className="flex items-center gap-2">
-              <label className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>Days:</label>
-              <input
-                type="number"
-                min={1}
-                max={90}
-                value={daysInput}
-                onChange={e => setDaysInput(Math.max(1, Math.min(90, parseInt(e.target.value) || 1)))}
-                className="w-12 text-center text-xs rounded px-1 py-0.5"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "rgba(255,255,255,0.8)",
-                }}
-                data-testid="input-dev-days"
-              />
-              <div className="flex gap-1">
-                {[1, 3, 7, 14, 30].map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setDaysInput(d)}
-                    className="text-[9px] px-1.5 py-0.5 rounded"
-                    style={{
-                      backgroundColor: daysInput === d ? "rgba(234,179,8,0.15)" : "rgba(255,255,255,0.04)",
-                      color: daysInput === d ? "rgba(234,179,8,0.8)" : "rgba(255,255,255,0.3)",
-                      border: `1px solid ${daysInput === d ? "rgba(234,179,8,0.2)" : "rgba(255,255,255,0.06)"}`,
-                    }}
-                  >
-                    {d}d
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="flex gap-2">
               <button
-                onClick={() => simulateDays(daysInput, true)}
-                disabled={loading}
-                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
+                onClick={triggerLevelUp}
+                className="flex-1 text-[10px] font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
                 style={{
-                  backgroundColor: loading ? "rgba(34,197,94,0.05)" : "rgba(34,197,94,0.12)",
-                  border: "1px solid rgba(34,197,94,0.2)",
-                  color: loading ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.9)",
+                  backgroundColor: "rgba(0,200,255,0.12)",
+                  border: "1px solid rgba(0,200,255,0.25)",
+                  color: "rgba(0,200,255,0.9)",
                 }}
-                data-testid="button-simulate-with-habits"
+                data-testid="button-trigger-level-up"
               >
-                +{daysInput}d with habits
+                <TrendingUp className="w-3 h-3" />
+                Level Up
               </button>
               <button
-                onClick={() => simulateDays(daysInput, false)}
-                disabled={loading}
-                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
+                onClick={triggerStreakAnim}
+                className="flex-1 text-[10px] font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
                 style={{
-                  backgroundColor: loading ? "rgba(59,130,246,0.05)" : "rgba(59,130,246,0.12)",
-                  border: "1px solid rgba(59,130,246,0.2)",
-                  color: loading ? "rgba(59,130,246,0.4)" : "rgba(59,130,246,0.9)",
+                  backgroundColor: "rgba(249,115,22,0.12)",
+                  border: "1px solid rgba(249,115,22,0.25)",
+                  color: "rgba(249,115,22,0.9)",
                 }}
-                data-testid="button-simulate-guided-only"
+                data-testid="button-trigger-streak-anim"
               >
-                +{daysInput}d guided only
+                <Flame className="w-3 h-3" />
+                Streak Anim
               </button>
             </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={jumpToDaily}
-                disabled={loading}
-                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
-                style={{
-                  backgroundColor: loading ? "rgba(34,211,238,0.04)" : "rgba(34,211,238,0.12)",
-                  border: "1px solid rgba(34,211,238,0.2)",
-                  color: loading ? "rgba(34,211,238,0.4)" : "rgba(34,211,238,0.9)",
-                }}
-                data-testid="button-jump-daily-flow"
-              >
-                → Day 6
-              </button>
-              <button
-                onClick={async () => {
-                  await jumpToDaily();
-                  if (!player?.id) return;
-                  const newPostDays = 1;
-                  setPostOnboardingDays(newPostDays);
-                  setPostDays(player.id, newPostDays);
-                  localStorage.removeItem(HABITS_TUTORIAL_KEY);
-                  setLastResult("→ Day 7 · Habits tutorial ready");
-                  queryClient.invalidateQueries();
-                  fetchStatus();
-                }}
-                disabled={loading}
-                className="flex-1 text-[10px] font-medium py-1.5 rounded-lg transition-colors"
-                style={{
-                  backgroundColor: loading ? "rgba(167,139,250,0.04)" : "rgba(167,139,250,0.12)",
-                  border: "1px solid rgba(167,139,250,0.2)",
-                  color: loading ? "rgba(167,139,250,0.4)" : "rgba(167,139,250,0.9)",
-                }}
-                data-testid="button-jump-day7"
-              >
-                → Day 7
-              </button>
-            </div>
-
-            <button
-              onClick={fixOnboardingXP}
-              disabled={loading}
-              className="w-full text-[10px] font-medium py-1.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
-              style={{
-                backgroundColor: loading ? "rgba(234,179,8,0.05)" : "rgba(234,179,8,0.08)",
-                border: "1px solid rgba(234,179,8,0.2)",
-                color: loading ? "rgba(234,179,8,0.4)" : "rgba(234,179,8,0.85)",
-              }}
-              data-testid="button-fix-xp"
-            >
-              Fix XP → Level 1 · 25/100 XP
-            </button>
-
-            <button
-              onClick={resetProgress}
-              disabled={loading}
-              className="w-full text-[10px] font-medium py-1.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
-              style={{
-                backgroundColor: loading ? "rgba(239,68,68,0.05)" : "rgba(239,68,68,0.08)",
-                border: "1px solid rgba(239,68,68,0.15)",
-                color: loading ? "rgba(239,68,68,0.4)" : "rgba(239,68,68,0.8)",
-              }}
-              data-testid="button-reset-progress"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Reset to Day 1
-            </button>
 
             <button
               onClick={resetToIntro}
-              disabled={loading}
               className="w-full text-[10px] font-medium py-1.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
               style={{
-                backgroundColor: loading ? "rgba(251,191,36,0.04)" : "rgba(251,191,36,0.1)",
+                backgroundColor: "rgba(251,191,36,0.1)",
                 border: "1px solid rgba(251,191,36,0.3)",
-                color: loading ? "rgba(251,191,36,0.35)" : "rgba(251,191,36,0.9)",
+                color: "rgba(251,191,36,0.9)",
               }}
               data-testid="button-reset-to-intro"
             >
               <RotateCcw className="w-3 h-3" />
-              Reset to Intro Screen
+              Reset to Intro (full wipe)
             </button>
           </div>
 

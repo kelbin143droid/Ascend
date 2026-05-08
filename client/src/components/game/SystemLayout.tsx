@@ -7,6 +7,7 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { SidebarMenu } from "./SidebarMenu";
 import { DevPanel } from "./DevPanel";
 import { AppTutorialOverlay } from "./AppTutorialOverlay";
+import { StreakCelebrationOverlay } from "./StreakCelebration";
 import ironSovereignBg from "@/assets/themes/iron_sovereign_starfield.png";
 import neonEmpressBg from "@/assets/themes/neon_empress_pastel.png";
 
@@ -253,6 +254,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       <DevPanel />
+      <StreakCelebrationOverlay />
 
       <nav
         className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl"
