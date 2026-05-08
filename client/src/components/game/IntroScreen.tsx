@@ -20,7 +20,7 @@ function useTypewriter(text: string, charDelay = 42, startDelay = 1800) {
 }
 
 const TAGLINE = "System link established. Awaiting initialization...";
-const TITLE_LETTERS = "ASCEND OS".split("");
+const TITLE_LETTERS = "ASCEND".split("");
 
 interface IntroScreenProps {
   onBeginAscension: () => void;
@@ -493,7 +493,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
           animate={{ opacity: 1 }}
           transition={{ delay: 2.8, duration: 0.6 }}
         >
-          ASCEND OS v2.0 // BUILD: NEON_GENESIS
+          ASCEND v2.0 // BUILD: NEON_GENESIS
         </motion.p>
 
         {/* Activation flash overlay */}
