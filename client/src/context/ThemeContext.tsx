@@ -63,6 +63,8 @@ const safeSet = (key: string, value: string | null) => {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [clockThemeId, setClockThemeId] = useState<string>(() => {
     const explicit = safeGet("clock-theme");
+    // Migrate: old "male" saves upgrade to the new pixel_forest default
+    if (explicit === "male") { safeSet("clock-theme", "pixel_forest"); return "pixel_forest"; }
     if (explicit) return explicit;
     const gender = safeGet("ascend_gender");
     if (gender === "male") return "pixel_forest";
@@ -72,6 +74,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const [backgroundThemeId, setBackgroundThemeId] = useState<string>(() => {
     const explicit = safeGet("background-theme");
+    // Migrate: old "male" saves upgrade to the new pixel_forest default
+    if (explicit === "male") { safeSet("background-theme", "pixel_forest"); return "pixel_forest"; }
     if (explicit) return explicit;
     const gender = safeGet("ascend_gender");
     if (gender === "male") return "pixel_forest";
