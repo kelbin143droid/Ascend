@@ -109,6 +109,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [stats, setStats] = useState<GameStats>(() => getStats());
   const today = new Date().toISOString().split("T")[0];
   const flowCompletedToday = flowCompletedDate === today;
+  const [isFirstMission, setIsFirstMission] = useState(
+    () => localStorage.getItem("ascend_first_mission_done") !== "1"
+  );
 
   const tiers: CategoryTiers = {
     strength: scalingData?.trainingScaling?.strength?.tier ?? 1,
@@ -182,6 +185,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       }
       const dateStr = new Date().toISOString().split("T")[0];
       setFlowCompletedDate(dateStr);
+      localStorage.setItem("ascend_first_mission_done", "1");
+      setIsFirstMission(false);
     }
     setFlowActive(false);
     refreshStats();
@@ -342,6 +347,62 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
         </motion.div>
 
+        {/* ── FIRST MISSION BRIEFING ─────────────────────────────────── */}
+        {isFirstMission && !flowCompletedToday && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="rounded-2xl p-5"
+            style={{
+              background: isIronSovereign
+                ? `linear-gradient(135deg, rgba(34,211,238,0.12), rgba(34,211,238,0.04))`
+                : isNeonEmpress
+                  ? `linear-gradient(135deg, rgba(251,202,173,0.22), rgba(200,181,238,0.12))`
+                  : `linear-gradient(135deg, ${colors.primary}14, ${colors.primary}05)`,
+              border: isIronSovereign
+                ? `1.5px solid rgba(34,211,238,0.30)`
+                : isNeonEmpress
+                  ? `1.5px solid rgba(244,132,95,0.38)`
+                  : `1.5px solid ${colors.primary}28`,
+            }}
+            data-testid="card-first-mission"
+          >
+            {/* Mission indicator row */}
+            <div className="flex items-center gap-2 mb-2.5">
+              <motion.div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  backgroundColor: isIronSovereign ? isHud.cyan : isNeonEmpress ? fae.peachStrong : colors.primary,
+                }}
+                animate={{ opacity: [1, 0.4, 1] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <p
+                className="text-[9px] uppercase tracking-[0.28em] font-bold"
+                style={{
+                  color: isIronSovereign ? isHud.cyan : isNeonEmpress ? fae.peachStrong : colors.primary,
+                }}
+              >
+                Mission 01 · Active
+              </p>
+            </div>
+
+            <h3
+              className="text-base font-extrabold mb-1.5 leading-snug"
+              style={{ color: colors.text, fontFamily: "system-ui, sans-serif" }}
+            >
+              Complete Your First Daily Flow
+            </h3>
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: colors.textMuted }}
+            >
+              {totalMins} min · Breath · Movement · Strength. Your progression system activates on completion.
+            </p>
+          </motion.div>
+        )}
+
         {/* ── PRIMARY ACTION ─────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
@@ -384,7 +445,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {/* ── COACH MESSAGE ──────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.42 : 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.18 }}
           className={
             isNeonEmpress
@@ -445,7 +506,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {/* ── SESSIONS TOGGLE ────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.38 : 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.22 }}
         >
           <button
@@ -614,12 +675,17 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         </motion.div>
 
         {/* ── WORKOUT BUILDER ────────────────────────────────────────── */}
-        <WorkoutBuilderSection playerId={player.id} />
+        <motion.div
+          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.35 : 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          <WorkoutBuilderSection playerId={player.id} />
+        </motion.div>
 
         {/* ── STAT BARS ──────────────────────────────────────────────── */}
         <motion.div
             initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.35 : 1, y: 0 }}
             transition={{ duration: 0.4 }}
             className={
               isNeonEmpress
