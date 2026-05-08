@@ -19,7 +19,7 @@ const PRESET_COLORS = [
   "#ff3333", "#ffd700", "#34d399", "#06b6d4", "#ec4899",
 ];
 
-const DEFAULT_THEME_IDS = ["male", "female"];
+const DEFAULT_THEME_IDS = ["pixel_forest", "male", "female"];
 
 const MAX_BG_BYTES = 900_000; // ~880 KB to stay safely under localStorage quota
 
