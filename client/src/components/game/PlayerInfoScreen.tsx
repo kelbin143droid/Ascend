@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 
 interface PlayerInfoScreenProps {
@@ -11,28 +11,49 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [rippleKey, setRippleKey] = useState(0);
+  const prevLength = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const accent = theme?.colors?.primary ?? "#8b5cf6";
   const accentGlow = `${accent}35`;
+  const accentMid = `${accent}55`;
 
   const particles = useRef(
-    Array.from({ length: 16 }, (_, i) => ({
+    Array.from({ length: 22 }, (_, i) => ({
       id: i,
       x: 5 + Math.random() * 90,
       y: 10 + Math.random() * 85,
-      size: 1 + Math.random() * 2.2,
-      duration: 6 + Math.random() * 6,
-      delay: Math.random() * 5,
-      driftX: (Math.random() - 0.5) * 40,
-      driftY: -(20 + Math.random() * 50),
+      size: 0.8 + Math.random() * 2.2,
+      duration: 7 + Math.random() * 8,
+      delay: Math.random() * 6,
+      driftX: (Math.random() - 0.5) * 50,
+      driftY: -(18 + Math.random() * 60),
+      opacity: 0.2 + Math.random() * 0.5,
     }))
+  ).current;
+
+  const nebulae = useRef(
+    [
+      { top: "20%", left: "10%", w: 360, h: 240, dx: [0, 24, -16, 0], dy: [0, -18, 12, 0], dur: 30 },
+      { top: "65%", left: "55%", w: 300, h: 200, dx: [0, -20, 18, 0], dy: [0, 14, -10, 0], dur: 36 },
+      { top: "45%", left: "30%", w: 280, h: 180, dx: [0, 16, -22, 0], dy: [0, -12, 18, 0], dur: 26 },
+    ]
   ).current;
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 700);
     return () => clearTimeout(t);
   }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    if (newName.length > prevLength.current) {
+      setRippleKey((k) => k + 1);
+    }
+    prevLength.current = newName.length;
+    setName(newName);
+  };
 
   const handleSubmit = () => {
     if (name.trim().length === 0) return;
@@ -54,20 +75,38 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
       animate={{ opacity: isSubmitting ? 0 : 1 }}
       transition={{ duration: 0.8 }}
     >
+      {/* Nebula fog */}
+      {nebulae.map((n, i) => (
+        <motion.div
+          key={i}
+          className="absolute pointer-events-none"
+          style={{
+            top: n.top,
+            left: n.left,
+            width: n.w,
+            height: n.h,
+            background: `radial-gradient(ellipse, ${accentGlow} 0%, transparent 70%)`,
+            filter: "blur(52px)",
+            borderRadius: "50%",
+            opacity: 0.55,
+          }}
+          animate={{ x: n.dx, y: n.dy, opacity: [0.4, 0.75, 0.5, 0.4] }}
+          transition={{ duration: n.dur, repeat: Infinity, ease: "easeInOut" }}
+        />
+      ))}
+
       {/* Ambient glow */}
       <motion.div
         className="absolute pointer-events-none"
         style={{
-          top: "35%",
-          left: "50%",
+          top: "35%", left: "50%",
           transform: "translate(-50%, -50%)",
-          width: 560,
-          height: 400,
+          width: 580, height: 420,
           background: `radial-gradient(ellipse, ${accentGlow} 0%, transparent 70%)`,
-          filter: "blur(65px)",
+          filter: "blur(70px)",
         }}
-        animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ scale: [1, 1.12, 1], opacity: [0.55, 1, 0.55] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       />
 
       {/* Floating particles */}
@@ -76,25 +115,13 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
           key={p.id}
           className="absolute rounded-full pointer-events-none"
           style={{
-            width: p.size,
-            height: p.size,
-            left: `${p.x}%`,
-            top: `${p.y}%`,
+            width: p.size, height: p.size,
+            left: `${p.x}%`, top: `${p.y}%`,
             background: accent,
-            opacity: 0.5,
-            boxShadow: `0 0 ${p.size * 2}px ${accentGlow}`,
+            boxShadow: `0 0 ${p.size * 2.5}px ${accentMid}`,
           }}
-          animate={{
-            y: [0, p.driftY, 0],
-            x: [0, p.driftX, 0],
-            opacity: [0, 0.55, 0],
-          }}
-          transition={{
-            duration: p.duration,
-            repeat: Infinity,
-            delay: p.delay,
-            ease: "easeInOut",
-          }}
+          animate={{ y: [0, p.driftY, 0], x: [0, p.driftX, 0], opacity: [0, p.opacity, 0] }}
+          transition={{ duration: p.duration, repeat: Infinity, delay: p.delay, ease: "easeInOut" }}
         />
       ))}
 
@@ -103,10 +130,10 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
         className="absolute left-0 right-0 pointer-events-none"
         style={{
           height: 1,
-          background: `linear-gradient(90deg, transparent, ${accent}25, transparent)`,
+          background: `linear-gradient(90deg, transparent, ${accent}22, ${accent}35, ${accent}22, transparent)`,
         }}
         animate={{ top: ["-2%", "102%"] }}
-        transition={{ duration: 7, repeat: Infinity, repeatDelay: 6, ease: "linear" }}
+        transition={{ duration: 8, repeat: Infinity, repeatDelay: 7, ease: "linear" }}
       />
 
       {/* Content */}
@@ -120,7 +147,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
         <div className="text-center mb-10">
           <motion.p
             className="text-[9px] tracking-[0.35em] uppercase font-mono mb-5"
-            style={{ color: `${accent}70` }}
+            style={{ color: `${accent}65` }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.6 }}
@@ -146,7 +173,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
               animate={{
                 boxShadow: [
                   `0 0 14px ${accentGlow}`,
-                  `0 0 28px ${accentGlow}`,
+                  `0 0 32px ${accentMid}`,
                   `0 0 14px ${accentGlow}`,
                 ],
               }}
@@ -164,7 +191,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
           </motion.div>
 
           <motion.h2
-            className="text-xl font-display font-bold mb-2"
+            className="text-xl font-display font-bold mb-3"
             style={{
               color: "#e2e8f0",
               letterSpacing: "0.02em",
@@ -179,7 +206,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
 
           <motion.p
             className="text-xs font-mono"
-            style={{ color: "rgba(148,163,184,0.45)" }}
+            style={{ color: "rgba(148,163,184,0.38)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.9, duration: 0.5 }}
@@ -195,37 +222,108 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.05, duration: 0.55 }}
         >
+          {/* Holographic outer pulse ring when focused */}
+          <AnimatePresence>
+            {focused && (
+              <motion.div
+                key="focus-ring"
+                className="absolute pointer-events-none"
+                style={{
+                  inset: -3,
+                  borderRadius: "15px",
+                  border: `1px solid ${accent}45`,
+                }}
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: [0.4, 0.9, 0.4], scale: [0.98, 1, 0.98] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Per-keystroke ripple ring */}
+          <AnimatePresence>
+            {rippleKey > 0 && (
+              <motion.div
+                key={rippleKey}
+                className="absolute pointer-events-none"
+                style={{
+                  inset: -1,
+                  borderRadius: "13px",
+                  border: `1px solid ${accent}70`,
+                }}
+                initial={{ opacity: 0.8, scale: 1 }}
+                animate={{ opacity: 0, scale: 1.04 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.38, ease: "easeOut" }}
+              />
+            )}
+          </AnimatePresence>
+
           <input
             ref={inputRef}
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             placeholder="ENTER DESIGNATION"
             maxLength={20}
-            className="w-full px-4 py-4 text-base text-center font-mono focus:outline-none transition-all"
+            className="w-full px-4 py-4 text-base text-center font-mono focus:outline-none"
             style={{
-              background: "rgba(255,255,255,0.035)",
-              border: `1px solid ${focused || name ? `${accent}55` : "rgba(255,255,255,0.08)"}`,
+              background: focused
+                ? `linear-gradient(180deg, rgba(${accent === "#8b5cf6" ? "139,92,246" : "14,165,233"},0.06) 0%, rgba(255,255,255,0.025) 100%)`
+                : "rgba(255,255,255,0.03)",
+              border: `1px solid ${focused || name ? `${accent}60` : "rgba(255,255,255,0.08)"}`,
               borderRadius: "12px",
               color: "#e2e8f0",
               letterSpacing: "0.18em",
               boxShadow: focused
-                ? `0 0 24px ${accentGlow}, inset 0 0 16px ${accentGlow}`
+                ? `0 0 28px ${accentGlow}, inset 0 0 20px ${accentGlow}, 0 0 0 1px ${accent}20`
+                : name
+                ? `0 0 12px ${accentGlow}`
                 : "none",
-              transition: "border-color 0.3s, box-shadow 0.3s",
+              transition: "border-color 0.3s, box-shadow 0.35s, background 0.3s",
             }}
             data-testid="input-player-name"
           />
+
           {/* Glowing underline */}
           <motion.div
             className="absolute bottom-0 left-1/2 h-[2px] -translate-x-1/2 rounded-full"
             style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }}
-            animate={{ width: name ? "88%" : focused ? "38%" : "0%" }}
-            transition={{ duration: 0.35 }}
+            animate={{ width: name ? "90%" : focused ? "42%" : "0%" }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
           />
+
+          {/* Corner accents when focused */}
+          <AnimatePresence>
+            {focused && (
+              <>
+                {[
+                  { top: -1, left: -1, borderTop: "1.5px solid", borderLeft: "1.5px solid", borderRadius: "12px 0 0 0" },
+                  { top: -1, right: -1, borderTop: "1.5px solid", borderRight: "1.5px solid", borderRadius: "0 12px 0 0" },
+                  { bottom: -1, left: -1, borderBottom: "1.5px solid", borderLeft: "1.5px solid", borderRadius: "0 0 0 12px" },
+                  { bottom: -1, right: -1, borderBottom: "1.5px solid", borderRight: "1.5px solid", borderRadius: "0 0 12px 0" },
+                ].map((s, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute pointer-events-none"
+                    style={{
+                      ...s,
+                      width: 12, height: 12,
+                      borderColor: `${accent}80`,
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ delay: i * 0.04, duration: 0.2 }}
+                  />
+                ))}
+              </>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Submit */}
@@ -240,13 +338,13 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
             className="w-full py-4 font-mono tracking-[0.18em] uppercase text-sm font-bold rounded-xl relative overflow-hidden"
             style={{
               background: name.trim()
-                ? `linear-gradient(135deg, ${accent}aa 0%, ${accent}dd 100%)`
-                : "rgba(255,255,255,0.05)",
-              color: name.trim() ? "#ffffff" : "rgba(255,255,255,0.2)",
-              border: `1px solid ${name.trim() ? `${accent}55` : "rgba(255,255,255,0.06)"}`,
+                ? `linear-gradient(135deg, ${accent}aa 0%, ${accent}ee 100%)`
+                : "rgba(255,255,255,0.04)",
+              color: name.trim() ? "#ffffff" : "rgba(255,255,255,0.18)",
+              border: `1px solid ${name.trim() ? `${accent}60` : "rgba(255,255,255,0.06)"}`,
               cursor: name.trim() ? "pointer" : "not-allowed",
-              boxShadow: name.trim() ? `0 0 28px ${accentGlow}` : "none",
-              transition: "all 0.35s",
+              boxShadow: name.trim() ? `0 0 32px ${accentGlow}, 0 4px 20px ${accentGlow}` : "none",
+              transition: "all 0.38s",
             }}
             whileHover={name.trim() ? { scale: 1.02 } : {}}
             whileTap={name.trim() ? { scale: 0.97 } : {}}
@@ -256,8 +354,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
               <motion.div
                 className="absolute inset-0 rounded-xl pointer-events-none"
                 style={{
-                  background:
-                    "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)",
+                  background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)",
                 }}
                 animate={{ x: ["-110%", "110%"] }}
                 transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
