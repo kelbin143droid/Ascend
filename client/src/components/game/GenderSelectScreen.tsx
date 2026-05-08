@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
@@ -9,10 +9,8 @@ interface GenderSelectScreenProps {
 function MaleIcon({ color, accentGold }: { color: string; accentGold: string }) {
   return (
     <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-      {/* Outer wooden ring with gold accents */}
       <circle cx="28" cy="28" r="25" stroke={accentGold} strokeWidth="2" fill={`${color}15`} />
       <circle cx="28" cy="28" r="25" stroke={accentGold} strokeWidth="0.5" opacity="0.4" strokeDasharray="2 4" />
-      {/* Sky-blue crystal/diamond in center */}
       <path
         d="M28 13 L36 22 L32 36 L24 36 L20 22 Z"
         fill={`${color}30`}
@@ -21,12 +19,10 @@ function MaleIcon({ color, accentGold }: { color: string; accentGold: string }) 
         strokeLinejoin="round"
       />
       <path d="M28 13 L32 22 L36 22 M28 13 L24 22 L20 22 M32 22 L28 36 L24 22" stroke={color} strokeWidth="0.8" opacity="0.7" />
-      {/* Gold rune dots at cardinal points */}
       <circle cx="28" cy="6" r="1.6" fill={accentGold} />
       <circle cx="50" cy="28" r="1.6" fill={accentGold} />
       <circle cx="28" cy="50" r="1.6" fill={accentGold} />
       <circle cx="6" cy="28" r="1.6" fill={accentGold} />
-      {/* Inner glow */}
       <circle cx="28" cy="24" r="2" fill={color} opacity="0.9" />
     </svg>
   );
@@ -42,13 +38,7 @@ function FemaleIcon({ color }: { color: string }) {
         stroke={color}
         strokeWidth="1.5"
       />
-      <path
-        d="M20 20 C22 16 30 16 32 20"
-        stroke={color}
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        opacity="0.6"
-      />
+      <path d="M20 20 C22 16 30 16 32 20" stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
       <circle cx="26" cy="26" r="5" fill={`${color}30`} stroke={color} strokeWidth="1.2" />
       <path
         d="M22 22 L24 26 L26 22 L28 26 L30 22"
@@ -77,31 +67,50 @@ function GenderCard({
   onClick: () => void;
 }) {
   const [pressed, setPressed] = useState(false);
+  const [burstKey, setBurstKey] = useState(0);
   const isMale = gender === "male";
   const color = isMale ? "#3FB6FF" : "#d946ef";
   const accentGold = "#E8B964";
   const label = isMale ? "Male" : "Female";
   const subtitle = isMale ? "IRON SOVEREIGN" : "NEON EMPRESS";
 
+  const burstParticles = useRef(
+    Array.from({ length: 8 }, (_, i) => {
+      const angle = (i / 8) * Math.PI * 2;
+      return {
+        id: i,
+        dx: Math.cos(angle) * (50 + Math.random() * 30),
+        dy: Math.sin(angle) * (50 + Math.random() * 30),
+        size: 2 + Math.random() * 3,
+      };
+    })
+  ).current;
+
+  const handleClick = () => {
+    setBurstKey((k) => k + 1);
+    onClick();
+  };
+
   return (
     <motion.button
-      onClick={onClick}
+      onClick={handleClick}
       onTouchStart={() => setPressed(true)}
       onTouchEnd={() => setPressed(false)}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
       aria-label={`Select ${label} — ${subtitle}`}
-      whileTap={{ scale: 0.96 }}
+      whileTap={{ scale: 0.95 }}
       animate={{
+        scale: selected ? 1.03 : 1,
         boxShadow: selected
           ? isMale
-            ? `0 0 32px ${color}70, 0 0 64px ${color}30, inset 0 0 24px ${accentGold}25`
-            : `0 0 32px ${color}70, 0 0 64px ${color}30`
+            ? `0 0 36px ${color}80, 0 0 70px ${color}30, inset 0 0 28px ${accentGold}20`
+            : `0 0 36px ${color}80, 0 0 70px ${color}30`
           : pressed
-          ? `0 0 20px ${color}50`
+          ? `0 0 22px ${color}55`
           : `0 0 0px transparent`,
       }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.25 }}
       style={{
         flex: 1,
         minWidth: 0,
@@ -111,23 +120,24 @@ function GenderCard({
         justifyContent: "center",
         gap: "12px",
         padding: "20px 12px 18px",
-        borderRadius: "18px",
+        borderRadius: "20px",
         border: isMale && selected
           ? `2px solid ${accentGold}`
-          : `2px solid ${selected ? color : `${color}60`}`,
+          : `2px solid ${selected ? color : `${color}55`}`,
         background: selected
           ? isMale
             ? `linear-gradient(160deg, ${color}22 0%, rgba(8,20,26,0.85) 60%, ${accentGold}15 100%)`
             : `linear-gradient(160deg, ${color}22 0%, ${color}08 100%)`
-          : `linear-gradient(160deg, rgba(10,14,30,0.75) 0%, rgba(6,8,20,0.85) 100%)`,
+          : `linear-gradient(160deg, rgba(10,14,30,0.7) 0%, rgba(6,8,20,0.82) 100%)`,
         cursor: "pointer",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        transition: "border-color 0.2s, background 0.2s",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
         position: "relative",
         overflow: "hidden",
+        transition: "border-color 0.25s, background 0.25s",
       }}
     >
+      {/* Selection radial overlay */}
       {selected && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -135,17 +145,63 @@ function GenderCard({
           style={{
             position: "absolute",
             inset: 0,
-            borderRadius: "16px",
+            borderRadius: "18px",
             background: isMale
-              ? `radial-gradient(ellipse at 50% 30%, ${color}25 0%, transparent 60%), radial-gradient(ellipse at 50% 100%, ${accentGold}18 0%, transparent 50%)`
-              : `radial-gradient(ellipse at 50% 30%, ${color}20 0%, transparent 70%)`,
+              ? `radial-gradient(ellipse at 50% 25%, ${color}22 0%, transparent 65%), radial-gradient(ellipse at 50% 100%, ${accentGold}14 0%, transparent 55%)`
+              : `radial-gradient(ellipse at 50% 25%, ${color}18 0%, transparent 70%)`,
             pointerEvents: "none",
           }}
         />
       )}
-      <div style={{ position: "relative", zIndex: 1 }}>
+
+      {/* Pulsing border glow when selected */}
+      {selected && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{ borderRadius: "18px" }}
+          animate={{
+            boxShadow: [
+              `inset 0 0 0px ${color}00`,
+              `inset 0 0 20px ${color}20`,
+              `inset 0 0 0px ${color}00`,
+            ],
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
+      )}
+
+      {/* Particle burst on select */}
+      <AnimatePresence>
+        {burstKey > 0 &&
+          burstParticles.map((bp) => (
+            <motion.div
+              key={`${burstKey}-${bp.id}`}
+              className="absolute pointer-events-none rounded-full"
+              style={{
+                width: bp.size,
+                height: bp.size,
+                background: color,
+                boxShadow: `0 0 ${bp.size * 2}px ${color}`,
+                left: "50%",
+                top: "40%",
+              }}
+              initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+              animate={{ x: bp.dx, y: bp.dy, opacity: 0, scale: 0.3 }}
+              transition={{ duration: 0.65, ease: "easeOut" }}
+            />
+          ))}
+      </AnimatePresence>
+
+      {/* Icon */}
+      <motion.div
+        style={{ position: "relative", zIndex: 1 }}
+        animate={selected ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+        transition={{ duration: 1.8, repeat: selected ? Infinity : 0 }}
+      >
         {isMale ? <MaleIcon color={color} accentGold={accentGold} /> : <FemaleIcon color={color} />}
-      </div>
+      </motion.div>
+
+      {/* Labels */}
       <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
         <div
           style={{
@@ -180,10 +236,24 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
   const [selected, setSelected] = useState<"male" | "female" | null>(null);
   const [exiting, setExiting] = useState(false);
 
+  const particles = useRef(
+    Array.from({ length: 14 }, (_, i) => ({
+      id: i,
+      x: 3 + Math.random() * 94,
+      y: 10 + Math.random() * 80,
+      size: 1 + Math.random() * 2,
+      duration: 6 + Math.random() * 7,
+      delay: Math.random() * 5,
+      driftY: -(20 + Math.random() * 50),
+      driftX: (Math.random() - 0.5) * 30,
+      color: i % 2 === 0 ? "rgba(63,182,255,0.5)" : "rgba(217,70,239,0.5)",
+    }))
+  ).current;
+
   const handleContinue = () => {
     if (!selected || exiting) return;
     setExiting(true);
-    setTimeout(() => onSelect(selected), 600);
+    setTimeout(() => onSelect(selected), 650);
   };
 
   return (
@@ -191,10 +261,10 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
       className="fixed inset-0 z-50 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: exiting ? 0 : 1 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.65 }}
       style={{ fontFamily: "Inter, system-ui, sans-serif" }}
     >
-      {/* Full-screen background — always covers the viewport */}
+      {/* Background image */}
       <img
         src="/gender-select-bg-new.png"
         alt=""
@@ -211,18 +281,57 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
         draggable={false}
       />
 
-      {/* Dark gradient overlay to ensure text readability */}
+      {/* Gradient overlay */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           background:
-            "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.10) 40%, rgba(0,0,0,0.20) 70%, rgba(0,0,0,0.50) 100%)",
+            "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.08) 40%, rgba(0,0,0,0.18) 70%, rgba(0,0,0,0.55) 100%)",
           pointerEvents: "none",
         }}
       />
 
-      {/* UI layout — flex column that fills the screen */}
+      {/* Ambient particles */}
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            width: p.size,
+            height: p.size,
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            background: p.color,
+            boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
+          }}
+          animate={{
+            y: [0, p.driftY, 0],
+            x: [0, p.driftX, 0],
+            opacity: [0, 0.7, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
+      {/* Scan sweep */}
+      <motion.div
+        className="absolute left-0 right-0 pointer-events-none"
+        style={{
+          height: 1,
+          background:
+            "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)",
+        }}
+        animate={{ top: ["-2%", "102%"] }}
+        transition={{ duration: 8, repeat: Infinity, repeatDelay: 7, ease: "linear" }}
+      />
+
+      {/* UI layout */}
       <div
         style={{
           position: "relative",
@@ -238,7 +347,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
       >
         {/* Header */}
         <div style={{ textAlign: "center", width: "100%" }}>
-          <p
+          <motion.p
             style={{
               fontSize: "0.6rem",
               letterSpacing: "0.22em",
@@ -246,10 +355,13 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
               marginBottom: "10px",
               textTransform: "uppercase",
             }}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
           >
             ASCEND OS · INITIALIZATION
-          </p>
-          <h1
+          </motion.p>
+          <motion.h1
             style={{
               fontSize: "clamp(1.8rem, 7vw, 2.4rem)",
               fontWeight: 900,
@@ -262,40 +374,41 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
               margin: "0 0 8px",
               lineHeight: 1.1,
             }}
+            initial={{ opacity: 0, y: -12, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            transition={{ delay: 0.35, duration: 0.7 }}
           >
             CHOOSE YOUR PATH
-          </h1>
-          <p
+          </motion.h1>
+          <motion.p
             style={{
               fontSize: "0.82rem",
-              color: "rgba(255,255,255,0.65)",
+              color: "rgba(255,255,255,0.6)",
               letterSpacing: "0.02em",
             }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
           >
             Your system theme adapts to you
-          </p>
+          </motion.p>
         </div>
 
         {/* Cards */}
-        <div
+        <motion.div
           style={{
             display: "flex",
             gap: "14px",
             width: "100%",
             maxWidth: "420px",
           }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.7 }}
         >
-          <GenderCard
-            gender="male"
-            selected={selected === "male"}
-            onClick={() => setSelected("male")}
-          />
-          <GenderCard
-            gender="female"
-            selected={selected === "female"}
-            onClick={() => setSelected("female")}
-          />
-        </div>
+          <GenderCard gender="male" selected={selected === "male"} onClick={() => setSelected("male")} />
+          <GenderCard gender="female" selected={selected === "female"} onClick={() => setSelected("female")} />
+        </motion.div>
 
         {/* Bottom action */}
         <div style={{ width: "100%", maxWidth: "420px", textAlign: "center" }}>
@@ -303,8 +416,8 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             {selected ? (
               <motion.button
                 key="confirm"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 14, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8 }}
                 onClick={handleContinue}
                 whileTap={{ scale: 0.97 }}
@@ -346,7 +459,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
                   fontSize: "0.65rem",
                   letterSpacing: "0.18em",
                   textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.45)",
+                  color: "rgba(255,255,255,0.4)",
                 }}
               >
                 TAP A CARD TO CHOOSE YOUR PATH
