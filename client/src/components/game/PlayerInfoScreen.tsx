@@ -268,7 +268,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
             onKeyDown={handleKeyDown}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            placeholder="ENTER DESIGNATION"
+            placeholder="ENTER NAME"
             maxLength={20}
             className="w-full px-4 py-4 text-base text-center font-mono focus:outline-none"
             style={{
