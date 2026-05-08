@@ -29,19 +29,19 @@ interface IntroScreenProps {
 export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
   const [isActivating, setIsActivating] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const tagline = useTypewriter(TAGLINE, 42, 1900);
+  const tagline = useTypewriter(TAGLINE, 46, 2400);
 
   const particles = useRef(
-    Array.from({ length: 28 }, (_, i) => ({
+    Array.from({ length: 18 }, (_, i) => ({
       id: i,
       x: 4 + Math.random() * 92,
       y: 15 + Math.random() * 75,
-      size: 0.8 + Math.random() * 2.2,
-      duration: 7 + Math.random() * 9,
-      delay: Math.random() * 6,
-      driftX: (Math.random() - 0.5) * 60,
-      driftY: -(20 + Math.random() * 65),
-      opacity: 0.2 + Math.random() * 0.5,
+      size: 0.6 + Math.random() * 1.6,
+      duration: 11 + Math.random() * 12,
+      delay: Math.random() * 8,
+      driftX: (Math.random() - 0.5) * 48,
+      driftY: -(14 + Math.random() * 52),
+      opacity: 0.1 + Math.random() * 0.28,
       colorIndex: i % 4,
     }))
   ).current;
@@ -166,7 +166,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
                 : p.colorIndex === 2
                 ? "rgba(167,139,250,0.55)"
                 : "rgba(196,181,253,0.45)",
-              boxShadow: `0 0 ${p.size * 2.5}px rgba(139,92,246,0.35)`,
+              boxShadow: `0 0 ${p.size * 2}px rgba(139,92,246,0.18)`,
             }}
             animate={{
               y: [0, p.driftY, 0],
@@ -241,7 +241,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
                   ]
                 : [
                     "0 0 0px rgba(99,102,241,0)",
-                    "0 0 30px rgba(99,102,241,0.18)",
+                    "0 0 20px rgba(99,102,241,0.11)",
                     "0 0 0px rgba(99,102,241,0)",
                   ],
             }}
@@ -321,8 +321,8 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
                 background: "radial-gradient(circle, rgba(139,92,246,0.28) 0%, transparent 70%)",
                 filter: "blur(8px)",
               }}
-              animate={{ scale: [1, 1.25, 1], opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0.85, 0.5] }}
+              transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div
               style={{
@@ -335,9 +335,9 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
               }}
               animate={{
                 boxShadow: [
-                  "0 0 15px rgba(139,92,246,0.3)",
-                  "0 0 32px rgba(139,92,246,0.55)",
-                  "0 0 15px rgba(139,92,246,0.3)",
+                  "0 0 12px rgba(139,92,246,0.22)",
+                  "0 0 26px rgba(139,92,246,0.42)",
+                  "0 0 12px rgba(139,92,246,0.22)",
                 ],
               }}
               transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
@@ -361,7 +361,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
                 }}
                 initial={{ opacity: 0, y: -14, filter: "blur(4px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                transition={{ delay: 0.5 + i * 0.065, duration: 0.5, ease: "easeOut" }}
+                transition={{ delay: 0.75 + i * 0.09, duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
                 {char}
               </motion.span>
@@ -374,7 +374,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             style={{ color: "rgba(99,102,241,0.6)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.3, duration: 0.7 }}
+            transition={{ delay: 1.9, duration: 0.9 }}
           >
             AWAKENED SYSTEM PROTOCOL
           </motion.p>
@@ -384,7 +384,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             className="mb-8 min-h-[44px] text-center px-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.7, duration: 0.5 }}
+            transition={{ delay: 2.4, duration: 0.7 }}
           >
             <p className="text-sm font-mono leading-relaxed" style={{ color: "rgba(148,163,184,0.68)" }}>
               {tagline}
@@ -406,7 +406,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             className="w-full max-w-xs relative overflow-hidden"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.4, duration: 0.7 }}
+            transition={{ delay: 3.1, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
             whileHover={{ scale: 1.025 }}
             whileTap={{ scale: 0.96 }}
             data-testid="button-begin-ascension"

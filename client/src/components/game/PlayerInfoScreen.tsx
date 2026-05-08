@@ -20,16 +20,16 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
   const accentMid = `${accent}55`;
 
   const particles = useRef(
-    Array.from({ length: 22 }, (_, i) => ({
+    Array.from({ length: 14 }, (_, i) => ({
       id: i,
       x: 5 + Math.random() * 90,
       y: 10 + Math.random() * 85,
-      size: 0.8 + Math.random() * 2.2,
-      duration: 7 + Math.random() * 8,
-      delay: Math.random() * 6,
-      driftX: (Math.random() - 0.5) * 50,
-      driftY: -(18 + Math.random() * 60),
-      opacity: 0.2 + Math.random() * 0.5,
+      size: 0.6 + Math.random() * 1.6,
+      duration: 11 + Math.random() * 11,
+      delay: Math.random() * 8,
+      driftX: (Math.random() - 0.5) * 40,
+      driftY: -(12 + Math.random() * 50),
+      opacity: 0.1 + Math.random() * 0.28,
     }))
   ).current;
 
@@ -118,7 +118,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
             width: p.size, height: p.size,
             left: `${p.x}%`, top: `${p.y}%`,
             background: accent,
-            boxShadow: `0 0 ${p.size * 2.5}px ${accentMid}`,
+            boxShadow: `0 0 ${p.size * 2}px ${accentGlow}`,
           }}
           animate={{ y: [0, p.driftY, 0], x: [0, p.driftX, 0], opacity: [0, p.opacity, 0] }}
           transition={{ duration: p.duration, repeat: Infinity, delay: p.delay, ease: "easeInOut" }}
@@ -141,7 +141,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
         className="relative z-10 w-full max-w-sm px-6"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+        transition={{ duration: 0.9, delay: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
         {/* Header */}
         <div className="text-center mb-10">
@@ -152,7 +152,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.6 }}
           >
-            ASCEND OS · OPERATOR SETUP
+            ASCEND · OPERATOR SETUP
           </motion.p>
 
           {/* Terminal icon */}
@@ -160,7 +160,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
             className="mx-auto mb-6"
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.6, type: "spring", stiffness: 130 }}
+            transition={{ delay: 0.65, duration: 0.72, type: "spring", stiffness: 110, damping: 14 }}
             style={{ width: 60, height: 60 }}
           >
             <motion.div
@@ -172,9 +172,9 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
               }}
               animate={{
                 boxShadow: [
-                  `0 0 14px ${accentGlow}`,
-                  `0 0 32px ${accentMid}`,
-                  `0 0 14px ${accentGlow}`,
+                  `0 0 10px ${accentGlow}`,
+                  `0 0 22px ${accentGlow}`,
+                  `0 0 10px ${accentGlow}`,
                 ],
               }}
               transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
@@ -199,7 +199,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
             }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.65, duration: 0.55 }}
+            transition={{ delay: 0.9, duration: 0.65, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             What shall the system call you?
           </motion.h2>
@@ -209,7 +209,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
             style={{ color: "rgba(148,163,184,0.38)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.9, duration: 0.5 }}
+            transition={{ delay: 1.18, duration: 0.6 }}
           >
             Your designation will be encoded into the system.
           </motion.p>
@@ -220,7 +220,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
           className="relative mb-7"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.05, duration: 0.55 }}
+          transition={{ delay: 1.35, duration: 0.65, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
           {/* Holographic outer pulse ring when focused */}
           <AnimatePresence>
@@ -330,7 +330,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2, duration: 0.55 }}
+          transition={{ delay: 1.55, duration: 0.65 }}
         >
           <motion.button
             onClick={handleSubmit}

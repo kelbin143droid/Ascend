@@ -93,10 +93,10 @@ function GenderCard({
 
   return (
     <motion.div
-      animate={{ y: selected ? [0, -6, 0, -4, 0] : 0 }}
+      animate={{ y: selected ? [0, -7, 0, -4, 0] : 0 }}
       transition={selected
-        ? { duration: 3.8, repeat: Infinity, ease: "easeInOut" }
-        : { duration: 0.3 }
+        ? { duration: 5.5, repeat: Infinity, ease: [0.45, 0, 0.55, 1] }
+        : { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }
       }
       style={{ flex: 1, minWidth: 0 }}
     >
@@ -262,16 +262,16 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
   const [exiting, setExiting] = useState(false);
 
   const particles = useRef(
-    Array.from({ length: 18 }, (_, i) => ({
+    Array.from({ length: 12 }, (_, i) => ({
       id: i,
       x: 3 + Math.random() * 94,
       y: 10 + Math.random() * 80,
-      size: 0.8 + Math.random() * 2.2,
-      duration: 7 + Math.random() * 8,
-      delay: Math.random() * 6,
-      driftY: -(18 + Math.random() * 55),
-      driftX: (Math.random() - 0.5) * 38,
-      color: i % 2 === 0 ? "rgba(63,182,255,0.5)" : "rgba(217,70,239,0.5)",
+      size: 0.6 + Math.random() * 1.5,
+      duration: 10 + Math.random() * 11,
+      delay: Math.random() * 8,
+      driftY: -(12 + Math.random() * 44),
+      driftX: (Math.random() - 0.5) * 28,
+      color: i % 2 === 0 ? "rgba(63,182,255,0.32)" : "rgba(217,70,239,0.32)",
     }))
   ).current;
 
@@ -395,7 +395,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             }}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
+            transition={{ delay: 0.3, duration: 0.7 }}
           >
             ASCEND OS · INITIALIZATION
           </motion.p>
@@ -414,7 +414,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             }}
             initial={{ opacity: 0, y: -12, filter: "blur(6px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ delay: 0.35, duration: 0.7 }}
+            transition={{ delay: 0.52, duration: 0.78, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             CHOOSE YOUR PATH
           </motion.h1>
@@ -426,7 +426,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
+            transition={{ delay: 0.78, duration: 0.65 }}
           >
             Your system theme adapts to you
           </motion.p>
@@ -442,7 +442,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
           }}
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.75, ease: "easeOut" }}
+          transition={{ delay: 0.68, duration: 0.85, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
           <GenderCard gender="male" selected={selected === "male"} onClick={() => setSelected("male")} />
           <GenderCard gender="female" selected={selected === "female"} onClick={() => setSelected("female")} />
