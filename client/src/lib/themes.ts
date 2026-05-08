@@ -28,6 +28,32 @@ export interface AppTheme {
 
 export const themes: AppTheme[] = [
   {
+    id: "pixel_forest",
+    name: "Pixel Forest",
+    description: "Enchanted pixel-art forest — sky blue and gold with a dark woodland backdrop",
+    icon: "🌲",
+    darkOverlayOpacity: 0,
+    gridOpacity: 0,
+    colors: {
+      primary: "#38bdf8",
+      primaryGlow: "rgba(56, 189, 248, 0.60)",
+      secondary: "#f59e0b",
+      accent: "#22c55e",
+      background: "#03090f",
+      backgroundGradient:
+        "radial-gradient(ellipse at 50% 20%, rgba(10,40,60,0.70) 0%, rgba(3,9,15,1) 70%), linear-gradient(180deg, #03090f 0%, #010608 100%)",
+      surface: "rgba(5, 15, 25, 0.82)",
+      surfaceBorder: "rgba(56, 189, 248, 0.35)",
+      text: "#e8f4ff",
+      textMuted: "rgba(200, 230, 255, 0.50)",
+      ring: "#38bdf8",
+      ringGlow: "rgba(56, 189, 248, 0.50)",
+      tickMark: "rgba(56, 189, 248, 0.50)",
+      clockHand: "#38bdf8",
+      centerDot: "#f59e0b",
+    },
+  },
+  {
     id: "male",
     name: "Iron Sovereign",
     description: "Starfield grid — neon cyan command deck with green HUD accents",

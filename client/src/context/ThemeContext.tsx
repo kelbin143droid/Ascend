@@ -65,7 +65,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const explicit = safeGet("clock-theme");
     if (explicit) return explicit;
     const gender = safeGet("ascend_gender");
-    if (gender === "male" || gender === "female") return gender;
+    if (gender === "male") return "pixel_forest";
+    if (gender === "female") return "female";
     return "default";
   });
 
@@ -73,7 +74,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const explicit = safeGet("background-theme");
     if (explicit) return explicit;
     const gender = safeGet("ascend_gender");
-    if (gender === "male" || gender === "female") return gender;
+    if (gender === "male") return "pixel_forest";
+    if (gender === "female") return "female";
     return "default";
   });
 
@@ -195,7 +197,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setFontSizeState("md");
     // Restore the gender-default theme if available, otherwise "default".
     const gender = safeGet("ascend_gender");
-    const fallback = (gender === "male" || gender === "female") ? gender : "default";
+    const fallback = gender === "male" ? "pixel_forest" : gender === "female" ? "female" : "default";
     setBackgroundThemeId(fallback);
     setClockThemeId(fallback);
   };

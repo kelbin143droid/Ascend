@@ -311,8 +311,9 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   const handleGenderSelect = (gender: "male" | "female") => {
     setPlayerGender(gender);
     localStorage.setItem("ascend_gender", gender);
-    setBackgroundTheme(gender);
-    setClockTheme(gender);
+    const themeId = gender === "male" ? "pixel_forest" : gender;
+    setBackgroundTheme(themeId);
+    setClockTheme(themeId);
     if (player?.name && player.name.trim() !== "") {
       setPlayerName(player.name);
       setStep("welcome");

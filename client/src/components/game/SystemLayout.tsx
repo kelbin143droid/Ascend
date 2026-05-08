@@ -10,6 +10,7 @@ import { AppTutorialOverlay } from "./AppTutorialOverlay";
 import { StreakCelebrationOverlay } from "./StreakCelebration";
 import ironSovereignBg from "@/assets/themes/iron_sovereign_starfield.png";
 import neonEmpressBg from "@/assets/themes/neon_empress_pastel.png";
+const pixelForestBg = "/pixel-forest-bg.png";
 
 const ANIMATED_BG_KEY = "ascend_bg_animated";
 const safeGetBool = (key: string) => {
@@ -40,7 +41,8 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const hasCustomBg = !!customBackgroundImage;
   const isIronSovereign = backgroundTheme.id === "male" && !hasCustomBg;
   const isNeonEmpress = backgroundTheme.id === "female" && !hasCustomBg;
-  const usingThemeImage = isIronSovereign || isNeonEmpress;
+  const isPixelForest = backgroundTheme.id === "pixel_forest" && !hasCustomBg;
+  const usingThemeImage = isIronSovereign || isNeonEmpress || isPixelForest;
 
   const [animatedBg, setAnimatedBg] = useState<boolean>(() => safeGetBool(ANIMATED_BG_KEY));
 
@@ -107,6 +109,14 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",
                 }
+              : isPixelForest
+              ? {
+                  backgroundImage: `url(${pixelForestBg})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                  backgroundColor: "#03090f",
+                }
               : isIronSovereign
               ? {
                   backgroundImage: `url(${ironSovereignBg})`,
@@ -168,7 +178,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
       <div
         className="fixed inset-0 z-10 pointer-events-none"
-        style={{ display: (isIronSovereign || (isNeonEmpress && animatedBg)) ? "none" : undefined }}
+        style={{ display: (isIronSovereign || isPixelForest || (isNeonEmpress && animatedBg)) ? "none" : undefined }}
       >
         <div
           className="absolute inset-2 rounded-lg"
