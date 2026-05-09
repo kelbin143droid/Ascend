@@ -64,14 +64,12 @@ interface Props {
 
 const ICON_MAP = { Brain, Wind, Dumbbell, Sparkles } as const;
 
-function buildSessionList(workoutLevel: WorkoutLevel, cardioEnabled: boolean) {
+function buildSessionList(workoutLevel: WorkoutLevel) {
   const config = getPathFlowConfig(workoutLevel);
-  return config.sessionCards
-    .filter(card => !card.optional || cardioEnabled)
-    .map(card => ({
-      ...card,
-      icon: ICON_MAP[card.icon as keyof typeof ICON_MAP],
-    }));
+  return config.sessionCards.map(card => ({
+    ...card,
+    icon: ICON_MAP[card.icon as keyof typeof ICON_MAP],
+  }));
 }
 
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
@@ -612,7 +610,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     border: `2px solid ${colors.surfaceBorder}`,
                   }}
                 >
-                  {buildSessionList(currentWorkoutLevel, cardioEnabled).map((session, i) => {
+                  {buildSessionList(currentWorkoutLevel).map((session, i) => {
                     const Icon = session.icon;
                     const done = flowCompletedToday && !session.route;
                     const dest = session.route ?? `/guided-session/${session.id}`;
