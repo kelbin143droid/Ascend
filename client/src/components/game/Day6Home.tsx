@@ -534,6 +534,36 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             );
           })()}
 
+          {/* Completed sessions — above upcoming per ritual hierarchy spec */}
+          {doneCards.length > 0 && (
+            <div>
+              <p
+                className="text-[9px] uppercase tracking-[0.2em] font-bold mb-2 px-0.5"
+                style={{ color: "#22c55e99" }}
+              >
+                Done
+              </p>
+              <div className="flex flex-col gap-1">
+                {doneCards.map(card => (
+                  <div
+                    key={card.id}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+                    style={{ backgroundColor: "rgba(34,197,94,0.05)" }}
+                    data-testid={`mission-done-${card.id}`}
+                  >
+                    <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+                    <span
+                      className="text-[12px] font-medium"
+                      style={{ color: "#22c55e", opacity: 0.75 }}
+                    >
+                      {card.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Upcoming sessions */}
           {upcomingCards.length > 0 && (
             <div>
@@ -589,36 +619,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     </button>
                   );
                 })}
-              </div>
-            </div>
-          )}
-
-          {/* Completed sessions */}
-          {doneCards.length > 0 && (
-            <div>
-              <p
-                className="text-[9px] uppercase tracking-[0.2em] font-bold mb-2 px-0.5"
-                style={{ color: "#22c55e99" }}
-              >
-                Done
-              </p>
-              <div className="flex flex-col gap-1">
-                {doneCards.map(card => (
-                  <div
-                    key={card.id}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
-                    style={{ backgroundColor: "rgba(34,197,94,0.05)" }}
-                    data-testid={`mission-done-${card.id}`}
-                  >
-                    <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
-                    <span
-                      className="text-[12px] font-medium"
-                      style={{ color: "#22c55e", opacity: 0.75 }}
-                    >
-                      {card.label}
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           )}

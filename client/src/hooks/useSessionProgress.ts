@@ -1,9 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const PREFIX = "ascend_completed_ids_";
 
+function dateKey(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 function todayKey(): string {
-  return PREFIX + new Date().toISOString().split("T")[0];
+  return PREFIX + dateKey();
 }
 
 function readIds(): Set<string> {
@@ -24,6 +28,20 @@ function writeIds(ids: Set<string>): void {
 export function useSessionProgress() {
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => readIds());
 
+  // Track the active date so we can detect midnight rollovers in long-lived tabs.
+  const activeDateRef = useRef(dateKey());
+
+  const refresh = useCallback(() => {
+    const today = dateKey();
+    if (today !== activeDateRef.current) {
+      // Day has changed — clear stale state and start fresh.
+      activeDateRef.current = today;
+      setCompletedIds(new Set());
+    } else {
+      setCompletedIds(readIds());
+    }
+  }, []);
+
   const markComplete = useCallback((activityId: string) => {
     setCompletedIds(prev => {
       const next = new Set(prev);
@@ -34,9 +52,9 @@ export function useSessionProgress() {
   }, []);
 
   useEffect(() => {
-    const onFocus      = () => setCompletedIds(readIds());
+    const onFocus      = () => refresh();
     const onVisibility = () => {
-      if (document.visibilityState === "visible") setCompletedIds(readIds());
+      if (document.visibilityState === "visible") refresh();
     };
     const onComplete = (e: Event) => {
       const detail = (e as CustomEvent<{ activityId: string }>).detail;
@@ -47,17 +65,23 @@ export function useSessionProgress() {
       setCompletedIds(new Set());
     };
 
+    // Poll once per minute to catch midnight rollover even without a focus event.
+    const rolloverInterval = setInterval(() => {
+      if (dateKey() !== activeDateRef.current) refresh();
+    }, 60_000);
+
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("ascend:activity-completed", onComplete);
     window.addEventListener("ascend:sessions-reset", onReset);
     return () => {
+      clearInterval(rolloverInterval);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("ascend:activity-completed", onComplete);
       window.removeEventListener("ascend:sessions-reset", onReset);
     };
-  }, [markComplete]);
+  }, [markComplete, refresh]);
 
   return { completedIds, markComplete };
 }
