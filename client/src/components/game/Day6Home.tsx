@@ -13,8 +13,9 @@ import { DailyFlowEngine } from "./DailyFlowEngine";
 import { WorkoutBuilderSection } from "./WorkoutBuilderSection";
 import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
-import { buildWorkoutActivity, WORKOUT_PLANS } from "@/lib/workoutPlans";
+import { buildWorkoutActivity, WORKOUT_PLANS, type WorkoutLevel } from "@/lib/workoutPlans";
 import { getWorkoutLevel, getCardioPrefs } from "@/lib/workoutProgressStore";
+import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
@@ -60,14 +61,14 @@ interface Props {
   scalingData: ScalingData | null;
 }
 
-function buildSessionList(workoutLevel: string) {
-  const plan = WORKOUT_PLANS[workoutLevel as keyof typeof WORKOUT_PLANS];
-  const exerciseNames = plan ? plan.exercises.slice(0, 3).map(e => e.name).join(" · ") : "Push-ups · Plank · Cardio";
-  return [
-    { id: "phase1_meditation", label: "Calm Breathing", sublabel: "4-4-6 breathing rhythm · 2 min", icon: Brain, color: "#3b82f6", stat: "Mana" },
-    { id: "phase1_agility", label: "Agility Flow", sublabel: "Stretch circuit · 3 min", icon: Wind, color: "#22c55e", stat: "Agility" },
-    { id: "phase1_strength", label: `${plan?.label ?? "Foundation"} Workout`, sublabel: exerciseNames, icon: Dumbbell, color: plan?.color ?? "#ef4444", stat: "Strength" },
-  ];
+const ICON_MAP = { Brain, Wind, Dumbbell } as const;
+
+function buildSessionList(workoutLevel: WorkoutLevel) {
+  const config = getPathFlowConfig(workoutLevel);
+  return config.sessionCards.map(card => ({
+    ...card,
+    icon: ICON_MAP[card.icon],
+  }));
 }
 
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
@@ -120,10 +121,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     vitality: scalingData?.trainingScaling?.vitality?.tier ?? 1,
   };
   const [currentWorkoutLevel] = useState(() => getWorkoutLevel());
+  const pathConfig = getPathFlowConfig(currentWorkoutLevel);
   const activities = (() => {
     const raw = buildPhase1Activities(homeData.onboardingDay, tiers);
     const cardioPrefs = getCardioPrefs();
-    return raw.map(a => {
+    const mapped = raw.map(a => {
       if (a.id === "phase1_strength") {
         const levelActivity = buildWorkoutActivity(currentWorkoutLevel, {
           intensity: cardioPrefs.intensity,
@@ -133,6 +135,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       }
       return a;
     });
+    if (!pathConfig.includesStrength) {
+      return mapped.filter(a => a.id !== "phase1_strength");
+    }
+    return mapped;
   })();
   const totalMins = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
@@ -512,6 +518,24 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.70 : 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.22 }}
         >
+          {/* Path badge */}
+          {!isNeonEmpress && !isIronSovereign && (
+            <div className="flex items-center gap-2 mb-1.5 px-1" data-testid="path-badge">
+              <span
+                className="text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: `${pathConfig.primaryColor}18`,
+                  color: pathConfig.primaryColor,
+                  border: `1px solid ${pathConfig.primaryColor}35`,
+                }}
+              >
+                {pathConfig.displayLabel}
+              </span>
+              <span className="text-[10px] truncate" style={{ color: colors.textMuted }}>
+                {pathConfig.tagline}
+              </span>
+            </div>
+          )}
           <button
             data-testid="button-toggle-sessions"
             onClick={() => setShowSessions(v => !v)}

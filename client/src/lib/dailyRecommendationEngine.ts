@@ -11,6 +11,7 @@
  */
 
 import type { WorkoutLevel } from "./workoutPlans";
+import { getPathFlowConfig } from "./pathFlowConfig";
 import type { TrackedWorkoutSession, RecoveryFeedback } from "./workoutProgressionEngine";
 import {
   getConsistencyStreak,
@@ -206,6 +207,65 @@ export function getDailyRecommendation(profile: DailyProfile): DailyRecommendati
   };
 }
 
+// ── Path cap ──────────────────────────────────────────────────────────────────
+
+const FLOW_VARIANT_RANK: Record<FlowVariant, number> = {
+  recovery: 0,
+  light:    1,
+  full:     2,
+  push:     3,
+};
+
+const INTENSITY_FOR_VARIANT: Record<FlowVariant, IntensityLevel> = {
+  recovery: "rest",
+  light:    "light",
+  full:     "normal",
+  push:     "push",
+};
+
+const ENTRY_CAPPED_OVERRIDES = {
+  headline: "Today's focus: consistency over intensity.",
+  subtext:  "Your path is about building rhythm. A calm, sustainable session is the goal.",
+};
+
+const BEGINNER_CAPPED_OVERRIDES = {
+  headline: "Build steady momentum today.",
+  subtext:  "A full session keeps the rhythm going. No need to push beyond your current level.",
+};
+
+/**
+ * Applies a per-path ceiling to the recommendation returned by
+ * getDailyRecommendation.  Call this after the engine to prevent Foundation
+ * users from ever being sent into a push-intensity day.
+ *
+ * Pure function — no side effects.
+ */
+export function applyPathCap(
+  rec: DailyRecommendation,
+  level: WorkoutLevel,
+): DailyRecommendation {
+  const config = getPathFlowConfig(level);
+  const maxVariant = config.maxFlowVariant;
+  const currentRank = FLOW_VARIANT_RANK[rec.flowVariant];
+  const maxRank     = FLOW_VARIANT_RANK[maxVariant];
+
+  if (currentRank <= maxRank) return rec; // already within limits
+
+  const cappedVariant   = maxVariant;
+  const cappedIntensity = INTENSITY_FOR_VARIANT[maxVariant];
+  const overrides =
+    level === "entry"    ? ENTRY_CAPPED_OVERRIDES :
+    level === "beginner" ? BEGINNER_CAPPED_OVERRIDES :
+    {};
+
+  return {
+    ...rec,
+    ...overrides,
+    flowVariant: cappedVariant,
+    intensity:   cappedIntensity,
+  };
+}
+
 // ── Store assembler (the ONLY function that touches localStorage) ──────────────
 
 /**
@@ -261,4 +321,15 @@ export function assembleDailyProfile(): DailyProfile {
     fatigue,
     readiness,
   };
+}
+
+/**
+ * Convenience wrapper — assembles profile, runs the engine, then applies the
+ * path-level cap in one call.  Preferred entry point for UI components.
+ * Must only be called from a browser context (has localStorage access).
+ */
+export function getPathAwareRecommendation(): DailyRecommendation {
+  const profile = assembleDailyProfile();
+  const raw     = getDailyRecommendation(profile);
+  return applyPathCap(raw, profile.calibrationLevel);
 }
