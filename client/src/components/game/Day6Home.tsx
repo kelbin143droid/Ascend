@@ -12,10 +12,11 @@ import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
 import { WorkoutBuilderSection } from "./WorkoutBuilderSection";
 import { SystemLayout } from "./SystemLayout";
-import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
-import { buildWorkoutActivity, WORKOUT_PLANS, type WorkoutLevel } from "@/lib/workoutPlans";
+import { type CategoryTiers } from "@/lib/activityEngine";
+import { type WorkoutLevel } from "@/lib/workoutPlans";
 import { getWorkoutLevel, getCardioPrefs } from "@/lib/workoutProgressStore";
 import { getPathFlowConfig } from "@/lib/pathFlowConfig";
+import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
@@ -61,14 +62,16 @@ interface Props {
   scalingData: ScalingData | null;
 }
 
-const ICON_MAP = { Brain, Wind, Dumbbell } as const;
+const ICON_MAP = { Brain, Wind, Dumbbell, Sparkles } as const;
 
-function buildSessionList(workoutLevel: WorkoutLevel) {
+function buildSessionList(workoutLevel: WorkoutLevel, cardioEnabled: boolean) {
   const config = getPathFlowConfig(workoutLevel);
-  return config.sessionCards.map(card => ({
-    ...card,
-    icon: ICON_MAP[card.icon],
-  }));
+  return config.sessionCards
+    .filter(card => !card.optional || cardioEnabled)
+    .map(card => ({
+      ...card,
+      icon: ICON_MAP[card.icon as keyof typeof ICON_MAP],
+    }));
 }
 
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
@@ -122,24 +125,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
   const [currentWorkoutLevel] = useState(() => getWorkoutLevel());
   const pathConfig = getPathFlowConfig(currentWorkoutLevel);
-  const activities = (() => {
-    const raw = buildPhase1Activities(homeData.onboardingDay, tiers);
-    const cardioPrefs = getCardioPrefs();
-    const mapped = raw.map(a => {
-      if (a.id === "phase1_strength") {
-        const levelActivity = buildWorkoutActivity(currentWorkoutLevel, {
-          intensity: cardioPrefs.intensity,
-          position: cardioPrefs.position,
-        });
-        return { ...levelActivity, id: "phase1_strength" };
-      }
-      return a;
-    });
-    if (!pathConfig.includesStrength) {
-      return mapped.filter(a => a.id !== "phase1_strength");
-    }
-    return mapped;
-  })();
+  const cardioPrefs = getCardioPrefs();
+  const cardioEnabled = cardioPrefs.intensity !== "off";
+  const activities = buildDailyFlowActivities(currentWorkoutLevel, {
+    dayNumber: homeData.onboardingDay,
+    tiers,
+    cardioIntensity: cardioPrefs.intensity,
+    cardioPosition: cardioPrefs.position,
+  });
   const totalMins = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
   const xp = computeXPState(
@@ -518,24 +511,22 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.70 : 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.22 }}
         >
-          {/* Path badge */}
-          {!isNeonEmpress && !isIronSovereign && (
-            <div className="flex items-center gap-2 mb-1.5 px-1" data-testid="path-badge">
-              <span
-                className="text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-full"
-                style={{
-                  backgroundColor: `${pathConfig.primaryColor}18`,
-                  color: pathConfig.primaryColor,
-                  border: `1px solid ${pathConfig.primaryColor}35`,
-                }}
-              >
-                {pathConfig.displayLabel}
-              </span>
-              <span className="text-[10px] truncate" style={{ color: colors.textMuted }}>
-                {pathConfig.tagline}
-              </span>
-            </div>
-          )}
+          {/* Path badge — always visible across all themes */}
+          <div className="flex items-center gap-2 mb-1.5 px-1" data-testid="path-badge">
+            <span
+              className="text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded-full shrink-0"
+              style={{
+                backgroundColor: `${pathConfig.primaryColor}20`,
+                color: pathConfig.primaryColor,
+                border: `1px solid ${pathConfig.primaryColor}40`,
+              }}
+            >
+              {pathConfig.displayLabel}
+            </span>
+            <span className="text-[10px] truncate" style={{ color: colors.textMuted }}>
+              {pathConfig.tagline}
+            </span>
+          </div>
           <button
             data-testid="button-toggle-sessions"
             onClick={() => setShowSessions(v => !v)}
@@ -621,20 +612,21 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     border: `2px solid ${colors.surfaceBorder}`,
                   }}
                 >
-                  {buildSessionList(currentWorkoutLevel).map((session, i) => {
+                  {buildSessionList(currentWorkoutLevel, cardioEnabled).map((session, i) => {
                     const Icon = session.icon;
-                    const done = flowCompletedToday;
-                    const route = `/guided-session/${session.id}`;
+                    const done = flowCompletedToday && !session.route;
+                    const dest = session.route ?? `/guided-session/${session.id}`;
                     return (
                       <button
                         type="button"
                         key={session.id}
-                        onClick={() => navigate(route)}
+                        onClick={() => navigate(dest)}
                         data-testid={`session-item-${i}`}
                         className="w-full text-left flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 active:bg-white/10"
                         style={{
                           borderTop: i > 0 ? `1px solid ${colors.surfaceBorder}` : "none",
                           backgroundColor: done ? `${session.color}04` : "transparent",
+                          opacity: session.optional ? 0.75 : 1,
                         }}
                       >
                         <div
@@ -655,6 +647,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                             style={{ color: done ? colors.textMuted : colors.text }}
                           >
                             {session.label}
+                            {session.optional && (
+                              <span className="ml-1.5 text-[9px] font-normal opacity-60">(optional)</span>
+                            )}
                           </p>
                           <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
                             {session.sublabel}
