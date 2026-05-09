@@ -328,7 +328,10 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     if (player?.name && player.name.trim() !== "") {
       setPlayerName(player.name);
       setStep("welcome");
-      setTimeout(() => setStep("calibration"), 3800);
+      setTimeout(() => {
+        const alreadyCalibrated = !!localStorage.getItem("ascend_calibration");
+        setStep(alreadyCalibrated ? "complete" : "calibration");
+      }, 3800);
     } else {
       setStep("info");
     }
@@ -339,7 +342,8 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     updatePlayer({ name: data.name, onboardingCompleted: 1 });
     setStep("welcome");
     setTimeout(() => {
-      setStep("calibration");
+      const alreadyCalibrated = !!localStorage.getItem("ascend_calibration");
+      setStep(alreadyCalibrated ? "complete" : "calibration");
     }, 3800);
   };
 
