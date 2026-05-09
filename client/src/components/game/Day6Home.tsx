@@ -17,6 +17,7 @@ import { type WorkoutLevel } from "@/lib/workoutPlans";
 import { getWorkoutLevel, getCardioPrefs } from "@/lib/workoutProgressStore";
 import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
+import { getPathAwareRecommendation } from "@/lib/dailyRecommendationEngine";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
@@ -125,6 +126,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const pathConfig = getPathFlowConfig(currentWorkoutLevel);
   const cardioPrefs = getCardioPrefs();
   const cardioEnabled = cardioPrefs.intensity !== "off";
+  const pathRec = getPathAwareRecommendation();
   const activities = buildDailyFlowActivities(currentWorkoutLevel, {
     dayNumber: homeData.onboardingDay,
     tiers,
@@ -499,6 +501,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
             >
               {homeData.insight ?? "Consistency is becoming your baseline. Each session builds the next."}
+            </p>
+            <p
+              className="text-[10px] leading-snug mt-1.5 opacity-70"
+              style={{ color: isNeonEmpress ? fae.inkText : colors.textMuted }}
+              data-testid="path-recommendation-text"
+            >
+              {pathRec.headline} — {pathRec.subtext}
             </p>
           </div>
         </motion.div>

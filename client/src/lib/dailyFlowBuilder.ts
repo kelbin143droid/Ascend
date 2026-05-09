@@ -218,9 +218,11 @@ export function buildDailyFlowActivities(
 
   // ── Evolve / Ascend (intermediate + advanced) ───────────────────────────────
   // Replace with the level-appropriate WorkoutPlan activity.
-  // Cardio is only injected for paths that allow "push" days.
+  // Cardio is only injected for Ascend (advanced) users — Evolve is a
+  // standard 3-session flow (breathing + agility + full strength, no cardio).
+  // This keeps Evolve home cards and executed flow in perfect parity.
   const effectiveCardio: CardioIntensity =
-    config.maxFlowVariant === "push"
+    workoutLevel === "advanced"
       ? (options.cardioIntensity ?? "off")
       : "off";
 
