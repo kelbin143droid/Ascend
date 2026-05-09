@@ -327,9 +327,15 @@ export function assembleDailyProfile(): DailyProfile {
  * Convenience wrapper — assembles profile, runs the engine, then applies the
  * path-level cap in one call.  Preferred entry point for UI components.
  * Must only be called from a browser context (has localStorage access).
+ *
+ * @param levelOverride  When provided, the cap uses this level instead of
+ *   the one stored in the profile.  Pass `currentWorkoutLevel` from the
+ *   rendering component to guarantee the cap matches the displayed path.
  */
-export function getPathAwareRecommendation(): DailyRecommendation {
+export function getPathAwareRecommendation(
+  levelOverride?: WorkoutLevel,
+): DailyRecommendation {
   const profile = assembleDailyProfile();
   const raw     = getDailyRecommendation(profile);
-  return applyPathCap(raw, profile.calibrationLevel);
+  return applyPathCap(raw, levelOverride ?? profile.calibrationLevel);
 }

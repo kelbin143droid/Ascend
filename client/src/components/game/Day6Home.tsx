@@ -14,7 +14,7 @@ import { WorkoutBuilderSection } from "./WorkoutBuilderSection";
 import { SystemLayout } from "./SystemLayout";
 import { type CategoryTiers } from "@/lib/activityEngine";
 import { type WorkoutLevel } from "@/lib/workoutPlans";
-import { getWorkoutLevel, getCardioPrefs } from "@/lib/workoutProgressStore";
+import { getWorkoutLevel } from "@/lib/workoutProgressStore";
 import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
 import { getPathAwareRecommendation } from "@/lib/dailyRecommendationEngine";
@@ -128,9 +128,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
   const [currentWorkoutLevel] = useState(() => getWorkoutLevel());
   const pathConfig = getPathFlowConfig(currentWorkoutLevel);
-  const cardioPrefs = getCardioPrefs();
-  const cardioEnabled = cardioPrefs.intensity !== "off";
-  const pathRec = getPathAwareRecommendation();
+  const pathRec = getPathAwareRecommendation(currentWorkoutLevel);
   const activities = buildDailyFlowActivities(currentWorkoutLevel, {
     dayNumber: homeData.onboardingDay,
     tiers,
