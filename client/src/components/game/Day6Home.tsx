@@ -14,7 +14,7 @@ import { WorkoutBuilderSection } from "./WorkoutBuilderSection";
 import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { buildWorkoutActivity, WORKOUT_PLANS } from "@/lib/workoutPlans";
-import { getWorkoutLevel, getCardioPrefs } from "@/lib/workoutProgressStore";
+import { getWorkoutLevel, getCardioPrefs, getAllSessions } from "@/lib/workoutProgressStore";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
@@ -44,11 +44,24 @@ const QUICK_ACTION_ICONS: Record<string, React.ElementType> = {
   "Calm Breathing": Brain,
   "Light Stretch":  Wind,
   "Strength Focus": Dumbbell,
+  "Mini Workout":   Dumbbell,
   "Push Cardio":    Zap,
   "Track Progress": Shield,
   "Review Path":    Heart,
   "Hydrate":        Sparkles,
 };
+
+// CTA label adapts to recommendation intent
+const CTA_LABELS: Record<string, string> = {
+  MOMENTUM_RECOVERY:       "Restart Your Flow",
+  RECOVERY_SESSION:        "Begin Recovery Flow",
+  TRAINING_READINESS_HIGH: "Begin Daily Flow",
+  CONTINUE_MOMENTUM:       "Continue Flow",
+  BEGIN_DAILY_FLOW:        "Begin Daily Flow",
+};
+
+// Guaranteed low-friction baseline actions always shown in the middle zone
+const BASELINE_QUICK_ACTIONS = ["Calm Breathing", "Light Stretch", "Mini Workout"];
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -153,8 +166,16 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     try {
       const stored = localStorage.getItem("ascend_total_flows_completed");
       if (stored !== null) return parseInt(stored, 10) || 0;
-      // Seed existing users: if first mission is done, they have 5+ flows
-      return localStorage.getItem("ascend_first_mission_done") === "1" ? 5 : 0;
+      // No counter yet — derive from tracked workout session history as a proxy.
+      // Each completed daily flow records one strength session, so session count
+      // is a defensible lower-bound approximation of total flows completed.
+      try {
+        const sessionCount = getAllSessions().length;
+        if (sessionCount > 0) {
+          localStorage.setItem("ascend_total_flows_completed", String(sessionCount));
+        }
+        return sessionCount;
+      } catch { return 0; }
     } catch { return 0; }
   });
   const showAdvanced = completedFlowsEver >= 5;
@@ -274,10 +295,23 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const hpPct = Math.min(100, Math.max(0, (stats.hp / maxHp) * 100));
   const manaBarPct = Math.min(100, Math.max(0, (stats.mana / maxMana) * 100));
 
-  // Quick actions: always include Begin Flow first when flow is not complete
-  const quickActions = flowCompletedToday
-    ? recommendation.quickActions.filter(a => a !== "Begin Flow")
-    : ["Begin Flow", ...recommendation.quickActions.filter(a => a !== "Begin Flow")];
+  // Adaptive CTA label driven by recommendation type
+  const ctaLabel = CTA_LABELS[recommendation.type] ?? "Begin Daily Flow";
+
+  // Quick actions: merge recommendation actions with guaranteed baseline set.
+  // "Begin Flow" is always first when flow is not yet complete.
+  const quickActions = (() => {
+    const base = flowCompletedToday ? [] : ["Begin Flow"];
+    const pool = [...recommendation.quickActions, ...BASELINE_QUICK_ACTIONS];
+    const seen = new Set(base);
+    for (const a of pool) {
+      if (a !== "Begin Flow" && !seen.has(a)) {
+        seen.add(a);
+        base.push(a);
+      }
+    }
+    return base;
+  })();
 
   const snap = recommendation.progressSnapshot;
   const recoveryColor = RECOVERY_COLORS[snap.recoveryState] ?? "#3b82f6";
@@ -517,7 +551,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 <p className="text-xs leading-relaxed mb-5" style={{ color: "rgba(255,255,255,0.42)" }}>
                   {recommendation.subtext}
                 </p>
-                <IronSovereignFlowButton onStart={startFlow} />
+                <IronSovereignFlowButton onStart={startFlow} label={ctaLabel} />
               </div>
             </div>
           ) : isNeonEmpress ? (
@@ -554,7 +588,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 <p className="text-xs leading-relaxed mb-5" style={{ color: `${fae.inkText}99` }}>
                   {recommendation.subtext}
                 </p>
-                <NeonEmpressFlowButton onStart={startFlow} fae={fae} />
+                <NeonEmpressFlowButton onStart={startFlow} fae={fae} label={ctaLabel} />
               </div>
             </div>
           ) : (
@@ -603,7 +637,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 >
                   <span className="flex items-center justify-center gap-2">
                     <Play size={15} />
-                    Begin Daily Flow
+                    {ctaLabel}
                   </span>
                 </button>
               </div>
@@ -628,6 +662,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   case "Calm Breathing": navigate("/guided-session/phase1_meditation"); break;
                   case "Light Stretch":  navigate("/guided-session/phase1_agility");    break;
                   case "Strength Focus": navigate("/guided-session/phase1_strength");   break;
+                  case "Mini Workout":   navigate("/guided-session/phase1_strength");   break;
                   case "Push Cardio":    navigate("/train");                             break;
                   case "Track Progress": navigate("/profile");                           break;
                   case "Review Path":    navigate("/habits");                            break;
@@ -1109,7 +1144,7 @@ function SegmentedXpBar({
   );
 }
 
-function IronSovereignFlowButton({ onStart }: { onStart: () => void }) {
+function IronSovereignFlowButton({ onStart, label = "Begin Daily Flow" }: { onStart: () => void; label?: string }) {
   return (
     <button
       data-testid="button-begin-flow"
@@ -1142,7 +1177,7 @@ function IronSovereignFlowButton({ onStart }: { onStart: () => void }) {
           }}
         >
           <Play size={16} fill="#0a1f2c" />
-          Begin Daily Flow
+          {label}
         </span>
         <Waveform side="right" />
       </div>
@@ -1223,9 +1258,11 @@ function PastelGradientXpBar({ percent }: { percent: number }) {
 function NeonEmpressFlowButton({
   onStart,
   fae,
+  label = "Begin Daily Flow",
 }: {
   onStart: () => void;
   fae: { peach: string; peachStrong: string; skyBlue: string; inkText: string };
+  label?: string;
 }) {
   return (
     <button
@@ -1245,7 +1282,7 @@ function NeonEmpressFlowButton({
         style={{ color: fae.inkText, fontSize: 16, letterSpacing: "0.18em" }}
       >
         <Play size={16} strokeWidth={2.4} />
-        Begin Daily Flow
+        {label}
       </span>
     </button>
   );
