@@ -31,10 +31,9 @@ export type RecommendationType =
   | "CONTINUE_MOMENTUM"
   | "BEGIN_DAILY_FLOW";
 
-export type IntensityLevel   = "rest" | "light" | "normal" | "push";
-export type FlowVariant      = "recovery" | "light" | "full" | "push";
+export type IntensityLevel = "rest" | "light" | "normal" | "push";
+export type FlowVariant    = "recovery" | "light" | "full" | "push";
 export type ConsistencyTrend = "improving" | "stable" | "declining";
-export type CalibrationPath  = "Foundation" | "Build" | "Evolve" | "Ascend";
 
 export interface DailyProfile {
   workoutSessions:  TrackedWorkoutSession[];
@@ -58,22 +57,13 @@ export interface DailyRecommendation {
   type:             RecommendationType;
   headline:         string;
   subtext:          string;
-  journeyTitle:     string;
-  calibrationPath:  CalibrationPath;
   intensity:        IntensityLevel;
   flowVariant:      FlowVariant;
   quickActions:     string[];
   progressSnapshot: ProgressSnapshot;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function deriveCalibrationPath(level: WorkoutLevel): CalibrationPath {
-  if (level === "entry")        return "Foundation";
-  if (level === "beginner")     return "Build";
-  if (level === "intermediate") return "Evolve";
-  return "Ascend";
-}
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function computeConsistencyTrend(sessions: TrackedWorkoutSession[]): ConsistencyTrend {
   if (sessions.length < 6) return "stable";
@@ -93,130 +83,35 @@ function buildSnapshot(profile: DailyProfile): ProgressSnapshot {
   };
 }
 
-// ── Content tables ────────────────────────────────────────────────────────────
+// ── Engine ────────────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS: Record<RecommendationType, string[]> = {
-  MOMENTUM_RECOVERY:       ["Calm Breathing", "Light Stretch"],
-  RECOVERY_SESSION:        ["Calm Breathing", "Light Stretch", "Hydrate"],
+  MOMENTUM_RECOVERY:      ["Calm Breathing", "Light Stretch"],
+  RECOVERY_SESSION:       ["Calm Breathing", "Light Stretch", "Hydrate"],
   TRAINING_READINESS_HIGH: ["Begin Flow", "Strength Focus", "Push Cardio"],
-  CONTINUE_MOMENTUM:       ["Begin Flow", "Track Progress"],
-  BEGIN_DAILY_FLOW:        ["Begin Flow", "Review Path"],
+  CONTINUE_MOMENTUM:      ["Begin Flow", "Track Progress"],
+  BEGIN_DAILY_FLOW:       ["Begin Flow", "Review Path"],
 };
 
-// Journey title — the dominant heading on Zone 1, calibration-path-aware
-const JOURNEY_TITLES: Record<CalibrationPath, Record<RecommendationType, string>> = {
-  Foundation: {
-    BEGIN_DAILY_FLOW:        "Foundation Flow",
-    CONTINUE_MOMENTUM:       "Foundation Progress",
-    MOMENTUM_RECOVERY:       "Foundation Reset",
-    RECOVERY_SESSION:        "Gentle Recovery",
-    TRAINING_READINESS_HIGH: "Foundation Push",
-  },
-  Build: {
-    BEGIN_DAILY_FLOW:        "Build Routine",
-    CONTINUE_MOMENTUM:       "Build Momentum",
-    MOMENTUM_RECOVERY:       "Momentum Reset",
-    RECOVERY_SESSION:        "Recovery Day",
-    TRAINING_READINESS_HIGH: "Build Push",
-  },
-  Evolve: {
-    BEGIN_DAILY_FLOW:        "Evolve Flow",
-    CONTINUE_MOMENTUM:       "Evolve Momentum",
-    MOMENTUM_RECOVERY:       "Evolve Reset",
-    RECOVERY_SESSION:        "Evolve Recovery",
-    TRAINING_READINESS_HIGH: "Evolve Peak",
-  },
-  Ascend: {
-    BEGIN_DAILY_FLOW:        "Ascend Protocol",
-    CONTINUE_MOMENTUM:       "Ascend Protocol",
-    MOMENTUM_RECOVERY:       "System Reset",
-    RECOVERY_SESSION:        "Ascend Recovery",
-    TRAINING_READINESS_HIGH: "Peak Session",
-  },
+const HEADLINES: Record<RecommendationType, string> = {
+  MOMENTUM_RECOVERY:      "Welcome back. Let's ease in.",
+  RECOVERY_SESSION:       "Rest is progress. Light day ahead.",
+  TRAINING_READINESS_HIGH: "You're primed. Push today.",
+  CONTINUE_MOMENTUM:      "Keep the streak alive.",
+  BEGIN_DAILY_FLOW:       "Begin your daily flow.",
 };
 
-// Headline — short secondary line shown below the journey title
-const PATH_HEADLINES: Record<CalibrationPath, Record<RecommendationType, string>> = {
-  Foundation: {
-    BEGIN_DAILY_FLOW:        "Begin your foundation.",
-    CONTINUE_MOMENTUM:       "Keep building.",
-    MOMENTUM_RECOVERY:       "Welcome back. Ease in.",
-    RECOVERY_SESSION:        "Rest is progress.",
-    TRAINING_READINESS_HIGH: "Energy is up. Light push.",
-  },
-  Build: {
-    BEGIN_DAILY_FLOW:        "Begin your daily flow.",
-    CONTINUE_MOMENTUM:       "Keep the streak alive.",
-    MOMENTUM_RECOVERY:       "Welcome back. Ease in.",
-    RECOVERY_SESSION:        "Rest is progress. Light day.",
-    TRAINING_READINESS_HIGH: "You're primed. Push today.",
-  },
-  Evolve: {
-    BEGIN_DAILY_FLOW:        "Your Evolve flow is ready.",
-    CONTINUE_MOMENTUM:       "Momentum is building.",
-    MOMENTUM_RECOVERY:       "Welcome back. Re-engage.",
-    RECOVERY_SESSION:        "Recovery day. Restore.",
-    TRAINING_READINESS_HIGH: "Full readiness. Push hard.",
-  },
-  Ascend: {
-    BEGIN_DAILY_FLOW:        "Run the protocol.",
-    CONTINUE_MOMENTUM:       "Protocol active. Continue.",
-    MOMENTUM_RECOVERY:       "System reset. Re-engage.",
-    RECOVERY_SESSION:        "Strategic recovery.",
-    TRAINING_READINESS_HIGH: "Peak window open.",
-  },
-};
-
-// Subtext — 1–2 sentences, emotionally clear, path and state aware
-const PATH_SUBTEXTS: Record<CalibrationPath, Record<RecommendationType, string>> = {
-  Foundation: {
-    BEGIN_DAILY_FLOW:
-      "Low friction, early wins. One session builds the next.",
-    CONTINUE_MOMENTUM:
-      "Consistency is the skill. Showing up today is the achievement.",
-    MOMENTUM_RECOVERY:
-      "Starting again is the win. This flow is gentle by design.",
-    RECOVERY_SESSION:
-      "Rest is part of building. Today's flow protects your progress.",
-    TRAINING_READINESS_HIGH:
-      "Energy is up. A light push today builds real Foundation momentum.",
-  },
-  Build: {
-    BEGIN_DAILY_FLOW:
-      "Structure builds discipline. Today's session starts the pattern.",
-    CONTINUE_MOMENTUM:
-      "Balanced challenge. Consistent structure. Keep the momentum alive.",
-    MOMENTUM_RECOVERY:
-      "Welcome back. A moderate re-entry re-activates your momentum.",
-    RECOVERY_SESSION:
-      "Recovery is progress. Breathing and movement restore more than rest.",
-    TRAINING_READINESS_HIGH:
-      "Energy is high, consistency is building. This is the window — push today.",
-  },
-  Evolve: {
-    BEGIN_DAILY_FLOW:
-      "Structured progress. Each session builds toward the next level.",
-    CONTINUE_MOMENTUM:
-      "Each session deepens the system. Consistency compounds.",
-    MOMENTUM_RECOVERY:
-      "Re-entry is a skill. Your system remembers — ease back in.",
-    RECOVERY_SESSION:
-      "Strategic recovery prevents breakdown. Today you restore and rebuild.",
-    TRAINING_READINESS_HIGH:
-      "High readiness detected. Your Evolve protocol runs at full intensity.",
-  },
-  Ascend: {
-    BEGIN_DAILY_FLOW:
-      "Mastery begins with the daily protocol. Run it.",
-    CONTINUE_MOMENTUM:
-      "Optimization pacing. Precision effort. The system compounds.",
-    MOMENTUM_RECOVERY:
-      "Even systems need resets. A measured re-entry sustains your baseline.",
-    RECOVERY_SESSION:
-      "Optimal performance requires strategic recovery. Today you restore.",
-    TRAINING_READINESS_HIGH:
-      "Peak readiness. Your Ascend protocol runs at maximum capacity today.",
-  },
+const SUBTEXTS: Record<RecommendationType, string> = {
+  MOMENTUM_RECOVERY:
+    "It's been a few days. A light session re-activates momentum without risking burnout.",
+  RECOVERY_SESSION:
+    "Your recent sessions signal fatigue. Breathing and light movement restore more than rest alone.",
+  TRAINING_READINESS_HIGH:
+    "Energy is high, consistency is building. This is the window — give it your full effort.",
+  CONTINUE_MOMENTUM:
+    "Consistency compounds. Show up today and the habit grows stronger.",
+  BEGIN_DAILY_FLOW:
+    "Every system starts with a first step. Your flow is ready when you are.",
 };
 
 const INTENSITIES: Record<RecommendationType, IntensityLevel> = {
@@ -235,53 +130,80 @@ const FLOW_VARIANTS: Record<RecommendationType, FlowVariant> = {
   BEGIN_DAILY_FLOW:        "full",
 };
 
-// ── Engine ────────────────────────────────────────────────────────────────────
-
 /**
  * Core decision function — fully pure.
  * Evaluates signals in strict priority order and returns a recommendation.
  */
 export function getDailyRecommendation(profile: DailyProfile): DailyRecommendation {
-  const snapshot        = buildSnapshot(profile);
-  const hasHistory      = profile.workoutSessions.length > 0;
-  const calibrationPath = deriveCalibrationPath(profile.calibrationLevel);
+  const snapshot = buildSnapshot(profile);
+  const hasHistory = profile.workoutSessions.length > 0;
 
-  function makeRec(type: RecommendationType): DailyRecommendation {
+  // 1 — Missed 3+ days → gentle re-entry regardless of anything else
+  if (profile.missedDays >= 3) {
     return {
-      type,
-      headline:         PATH_HEADLINES[calibrationPath][type],
-      subtext:          PATH_SUBTEXTS[calibrationPath][type],
-      journeyTitle:     JOURNEY_TITLES[calibrationPath][type],
-      calibrationPath,
-      intensity:        INTENSITIES[type],
-      flowVariant:      FLOW_VARIANTS[type],
-      quickActions:     QUICK_ACTIONS[type],
+      type:             "MOMENTUM_RECOVERY",
+      headline:         HEADLINES.MOMENTUM_RECOVERY,
+      subtext:          SUBTEXTS.MOMENTUM_RECOVERY,
+      intensity:        INTENSITIES.MOMENTUM_RECOVERY,
+      flowVariant:      FLOW_VARIANTS.MOMENTUM_RECOVERY,
+      quickActions:     QUICK_ACTIONS.MOMENTUM_RECOVERY,
       progressSnapshot: snapshot,
     };
   }
 
-  // 1 — Missed 3+ days → gentle re-entry regardless of anything else
-  if (profile.missedDays >= 3) return makeRec("MOMENTUM_RECOVERY");
-
   // 2 — Fatigue override → recovery session
-  if (profile.fatigue === "fatigued") return makeRec("RECOVERY_SESSION");
+  if (profile.fatigue === "fatigued") {
+    return {
+      type:             "RECOVERY_SESSION",
+      headline:         HEADLINES.RECOVERY_SESSION,
+      subtext:          SUBTEXTS.RECOVERY_SESSION,
+      intensity:        INTENSITIES.RECOVERY_SESSION,
+      flowVariant:      FLOW_VARIANTS.RECOVERY_SESSION,
+      quickActions:     QUICK_ACTIONS.RECOVERY_SESSION,
+      progressSnapshot: snapshot,
+    };
+  }
 
   // 3 — High readiness + energized + streak ≥ 3 → push
   if (
     profile.readiness >= 75 &&
-    profile.fatigue   === "energized" &&
-    profile.streak    >= 3
+    profile.fatigue === "energized" &&
+    profile.streak >= 3
   ) {
-    return makeRec("TRAINING_READINESS_HIGH");
+    return {
+      type:             "TRAINING_READINESS_HIGH",
+      headline:         HEADLINES.TRAINING_READINESS_HIGH,
+      subtext:          SUBTEXTS.TRAINING_READINESS_HIGH,
+      intensity:        INTENSITIES.TRAINING_READINESS_HIGH,
+      flowVariant:      FLOW_VARIANTS.TRAINING_READINESS_HIGH,
+      quickActions:     QUICK_ACTIONS.TRAINING_READINESS_HIGH,
+      progressSnapshot: snapshot,
+    };
   }
 
-  // 4 — Streak 1–2, normal fatigue → momentum (in motion but not a push day)
+  // 4 — Streak 1–2, normal fatigue (in motion but not a push day) → momentum
   if (hasHistory && profile.streak >= 1 && profile.streak <= 2 && profile.fatigue === "normal") {
-    return makeRec("CONTINUE_MOMENTUM");
+    return {
+      type:             "CONTINUE_MOMENTUM",
+      headline:         HEADLINES.CONTINUE_MOMENTUM,
+      subtext:          SUBTEXTS.CONTINUE_MOMENTUM,
+      intensity:        INTENSITIES.CONTINUE_MOMENTUM,
+      flowVariant:      FLOW_VARIANTS.CONTINUE_MOMENTUM,
+      quickActions:     QUICK_ACTIONS.CONTINUE_MOMENTUM,
+      progressSnapshot: snapshot,
+    };
   }
 
   // 5 + default — No history / first day / catch-all
-  return makeRec("BEGIN_DAILY_FLOW");
+  return {
+    type:             "BEGIN_DAILY_FLOW",
+    headline:         HEADLINES.BEGIN_DAILY_FLOW,
+    subtext:          SUBTEXTS.BEGIN_DAILY_FLOW,
+    intensity:        INTENSITIES.BEGIN_DAILY_FLOW,
+    flowVariant:      FLOW_VARIANTS.BEGIN_DAILY_FLOW,
+    quickActions:     QUICK_ACTIONS.BEGIN_DAILY_FLOW,
+    progressSnapshot: snapshot,
+  };
 }
 
 // ── Store assembler (the ONLY function that touches localStorage) ──────────────
@@ -291,11 +213,11 @@ export function getDailyRecommendation(profile: DailyProfile): DailyRecommendati
  * Must only be called from a browser context (has localStorage access).
  */
 export function assembleDailyProfile(): DailyProfile {
-  const sessions         = getAllSessions();
+  const sessions        = getAllSessions();
   const breathingProfile = getBreathingProfile();
-  const streak           = getConsistencyStreak(sessions);
-  const fatigue          = getFatigueStatus(sessions);
-  const readiness        = getReadinessPercent(sessions);
+  const streak          = getConsistencyStreak(sessions);
+  const fatigue         = getFatigueStatus(sessions);
+  const readiness       = getReadinessPercent(sessions);
 
   // Calibration level: prefer the calibrated level stored by CalibrationFlow,
   // otherwise fall back to whatever the workout store has.
@@ -318,9 +240,9 @@ export function assembleDailyProfile(): DailyProfile {
   let missedDays = 0;
   if (lastFlowDate) {
     try {
-      const last     = new Date(lastFlowDate);
-      const today    = new Date();
-      const diffMs   = today.setHours(0, 0, 0, 0) - last.setHours(0, 0, 0, 0);
+      const last  = new Date(lastFlowDate);
+      const today = new Date();
+      const diffMs = today.setHours(0,0,0,0) - last.setHours(0,0,0,0);
       const diffDays = Math.floor(diffMs / 86_400_000);
       // diffDays === 0 means completed today, 1 means yesterday, etc.
       if (!isNaN(diffDays)) {

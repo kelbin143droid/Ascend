@@ -1,6 +1,5 @@
 import { getBreathingProfile } from "./breathingStore";
 import { BREATHING_PHASES } from "./breathingProgressionSystem";
-import type { FlowVariant } from "./dailyRecommendationEngine";
 
 export type StepType = "instruction" | "timer" | "rep" | "breath" | "completion" | "check";
 
@@ -117,13 +116,8 @@ export interface CategoryTiers {
 export function buildPhase1Activities(
   _dayNumber: number,
   tiers?: CategoryTiers,
-  flowVariant?: FlowVariant,
 ): ActivityDefinition[] {
-  // For "push", run strength one tier above current (capped at 5)
-  const rawStrengthTier = tiers?.strength ?? 1;
-  const strengthTier = flowVariant === "push"
-    ? Math.min(rawStrengthTier + 1, 5)
-    : rawStrengthTier;
+  const strengthTier = tiers?.strength ?? 1;
   const agilityTier = tiers?.agility ?? 1;
   const meditationTier = tiers?.meditation ?? 1;
   const vitalityTier = tiers?.vitality ?? 1;
@@ -489,103 +483,7 @@ export function buildPhase1Activities(
     },
   ];
 
-  // ── Recovery-mode gentle stretch (~2 min, completion-focused, no XP pressure) ──
-  // 5 holds × 20 s each = 100 s of movement + intro + completion ≈ 2 min.
-  const gentleStretchActivity: ActivityDefinition = {
-    id:           "phase1_recovery_stretch",
-    activityName: "Gentle Stretch",
-    category:     "agility",
-    stat:         "agility",
-    duration:     120, // ~2 min: intro + 5 × 20s holds + toe touch + completion
-    xpReward:     0,
-    color:        CATEGORY_COLORS.agility,
-    tier:         1,
-    xpMultiplier: 1.0,
-    autoflow:     true,
-    steps: [
-      {
-        id:          "recovery_intro",
-        type:        "instruction",
-        label:       "Get Ready",
-        instruction: "Slow movements only. Let your body wake up gently. Five easy stretches — no rush, no pressure.",
-        voiceText:   "Gentle stretch. Five easy holds. Take it easy.",
-      },
-      {
-        id:              "neck_rolls",
-        type:            "timer",
-        label:           "Neck Rolls",
-        instruction:     "Drop your chin to your chest, then slowly roll your head in a half-circle — left side, then right. 20 seconds.",
-        durationSeconds: 20,
-        voiceText:       "Neck rolls. Slow and easy. 20 seconds.",
-        videoSrc:        "/videos/shoulder-roll-forward.mp4",
-        loop:            true,
-      },
-      {
-        id:              "shoulder_rolls_gentle",
-        type:            "timer",
-        label:           "Shoulder Rolls",
-        instruction:     "Roll both shoulders backward slowly — open the chest and release any tension. 20 seconds.",
-        durationSeconds: 20,
-        voiceText:       "Shoulder rolls. Open the chest. 20 seconds.",
-        videoSrc:        "/videos/shoulder-roll-backward.mp4",
-        loop:            true,
-      },
-      {
-        id:              "side_stretch_left",
-        type:            "timer",
-        label:           "Side Stretch — Left",
-        instruction:     "Raise your left arm overhead and lean gently to the right. Feel the stretch along your side. 20 seconds.",
-        durationSeconds: 20,
-        voiceText:       "Left side stretch. Hold gently. 20 seconds.",
-        videoSrc:        "/videos/cross_arm_left.mp4",
-        loop:            false,
-      },
-      {
-        id:              "side_stretch_right",
-        type:            "timer",
-        label:           "Side Stretch — Right",
-        instruction:     "Switch arms — raise your right arm overhead and lean gently to the left. 20 seconds.",
-        durationSeconds: 20,
-        voiceText:       "Right side stretch. Hold gently. 20 seconds.",
-        videoSrc:        "/videos/cross_arm_right.mp4",
-        loop:            false,
-      },
-      {
-        id:              "toe_touch_gentle",
-        type:            "timer",
-        label:           "Toe Touch Hold",
-        instruction:     "Reach gently toward your toes. Bend your knees slightly if needed — no bouncing, no strain. 20 seconds.",
-        durationSeconds: 20,
-        voiceText:       "Gentle toe touch. No strain. 20 seconds.",
-        videoSrc:        "/videos/toe_hold.mp4",
-        loop:            false,
-      },
-      {
-        id:          "recovery_done",
-        type:        "completion",
-        label:       "Gentle Stretch Complete",
-        instruction: "Activity complete.\nRest is part of the process.",
-        voiceText:   "Gentle stretch complete. Well done.",
-      },
-    ],
-  };
-
-  // ── Variant routing ───────────────────────────────────────────────────────
-  if (flowVariant === "recovery") {
-    // Breathing + gentle stretch only (~5 min). Strength skipped.
-    const meditationActivity = allActivities.find(a => a.id === "phase1_meditation");
-    return [meditationActivity, gentleStretchActivity].filter(Boolean) as ActivityDefinition[];
-  }
-
-  if (flowVariant === "light") {
-    // Breathing + Agility only (~10 min). Strength skipped.
-    return ["phase1_meditation", "phase1_agility"]
-      .map(id => allActivities.find(a => a.id === id))
-      .filter(Boolean) as ActivityDefinition[];
-  }
-
-  // "full" | "push" | undefined — full set (push already uses boosted tier above)
   return DAILY_FLOW_ORDER
     .map(id => allActivities.find(a => a.id === id))
-    .filter(Boolean) as ActivityDefinition[];
+    .filter((a) => !!a) as ActivityDefinition[];
 }

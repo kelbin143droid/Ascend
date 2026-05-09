@@ -6,7 +6,6 @@ import { GuidedActivityEngine } from "./GuidedActivityEngine";
 import { BreathingFeedbackModal } from "./BreathingFeedbackModal";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition } from "@/lib/activityEngine";
-import type { FlowVariant } from "@/lib/dailyRecommendationEngine";
 import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Dumbbell, ChevronRight } from "lucide-react";
 import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
@@ -20,7 +19,6 @@ interface FeedbackState {
 
 interface DailyFlowEngineProps {
   activities: ActivityDefinition[];
-  flowVariant?: FlowVariant;
   playerId: string;
   onComplete: (completedIds: string[], bonusAwarded: boolean) => void;
   onCancel: () => void;
@@ -33,22 +31,13 @@ const FEEDBACK_OPTIONS: { value: FeedbackValue; label: string; emoji: string }[]
   { value: "challenging", label: "Hard",       emoji: "💪" },
 ];
 
-const FLOW_VARIANT_LABELS: Record<string, string> = {
-  recovery: "Recovery Flow",
-  light:    "Light Flow",
-  push:     "Push Session",
-  full:     "Daily Training Flow",
-};
-
 export function DailyFlowEngine({
   activities,
-  flowVariant,
   playerId,
   onComplete,
   onCancel,
   isOnboardingComplete,
 }: DailyFlowEngineProps) {
-  const flowTitle = FLOW_VARIANT_LABELS[flowVariant ?? "full"] ?? "Daily Training Flow";
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
@@ -462,7 +451,7 @@ export function DailyFlowEngine({
       >
         <div>
           <div className="text-sm font-bold" style={{ color: colors.text }}>
-            {flowTitle}
+            Daily Training Flow
           </div>
           <div className="text-xs" style={{ color: colors.textMuted }}>
             Step {currentActivityIdx + 1} of {activities.length}
