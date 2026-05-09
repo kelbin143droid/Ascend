@@ -330,8 +330,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               <PastelGradientXpBar percent={xp.percent} />
             ) : (
               <div
-                className="w-full h-1.5 rounded-full overflow-hidden"
-                style={{ backgroundColor: `${colors.primary}35` }}
+                className="w-full h-2.5 rounded-full overflow-hidden"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.18)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                }}
                 data-testid="xp-bar-track"
               >
                 <motion.div
@@ -525,8 +528,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     boxShadow: "0 1px 0 rgba(255,255,255,0.6) inset",
                   }
                 : {
-                    backgroundColor: `${colors.surface || colors.background}cc`,
-                    border: `1px solid ${colors.surfaceBorder}`,
+                    backgroundColor: `${colors.surface || colors.background}ee`,
+                    border: `2px solid ${colors.surfaceBorder}`,
                   }
             }
           >
@@ -590,8 +593,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 <div
                   className="mt-1 rounded-xl overflow-hidden"
                   style={{
-                    backgroundColor: `${colors.surface || colors.background}bb`,
-                    border: `1px solid ${colors.surfaceBorder}`,
+                    backgroundColor: `${colors.surface || colors.background}ee`,
+                    border: `2px solid ${colors.surfaceBorder}`,
                   }}
                 >
                   {buildSessionList(currentWorkoutLevel).map((session, i) => {
@@ -606,7 +609,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                         data-testid={`session-item-${i}`}
                         className="w-full text-left flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 active:bg-white/10"
                         style={{
-                          borderTop: i > 0 ? `1px solid ${colors.surfaceBorder}50` : "none",
+                          borderTop: i > 0 ? `1px solid ${colors.surfaceBorder}` : "none",
                           backgroundColor: done ? `${session.color}04` : "transparent",
                         }}
                       >
@@ -650,7 +653,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     onClick={() => navigate("/sleep-settings")}
                     data-testid="link-sleep-settings"
                     className="w-full text-left flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 active:bg-white/10"
-                    style={{ borderTop: `1px solid ${colors.surfaceBorder}50` }}
+                    style={{ borderTop: `1px solid ${colors.surfaceBorder}` }}
                   >
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -708,8 +711,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                         `0 0 0 1px rgba(255,255,255,0.5) inset, 0 0 18px ${fae.peachStrong}40`,
                     }
                   : {
-                      backgroundColor: `${colors.surface || colors.background}cc`,
-                      border: `1px solid ${colors.surfaceBorder}`,
+                      backgroundColor: `${colors.surface || colors.background}ee`,
+                      border: `2px solid ${colors.surfaceBorder}`,
                     }
             }
             data-testid="stat-bars-card"
@@ -731,15 +734,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 </span>
               </div>
               <div
-                className={
-                  isNeonEmpress
-                    ? "w-full h-3 rounded-full overflow-hidden"
-                    : "w-full h-2 rounded-full overflow-hidden"
-                }
+                className="w-full h-3 rounded-full overflow-hidden"
                 style={{
                   backgroundColor: isNeonEmpress
-                    ? "rgba(255,255,255,0.45)"
-                    : `${hpColor}38`,
+                    ? "rgba(255,255,255,0.55)"
+                    : "rgba(255,255,255,0.18)",
+                  border: isNeonEmpress ? "none" : "1px solid rgba(255,255,255,0.12)",
                 }}
                 data-testid="hp-bar-track"
               >
@@ -778,8 +778,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 </span>
               </div>
               <div
-                className="w-full h-2 rounded-full overflow-hidden"
-                style={{ backgroundColor: `${manaColor}38` }}
+                className="w-full h-3 rounded-full overflow-hidden"
+                style={{
+                  backgroundColor: isNeonEmpress
+                    ? "rgba(255,255,255,0.55)"
+                    : "rgba(255,255,255,0.18)",
+                  border: isNeonEmpress ? "none" : "1px solid rgba(255,255,255,0.12)",
+                }}
                 data-testid="mana-bar-track"
               >
                 <motion.div
