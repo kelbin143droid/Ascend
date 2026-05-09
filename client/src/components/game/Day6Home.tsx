@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, Sparkles, X, Palette, Flame } from "lucide-react";
+import { Play, Brain, Wind, Dumbbell, Heart, ChevronDown, ChevronUp, CheckCircle2, Zap, Shield, Sparkles, X, Palette } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import {
   shouldPromptAutoSwitch,
@@ -19,51 +19,6 @@ import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getMana
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
 import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
-import { assembleDailyProfile, getDailyRecommendation } from "@/lib/dailyRecommendationEngine";
-import type { DailyRecommendation } from "@/lib/dailyRecommendationEngine";
-import { DEFAULT_PROFILE } from "@/lib/breathingProgressionSystem";
-
-// ── Display maps ───────────────────────────────────────────────────────────────
-
-const REC_TYPE_LABELS: Record<string, string> = {
-  MOMENTUM_RECOVERY:       "Welcome Back",
-  RECOVERY_SESSION:        "Recovery Day",
-  TRAINING_READINESS_HIGH: "Peak Readiness",
-  CONTINUE_MOMENTUM:       "Momentum Active",
-  BEGIN_DAILY_FLOW:        "Daily Mission",
-};
-
-const RECOVERY_COLORS: Record<string, string> = {
-  energized: "#22c55e",
-  normal:    "#3b82f6",
-  fatigued:  "#f59e0b",
-};
-
-const QUICK_ACTION_ICONS: Record<string, React.ElementType> = {
-  "Begin Flow":     Play,
-  "Calm Breathing": Brain,
-  "Light Stretch":  Wind,
-  "Strength Focus": Dumbbell,
-  "Mini Workout":   Dumbbell,
-  "Push Cardio":    Zap,
-  "Track Progress": Shield,
-  "Review Path":    Heart,
-  "Hydrate":        Sparkles,
-};
-
-// CTA label adapts to recommendation intent
-const CTA_LABELS: Record<string, string> = {
-  MOMENTUM_RECOVERY:       "Restart Your Flow",
-  RECOVERY_SESSION:        "Begin Recovery Flow",
-  TRAINING_READINESS_HIGH: "Begin Daily Flow",
-  CONTINUE_MOMENTUM:       "Continue Flow",
-  BEGIN_DAILY_FLOW:        "Begin Daily Flow",
-};
-
-// Guaranteed low-friction baseline actions always shown in the middle zone
-const BASELINE_QUICK_ACTIONS = ["Calm Breathing", "Light Stretch", "Mini Workout"];
-
-// ── Interfaces ────────────────────────────────────────────────────────────────
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -115,14 +70,12 @@ function buildSessionList(workoutLevel: string) {
   ];
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
-
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const isIronSovereign = backgroundTheme.id === "male";
   const isNeonEmpress = backgroundTheme.id === "female";
-
+  // Iron Sovereign HUD palette — locked cyan/green/purple regardless of HP/MP %.
   const isHud = {
     cyan: "#22d3ee",
     cyanGlow: "rgba(34,211,238,0.55)",
@@ -131,7 +84,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     purple: "#a855f7",
     purpleGlow: "rgba(168,85,247,0.45)",
   };
-
+  // Neon Empress pastel palette — locked tones lifted from the reference HUD.
   const fae = {
     peach: "#fbcaad",
     peachStrong: "#f4845f",
@@ -146,7 +99,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     gold: "#c89530",
     goldGlow: "rgba(200,149,48,0.55)",
   };
-
   const [, navigate] = useLocation();
   const [flowActive, setFlowActive] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
@@ -160,49 +112,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [isFirstMission, setIsFirstMission] = useState(
     () => localStorage.getItem("ascend_first_mission_done") !== "1"
   );
-
-  // Progressive disclosure: show advanced sections once 5+ flows are completed.
-  // Authoritative source: `ascend_total_flows_completed`, incremented in handleFlowComplete.
-  //
-  // Legacy migration: for users without the counter we seed to 1 if
-  // `ascend_first_mission_done=1` — the only reliable binary signal that at least
-  // one daily flow was done.  We intentionally do NOT use getAllSessions() here:
-  // `recordTrackedSession` is called only by the Workout Builder (TrainPage), not
-  // by daily flow completions in Day6Home, so session count ≠ flow count.
-  // Seeding to 1 is the strictly correct lower bound; users need 4 more completions.
-  const [completedFlowsEver, setCompletedFlowsEver] = useState(() => {
-    try {
-      const stored = localStorage.getItem("ascend_total_flows_completed");
-      if (stored !== null) return parseInt(stored, 10) || 0;
-      const seed = localStorage.getItem("ascend_first_mission_done") === "1" ? 1 : 0;
-      if (seed > 0) {
-        try { localStorage.setItem("ascend_total_flows_completed", "1"); } catch { /* ignore */ }
-      }
-      return seed;
-    } catch { return 0; }
-  });
-  const showAdvanced = completedFlowsEver >= 5;
-
-  // Daily recommendation — memoized by date so it doesn't recompute on every render
-  const recommendation: DailyRecommendation = useMemo(() => {
-    try {
-      return getDailyRecommendation(assembleDailyProfile());
-    } catch {
-      return getDailyRecommendation({
-        workoutSessions:  [],
-        breathingProfile: { ...DEFAULT_PROFILE },
-        streak:           0,
-        missedDays:       0,
-        lastFlowDate:     null,
-        calibrationLevel: "beginner",
-        fatigue:          "normal",
-        readiness:        0,
-      });
-    }
-  // Re-derive on day rollover AND when the user completes a flow mid-day so the
-  // top card immediately reflects the new state (e.g. switches to "flow done" card).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [today, flowCompletedToday]);
 
   const tiers: CategoryTiers = {
     strength: scalingData?.trainingScaling?.strength?.tier ?? 1,
@@ -235,11 +144,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   );
 
   const refreshStats = useCallback(() => setStats(getStats()), []);
+
   const currentLevel = playerData?.level ?? 1;
   const maxHp = getMaxHP(currentLevel);
   const maxMana = getMaxMana(currentLevel);
 
-  useEffect(() => { initLevelBaseline(currentLevel); }, [currentLevel]);
+  useEffect(() => {
+    initLevelBaseline(currentLevel);
+  }, [currentLevel]);
 
   useEffect(() => {
     const handler = () => setStats(getStats());
@@ -275,18 +187,16 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       setFlowCompletedDate(dateStr);
       localStorage.setItem("ascend_first_mission_done", "1");
       setIsFirstMission(false);
-      // Increment total flows counter for progressive disclosure
-      const newCount = completedFlowsEver + 1;
-      setCompletedFlowsEver(newCount);
-      try { localStorage.setItem("ascend_total_flows_completed", String(newCount)); } catch { /* ignore */ }
     }
     setFlowActive(false);
     refreshStats();
   };
 
-  const startFlow = () => { clearFlow(); clearSession(); setFlowActive(true); };
-
   const displayLevel = playerData?.level ?? 2;
+  // Themed HP/MP colors:
+  //  - Iron Sovereign: locked cyan-HUD green / purple
+  //  - Neon Empress:   locked pastel green / royal purple
+  //  - Other themes:   dynamic threshold-aware palette (hp drops to red, etc.)
   const hpColor = isIronSovereign
     ? isHud.green
     : isNeonEmpress
@@ -300,26 +210,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const hpPct = Math.min(100, Math.max(0, (stats.hp / maxHp) * 100));
   const manaBarPct = Math.min(100, Math.max(0, (stats.mana / maxMana) * 100));
 
-  // Adaptive CTA label driven by recommendation type
-  const ctaLabel = CTA_LABELS[recommendation.type] ?? "Begin Daily Flow";
-
-  // Quick actions: merge recommendation actions with guaranteed baseline set.
-  // "Begin Flow" is always first when flow is not yet complete.
-  const quickActions = (() => {
-    const base = flowCompletedToday ? [] : ["Begin Flow"];
-    const pool = [...recommendation.quickActions, ...BASELINE_QUICK_ACTIONS];
-    const seen = new Set(base);
-    for (const a of pool) {
-      if (a !== "Begin Flow" && !seen.has(a)) {
-        seen.add(a);
-        base.push(a);
-      }
-    }
-    return base;
-  })();
-
-  const snap = recommendation.progressSnapshot;
-  const recoveryColor = RECOVERY_COLORS[snap.recoveryState] ?? "#3b82f6";
+  const consecutiveDays = homeData?.stability?.consecutiveActiveDays ?? homeData?.streak ?? 0;
 
   return (
     <SystemLayout>
@@ -342,7 +233,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       >
         <AutoSwitchBanner navigate={navigate} />
 
-        {/* ── HEADER: Level + XP ─────────────────────────────────────── */}
+        {/* ── HEADER ─────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -351,7 +242,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           data-testid="daily-status-section"
         >
           <div className="flex items-start justify-between mb-3">
-            <div className="flex flex-col gap-1.5" />
+            <div className="flex flex-col gap-1.5">
+              {consecutiveDays > 0 && (
+                <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
+                  Day {consecutiveDays} streak
+                </p>
+              )}
+            </div>
             <div className="flex items-start gap-2">
               <button
                 onClick={() => setShowCustomize(true)}
@@ -368,7 +265,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 <Palette size={15} />
               </button>
               {isIronSovereign ? (
-                <div className="flex flex-col items-end gap-1" data-testid="text-player-level">
+                <div
+                  className="flex flex-col items-end gap-1"
+                  data-testid="text-player-level"
+                >
                   <span
                     className="font-extrabold leading-none"
                     style={{
@@ -413,11 +313,19 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           {/* XP Bar */}
           <div data-testid="xp-progress-section">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider" style={{ color: colors.textMuted }}>XP</span>
-              <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>{xp.exp} / {xp.maxExp}</span>
+              <span className="text-[10px] uppercase tracking-wider" style={{ color: colors.textMuted }}>
+                XP
+              </span>
+              <span className="text-[10px] font-mono" style={{ color: colors.textMuted }}>
+                {xp.exp} / {xp.maxExp}
+              </span>
             </div>
             {isIronSovereign ? (
-              <SegmentedXpBar percent={xp.percent} fill={isHud.cyan} glow={isHud.cyanGlow} />
+              <SegmentedXpBar
+                percent={xp.percent}
+                fill={isHud.cyan}
+                glow={isHud.cyanGlow}
+              />
             ) : isNeonEmpress ? (
               <PastelGradientXpBar percent={xp.percent} />
             ) : (
@@ -439,7 +347,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
         </motion.div>
 
-        {/* ── FIRST MISSION BRIEFING (absolute first-timers only) ────── */}
+        {/* ── FIRST MISSION BRIEFING ─────────────────────────────────── */}
         {isFirstMission && !flowCompletedToday && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
@@ -460,284 +368,142 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             }}
             data-testid="card-first-mission"
           >
+            {/* Mission indicator row */}
             <div className="flex items-center gap-2 mb-2.5">
               <motion.div
                 className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: isIronSovereign ? isHud.cyan : isNeonEmpress ? fae.peachStrong : colors.primary }}
+                style={{
+                  backgroundColor: isIronSovereign ? isHud.cyan : isNeonEmpress ? fae.peachStrong : colors.primary,
+                }}
                 animate={{ opacity: [1, 0.4, 1] }}
                 transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
               />
               <p
                 className="text-[9px] uppercase tracking-[0.28em] font-bold"
-                style={{ color: isIronSovereign ? isHud.cyan : isNeonEmpress ? fae.peachStrong : colors.primary }}
+                style={{
+                  color: isIronSovereign ? isHud.cyan : isNeonEmpress ? fae.peachStrong : colors.primary,
+                }}
               >
                 Mission 01 · Active
               </p>
             </div>
+
             <h3
               className="text-base font-extrabold mb-1.5 leading-snug"
               style={{ color: colors.text, fontFamily: "system-ui, sans-serif" }}
             >
               Complete Your First Daily Flow
             </h3>
-            <p className="text-xs leading-relaxed" style={{ color: colors.textMuted }}>
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: colors.textMuted }}
+            >
               {totalMins} min · Breath · Movement · Strength. Your progression system activates on completion.
             </p>
           </motion.div>
         )}
 
-        {/* ── TOP ZONE: RECOMMENDATION CARD ─────────────────────────── */}
+        {/* ── PRIMARY ACTION ─────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.38, delay: 0.10 }}
-          data-testid="recommendation-card"
+          transition={{ duration: 0.35, delay: 0.13 }}
         >
           {flowCompletedToday ? (
-            /* Completion state */
             <div
-              className="w-full rounded-2xl px-5 py-6 flex flex-col items-center justify-center gap-2 text-center"
-              style={{
-                background: isIronSovereign
-                  ? "linear-gradient(160deg, rgba(34,197,94,0.10) 0%, rgba(34,197,94,0.04) 100%)"
-                  : isNeonEmpress
-                    ? "linear-gradient(160deg, rgba(126,216,160,0.22) 0%, rgba(188,232,201,0.12) 100%)"
-                    : "rgba(34,197,94,0.06)",
-                border: isIronSovereign
-                  ? `1.5px solid ${isHud.green}55`
-                  : isNeonEmpress
-                    ? `1.5px solid ${fae.mintFill}55`
-                    : "1.5px solid rgba(34,197,94,0.28)",
-                boxShadow: isIronSovereign
-                  ? `0 0 30px ${isHud.greenGlow}30`
-                  : "none",
-              }}
+              className="w-full py-4 rounded-xl text-center text-sm font-bold flex items-center justify-center gap-2"
+              style={{ backgroundColor: "#22c55e10", color: "#22c55e", border: "1px solid #22c55e28" }}
               data-testid="text-flow-completed"
             >
-              <CheckCircle2 size={26} style={{ color: "#22c55e" }} />
-              <p className="text-base font-extrabold" style={{ color: "#22c55e" }}>Flow Complete</p>
-              <p className="text-xs" style={{ color: colors.textMuted }}>{totalMins} min logged today</p>
+              <CheckCircle2 size={16} />
+              Flow completed today · {totalMins} min logged
             </div>
           ) : isIronSovereign ? (
-            /* Iron Sovereign recommendation card */
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{
-                background: "linear-gradient(160deg, rgba(34,211,238,0.10) 0%, rgba(14,165,233,0.04) 100%)",
-                border: "1.5px solid rgba(34,211,238,0.32)",
-                boxShadow: "0 0 40px rgba(34,211,238,0.10), inset 0 0 20px rgba(34,211,238,0.03)",
-              }}
-            >
-              <div className="px-5 pt-5 pb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <motion.div
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: isHud.cyan }}
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <p
-                    className="text-[9px] uppercase tracking-[0.30em] font-bold"
-                    style={{ color: isHud.cyan }}
-                  >
-                    {REC_TYPE_LABELS[recommendation.type] ?? "Daily Mission"}
-                  </p>
-                </div>
-                <h2
-                  className="text-xl font-extrabold mb-1.5 leading-tight"
-                  style={{
-                    color: isHud.cyan,
-                    textShadow: `0 0 14px ${isHud.cyanGlow}`,
-                    fontFamily: "system-ui, sans-serif",
-                  }}
-                >
-                  {recommendation.headline}
-                </h2>
-                <p className="text-xs leading-relaxed mb-5" style={{ color: "rgba(255,255,255,0.42)" }}>
-                  {recommendation.subtext}
-                </p>
-                <IronSovereignFlowButton onStart={startFlow} label={ctaLabel} />
-              </div>
-            </div>
+            <IronSovereignFlowButton onStart={() => { clearFlow(); clearSession(); setFlowActive(true); }} />
           ) : isNeonEmpress ? (
-            /* Neon Empress recommendation card */
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{
-                background: `linear-gradient(160deg, rgba(251,202,173,0.28) 0%, rgba(200,181,238,0.18) 100%)`,
-                border: `1.5px solid ${fae.peachBorder}55`,
-                boxShadow: `0 0 28px rgba(244,132,95,0.10), 0 4px 18px rgba(140,117,196,0.08)`,
-              }}
-            >
-              <div className="px-5 pt-5 pb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <motion.div
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: fae.peachStrong }}
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <p
-                    className="text-[9px] uppercase tracking-[0.30em] font-bold"
-                    style={{ color: fae.peachStrong }}
-                  >
-                    {REC_TYPE_LABELS[recommendation.type] ?? "Daily Mission"}
-                  </p>
-                </div>
-                <h2
-                  className="text-xl font-extrabold mb-1.5 leading-tight"
-                  style={{ color: fae.inkText, fontFamily: "system-ui, sans-serif" }}
-                >
-                  {recommendation.headline}
-                </h2>
-                <p className="text-xs leading-relaxed mb-5" style={{ color: `${fae.inkText}99` }}>
-                  {recommendation.subtext}
-                </p>
-                <NeonEmpressFlowButton onStart={startFlow} fae={fae} label={ctaLabel} />
-              </div>
-            </div>
+            <NeonEmpressFlowButton onStart={() => { clearFlow(); clearSession(); setFlowActive(true); }} fae={fae} />
           ) : (
-            /* Default recommendation card */
-            <div
-              className="rounded-2xl overflow-hidden"
+            <button
+              data-testid="button-begin-flow"
+              onClick={() => { clearFlow(); clearSession(); setFlowActive(true); }}
+              className="w-full py-4 rounded-xl font-bold text-sm uppercase tracking-[0.18em] transition-all active:scale-[0.98]"
               style={{
-                background: `linear-gradient(160deg, ${colors.primary}10 0%, ${colors.primary}04 100%)`,
-                border: `1.5px solid ${colors.primary}30`,
+                backgroundColor: colors.primary,
+                color: colors.background,
+                boxShadow: `0 0 28px ${colors.primaryGlow}40`,
+                fontFamily: "system-ui, sans-serif",
               }}
             >
-              <div className="px-5 pt-5 pb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <motion.div
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: colors.primary }}
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <p
-                    className="text-[9px] uppercase tracking-[0.30em] font-bold"
-                    style={{ color: `${colors.primary}cc` }}
-                  >
-                    {REC_TYPE_LABELS[recommendation.type] ?? "Daily Mission"}
-                  </p>
-                </div>
-                <h2
-                  className="text-lg font-extrabold mb-1.5 leading-tight"
-                  style={{ color: colors.text, fontFamily: "system-ui, sans-serif" }}
-                >
-                  {recommendation.headline}
-                </h2>
-                <p className="text-xs leading-relaxed mb-5" style={{ color: colors.textMuted }}>
-                  {recommendation.subtext}
-                </p>
-                <button
-                  data-testid="button-begin-flow"
-                  onClick={startFlow}
-                  className="w-full py-4 rounded-xl font-bold text-sm uppercase tracking-[0.18em] transition-all active:scale-[0.98]"
-                  style={{
-                    backgroundColor: colors.primary,
-                    color: colors.background,
-                    boxShadow: `0 0 28px ${colors.primaryGlow}40`,
-                    fontFamily: "system-ui, sans-serif",
-                  }}
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <Play size={15} />
-                    {ctaLabel}
-                  </span>
-                </button>
-              </div>
-            </div>
+              <span className="flex items-center justify-center gap-2">
+                <Play size={15} />
+                Begin Daily Flow
+              </span>
+            </button>
           )}
         </motion.div>
 
-        {/* ── MIDDLE ZONE: QUICK ACTIONS ─────────────────────────────── */}
+        {/* ── COACH MESSAGE ──────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.16 }}
-          data-testid="quick-actions-row"
-        >
-          <div className="flex flex-wrap gap-2">
-            {quickActions.map((action) => {
-              const Icon = QUICK_ACTION_ICONS[action] ?? Zap;
-              const isBeginFlow = action === "Begin Flow";
-              const onClick = () => {
-                if (isBeginFlow) { startFlow(); return; }
-                switch (action) {
-                  case "Calm Breathing": navigate("/guided-session/phase1_meditation"); break;
-                  case "Light Stretch":  navigate("/guided-session/phase1_agility");    break;
-                  case "Strength Focus": navigate("/guided-session/phase1_strength");   break;
-                  case "Mini Workout":   navigate("/guided-session/phase1_strength");   break;
-                  case "Push Cardio":    navigate("/train");                             break;
-                  case "Track Progress": navigate("/profile");                           break;
-                  case "Review Path":    navigate("/habits");                            break;
-                  case "Hydrate":        navigate("/nutrition");                          break;
-                  default: break;
+          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.42 : 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.18 }}
+          className={
+            isNeonEmpress
+              ? "rounded-xl px-4 py-3 flex items-start gap-3 relative overflow-hidden"
+              : "rounded-xl px-4 py-3 flex items-start gap-3"
+          }
+          style={
+            isNeonEmpress
+              ? {
+                  backgroundColor: fae.lavender,
+                  border: `1px solid ${fae.lavenderDeep}33`,
+                  backgroundImage:
+                    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' stroke='white' stroke-opacity='0.45' stroke-width='1.2' stroke-linecap='round'><path d='M10 50 Q 25 25, 45 40 T 80 35 T 115 50'/><path d='M5 80 Q 30 65, 50 85 T 90 80 T 120 95'/><path d='M60 10 Q 75 25, 65 45 T 80 75'/><path d='M20 110 Q 35 95, 55 105'/></g></svg>\")",
+                  backgroundSize: "180px 180px",
+                  backgroundRepeat: "repeat",
                 }
-              };
-
-              // Iron Sovereign chip
-              if (isIronSovereign) {
-                return (
-                  <button
-                    key={action}
-                    onClick={onClick}
-                    data-testid={`quick-action-${action.toLowerCase().replace(/\s+/g, "-")}`}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
-                    style={{
-                      backgroundColor: isBeginFlow ? `${isHud.cyan}18` : "rgba(255,255,255,0.05)",
-                      border: isBeginFlow ? `1px solid ${isHud.cyan}55` : "1px solid rgba(255,255,255,0.10)",
-                      color: isBeginFlow ? isHud.cyan : "rgba(255,255,255,0.65)",
-                      boxShadow: isBeginFlow ? `0 0 12px ${isHud.cyanGlow}30` : "none",
-                    }}
-                  >
-                    <Icon size={12} />
-                    {action}
-                  </button>
-                );
+              : { backgroundColor: `${colors.primary}08`, border: `1px solid ${colors.primary}15` }
+          }
+          data-testid="coach-insight-card"
+        >
+          <div
+            className={
+              isNeonEmpress
+                ? "w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                : "w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+            }
+            style={
+              isNeonEmpress
+                ? {
+                    backgroundColor: fae.lavenderDeep + "55",
+                    border: `1px solid ${fae.lavenderDeep}77`,
+                  }
+                : { backgroundColor: `${colors.primary}20` }
+            }
+          >
+            <Brain size={isNeonEmpress ? 16 : 12} style={{ color: isNeonEmpress ? fae.inkText : colors.primary }} />
+          </div>
+          <div>
+            <p
+              className={
+                isNeonEmpress
+                  ? "text-[10px] uppercase tracking-[0.18em] font-extrabold mb-0.5"
+                  : "text-[9px] uppercase tracking-[0.14em] font-bold mb-0.5"
               }
-              // Neon Empress chip
-              if (isNeonEmpress) {
-                return (
-                  <button
-                    key={action}
-                    onClick={onClick}
-                    data-testid={`quick-action-${action.toLowerCase().replace(/\s+/g, "-")}`}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all active:scale-95"
-                    style={{
-                      backgroundColor: isBeginFlow ? fae.peach + "cc" : fae.lavender + "99",
-                      border: isBeginFlow ? `1px solid ${fae.peachBorder}88` : `1px solid ${fae.lavenderDeep}44`,
-                      color: fae.inkText,
-                      boxShadow: isBeginFlow ? `0 2px 8px rgba(244,132,95,0.18)` : "none",
-                    }}
-                  >
-                    <Icon size={12} />
-                    {action}
-                  </button>
-                );
-              }
-              // Default chip
-              return (
-                <button
-                  key={action}
-                  onClick={onClick}
-                  data-testid={`quick-action-${action.toLowerCase().replace(/\s+/g, "-")}`}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
-                  style={{
-                    backgroundColor: isBeginFlow ? `${colors.primary}18` : `${colors.primary}08`,
-                    border: isBeginFlow ? `1px solid ${colors.primary}40` : `1px solid ${colors.primary}18`,
-                    color: isBeginFlow ? colors.primary : `${colors.text}88`,
-                  }}
-                >
-                  <Icon size={12} />
-                  {action}
-                </button>
-              );
-            })}
+              style={{ color: isNeonEmpress ? fae.inkText : `${colors.primary}80` }}
+            >
+              Coach
+            </p>
+            <p
+              className={isNeonEmpress ? "text-sm leading-relaxed" : "text-xs leading-relaxed"}
+              style={{ color: isNeonEmpress ? fae.inkText : `${colors.text}cc` }}
+            >
+              {homeData.insight ?? "Consistency is becoming your baseline. Each session builds the next."}
+            </p>
           </div>
         </motion.div>
 
-        {/* ── SESSIONS TOGGLE ─────────────────────────────────────────── */}
+        {/* ── SESSIONS TOGGLE ────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.38 : 1, y: 0 }}
@@ -788,7 +554,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 }
                 style={
                   isNeonEmpress
-                    ? { backgroundColor: "rgba(45,27,78,0.10)", color: fae.inkText + "cc" }
+                    ? {
+                        backgroundColor: "rgba(45,27,78,0.10)",
+                        color: fae.inkText + "cc",
+                      }
                     : { backgroundColor: `${colors.primary}15`, color: `${colors.primary}90` }
                 }
               >
@@ -796,9 +565,15 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               </span>
             </div>
             {showSessions ? (
-              <ChevronUp size={isNeonEmpress ? 16 : 14} style={{ color: isNeonEmpress ? fae.inkText : colors.textMuted }} />
+              <ChevronUp
+                size={isNeonEmpress ? 16 : 14}
+                style={{ color: isNeonEmpress ? fae.inkText : colors.textMuted }}
+              />
             ) : (
-              <ChevronDown size={isNeonEmpress ? 16 : 14} style={{ color: isNeonEmpress ? fae.inkText : colors.textMuted }} />
+              <ChevronDown
+                size={isNeonEmpress ? 16 : 14}
+                style={{ color: isNeonEmpress ? fae.inkText : colors.textMuted }}
+              />
             )}
           </button>
 
@@ -837,7 +612,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       >
                         <div
                           className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: done ? "#22c55e18" : `${session.color}15` }}
+                          style={{
+                            backgroundColor: done ? "#22c55e18" : `${session.color}15`,
+                          }}
                         >
                           {done ? (
                             <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
@@ -846,7 +623,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium leading-tight" style={{ color: done ? colors.textMuted : colors.text }}>
+                          <p
+                            className="text-sm font-medium leading-tight"
+                            style={{ color: done ? colors.textMuted : colors.text }}
+                          >
                             {session.label}
                           </p>
                           <p className="text-[10px] mt-0.5" style={{ color: `${colors.textMuted}88` }}>
@@ -879,8 +659,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       <Sparkles size={14} style={{ color: "#fbbf24" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium leading-tight" style={{ color: colors.text }}>Sleep Optimization</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: `${colors.textMuted}88` }}>Choose how the night flow guides you</p>
+                      <p className="text-sm font-medium leading-tight" style={{ color: colors.text }}>
+                        Sleep Optimization
+                      </p>
+                      <p className="text-[10px] mt-0.5" style={{ color: `${colors.textMuted}88` }}>
+                        Choose how the night flow guides you
+                      </p>
                     </div>
                     <span className="text-[9px]" style={{ color: colors.textMuted }}>›</span>
                   </button>
@@ -890,237 +674,135 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </AnimatePresence>
         </motion.div>
 
-        {/* ── BOTTOM ZONE: PROGRESS STRIP (streak + readiness + HP/MP) ── */}
+        {/* ── WORKOUT BUILDER ────────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.35 : 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.25 }}
-          data-testid="progress-strip"
+          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.35 : 1 }}
+          transition={{ duration: 0.4 }}
         >
-          <div
-            className={isNeonEmpress ? "rounded-2xl px-4 py-4 space-y-3" : "rounded-xl px-4 py-3 space-y-3"}
+          <WorkoutBuilderSection playerId={player.id} />
+        </motion.div>
+
+        {/* ── STAT BARS ──────────────────────────────────────────────── */}
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.35 : 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className={
+              isNeonEmpress
+                ? "rounded-2xl px-4 py-4 space-y-4"
+                : "rounded-xl px-4 py-3 space-y-3"
+            }
             style={
               isIronSovereign
                 ? {
-                    backgroundColor: "rgba(0,0,0,0.55)",
+                    backgroundColor: "rgba(0, 0, 0, 0.55)",
                     border: `1.5px solid ${isHud.green}`,
                     boxShadow: `0 0 18px ${isHud.greenGlow}, inset 0 0 12px rgba(34,197,94,0.10)`,
                   }
                 : isNeonEmpress
                   ? {
-                      background: "linear-gradient(135deg, rgba(207,232,243,0.85) 0%, rgba(220,210,243,0.85) 55%, rgba(212,202,243,0.85) 100%)",
+                      background:
+                        "linear-gradient(135deg, rgba(207,232,243,0.85) 0%, rgba(220,210,243,0.85) 55%, rgba(212,202,243,0.85) 100%)",
                       border: `2px solid ${fae.peachBorder}`,
-                      boxShadow: `0 0 0 1px rgba(255,255,255,0.5) inset, 0 0 18px ${fae.peachStrong}40`,
+                      boxShadow:
+                        `0 0 0 1px rgba(255,255,255,0.5) inset, 0 0 18px ${fae.peachStrong}40`,
                     }
                   : {
                       backgroundColor: `${colors.surface || colors.background}cc`,
                       border: `1px solid ${colors.surfaceBorder}`,
                     }
             }
+            data-testid="stat-bars-card"
           >
-            {/* Row 1: Streak · Readiness bar · Recovery pill */}
-            <div className="flex items-center gap-3" data-testid="streak-readiness-row">
-              {/* Streak */}
-              <div className="flex items-center gap-1 shrink-0">
-                <Flame
-                  size={12}
-                  style={{ color: snap.streak > 0 ? "#f97316" : colors.textMuted }}
-                  fill={snap.streak > 0 ? "#f97316" : "none"}
-                />
-                <span
-                  className="text-[11px] font-bold font-mono"
-                  style={{ color: snap.streak > 0 ? "#f97316" : colors.textMuted }}
-                >
-                  {snap.streak}d
+            {/* HP Bar */}
+            <div data-testid="hp-bar-section">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Shield size={11} style={{ color: hpColor }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: hpColor }}>
+                    HP
+                  </span>
+                  <span className="text-[9px] ml-0.5" style={{ color: colors.textMuted }}>
+                    Vitality
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono font-bold" style={{ color: hpColor }}>
+                  {Math.round(stats.hp)} / {maxHp}
                 </span>
               </div>
-
-              {/* Readiness bar + label */}
-              <div className="flex-1 flex items-center gap-2">
-                <div
-                  className="flex-1 h-1.5 rounded-full overflow-hidden"
-                  style={{ backgroundColor: isNeonEmpress ? "rgba(255,255,255,0.45)" : `${colors.primary}15` }}
-                  data-testid="readiness-bar-track"
-                >
-                  <motion.div
-                    className="h-full rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${snap.readinessPercent}%` }}
-                    transition={{ duration: 0.7, ease: "easeOut" }}
-                    style={{
-                      backgroundColor: isIronSovereign ? isHud.cyan : isNeonEmpress ? fae.peachStrong : colors.primary,
-                      boxShadow: isIronSovereign ? `0 0 6px ${isHud.cyanGlow}` : "none",
-                    }}
-                    data-testid="readiness-bar-fill"
-                  />
-                </div>
-                <span
-                  className="text-[10px] font-mono shrink-0"
-                  style={{ color: isNeonEmpress ? fae.inkText : colors.textMuted }}
-                >
-                  {snap.readinessPercent}%
-                </span>
-              </div>
-
-              {/* Recovery state pill */}
-              <span
-                className="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 capitalize"
-                style={{
-                  backgroundColor: `${recoveryColor}18`,
-                  color: isNeonEmpress ? fae.inkText : recoveryColor,
-                  border: `1px solid ${recoveryColor}30`,
-                }}
-                data-testid="recovery-state-pill"
-              >
-                {snap.recoveryState}
-              </span>
-            </div>
-
-            {/* Rows 2–3: HP + MP bars — hidden until 5 flows completed (progressive disclosure) */}
-            {showAdvanced && (
-              <>
-                {/* Row 2: HP bar */}
-                <div data-testid="hp-bar-section">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
-                      <Shield size={9} style={{ color: hpColor }} />
-                      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: hpColor }}>HP</span>
-                      <span className="text-[9px] ml-0.5" style={{ color: isNeonEmpress ? `${fae.inkText}88` : colors.textMuted }}>Vitality</span>
-                    </div>
-                    <span className="text-[9px] font-mono font-bold" style={{ color: hpColor }}>
-                      {Math.round(stats.hp)} / {maxHp}
-                    </span>
-                  </div>
-                  <div
-                    className="w-full h-1.5 rounded-full overflow-hidden"
-                    style={{ backgroundColor: isNeonEmpress ? "rgba(255,255,255,0.45)" : `${hpColor}18` }}
-                    data-testid="hp-bar-track"
-                  >
-                    <motion.div
-                      className="h-full rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${hpPct}%` }}
-                      transition={{ duration: 0.6, ease: "easeOut" }}
-                      style={
-                        isNeonEmpress
-                          ? { background: `linear-gradient(90deg, #22c55e 0%, ${fae.peach} 100%)` }
-                          : { backgroundColor: hpColor, boxShadow: `0 0 6px ${hpColor}60` }
-                      }
-                      data-testid="hp-bar-fill"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 3: MP bar */}
-                <div data-testid="mana-bar-section">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
-                      <Zap size={9} style={{ color: manaColor }} />
-                      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: manaColor }}>MP</span>
-                      <span className="text-[9px] ml-0.5" style={{ color: isNeonEmpress ? `${fae.inkText}88` : colors.textMuted }}>Meditation</span>
-                    </div>
-                    <span className="text-[9px] font-mono font-bold" style={{ color: manaColor }}>
-                      {Math.round(stats.mana)} / {maxMana}
-                    </span>
-                  </div>
-                  <div
-                    className="w-full h-1.5 rounded-full overflow-hidden"
-                    style={{ backgroundColor: isNeonEmpress ? "rgba(255,255,255,0.45)" : `${manaColor}18` }}
-                    data-testid="mana-bar-track"
-                  >
-                    <motion.div
-                      className="h-full rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${manaBarPct}%` }}
-                      transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
-                      style={{ backgroundColor: manaColor, boxShadow: `0 0 6px ${manaColor}60` }}
-                      data-testid="mana-bar-fill"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </motion.div>
-
-        {/* ── COACH INSIGHT (post-5 flows progressive disclosure) ───────── */}
-        {showAdvanced && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className={
-              isNeonEmpress
-                ? "rounded-xl px-4 py-3 flex items-start gap-3 relative overflow-hidden"
-                : "rounded-xl px-4 py-3 flex items-start gap-3"
-            }
-            style={
-              isNeonEmpress
-                ? {
-                    backgroundColor: fae.lavender,
-                    border: `1px solid ${fae.lavenderDeep}33`,
-                    backgroundImage:
-                      "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' stroke='white' stroke-opacity='0.45' stroke-width='1.2' stroke-linecap='round'><path d='M10 50 Q 25 25, 45 40 T 80 35 T 115 50'/><path d='M5 80 Q 30 65, 50 85 T 90 80 T 120 95'/><path d='M60 10 Q 75 25, 65 45 T 80 75'/><path d='M20 110 Q 35 95, 55 105'/></g></svg>\")",
-                    backgroundSize: "180px 180px",
-                    backgroundRepeat: "repeat",
-                  }
-                : { backgroundColor: `${colors.primary}08`, border: `1px solid ${colors.primary}15` }
-            }
-            data-testid="coach-insight-card"
-          >
-            <div
-              className={
-                isNeonEmpress
-                  ? "w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                  : "w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-              }
-              style={
-                isNeonEmpress
-                  ? { backgroundColor: fae.lavenderDeep + "55", border: `1px solid ${fae.lavenderDeep}77` }
-                  : { backgroundColor: `${colors.primary}20` }
-              }
-            >
-              <Brain size={isNeonEmpress ? 16 : 12} style={{ color: isNeonEmpress ? fae.inkText : colors.primary }} />
-            </div>
-            <div>
-              <p
+              <div
                 className={
                   isNeonEmpress
-                    ? "text-[10px] uppercase tracking-[0.18em] font-extrabold mb-0.5"
-                    : "text-[9px] uppercase tracking-[0.14em] font-bold mb-0.5"
+                    ? "w-full h-3 rounded-full overflow-hidden"
+                    : "w-full h-2 rounded-full overflow-hidden"
                 }
-                style={{ color: isNeonEmpress ? fae.inkText : `${colors.primary}80` }}
+                style={{
+                  backgroundColor: isNeonEmpress
+                    ? "rgba(255,255,255,0.45)"
+                    : `${hpColor}18`,
+                }}
+                data-testid="hp-bar-track"
               >
-                Coach
-              </p>
-              <p
-                className={isNeonEmpress ? "text-sm leading-relaxed" : "text-xs leading-relaxed"}
-                style={{ color: isNeonEmpress ? fae.inkText : `${colors.text}cc` }}
-              >
-                {homeData.insight ?? "Consistency is becoming your baseline. Each session builds the next."}
-              </p>
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${hpPct}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  style={
+                    isNeonEmpress
+                      ? {
+                          background: `linear-gradient(90deg, #22c55e 0%, ${fae.peach} 100%)`,
+                          boxShadow: "0 0 4px rgba(255,255,255,0.5)",
+                        }
+                      : { backgroundColor: hpColor, boxShadow: `0 0 6px ${hpColor}60` }
+                  }
+                  data-testid="hp-bar-fill"
+                />
+              </div>
             </div>
-          </motion.div>
-        )}
 
-        {/* ── WORKOUT BUILDER (post-5 flows progressive disclosure) ───── */}
-        {showAdvanced && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 }}
-          >
-            <WorkoutBuilderSection playerId={player.id} />
-          </motion.div>
-        )}
+            {/* Mana Bar */}
+            <div data-testid="mana-bar-section">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Zap size={11} style={{ color: manaColor }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: manaColor }}>
+                    MP
+                  </span>
+                  <span className="text-[9px] ml-0.5" style={{ color: colors.textMuted }}>
+                    Meditation
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono font-bold" style={{ color: manaColor }}>
+                  {Math.round(stats.mana)} / {maxMana}
+                </span>
+              </div>
+              <div
+                className="w-full h-2 rounded-full overflow-hidden"
+                style={{ backgroundColor: `${manaColor}18` }}
+                data-testid="mana-bar-track"
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${manaBarPct}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+                  style={{ backgroundColor: manaColor, boxShadow: `0 0 6px ${manaColor}60` }}
+                  data-testid="mana-bar-fill"
+                />
+              </div>
+            </div>
+        </motion.div>
 
       </div>
     </SystemLayout>
   );
 }
 
-// ── Helper components (unchanged) ─────────────────────────────────────────────
-
+/**
+ * Iron Sovereign segmented XP bar — discrete cyan blocks against a dark
+ * channel, matching the level-1 reference HUD.
+ */
 function SegmentedXpBar({
   percent,
   fill,
@@ -1134,7 +816,10 @@ function SegmentedXpBar({
 }) {
   const filled = Math.round((Math.max(0, Math.min(100, percent)) / 100) * segments);
   return (
-    <div className="w-full flex gap-[2px] h-3 items-center" data-testid="xp-bar-track">
+    <div
+      className="w-full flex gap-[2px] h-3 items-center"
+      data-testid="xp-bar-track"
+    >
       {Array.from({ length: segments }).map((_, i) => {
         const on = i < filled;
         return (
@@ -1154,7 +839,11 @@ function SegmentedXpBar({
   );
 }
 
-function IronSovereignFlowButton({ onStart, label = "Begin Daily Flow" }: { onStart: () => void; label?: string }) {
+/**
+ * Iron Sovereign daily-flow CTA — cyan glowing pill with green neon border
+ * and animated audio-waveform bookends, matching the reference button.
+ */
+function IronSovereignFlowButton({ onStart }: { onStart: () => void }) {
   return (
     <button
       data-testid="button-begin-flow"
@@ -1162,7 +851,8 @@ function IronSovereignFlowButton({ onStart, label = "Begin Daily Flow" }: { onSt
       className="group relative w-full rounded-2xl transition-all active:scale-[0.985] overflow-hidden"
       style={{
         padding: "18px 18px",
-        background: "linear-gradient(180deg, rgba(34,211,238,0.95) 0%, rgba(14,165,233,0.95) 100%)",
+        background:
+          "linear-gradient(180deg, rgba(34,211,238,0.95) 0%, rgba(14,165,233,0.95) 100%)",
         border: "2.5px solid #22c55e",
         boxShadow:
           "0 0 0 1px rgba(34,197,94,0.35), 0 0 22px rgba(34,197,94,0.55), 0 0 38px rgba(34,211,238,0.45), inset 0 0 18px rgba(255,255,255,0.18)",
@@ -1176,6 +866,7 @@ function IronSovereignFlowButton({ onStart, label = "Begin Daily Flow" }: { onSt
         }
       `}</style>
       <div className="flex items-center justify-center gap-3">
+        {/* Left waveform */}
         <Waveform side="left" />
         <span
           className="flex items-center gap-2 font-extrabold uppercase"
@@ -1187,22 +878,39 @@ function IronSovereignFlowButton({ onStart, label = "Begin Daily Flow" }: { onSt
           }}
         >
           <Play size={16} fill="#0a1f2c" />
-          {label}
+          Begin Daily Flow
         </span>
+        {/* Right waveform */}
         <Waveform side="right" />
       </div>
     </button>
   );
 }
 
-function LaurelLevel({ level, gold, glow }: { level: number; gold: string; glow: string }) {
+/**
+ * Neon Empress level marker — a script "Lv N" framed by gold laurel
+ * branches, matching the pastel header in the reference.
+ */
+function LaurelLevel({
+  level,
+  gold,
+  glow,
+}: {
+  level: number;
+  gold: string;
+  glow: string;
+}) {
   return (
-    <div className="flex items-center gap-1" data-testid="text-player-level">
+    <div
+      className="flex items-center gap-1"
+      data-testid="text-player-level"
+    >
       <LaurelBranch side="left" gold={gold} />
       <span
         style={{
           color: gold,
-          fontFamily: "'Brush Script MT', 'Apple Chancery', 'Lucida Handwriting', cursive, serif",
+          fontFamily:
+            "'Brush Script MT', 'Apple Chancery', 'Lucida Handwriting', cursive, serif",
           fontStyle: "italic",
           fontWeight: 700,
           fontSize: 24,
@@ -1231,23 +939,50 @@ function LaurelBranch({ side, gold }: { side: "left" | "right"; gold: string }) 
     { cx: 9,  cy: 13, rx: 1.4, ry: 3.0, rot:  48 },
   ];
   return (
-    <svg width={22} height={36} viewBox="0 0 22 36" style={{ transform, display: "block" }} aria-hidden>
-      <path d="M3 34 Q 6 22 9 10 Q 10 6 11 3" stroke={gold} strokeWidth={1.3} fill="none" strokeLinecap="round" opacity={0.85} />
+    <svg
+      width={22}
+      height={36}
+      viewBox="0 0 22 36"
+      style={{ transform, display: "block" }}
+      aria-hidden
+    >
+      <path
+        d="M3 34 Q 6 22 9 10 Q 10 6 11 3"
+        stroke={gold}
+        strokeWidth={1.3}
+        fill="none"
+        strokeLinecap="round"
+        opacity={0.85}
+      />
       <g fill={gold} opacity={0.92}>
         {leaves.map((l, i) => (
-          <ellipse key={i} cx={l.cx} cy={l.cy} rx={l.rx} ry={l.ry} transform={`rotate(${l.rot} ${l.cx} ${l.cy})`} />
+          <ellipse
+            key={i}
+            cx={l.cx}
+            cy={l.cy}
+            rx={l.rx}
+            ry={l.ry}
+            transform={`rotate(${l.rot} ${l.cx} ${l.cy})`}
+          />
         ))}
       </g>
     </svg>
   );
 }
 
+/**
+ * Neon Empress XP bar — pastel peach→pink→purple gradient on a soft
+ * cream rail, matching the reference level-1 HUD.
+ */
 function PastelGradientXpBar({ percent }: { percent: number }) {
   const pct = Math.max(0, Math.min(100, percent));
   return (
     <div
       className="w-full h-2.5 rounded-full overflow-hidden"
-      style={{ backgroundColor: "rgba(255,255,255,0.55)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.4)" }}
+      style={{
+        backgroundColor: "rgba(255,255,255,0.55)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.4)",
+      }}
       data-testid="xp-bar-track"
     >
       <motion.div
@@ -1256,7 +991,8 @@ function PastelGradientXpBar({ percent }: { percent: number }) {
         animate={{ width: `${pct}%` }}
         transition={{ duration: 0.7, ease: "easeOut" }}
         style={{
-          background: "linear-gradient(90deg, #f7e5b6 0%, #f4a6c8 50%, #b59cf2 100%)",
+          background:
+            "linear-gradient(90deg, #f7e5b6 0%, #f4a6c8 50%, #b59cf2 100%)",
           boxShadow: "0 0 6px rgba(180,150,240,0.55)",
         }}
         data-testid="xp-bar-fill"
@@ -1265,14 +1001,21 @@ function PastelGradientXpBar({ percent }: { percent: number }) {
   );
 }
 
+/**
+ * Neon Empress daily-flow CTA — peach pastel pill with a soft sky-blue
+ * outer ring and dark navy text, matching the reference button.
+ */
 function NeonEmpressFlowButton({
   onStart,
   fae,
-  label = "Begin Daily Flow",
 }: {
   onStart: () => void;
-  fae: { peach: string; peachStrong: string; skyBlue: string; inkText: string };
-  label?: string;
+  fae: {
+    peach: string;
+    peachStrong: string;
+    skyBlue: string;
+    inkText: string;
+  };
 }) {
   return (
     <button
@@ -1281,28 +1024,39 @@ function NeonEmpressFlowButton({
       className="group relative w-full rounded-2xl transition-all active:scale-[0.985]"
       style={{
         padding: "18px 18px",
-        background: `linear-gradient(180deg, ${fae.peach} 0%, #f7baa0 100%)`,
+        background:
+          `linear-gradient(180deg, ${fae.peach} 0%, #f7baa0 100%)`,
         border: `2px solid ${fae.skyBlue}`,
-        boxShadow: `0 0 0 4px rgba(255,255,255,0.55), 0 0 0 6px ${fae.skyBlue}66, 0 8px 18px rgba(244,132,95,0.20)`,
+        boxShadow:
+          `0 0 0 4px rgba(255,255,255,0.55), 0 0 0 6px ${fae.skyBlue}66, 0 8px 18px rgba(244,132,95,0.20)`,
         fontFamily: "system-ui, sans-serif",
       }}
     >
       <span
         className="flex items-center justify-center gap-3 font-extrabold uppercase"
-        style={{ color: fae.inkText, fontSize: 16, letterSpacing: "0.18em" }}
+        style={{
+          color: fae.inkText,
+          fontSize: 16,
+          letterSpacing: "0.18em",
+        }}
       >
         <Play size={16} strokeWidth={2.4} />
-        {label}
+        Begin Daily Flow
       </span>
     </button>
   );
 }
 
 function Waveform({ side }: { side: "left" | "right" }) {
+  // Asymmetric bar heights for organic look. Mirrored on right side.
   const heights = [6, 12, 18, 22, 14, 24, 10, 16];
   const bars = side === "left" ? heights : [...heights].reverse();
   return (
-    <div className="flex items-center gap-[3px] h-6 shrink-0" style={{ width: 56 }} aria-hidden>
+    <div
+      className="flex items-center gap-[3px] h-6 shrink-0"
+      style={{ width: 56 }}
+      aria-hidden
+    >
       {bars.map((h, i) => (
         <div
           key={i}
@@ -1339,8 +1093,15 @@ function AutoSwitchBanner({ navigate }: { navigate: (to: string) => void }) {
 
   if (!show) return null;
 
-  const accept = () => { setSleepMode("adaptive"); setShow(false); navigate("/sleep-settings"); };
-  const dismiss = () => { dismissAutoSwitchPrompt(); setShow(false); };
+  const accept = () => {
+    setSleepMode("adaptive");
+    setShow(false);
+    navigate("/sleep-settings");
+  };
+  const dismiss = () => {
+    dismissAutoSwitchPrompt();
+    setShow(false);
+  };
 
   return (
     <motion.div
@@ -1361,7 +1122,9 @@ function AutoSwitchBanner({ navigate }: { navigate: (to: string) => void }) {
         <Sparkles size={16} style={{ color: "#fbbf24" }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold" style={{ color: "#fde68a" }}>You're doing great</p>
+        <p className="text-sm font-bold" style={{ color: "#fde68a" }}>
+          You're doing great
+        </p>
         <p className="text-[11px] mt-0.5 leading-snug" style={{ color: colors.textMuted }}>
           Switch to Adaptive Mode? It'll quietly trim guidance you no longer need.
         </p>
