@@ -162,12 +162,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   );
 
   // Progressive disclosure: show advanced sections once 5+ flows are completed.
-  // The only authoritative source is `ascend_total_flows_completed`, incremented
-  // on every successful flow completion in handleFlowComplete.
-  // For users who completed flows before this counter existed we conservatively
-  // seed to 1 (not 5 and not a proxy count) if ascend_first_mission_done is set —
-  // we know they did at least one flow, but not how many, so 1 is the strictly
-  // correct lower bound. They will reach 5 after 4 more completions.
+  // Authoritative source: `ascend_total_flows_completed`, incremented in handleFlowComplete.
+  //
+  // Legacy migration: for users without the counter we seed to 1 if
+  // `ascend_first_mission_done=1` — the only reliable binary signal that at least
+  // one daily flow was done.  We intentionally do NOT use getAllSessions() here:
+  // `recordTrackedSession` is called only by the Workout Builder (TrainPage), not
+  // by daily flow completions in Day6Home, so session count ≠ flow count.
+  // Seeding to 1 is the strictly correct lower bound; users need 4 more completions.
   const [completedFlowsEver, setCompletedFlowsEver] = useState(() => {
     try {
       const stored = localStorage.getItem("ascend_total_flows_completed");
