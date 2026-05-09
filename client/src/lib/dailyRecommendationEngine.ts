@@ -181,8 +181,8 @@ export function getDailyRecommendation(profile: DailyProfile): DailyRecommendati
     };
   }
 
-  // 4 — Streak 1–2 (in motion but not a push day) → momentum
-  if (hasHistory && profile.streak >= 1 && profile.streak <= 2) {
+  // 4 — Streak 1–2, normal fatigue (in motion but not a push day) → momentum
+  if (hasHistory && profile.streak >= 1 && profile.streak <= 2 && profile.fatigue === "normal") {
     return {
       type:             "CONTINUE_MOMENTUM",
       headline:         HEADLINES.CONTINUE_MOMENTUM,
@@ -239,12 +239,16 @@ export function assembleDailyProfile(): DailyProfile {
   // Missed days: days since last flow, capped at 30 to avoid extreme values
   let missedDays = 0;
   if (lastFlowDate) {
-    const last  = new Date(lastFlowDate);
-    const today = new Date();
-    const diffMs = today.setHours(0,0,0,0) - last.setHours(0,0,0,0);
-    const diffDays = Math.floor(diffMs / 86_400_000);
-    // diffDays === 0 means completed today, 1 means yesterday, etc.
-    missedDays = Math.max(0, Math.min(diffDays - 1, 30));
+    try {
+      const last  = new Date(lastFlowDate);
+      const today = new Date();
+      const diffMs = today.setHours(0,0,0,0) - last.setHours(0,0,0,0);
+      const diffDays = Math.floor(diffMs / 86_400_000);
+      // diffDays === 0 means completed today, 1 means yesterday, etc.
+      if (!isNaN(diffDays)) {
+        missedDays = Math.max(0, Math.min(diffDays - 1, 30));
+      }
+    } catch { /* corrupted date — treat as no prior flow */ }
   }
 
   return {

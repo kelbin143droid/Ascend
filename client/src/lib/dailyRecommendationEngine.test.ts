@@ -196,4 +196,35 @@ describe("getDailyRecommendation", () => {
     );
     assert.equal(result.progressSnapshot.consistencyTrend, "declining");
   });
+
+  test("default catch-all: history exists, streak=0, no overrides → BEGIN_DAILY_FLOW", () => {
+    // Has sessions but streak is 0 (user missed yesterday), fatigue normal, readiness low
+    const result = getDailyRecommendation(
+      baseProfile({
+        workoutSessions: [makeSession()],
+        streak:          0,
+        missedDays:      0,
+        fatigue:         "normal",
+        readiness:       40,
+      })
+    );
+    assert.equal(result.type, "BEGIN_DAILY_FLOW");
+    assert.equal(result.intensity, "normal");
+    assert.equal(result.flowVariant, "full");
+  });
+
+  test("energized user with streak 1-2 does NOT enter CONTINUE_MOMENTUM (falls to BEGIN_DAILY_FLOW)", () => {
+    // After the spec-tightening: CONTINUE_MOMENTUM requires fatigue === "normal"
+    const result = getDailyRecommendation(
+      baseProfile({
+        workoutSessions: [makeSession()],
+        streak:          2,
+        missedDays:      0,
+        fatigue:         "energized",
+        readiness:       40,        // below push threshold
+      })
+    );
+    assert.notEqual(result.type, "CONTINUE_MOMENTUM");
+    assert.equal(result.type, "BEGIN_DAILY_FLOW");
+  });
 });
