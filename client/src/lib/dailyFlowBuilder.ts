@@ -3,24 +3,27 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Engine-level daily flow composer.
  *
- * This is the SINGLE function that decides which ActivityDefinition objects
- * go into each path's daily flow.  It keeps all path-composition logic out
- * of UI components and avoids the circular-dependency issue between
- * activityEngine.ts and workoutPlans.ts.
+ * Single function that decides which ActivityDefinition objects go into each
+ * path's daily flow.  All path-composition logic lives here — away from UI
+ * components and away from activityEngine.ts circular-dep concerns.
  *
  * Foundation (entry)
  *   → [Calm Breathing, Light Movement (agility relabeled)]
- *   → NO strength circuit
+ *   → NO strength circuit at all
  *
  * Build (beginner)
- *   → [Calm Breathing, Agility Flow, Starter Strength (1-round)]
- *   → Exercises: wall push-ups, assisted squats, glute bridges, plank
- *   → Short, guided, matches the session card promise exactly
+ *   → [Calm Breathing, Agility Flow, Starter Strength — 1 round]
+ *   → wall push-ups → assisted squats → glute bridges → plank hold
+ *   → Short, guided, tier-scaled reps. Matches session card promise exactly.
  *
- * Evolve (intermediate) / Ascend (advanced)
- *   → [Calm Breathing, Agility Flow, level WorkoutPlan activity]
- *   → Compound / high-intensity exercises respectively
- *   → Cardio injected when cardioIntensity ≠ "off"
+ * Evolve (intermediate)
+ *   → [Calm Breathing, Agility Flow, Physical Circuit — 2 rounds]
+ *   → Warm-up cardio + Jog + Round 1 (Squats/Push-ups/Sit-ups/Plank) +
+ *     Rest + Round 2. Uses standard strength tier from adaptive scaling.
+ *
+ * Ascend (advanced)
+ *   → Same 2-round Physical Circuit, but strength tier boosted to min 3.
+ *   → Higher rep counts (≥16 push-ups, ≥18 squats/sit-ups vs tier-1's 8/10/10).
  */
 
 import {
@@ -31,12 +34,7 @@ import {
   type ActivityDefinition,
   type ActivityStep,
 } from "./activityEngine";
-import {
-  buildWorkoutActivity,
-  type WorkoutLevel,
-  type CardioIntensity,
-  type CardioPosition,
-} from "./workoutPlans";
+import { type WorkoutLevel } from "./workoutPlans";
 import { getPathFlowConfig } from "./pathFlowConfig";
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -44,31 +42,27 @@ import { getPathFlowConfig } from "./pathFlowConfig";
 export interface DailyFlowBuildOptions {
   dayNumber: number;
   tiers?: CategoryTiers;
-  cardioIntensity?: CardioIntensity;
-  cardioPosition?: CardioPosition;
 }
 
 /**
  * Builds a short, 1-round Starter Strength activity for the Build path.
  *
- * Exercises match the session card promise:
+ * Exercises match the session card promise exactly:
  *   Wall push-ups → Assisted squats → Glute bridges → Plank hold
  *
- * No second round, no rest between rounds — designed for beginners who are
- * new to structured exercise.  Uses tier to scale reps gently.
+ * Single round with 15 s rests, tier-scaled reps (8–16 / 10–18).
+ * No second round, no multi-set structure.
  */
 function buildStarterStrengthActivity(tier: number): ActivityDefinition {
   const xpMultiplier = TIER_XP_MULTIPLIERS[tier] ?? 1.0;
 
-  // Gentle, tier-scaled rep/duration targets
-  const wallPushReps  = 8 + Math.min(tier - 1, 4) * 2;   // 8→16
-  const squatReps     = 10 + Math.min(tier - 1, 4) * 2;  // 10→18
-  const gluteReps     = 10 + Math.min(tier - 1, 4) * 2;  // 10→18
-  const plankSeconds  = 15 + Math.min(tier - 1, 4) * 5;  // 15→35
-  const restSeconds   = 15;
-  const SECS_PER_REP  = 3;
+  const wallPushReps = 8  + Math.min(tier - 1, 4) * 2;   // 8 → 16
+  const squatReps    = 10 + Math.min(tier - 1, 4) * 2;   // 10 → 18
+  const gluteReps    = 10 + Math.min(tier - 1, 4) * 2;   // 10 → 18
+  const plankSeconds = 15 + Math.min(tier - 1, 4) * 5;   // 15 → 35 s
+  const restSeconds  = 15;
+  const SECS_PER_REP = 3;
 
-  // Estimated total: intro + reps×3 + 3 rests + plank + completion
   const duration =
     10 +
     (wallPushReps + squatReps + gluteReps) * SECS_PER_REP +
@@ -93,7 +87,7 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
       instruction: `${wallPushReps} wall push-ups. Hands shoulder-width apart, lean in, push back.`,
       repCount: wallPushReps,
       repLabel: "reps",
-      voiceText: `Wall push-ups. ${wallPushReps} reps. Hands shoulder-width.`,
+      voiceText: `Wall push-ups. ${wallPushReps} reps.`,
       videoSrc: "/videos/wall_pushups_loop.mp4",
     },
     {
@@ -108,7 +102,7 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
       id: "asst_squats",
       type: "rep",
       label: "Assisted Squats",
-      instruction: `${squatReps} squats. Hold a chair or wall if needed. Chest up, knees track over toes.`,
+      instruction: `${squatReps} squats. Hold a chair or wall if needed. Chest up.`,
       repCount: squatReps,
       repLabel: "reps",
       voiceText: `Assisted squats. ${squatReps} reps. Chest up.`,
@@ -129,7 +123,7 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
       instruction: `${gluteReps} glute bridges. Lie on your back, feet flat, push hips up.`,
       repCount: gluteReps,
       repLabel: "reps",
-      voiceText: `Glute bridges. ${gluteReps} reps. Push hips up.`,
+      voiceText: `Glute bridges. ${gluteReps} reps.`,
       videoSrc: "/videos/glute_bridges_loop.mp4",
     },
     {
@@ -138,15 +132,15 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
       label: "Rest",
       instruction: "Rest 15 seconds. Last exercise coming.",
       durationSeconds: restSeconds,
-      voiceText: "Rest. 15 seconds. Last exercise coming.",
+      voiceText: "Rest. 15 seconds.",
     },
     {
       id: "plank_hold",
       type: "timer",
       label: "Plank Hold",
-      instruction: `Hold a plank for ${plankSeconds} seconds. Straight line from head to heels. Breathe.`,
+      instruction: `Hold a plank for ${plankSeconds} seconds. Straight line from head to heels.`,
       durationSeconds: plankSeconds,
-      voiceText: `Plank hold. ${plankSeconds} seconds. Straight line.`,
+      voiceText: `Plank hold. ${plankSeconds} seconds.`,
       videoSrc: "/videos/plank_hold_loop.mp4",
       loop: false,
     },
@@ -175,10 +169,11 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
 }
 
 /**
- * Returns the ordered ActivityDefinition array that the DailyFlowEngine should
- * run for the given starting path and current adaptive tiers.
+ * Returns the ordered ActivityDefinition array for the given path.
  *
- * Replaces the ad-hoc build+filter logic that was previously in Day6Home.tsx.
+ * This is the single engine-level source of truth — all path-composition
+ * logic lives here.  Day6Home simply calls this and passes the result to
+ * DailyFlowEngine.
  */
 export function buildDailyFlowActivities(
   workoutLevel: WorkoutLevel,
@@ -186,13 +181,11 @@ export function buildDailyFlowActivities(
 ): ActivityDefinition[] {
   const config = getPathFlowConfig(workoutLevel);
 
-  // Base returns [meditation, agility, strength] in DAILY_FLOW_ORDER.
-  const base = buildPhase1Activities(options.dayNumber, options.tiers);
-
   // ── Foundation / entry ──────────────────────────────────────────────────────
-  // No strength.  Agility is relabeled "Light Movement" to reflect the
-  // lower-friction intent both in the UI and in voice guidance.
+  // No strength.  Agility relabeled "Light Movement" so voice guidance and UI
+  // use the lower-friction framing consistently.
   if (!config.includesStrength) {
+    const base = buildPhase1Activities(options.dayNumber, options.tiers);
     return base
       .filter(a => a.id !== "phase1_strength")
       .map(a =>
@@ -204,11 +197,10 @@ export function buildDailyFlowActivities(
 
   // ── Build / beginner ────────────────────────────────────────────────────────
   // Replace the generic Physical Circuit stub with the 1-round Starter Strength
-  // activity.  Exercises match the session card promise exactly:
-  //   wall push-ups → assisted squats → glute bridges → plank hold
-  // No second round.  No multi-set structure.  Short and guided.
+  // activity (wall push-ups → assisted squats → glute bridges → plank).
   if (workoutLevel === "beginner") {
     const strengthTier = options.tiers?.strength ?? 1;
+    const base = buildPhase1Activities(options.dayNumber, options.tiers);
     return base.map((a): ActivityDefinition =>
       a.id === "phase1_strength"
         ? buildStarterStrengthActivity(strengthTier)
@@ -216,13 +208,23 @@ export function buildDailyFlowActivities(
     );
   }
 
-  // ── Evolve / Ascend (intermediate + advanced) ───────────────────────────────
-  // Return base activities unchanged.
-  // The Physical Circuit from activityEngine.ts — Warm-up cardio → Jog →
-  // Round 1 (Squats → Push-ups → Sit-ups → Plank) → Rest → Round 2 — is
-  // exactly the 2-round full circuit specified for these paths.
-  //
-  // buildWorkoutActivity (from workoutPlans.ts) belongs to the Training tab's
-  // Workout Builder system, NOT the daily flow.  Using it here was incorrect.
-  return base;
+  // ── Ascend / advanced ───────────────────────────────────────────────────────
+  // Same 2-round Physical Circuit from activityEngine, but strength tier is
+  // boosted to at least 3 so Ascend users always get higher rep counts:
+  //   Tier-3: push-ups ×16, squats ×18, sit-ups ×18, plank 30 s
+  //   vs Tier-1: push-ups ×8, squats ×10, sit-ups ×10, plank 20 s
+  if (workoutLevel === "advanced") {
+    const ascendTiers: CategoryTiers = {
+      strength:  Math.max(options.tiers?.strength  ?? 1, 3),
+      agility:   options.tiers?.agility   ?? 1,
+      meditation: options.tiers?.meditation ?? 1,
+      vitality:  options.tiers?.vitality  ?? 1,
+    };
+    return buildPhase1Activities(options.dayNumber, ascendTiers);
+  }
+
+  // ── Evolve / intermediate ───────────────────────────────────────────────────
+  // Standard 2-round Physical Circuit at the user's current adaptive tier.
+  // Warm-up cardio → Jog → Round 1 → Rest → Round 2.
+  return buildPhase1Activities(options.dayNumber, options.tiers);
 }

@@ -134,8 +134,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const activities = buildDailyFlowActivities(currentWorkoutLevel, {
     dayNumber: homeData.onboardingDay,
     tiers,
-    cardioIntensity: cardioPrefs.intensity,
-    cardioPosition: cardioPrefs.position,
   });
   const totalMins = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 

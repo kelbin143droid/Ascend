@@ -129,8 +129,8 @@ export const PATH_FLOW_CONFIGS: Record<WorkoutLevel, PathFlowConfig> = {
       },
       {
         id: "phase1_strength",
-        label: "Build Workout",
-        sublabel: "Wall push-ups · Assisted squats · Glute bridges · Plank",
+        label: "Starter Strength",
+        sublabel: "Wall push-ups · Assisted squats · Glute bridges · Plank · 1 round",
         icon: "Dumbbell",
         color: "#3b82f6",
         stat: "Strength",
@@ -168,8 +168,8 @@ export const PATH_FLOW_CONFIGS: Record<WorkoutLevel, PathFlowConfig> = {
       },
       {
         id: "phase1_strength",
-        label: "Evolve Workout",
-        sublabel: "Push-ups · Bulgarian split squats · Pike push-ups · Plank",
+        label: "Physical Circuit",
+        sublabel: "Warm-up cardio · Squats · Push-ups · Sit-ups · Plank · 2 rounds",
         icon: "Dumbbell",
         color: "#f59e0b",
         stat: "Strength",
@@ -207,8 +207,8 @@ export const PATH_FLOW_CONFIGS: Record<WorkoutLevel, PathFlowConfig> = {
       },
       {
         id: "phase1_strength",
-        label: "Ascend Workout",
-        sublabel: "Weighted push-ups · Pull-ups · Squats · Core · Plank",
+        label: "Physical Circuit",
+        sublabel: "Warm-up cardio · Squats · Push-ups · Sit-ups · Plank · 2 rounds · max intensity",
         icon: "Dumbbell",
         color: "#ef4444",
         stat: "Strength",
