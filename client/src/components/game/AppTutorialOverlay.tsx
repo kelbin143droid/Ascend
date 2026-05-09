@@ -139,8 +139,8 @@ export function AppTutorialOverlay() {
         )}
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 1 — CTA SPOTLIGHT
-            Spotlights the Begin Daily Flow button, floating card gives
+            STEP 1 — MISSION CARD SPOTLIGHT
+            Spotlights the current mission card, floating card gives
             one instruction. Dismissing completes the tutorial.
         ══════════════════════════════════════════════════════════════════ */}
         {step === 1 && (
@@ -228,16 +228,16 @@ export function AppTutorialOverlay() {
                           </div>
                           <div>
                             <p className="text-[9px] uppercase tracking-[0.24em] font-bold leading-none mb-0.5" style={{ color: "#0ea5e9" }}>
-                              Start Here
+                              Mission 01
                             </p>
                             <p className="text-sm font-bold leading-tight" style={{ color: "#eef2ff" }}>
-                              Begin Daily Flow
+                              Your First Mission
                             </p>
                           </div>
                         </div>
 
                         <p className="text-[11px] leading-relaxed mb-3.5" style={{ color: "rgba(255,255,255,0.42)" }}>
-                          Tap the highlighted button to start. Breath · Movement · Strength — three activities, guided from start to finish.
+                          Tap the highlighted card to begin. Each mission unlocks the next — Breath · Movement · Strength, guided step by step.
                         </p>
 
                         <motion.button

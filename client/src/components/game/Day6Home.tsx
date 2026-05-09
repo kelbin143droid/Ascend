@@ -327,30 +327,70 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
           className="flex flex-col gap-3"
         >
           {/* All done state */}
-          {allDone && (
-            <motion.div
-              key="all-done"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.32 }}
-              className="flex flex-col items-center text-center gap-2.5 py-8 px-6 rounded-[22px]"
-              style={{
-                background: "rgba(34,197,94,0.06)",
-                boxShadow: "0 0 40px rgba(34,197,94,0.10)",
-              }}
-              data-testid="text-flow-completed"
-            >
-              <CheckCircle2 size={34} style={{ color: "#22c55e" }} />
-              <div>
-                <p className="text-base font-bold" style={{ color: "#22c55e" }}>
-                  Daily ritual complete.
-                </p>
-                <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
-                  ~{totalMins} min · {pathConfig.displayLabel}
-                </p>
-              </div>
-            </motion.div>
-          )}
+          {allDone && (() => {
+            const tomorrowFirst = allCards[0];
+            const TomorrowIcon  = tomorrowFirst?.icon ?? Brain;
+            return (
+              <motion.div
+                key="all-done"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.32 }}
+                className="flex flex-col items-center text-center gap-3 py-8 px-6 rounded-[22px]"
+                style={{
+                  background: "rgba(34,197,94,0.06)",
+                  boxShadow: "0 0 40px rgba(34,197,94,0.10)",
+                }}
+                data-testid="text-flow-completed"
+              >
+                <CheckCircle2 size={34} style={{ color: "#22c55e" }} />
+                <div>
+                  <p className="text-base font-bold" style={{ color: "#22c55e" }}>
+                    Daily ritual complete.
+                  </p>
+                  <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
+                    ~{totalMins} min · {pathConfig.displayLabel}
+                  </p>
+                  <p className="text-[11px] mt-1.5 font-semibold" style={{ color: "#22c55e88" }}>
+                    {xp.exp} / {xp.maxExp} XP · Lv {displayLevel}
+                  </p>
+                </div>
+
+                {/* Tomorrow's first session preview */}
+                {tomorrowFirst && (
+                  <div
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left"
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                    }}
+                    data-testid="tomorrow-preview"
+                  >
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${tomorrowFirst.color}18` }}
+                    >
+                      <TomorrowIcon size={13} style={{ color: tomorrowFirst.color, opacity: 0.65 }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-[9px] uppercase tracking-[0.16em] font-bold"
+                        style={{ color: colors.textMuted }}
+                      >
+                        Tomorrow
+                      </p>
+                      <p
+                        className="text-[12px] font-medium"
+                        style={{ color: isNeonEmpress ? fae.inkText : colors.text, opacity: 0.70 }}
+                      >
+                        {tomorrowFirst.label}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })()}
 
           {/* Current mission card */}
           {currentCard && (() => {
@@ -521,46 +561,6 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
             </div>
           )}
 
-          {/* Quick links (optional) */}
-          {quickLinks.length > 0 && (
-            <div>
-              <p
-                className="text-[9px] uppercase tracking-[0.2em] font-bold mb-2 px-0.5"
-                style={{ color: colors.textMuted }}
-              >
-                Also today
-              </p>
-              {quickLinks.map((card, i) => {
-                const Icon = card.icon;
-                const dest = card.route ?? `/guided-session/${card.id}`;
-                return (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => navigate(dest)}
-                    data-testid={`mission-quicklink-${i}`}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors hover:bg-white/5 active:bg-white/10"
-                  >
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: `${card.color}15` }}
-                    >
-                      <Icon size={16} style={{ color: card.color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium leading-tight" style={{ color: colors.text }}>
-                        {card.label}
-                      </p>
-                      <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
-                        {card.sublabel}
-                      </p>
-                    </div>
-                    <span className="text-[10px]" style={{ color: colors.textMuted }}>›</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </motion.div>
 
         {/* ── PROGRESS STRIP ──────────────────────────────────────────────── */}
@@ -624,18 +624,25 @@ function SegmentedXpBar({
   percent: number; fill: string; glow: string; segments?: number;
 }) {
   const filled = Math.round((Math.max(0, Math.min(100, percent)) / 100) * segments);
+  // Stagger delay: each segment's fill delay is proportional to its index,
+  // distributing the total fill animation over 0.8 s (ease-out).
+  const totalDuration = 0.8;
   return (
     <div className="w-full flex gap-[2px] h-2 items-center" data-testid="xp-bar-track">
       {Array.from({ length: segments }).map((_, i) => {
         const on = i < filled;
         return (
-          <div
+          <motion.div
             key={i}
             className="flex-1 h-full rounded-[2px]"
-            style={{
+            animate={{
               backgroundColor: on ? fill : "rgba(255,255,255,0.08)",
-              boxShadow: on ? `0 0 5px ${glow}` : "none",
-              transition: "background-color 0.4s ease",
+              boxShadow:       on ? `0 0 5px ${glow}` : "none",
+            }}
+            transition={{
+              duration: 0.12,
+              ease: "easeOut",
+              delay: on ? (i / Math.max(filled, 1)) * totalDuration : 0,
             }}
             data-testid={i === 0 ? "xp-bar-fill" : undefined}
           />
