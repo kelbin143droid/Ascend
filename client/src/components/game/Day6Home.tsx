@@ -667,7 +667,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   case "Push Cardio":    navigate("/train");                             break;
                   case "Track Progress": navigate("/profile");                           break;
                   case "Review Path":    navigate("/habits");                            break;
-                  case "Hydrate":        /* reminder only */                             break;
+                  case "Hydrate":        navigate("/nutrition");                          break;
                   default: break;
                 }
               };
