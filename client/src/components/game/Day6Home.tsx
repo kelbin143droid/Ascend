@@ -445,7 +445,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {/* ── COACH MESSAGE ──────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.42 : 1, y: 0 }}
+          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.70 : 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.18 }}
           className={
             isNeonEmpress
@@ -456,7 +456,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             isNeonEmpress
               ? {
                   backgroundColor: fae.lavender,
-                  border: `1px solid ${fae.lavenderDeep}33`,
+                  border: `1px solid ${fae.lavenderDeep}88`,
                   backgroundImage:
                     "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' stroke='white' stroke-opacity='0.45' stroke-width='1.2' stroke-linecap='round'><path d='M10 50 Q 25 25, 45 40 T 80 35 T 115 50'/><path d='M5 80 Q 30 65, 50 85 T 90 80 T 120 95'/><path d='M60 10 Q 75 25, 65 45 T 80 75'/><path d='M20 110 Q 35 95, 55 105'/></g></svg>\")",
                   backgroundSize: "180px 180px",
@@ -476,9 +476,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               isNeonEmpress
                 ? {
                     backgroundColor: fae.lavenderDeep + "55",
-                    border: `1px solid ${fae.lavenderDeep}77`,
+                    border: `1px solid ${fae.lavenderDeep}cc`,
                   }
-                : { backgroundColor: `${colors.primary}20` }
+                : { backgroundColor: `${colors.primary}35` }
             }
           >
             <Brain size={isNeonEmpress ? 16 : 12} style={{ color: isNeonEmpress ? fae.inkText : colors.primary }} />
@@ -506,7 +506,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {/* ── SESSIONS TOGGLE ────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.38 : 1, y: 0 }}
+          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.70 : 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.22 }}
         >
           <button
@@ -676,7 +676,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
         {/* ── WORKOUT BUILDER ────────────────────────────────────────── */}
         <motion.div
-          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.35 : 1 }}
+          animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.70 : 1 }}
           transition={{ duration: 0.4 }}
         >
           <WorkoutBuilderSection playerId={player.id} />
@@ -685,7 +685,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {/* ── STAT BARS ──────────────────────────────────────────────── */}
         <motion.div
             initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.35 : 1, y: 0 }}
+            animate={{ opacity: isFirstMission && !flowCompletedToday ? 0.70 : 1, y: 0 }}
             transition={{ duration: 0.4 }}
             className={
               isNeonEmpress
