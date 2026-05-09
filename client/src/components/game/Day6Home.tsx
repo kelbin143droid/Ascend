@@ -6,6 +6,11 @@ import {
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import {
+  AvatarPickerSheet,
+  getAvatarIcon,
+  saveAvatarIcon,
+} from "./AvatarPickerSheet";
+import {
   shouldPromptAutoSwitch,
   setMode as setSleepMode,
   dismissAutoSwitchPrompt,
@@ -27,18 +32,6 @@ import {
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
 import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
-
-// ── Avatar system ─────────────────────────────────────────────────────────────
-
-const AVATAR_ICONS = ["⚡", "🔥", "🌊", "🌙", "🗡️", "🛡️", "🌟", "👁️"];
-const AVATAR_KEY = "ascend_avatar_icon";
-
-function getAvatarIcon(): string {
-  try { return localStorage.getItem(AVATAR_KEY) ?? AVATAR_ICONS[0]; } catch { return AVATAR_ICONS[0]; }
-}
-function setAvatarIcon(icon: string) {
-  try { localStorage.setItem(AVATAR_KEY, icon); } catch { /* noop */ }
-}
 
 // ── Quick actions config ──────────────────────────────────────────────────────
 
@@ -224,7 +217,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const handleStartFlow = () => { clearFlow(); clearSession(); setFlowActive(true); };
 
   const handleAvatarPick = (icon: string) => {
-    setAvatarIcon(icon);
+    saveAvatarIcon(icon);
     setAvatarIconState(icon);
     setShowAvatar(false);
   };
@@ -270,13 +263,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       <AvatarPickerSheet
         open={showAvatar}
         current={avatarIcon}
+        playerName={playerData?.name ?? ""}
         onPick={handleAvatarPick}
         onClose={() => setShowAvatar(false)}
         isIronSovereign={isIronSovereign}
         isNeonEmpress={isNeonEmpress}
         colors={colors}
-        fae={fae}
-        isHud={isHud}
+        fae={{ lavender: fae.lavender, lavenderDeep: fae.lavenderDeep, inkText: fae.inkText }}
         pathColor={pathConfig.primaryColor}
       />
 
@@ -815,111 +808,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
       </div>
     </SystemLayout>
-  );
-}
-
-// ── AvatarPickerSheet ─────────────────────────────────────────────────────────
-
-function AvatarPickerSheet({
-  open, current, onPick, onClose,
-  isIronSovereign, isNeonEmpress, colors, fae, isHud, pathColor,
-}: {
-  open: boolean;
-  current: string;
-  onPick: (icon: string) => void;
-  onClose: () => void;
-  isIronSovereign: boolean;
-  isNeonEmpress: boolean;
-  colors: any;
-  fae: any;
-  isHud: any;
-  pathColor: string;
-}) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-end justify-center"
-          data-testid="avatar-picker-sheet"
-        >
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-          <motion.div
-            initial={{ y: 60, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 60, opacity: 0 }}
-            transition={{ type: "spring", damping: 24 }}
-            className="relative w-full max-w-md rounded-t-3xl px-5 pt-5 pb-8"
-            style={{
-              backgroundColor: isNeonEmpress ? fae.lavender : colors.background,
-              border: `1.5px solid ${isNeonEmpress ? fae.lavenderDeep + "66" : colors.surfaceBorder}`,
-              borderBottom: "none",
-              boxShadow: "0 -12px 40px rgba(0,0,0,0.4)",
-            }}
-          >
-            {/* Handle */}
-            <div
-              className="w-10 h-1 rounded-full mx-auto mb-4"
-              style={{ backgroundColor: isNeonEmpress ? fae.lavenderDeep + "66" : "rgba(255,255,255,0.2)" }}
-            />
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3
-                  className="text-sm font-bold"
-                  style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
-                >
-                  Choose Your Avatar
-                </h3>
-                <p className="text-[10px] mt-0.5" style={{ color: isNeonEmpress ? fae.inkText + "99" : colors.textMuted }}>
-                  Your evolving identity
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                data-testid="button-avatar-close"
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: isNeonEmpress ? fae.lavenderDeep + "33" : colors.surface, color: colors.textMuted }}
-              >
-                <X size={15} />
-              </button>
-            </div>
-
-            {/* Icon grid */}
-            <div className="grid grid-cols-4 gap-3">
-              {AVATAR_ICONS.map(icon => {
-                const isSelected = icon === current;
-                return (
-                  <button
-                    key={icon}
-                    onClick={() => onPick(icon)}
-                    data-testid={`avatar-option-${icon}`}
-                    className="flex flex-col items-center gap-1.5 py-3 rounded-2xl transition-all active:scale-95"
-                    style={{
-                      backgroundColor: isSelected
-                        ? `${pathColor}22`
-                        : isNeonEmpress ? fae.lavenderDeep + "22" : colors.surface,
-                      border: `2px solid ${isSelected ? pathColor : "transparent"}`,
-                      boxShadow: isSelected ? `0 0 14px ${pathColor}55` : "none",
-                    }}
-                  >
-                    <span className="text-2xl leading-none">{icon}</span>
-                    {isSelected && (
-                      <div
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: pathColor }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 
