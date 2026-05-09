@@ -211,8 +211,15 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     vitality: scalingData?.trainingScaling?.vitality?.tier ?? 1,
   };
   const [currentWorkoutLevel] = useState(() => getWorkoutLevel());
+  const flowVariant = recommendation.flowVariant;
   const activities = (() => {
-    const raw = buildPhase1Activities(homeData.onboardingDay, tiers);
+    const raw = buildPhase1Activities(homeData.onboardingDay, tiers, flowVariant);
+    // Recovery: no strength activity, so nothing to replace.
+    // Push: activityEngine already boosted the tier — preserve it as-is.
+    // Light / Full: replace phase1_strength with the Workout Builder activity.
+    if (flowVariant === "recovery" || flowVariant === "push") {
+      return raw;
+    }
     const cardioPrefs = getCardioPrefs();
     return raw.map(a => {
       if (a.id === "phase1_strength") {
@@ -328,6 +335,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {flowActive && (
           <DailyFlowEngine
             activities={activities}
+            flowVariant={flowVariant}
             playerId={player.id}
             onComplete={handleFlowComplete}
             onCancel={() => setFlowActive(false)}

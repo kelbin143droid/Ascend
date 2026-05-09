@@ -6,6 +6,7 @@ import { GuidedActivityEngine } from "./GuidedActivityEngine";
 import { BreathingFeedbackModal } from "./BreathingFeedbackModal";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition } from "@/lib/activityEngine";
+import type { FlowVariant } from "@/lib/dailyRecommendationEngine";
 import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Dumbbell, ChevronRight } from "lucide-react";
 import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
@@ -19,6 +20,7 @@ interface FeedbackState {
 
 interface DailyFlowEngineProps {
   activities: ActivityDefinition[];
+  flowVariant?: FlowVariant;
   playerId: string;
   onComplete: (completedIds: string[], bonusAwarded: boolean) => void;
   onCancel: () => void;
@@ -33,6 +35,7 @@ const FEEDBACK_OPTIONS: { value: FeedbackValue; label: string; emoji: string }[]
 
 export function DailyFlowEngine({
   activities,
+  flowVariant: _flowVariant,
   playerId,
   onComplete,
   onCancel,
