@@ -14,7 +14,7 @@ import { WorkoutBuilderSection } from "./WorkoutBuilderSection";
 import { SystemLayout } from "./SystemLayout";
 import { buildPhase1Activities, type CategoryTiers } from "@/lib/activityEngine";
 import { buildWorkoutActivity, WORKOUT_PLANS } from "@/lib/workoutPlans";
-import { getWorkoutLevel, getCardioPrefs, getAllSessions } from "@/lib/workoutProgressStore";
+import { getWorkoutLevel, getCardioPrefs } from "@/lib/workoutProgressStore";
 import { getStats, recordSleepCheck, recordBreathingSession, getHPColor, getManaColor, getMaxHP, getMaxMana, initLevelBaseline, STATS_CHANGED_EVENT, type GameStats } from "@/lib/statsSystem";
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
@@ -161,21 +161,22 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     () => localStorage.getItem("ascend_first_mission_done") !== "1"
   );
 
-  // Progressive disclosure: show advanced sections once 5+ flows are completed
+  // Progressive disclosure: show advanced sections once 5+ flows are completed.
+  // The only authoritative source is `ascend_total_flows_completed`, incremented
+  // on every successful flow completion in handleFlowComplete.
+  // For users who completed flows before this counter existed we conservatively
+  // seed to 1 (not 5 and not a proxy count) if ascend_first_mission_done is set —
+  // we know they did at least one flow, but not how many, so 1 is the strictly
+  // correct lower bound. They will reach 5 after 4 more completions.
   const [completedFlowsEver, setCompletedFlowsEver] = useState(() => {
     try {
       const stored = localStorage.getItem("ascend_total_flows_completed");
       if (stored !== null) return parseInt(stored, 10) || 0;
-      // No counter yet — derive from tracked workout session history as a proxy.
-      // Each completed daily flow records one strength session, so session count
-      // is a defensible lower-bound approximation of total flows completed.
-      try {
-        const sessionCount = getAllSessions().length;
-        if (sessionCount > 0) {
-          localStorage.setItem("ascend_total_flows_completed", String(sessionCount));
-        }
-        return sessionCount;
-      } catch { return 0; }
+      const seed = localStorage.getItem("ascend_first_mission_done") === "1" ? 1 : 0;
+      if (seed > 0) {
+        try { localStorage.setItem("ascend_total_flows_completed", "1"); } catch { /* ignore */ }
+      }
+      return seed;
     } catch { return 0; }
   });
   const showAdvanced = completedFlowsEver >= 5;
@@ -971,65 +972,70 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               </span>
             </div>
 
-            {/* Row 2: HP bar */}
-            <div data-testid="hp-bar-section">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5">
-                  <Shield size={9} style={{ color: hpColor }} />
-                  <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: hpColor }}>HP</span>
-                  <span className="text-[9px] ml-0.5" style={{ color: isNeonEmpress ? `${fae.inkText}88` : colors.textMuted }}>Vitality</span>
+            {/* Rows 2–3: HP + MP bars — hidden until 5 flows completed (progressive disclosure) */}
+            {showAdvanced && (
+              <>
+                {/* Row 2: HP bar */}
+                <div data-testid="hp-bar-section">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <Shield size={9} style={{ color: hpColor }} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: hpColor }}>HP</span>
+                      <span className="text-[9px] ml-0.5" style={{ color: isNeonEmpress ? `${fae.inkText}88` : colors.textMuted }}>Vitality</span>
+                    </div>
+                    <span className="text-[9px] font-mono font-bold" style={{ color: hpColor }}>
+                      {Math.round(stats.hp)} / {maxHp}
+                    </span>
+                  </div>
+                  <div
+                    className="w-full h-1.5 rounded-full overflow-hidden"
+                    style={{ backgroundColor: isNeonEmpress ? "rgba(255,255,255,0.45)" : `${hpColor}18` }}
+                    data-testid="hp-bar-track"
+                  >
+                    <motion.div
+                      className="h-full rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${hpPct}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      style={
+                        isNeonEmpress
+                          ? { background: `linear-gradient(90deg, #22c55e 0%, ${fae.peach} 100%)` }
+                          : { backgroundColor: hpColor, boxShadow: `0 0 6px ${hpColor}60` }
+                      }
+                      data-testid="hp-bar-fill"
+                    />
+                  </div>
                 </div>
-                <span className="text-[9px] font-mono font-bold" style={{ color: hpColor }}>
-                  {Math.round(stats.hp)} / {maxHp}
-                </span>
-              </div>
-              <div
-                className="w-full h-1.5 rounded-full overflow-hidden"
-                style={{ backgroundColor: isNeonEmpress ? "rgba(255,255,255,0.45)" : `${hpColor}18` }}
-                data-testid="hp-bar-track"
-              >
-                <motion.div
-                  className="h-full rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${hpPct}%` }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                  style={
-                    isNeonEmpress
-                      ? { background: `linear-gradient(90deg, #22c55e 0%, ${fae.peach} 100%)` }
-                      : { backgroundColor: hpColor, boxShadow: `0 0 6px ${hpColor}60` }
-                  }
-                  data-testid="hp-bar-fill"
-                />
-              </div>
-            </div>
 
-            {/* Row 3: MP bar */}
-            <div data-testid="mana-bar-section">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5">
-                  <Zap size={9} style={{ color: manaColor }} />
-                  <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: manaColor }}>MP</span>
-                  <span className="text-[9px] ml-0.5" style={{ color: isNeonEmpress ? `${fae.inkText}88` : colors.textMuted }}>Meditation</span>
+                {/* Row 3: MP bar */}
+                <div data-testid="mana-bar-section">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <Zap size={9} style={{ color: manaColor }} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: manaColor }}>MP</span>
+                      <span className="text-[9px] ml-0.5" style={{ color: isNeonEmpress ? `${fae.inkText}88` : colors.textMuted }}>Meditation</span>
+                    </div>
+                    <span className="text-[9px] font-mono font-bold" style={{ color: manaColor }}>
+                      {Math.round(stats.mana)} / {maxMana}
+                    </span>
+                  </div>
+                  <div
+                    className="w-full h-1.5 rounded-full overflow-hidden"
+                    style={{ backgroundColor: isNeonEmpress ? "rgba(255,255,255,0.45)" : `${manaColor}18` }}
+                    data-testid="mana-bar-track"
+                  >
+                    <motion.div
+                      className="h-full rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${manaBarPct}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
+                      style={{ backgroundColor: manaColor, boxShadow: `0 0 6px ${manaColor}60` }}
+                      data-testid="mana-bar-fill"
+                    />
+                  </div>
                 </div>
-                <span className="text-[9px] font-mono font-bold" style={{ color: manaColor }}>
-                  {Math.round(stats.mana)} / {maxMana}
-                </span>
-              </div>
-              <div
-                className="w-full h-1.5 rounded-full overflow-hidden"
-                style={{ backgroundColor: isNeonEmpress ? "rgba(255,255,255,0.45)" : `${manaColor}18` }}
-                data-testid="mana-bar-track"
-              >
-                <motion.div
-                  className="h-full rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${manaBarPct}%` }}
-                  transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
-                  style={{ backgroundColor: manaColor, boxShadow: `0 0 6px ${manaColor}60` }}
-                  data-testid="mana-bar-fill"
-                />
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </motion.div>
 
