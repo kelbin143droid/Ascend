@@ -722,6 +722,20 @@ export default function GuidedSessionPage() {
       return;
     }
 
+    // Record per-activity completion for the guided ritual home screen
+    try {
+      const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+      const existing = localStorage.getItem(todayKey);
+      const ids: string[] = existing ? (JSON.parse(existing) as string[]) : [];
+      if (!ids.includes(sessionId)) {
+        ids.push(sessionId);
+        localStorage.setItem(todayKey, JSON.stringify(ids));
+      }
+      window.dispatchEvent(
+        new CustomEvent("ascend:activity-completed", { detail: { activityId: sessionId } })
+      );
+    } catch { /* noop */ }
+
     // Non-onboarding sessions: standard behavior
     const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
     if (isFirstCompletionToday) {

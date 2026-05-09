@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/" },
   { icon: User, label: "PROFILE", path: "/profile" },
   { icon: Target, label: "HABITS", path: "/habits" },
-  { icon: Brain, label: "COACH", path: "/coach" },
+  { icon: Brain, label: "SYSTEM", path: "/coach" },
 ];
 
 export function SystemLayout({ children }: { children: React.ReactNode }) {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Play } from "lucide-react";
 
 const TUTORIAL_KEY = "ascend_app_tutorial_seen";
-const CTA_TESTID   = "button-begin-flow";
+const CTA_TESTID   = "mission-card-current";
 
 interface CtaRect { top: number; left: number; width: number; height: number; }
 
