@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
-  ArrowRight, Heart, Zap, Shield, Flame, Moon, Droplets,
+  ArrowRight, Heart, Zap, Shield, Flame,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -58,27 +58,27 @@ interface Props {
 const DASH_CARDS = [
   {
     id: "calm",       activityId: "phase1_meditation", statKey: "sense",
-    label: "Calm Mind",  sub: "Focus & Recovery",
+    label: "Calm Mind",  sub: "Breathing Reset",
     icon: Brain,  color: "#818cf8", glow: "rgba(129,140,248,0.45)",
     barLabel: "MP", barType: "mp" as const, fallbackRoute: "/coach",
   },
   {
     id: "vitality",   activityId: "",                  statKey: "vitality",
-    label: "Vitality",   sub: "Sleep & Recovery",
+    label: "Vitality",   sub: "Recovery",
     icon: Heart,  color: "#f87171", glow: "rgba(248,113,113,0.45)",
     barLabel: "HP", barType: "hp" as const, fallbackRoute: "/sectograph",
   },
   {
     id: "strength",   activityId: "phase1_strength",   statKey: "strength",
-    label: "Strength",   sub: "Power & Resilience",
+    label: "Strength",   sub: "Power Training",
     icon: Shield, color: "#fbbf24", glow: "rgba(251,191,36,0.45)",
-    barLabel: "STR", barType: "xp" as const, fallbackRoute: "/train",
+    barLabel: "STR", barType: "xp" as const, fallbackRoute: "/training",
   },
   {
     id: "agility",    activityId: "phase1_agility",    statKey: "agility",
-    label: "Agility",    sub: "Speed & Flow",
+    label: "Agility",    sub: "Mobility Flow",
     icon: Zap,    color: "#34d399", glow: "rgba(52,211,153,0.45)",
-    barLabel: "AGI", barType: "xp" as const, fallbackRoute: "/train",
+    barLabel: "AGI", barType: "xp" as const, fallbackRoute: "/training",
   },
 ] as const;
 
@@ -251,13 +251,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     return () => navigate(dc.fallbackRoute);
   };
 
-  // Helper: task description for support card
-  const taskDesc = (dc: (typeof DASH_CARDS)[number]) => {
-    if (dc.id === "vitality") return hp >= maxHp ? "Full recovery · HP 100%" : `HP ${hp}/${maxHp} · Hydration check`;
-    const meta = metaById[dc.activityId];
-    if (meta?.sublabel) return meta.sublabel.split("·")[0].trim();
-    return dc.sub;
-  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -296,7 +289,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         }
       `}</style>
 
-      <div className="flex flex-col gap-4 py-2 px-0.5 max-w-md mx-auto w-full" data-testid="day6-home">
+      <div className="flex flex-col gap-5 py-3 px-1 max-w-md mx-auto w-full" data-testid="day6-home">
 
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
@@ -304,34 +297,32 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         <motion.div
           initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex items-center gap-3 px-0.5"
+          className="flex items-center gap-3"
           data-testid="daily-status-section"
         >
-          {/* Avatar with optional streak ring */}
+          {/* Avatar */}
           <button onClick={() => setShowAvatar(true)} data-testid="button-avatar"
             className="relative shrink-0 active:scale-95 transition-transform">
             {hasStreak && (
-              <div
-                className="absolute inset-[-5px] rounded-full pointer-events-none"
+              <div className="absolute inset-[-4px] rounded-full pointer-events-none"
                 style={{
-                  border: `2px solid ${primary}`,
-                  boxShadow: `0 0 16px ${primary}60`,
+                  border: `1.5px solid ${primary}`,
+                  boxShadow: `0 0 12px ${primary}55`,
                   animation: "streakRingPulse 2.4s ease-in-out infinite",
-                }}
-              />
+                }} />
             )}
             <div
-              className="w-11 h-11 rounded-full flex items-center justify-center text-xl relative z-10"
+              className="w-12 h-12 rounded-full flex items-center justify-center text-xl relative z-10"
               style={{
-                background: `linear-gradient(135deg,${primary}22,${primary}08)`,
-                border: `2px solid ${primary}44`,
-                boxShadow: hasStreak ? `0 0 20px ${primary}50` : `0 0 10px ${primary}28`,
+                background: `linear-gradient(135deg,${primary}20,${primary}08)`,
+                border: `1.5px solid ${primary}40`,
+                boxShadow: hasStreak ? `0 0 18px ${primary}45` : `0 0 8px ${primary}22`,
               }}
             >
               {avatarIcon}
             </div>
             <div
-              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold leading-none z-20"
+              className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center text-[8px] font-bold leading-none z-20"
               style={{ backgroundColor: primary, color: isNeonEmp ? fae.ink : "#000" }}
               data-testid="text-player-level"
             >
@@ -339,63 +330,57 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </div>
           </button>
 
-          {/* Name + XP + streak badge */}
+          {/* Name + XP */}
           <div className="flex-1 min-w-0" data-testid="xp-progress-section">
-            <div className="flex items-baseline justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-[13px] font-bold" style={{ color: textCol }}>
+                <span className="text-[14px] font-semibold tracking-tight" style={{ color: textCol }}>
                   {playerData?.name ?? "Hunter"}
                 </span>
                 {hasStreak && (
                   <span
-                    className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                    style={{ background: `${primary}1a`, color: primary, border: `1px solid ${primary}30` }}
+                    className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-[3px] rounded-full"
+                    style={{ background: `${primary}18`, color: primary, border: `1px solid ${primary}28` }}
                     data-testid="stat-streak"
                   >
-                    <Flame size={8} /> {streak}
+                    <Flame size={7} /> {streak}
                   </span>
                 )}
               </div>
-              <span className="text-[9px]" style={{ color: mutedCol }}>
-                {xp.exp}/{xp.maxExp} XP
+              <span className="text-[10px] font-mono tabular-nums" style={{ color: mutedCol }}>
+                {xp.exp}<span style={{ opacity: 0.5 }}>/{xp.maxExp}</span>
               </span>
             </div>
 
-            {/* XP bar — gets subtle glow underlay on streak */}
             <div className="relative">
               {hasStreak && (
-                <div
-                  className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{
-                    boxShadow: `0 0 12px ${primary}35`,
-                    animation: "streakBarGlow 2.4s ease-in-out infinite",
-                  }}
-                />
+                <div className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{ boxShadow: `0 0 10px ${primary}30`, animation: "streakBarGlow 2.4s ease-in-out infinite" }} />
               )}
               {isIronSov ? (
                 <SegBar fromPct={xpFrom} pct={xp.percent} fill={hudCyan} glow={hudCyanG} />
               ) : isNeonEmp ? (
                 <PastelBar pct={xp.percent} />
               ) : (
-                <div className="w-full h-1.5 rounded-full overflow-hidden"
-                  style={{ backgroundColor: "rgba(255,255,255,0.08)" }} data-testid="xp-bar-track">
+                <div className="w-full h-[5px] rounded-full overflow-hidden"
+                  style={{ backgroundColor: "rgba(255,255,255,0.07)" }} data-testid="xp-bar-track">
                   <motion.div className="h-full rounded-full"
                     initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
-                    style={{ backgroundColor: colors.primary, boxShadow: `0 0 6px ${colors.primaryGlow}` }}
+                    style={{ backgroundColor: colors.primary, boxShadow: `0 0 5px ${colors.primaryGlow}` }}
                     data-testid="xp-bar-fill" />
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-between mt-1.5">
-              <span className="text-[9px]" style={{ color: primary, opacity: 0.75 }}>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-[9px] tracking-wide" style={{ color: primary, opacity: 0.7 }}>
                 {pathCfg.displayLabel}
               </span>
               <button onClick={() => setShowCustomize(true)} data-testid="button-customize"
-                className="flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-lg active:scale-95 transition-transform"
-                style={{ color: mutedCol, backgroundColor: `${primary}10` }}>
-                <Palette size={9} /> Theme
+                className="flex items-center gap-0.5 text-[9px] px-1.5 py-[3px] rounded-lg active:scale-95 transition-transform"
+                style={{ color: mutedCol, backgroundColor: `${primary}0e` }}>
+                <Palette size={8} />
               </button>
             </div>
           </div>
@@ -463,17 +448,17 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: 0.12 }}
             >
-              {/* Animated glow ring — pulsing border effect */}
+              {/* Animated glow ring — sharper, more premium pulse */}
               <motion.div
                 className="rounded-2xl"
                 animate={{
                   boxShadow: [
-                    `0 0 24px ${dc.glow.replace("0.45","0.18")}, 0 8px 32px rgba(0,0,0,0.5)`,
-                    `0 0 48px ${dc.glow.replace("0.45","0.38")}, 0 8px 32px rgba(0,0,0,0.5)`,
-                    `0 0 24px ${dc.glow.replace("0.45","0.18")}, 0 8px 32px rgba(0,0,0,0.5)`,
+                    `0 0 16px ${dc.glow.replace("0.45","0.14")}, 0 6px 24px rgba(0,0,0,0.55)`,
+                    `0 0 32px ${dc.glow.replace("0.45","0.28")}, 0 6px 24px rgba(0,0,0,0.55)`,
+                    `0 0 16px ${dc.glow.replace("0.45","0.14")}, 0 6px 24px rgba(0,0,0,0.55)`,
                   ],
                 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
               >
                 <motion.button
                   type="button"
@@ -481,9 +466,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   whileTap={{ scale: 0.985 }}
                   className={`${CARD_BASE} gap-4`}
                   style={{
-                    background: `linear-gradient(140deg, rgba(8,10,26,0.97) 0%, rgba(12,14,32,0.95) 100%)`,
-                    border: `1.5px solid ${dc.color}55`,
-                    backdropFilter: "blur(18px)",
+                    background: `linear-gradient(140deg, rgba(8,10,26,0.98) 0%, rgba(10,12,28,0.96) 100%)`,
+                    border: `1.5px solid ${dc.color}45`,
+                    backdropFilter: "blur(12px)",
                     padding: "20px",
                   }}
                   data-testid="mission-card-current"
@@ -562,184 +547,90 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           data-testid="stat-grid"
         >
           {(allDone ? [...DASH_CARDS] : supportCards).map((dc, idx) => {
-            const isDone     = dc.activityId !== "" && isActivityDone(dc.activityId);
-            const inFlow     = dc.activityId !== "" && todayIds.has(dc.activityId);
-            const isUpcoming = inFlow && !isDone;
-            const action     = resolveAction(dc);
-            const desc       = taskDesc(dc);
+            const isDone  = dc.activityId !== "" && isActivityDone(dc.activityId);
+            const inFlow  = dc.activityId !== "" && todayIds.has(dc.activityId);
+            const action  = resolveAction(dc);
 
             const sl     = playerData?.statLevels?.[dc.statKey];
             const sLvl   = sl?.level ?? 1;
-
-            const showBar = dc.barType === "hp" || dc.barType === "mp" || allDone;
-            const barPct  = dc.barType === "mp" ? mpPct
+            const barPct = dc.barType === "mp" ? mpPct
               : dc.barType === "hp" ? hpPct
               : (sl ? Math.min(100, (sl.currentXP / sl.xpForNext) * 100) : 0);
 
-            const cardBg    = isDone ? "rgba(4,18,8,0.90)" : "rgba(6,8,20,0.88)";
-            const borderCol = isDone ? "rgba(34,197,94,0.30)" : `${dc.color}28`;
-            const glowShadow = isDone
-              ? "0 0 14px rgba(34,197,94,0.08), 0 4px 18px rgba(0,0,0,0.45)"
-              : `0 0 14px ${dc.glow.replace("0.45","0.08")}, 0 4px 18px rgba(0,0,0,0.45)`;
+            // Sublabel: Vitality shows live HP state, others use static sub
+            const sublabel = dc.id === "vitality"
+              ? (hpPct >= 100 ? "Recovery Stable" : `HP ${Math.round(hpPct)}%`)
+              : dc.sub;
 
-            // ── Vitality: dual sleep + hydration card ──────────────────────
-            if (dc.id === "vitality") {
-              return (
-                <motion.div
-                  key={dc.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.24 + idx * 0.05 }}
-                  className="rounded-2xl flex flex-col gap-2 w-full overflow-hidden"
-                  style={{
-                    background: cardBg,
-                    border: `1px solid ${borderCol}`,
-                    boxShadow: glowShadow,
-                    backdropFilter: "blur(16px)",
-                    minHeight: allDone ? 145 : 130,
-                    padding: "10px",
-                  }}
-                  data-testid="mission-card-vitality"
-                >
-                  {/* Card header */}
-                  <div className="flex items-center justify-between px-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-                        style={{ background: `${dc.color}14`, border: `1px solid ${dc.color}22` }}>
-                        <Heart size={12} style={{ color: dc.color }} />
-                      </div>
-                      <p className="text-[11px] font-bold" style={{ color: textCol }}>Vitality</p>
-                    </div>
-                    <span className="text-[7px] font-mono px-1.5 py-0.5 rounded-full"
-                      style={{ background: `${dc.color}0e`, color: dc.color }}>
-                      HP {Math.round(hpPct)}%
-                    </span>
-                  </div>
+            const accentColor = isDone ? "#22c55e" : dc.color;
+            const accentGlow  = isDone ? "rgba(34,197,94,0.45)" : dc.glow;
+            const cardBg      = isDone ? "rgba(4,16,8,0.92)" : "rgba(6,8,20,0.90)";
+            const borderCol   = isDone ? "rgba(34,197,94,0.22)" : `${dc.color}20`;
 
-                  {/* HP bar */}
-                  <div className="px-0.5">
-                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: `${dc.color}12` }}>
-                      <motion.div className="h-full rounded-full"
-                        initial={{ width: 0 }} animate={{ width: `${hpPct}%` }}
-                        transition={{ duration: 0.75, ease: "easeOut", delay: 0.3 }}
-                        style={{ background: dc.color, boxShadow: `0 0 5px ${dc.glow}` }} />
-                    </div>
-                  </div>
-
-                  {/* Sleep row */}
-                  <motion.button
-                    type="button"
-                    onClick={() => navigate("/sectograph")}
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-2 w-full rounded-xl px-2.5 py-2 text-left"
-                    style={{ background: "rgba(129,140,248,0.07)", border: "1px solid rgba(129,140,248,0.14)" }}
-                    data-testid="vitality-sleep-btn"
-                  >
-                    <Moon size={11} style={{ color: "#818cf8", flexShrink: 0 }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-bold leading-none" style={{ color: "#818cf8" }}>Sleep</p>
-                      <p className="text-[8px] leading-none mt-0.5" style={{ color: mutedCol }}>Schedule &amp; wind-down</p>
-                    </div>
-                    <ArrowRight size={8} style={{ color: "#818cf888", flexShrink: 0 }} />
-                  </motion.button>
-
-                  {/* Hydration row */}
-                  <motion.button
-                    type="button"
-                    onClick={() => navigate("/nutrition")}
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-2 w-full rounded-xl px-2.5 py-2 text-left"
-                    style={{ background: "rgba(34,211,238,0.07)", border: "1px solid rgba(34,211,238,0.14)" }}
-                    data-testid="vitality-hydration-btn"
-                  >
-                    <Droplets size={11} style={{ color: "#22d3ee", flexShrink: 0 }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-bold leading-none" style={{ color: "#22d3ee" }}>Hydration</p>
-                      <p className="text-[8px] leading-none mt-0.5" style={{ color: mutedCol }}>Water intake log</p>
-                    </div>
-                    <ArrowRight size={8} style={{ color: "#22d3ee88", flexShrink: 0 }} />
-                  </motion.button>
-                </motion.div>
-              );
-            }
-
-            // ── Standard ritual card ────────────────────────────────────────
             return (
               <motion.button
                 key={dc.id}
                 type="button"
                 onClick={action}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: isUpcoming || !inFlow ? 0.82 : 1, y: 0 }}
-                whileHover={{ scale: 1.025, transition: { duration: 0.18 } }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: (!inFlow && dc.activityId !== "") ? 0.75 : 1, y: 0 }}
+                whileHover={{ scale: 1.03, transition: { duration: 0.15 } }}
                 whileTap={{ scale: 0.96 }}
-                transition={{ duration: 0.3, delay: 0.24 + idx * 0.05 }}
-                className={CARD_BASE}
+                transition={{ duration: 0.28, delay: 0.22 + idx * 0.06 }}
+                className="rounded-2xl flex flex-col w-full text-left"
                 style={{
                   background: cardBg,
                   border: `1px solid ${borderCol}`,
-                  boxShadow: glowShadow,
-                  backdropFilter: "blur(16px)",
-                  minHeight: allDone ? 145 : 130,
+                  boxShadow: `0 2px 16px rgba(0,0,0,0.40)`,
+                  backdropFilter: "blur(10px)",
+                  padding: "14px 12px",
+                  gap: "10px",
                 }}
-                data-testid={`mission-card-${dc.label.toLowerCase().replace(/\s/g,"-")}`}
+                data-testid={`mission-card-${dc.id}`}
               >
-                {/* Icon row */}
+                {/* Top row: icon + level badge */}
                 <div className="flex items-center justify-between">
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center"
                     style={{
-                      background: isDone ? "rgba(34,197,94,0.10)" : `${dc.color}14`,
-                      border: `1px solid ${isDone ? "rgba(34,197,94,0.22)" : `${dc.color}22`}`,
+                      background: `${accentColor}12`,
+                      border: `1px solid ${accentColor}20`,
                     }}
                   >
                     {isDone
-                      ? <CheckCircle2 size={17} style={{ color: "#22c55e" }} />
-                      : <dc.icon size={17} style={{ color: dc.color }} />}
+                      ? <CheckCircle2 size={15} style={{ color: accentColor }} />
+                      : <dc.icon size={15} style={{ color: accentColor }} />}
                   </div>
                   <span
-                    className="text-[7px] font-mono px-1.5 py-0.5 rounded-full"
-                    style={{
-                      background: isDone ? "rgba(34,197,94,0.10)" : `${dc.color}0e`,
-                      color: isDone ? "#22c55e" : dc.color,
-                    }}
+                    className="text-[8px] font-bold tabular-nums"
+                    style={{ color: accentColor, opacity: 0.7 }}
                   >
                     Lv {sLvl}
                   </span>
                 </div>
 
-                {/* Label + desc */}
-                <div className="flex-1">
-                  <p className="text-[12px] font-bold leading-none mb-1"
+                {/* Title + sublabel */}
+                <div>
+                  <p className="text-[12px] font-bold leading-tight mb-0.5"
                     style={{ color: isDone ? "#22c55e" : textCol }}>
                     {dc.label}
                   </p>
-                  <p className="text-[9px] leading-snug" style={{ color: mutedCol }}>
-                    {desc}
+                  <p className="text-[9px] leading-none"
+                    style={{ color: mutedCol }}>
+                    {sublabel}
                   </p>
                 </div>
 
-                {/* Bar */}
-                {showBar && (
-                  <div>
-                    <div className="w-full h-1 rounded-full overflow-hidden"
-                      style={{ background: isDone ? "rgba(34,197,94,0.10)" : `${dc.color}12` }}>
-                      <motion.div className="h-full rounded-full"
-                        initial={{ width: 0 }} animate={{ width: `${barPct}%` }}
-                        transition={{ duration: 0.75, ease: "easeOut", delay: 0.3 + idx * 0.06 }}
-                        style={{
-                          background: isDone ? "#22c55e" : dc.color,
-                          boxShadow: isDone ? "0 0 4px rgba(34,197,94,0.5)" : `0 0 5px ${dc.glow}`,
-                        }} />
-                    </div>
-                  </div>
-                )}
-
-                {/* Tap hint */}
-                <div className="flex items-center justify-end">
-                  <span className="text-[7px] flex items-center gap-0.5" style={{ color: isDone ? "#22c55e88" : `${dc.color}70` }}>
-                    {isDone ? "done ✓" : "tap to begin"} <ArrowRight size={7} />
-                  </span>
+                {/* Thin stat bar */}
+                <div className="w-full h-[3px] rounded-full overflow-hidden"
+                  style={{ background: `${accentColor}10` }}>
+                  <motion.div className="h-full rounded-full"
+                    initial={{ width: 0 }} animate={{ width: `${barPct}%` }}
+                    transition={{ duration: 0.7, ease: "easeOut", delay: 0.28 + idx * 0.06 }}
+                    style={{
+                      background: accentColor,
+                      boxShadow: `0 0 4px ${accentGlow.replace("0.45","0.35")}`,
+                    }} />
                 </div>
               </motion.button>
             );
