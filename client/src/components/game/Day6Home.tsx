@@ -126,10 +126,6 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
     .filter(c => !c.isQuickLink)
     .map(c => ({ ...c, icon: ICON_MAP[c.icon as keyof typeof ICON_MAP] }));
 
-  const quickLinks = pathConfig.sessionCards
-    .filter(c => c.isQuickLink)
-    .map(c => ({ ...c, icon: ICON_MAP[c.icon as keyof typeof ICON_MAP] }));
-
   const pendingCards = allCards.filter(c => !completedIds.has(c.id));
   const doneCards    = allCards.filter(c =>  completedIds.has(c.id));
   const allDone      = pendingCards.length === 0 && allCards.length > 0;

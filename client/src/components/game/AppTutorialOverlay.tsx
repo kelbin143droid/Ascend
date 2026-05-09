@@ -116,8 +116,8 @@ export function AppTutorialOverlay() {
                 className="text-sm leading-relaxed mb-8"
                 style={{ color: "rgba(255,255,255,0.40)" }}
               >
-                Complete your first Daily Flow to activate your progression system.
-                Three short activities. Everything unlocks from there.
+                Tap your first mission card to start. Three short activities —
+                guided from start to finish. Everything unlocks from there.
               </p>
 
               {/* Single CTA — no alternative */}
