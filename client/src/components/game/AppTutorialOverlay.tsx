@@ -155,6 +155,38 @@ export function AppTutorialOverlay() {
             {/* Transparent base (allows pointer events to pass through to button) */}
             <div className="absolute inset-0" />
 
+            {/* Safe fallback: if mission card can't be measured, show a centred
+                dismiss card so the tutorial is never non-dismissible. */}
+            {!ctaRect && (
+              <div className="absolute inset-0 flex items-center justify-center px-6">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.28 }}
+                  className="w-full rounded-2xl p-5"
+                  style={{
+                    backgroundColor: "rgba(4,4,18,0.97)",
+                    border: "1px solid rgba(14,165,233,0.32)",
+                    boxShadow: "0 0 40px rgba(14,165,233,0.09), 0 12px 40px rgba(0,0,0,0.72)",
+                  }}
+                >
+                  <p className="text-sm font-bold mb-2" style={{ color: "#eef2ff" }}>Your First Mission</p>
+                  <p className="text-[11px] leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.42)" }}>
+                    Tap the mission card that appears on your home screen to begin. Each mission unlocks the next.
+                  </p>
+                  <motion.button
+                    onClick={dismiss}
+                    className="w-full py-3 rounded-xl text-[12px] font-bold uppercase tracking-[0.14em]"
+                    style={{ backgroundColor: "#0ea5e9", color: "#001828" }}
+                    whileTap={{ scale: 0.97 }}
+                    data-testid="button-tutorial-next"
+                  >
+                    Got it — I'm ready
+                  </motion.button>
+                </motion.div>
+              </div>
+            )}
+
             {ctaRect && (
               <>
                 {/* Cutout spotlight ring — box-shadow scrim */}

@@ -98,7 +98,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [flowActive,    setFlowActive]    = useState(false);
 
   // ── Session progress (per-activity localStorage tracking) ───────────────────
-  const { completedIds } = useSessionProgress();
+  const { completedIds, markComplete } = useSessionProgress();
 
   // ── Derived data ────────────────────────────────────────────────────────────
   const tiers: CategoryTiers = {
@@ -195,9 +195,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         recordBreathingSession(true);
       }
       localStorage.setItem("ascend_first_mission_done", "1");
+      // Sync each completed ID into the per-activity localStorage key so the
+      // mission sequencing UI (pending / done / allDone) stays consistent
+      // whether the user ran individual cards or the full guided-flow overlay.
+      ids.forEach(id => markComplete(id));
     }
     setFlowActive(false);
-  }, []);
+  }, [markComplete]);
 
   const handleAvatarPick = (icon: string) => {
     saveAvatarIcon(icon);
