@@ -217,23 +217,12 @@ export function buildDailyFlowActivities(
   }
 
   // ── Evolve / Ascend (intermediate + advanced) ───────────────────────────────
-  // Replace with the level-appropriate WorkoutPlan activity.
-  // Cardio is only injected for Ascend (advanced) users — Evolve is a
-  // standard 3-session flow (breathing + agility + full strength, no cardio).
-  // This keeps Evolve home cards and executed flow in perfect parity.
-  const effectiveCardio: CardioIntensity =
-    workoutLevel === "advanced"
-      ? (options.cardioIntensity ?? "off")
-      : "off";
-
-  return base.map((a): ActivityDefinition => {
-    if (a.id === "phase1_strength") {
-      const workoutActivity = buildWorkoutActivity(workoutLevel, {
-        intensity: effectiveCardio,
-        position: options.cardioPosition ?? "after",
-      });
-      return { ...workoutActivity, id: "phase1_strength" };
-    }
-    return a;
-  });
+  // Return base activities unchanged.
+  // The Physical Circuit from activityEngine.ts — Warm-up cardio → Jog →
+  // Round 1 (Squats → Push-ups → Sit-ups → Plank) → Rest → Round 2 — is
+  // exactly the 2-round full circuit specified for these paths.
+  //
+  // buildWorkoutActivity (from workoutPlans.ts) belongs to the Training tab's
+  // Workout Builder system, NOT the daily flow.  Using it here was incorrect.
+  return base;
 }

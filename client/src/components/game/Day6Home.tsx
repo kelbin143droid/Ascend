@@ -67,10 +67,14 @@ const ICON_MAP = { Brain, Wind, Dumbbell, Sparkles } as const;
 
 function buildSessionList(workoutLevel: WorkoutLevel) {
   const config = getPathFlowConfig(workoutLevel);
-  return config.sessionCards.map(card => ({
+  const mapped = config.sessionCards.map(card => ({
     ...card,
     icon: ICON_MAP[card.icon as keyof typeof ICON_MAP],
   }));
+  return {
+    flowCards: mapped.filter(c => !c.isQuickLink),
+    quickLinks: mapped.filter(c => c.isQuickLink),
+  };
 }
 
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
@@ -619,61 +623,83 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     border: `2px solid ${colors.surfaceBorder}`,
                   }}
                 >
-                  {buildSessionList(currentWorkoutLevel).map((session, i) => {
-                    const Icon = session.icon;
-                    const done = flowCompletedToday && !session.route;
-                    const dest = session.route ?? `/guided-session/${session.id}`;
-                    return (
-                      <button
-                        type="button"
-                        key={session.id}
-                        onClick={() => navigate(dest)}
-                        data-testid={`session-item-${i}`}
-                        className="w-full text-left flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 active:bg-white/10"
-                        style={{
-                          borderTop: i > 0 ? `1px solid ${colors.surfaceBorder}` : "none",
-                          backgroundColor: done ? `${session.color}04` : "transparent",
-                          opacity: session.optional ? 0.75 : 1,
-                        }}
-                      >
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  {(() => {
+                    const { flowCards, quickLinks } = buildSessionList(currentWorkoutLevel);
+                    const renderCard = (session: ReturnType<typeof buildSessionList>["flowCards"][number], i: number, baseIndex: number) => {
+                      const Icon = session.icon;
+                      const done = flowCompletedToday && !session.route;
+                      const dest = session.route ?? `/guided-session/${session.id}`;
+                      return (
+                        <button
+                          type="button"
+                          key={session.id}
+                          onClick={() => navigate(dest)}
+                          data-testid={`session-item-${baseIndex + i}`}
+                          className="w-full text-left flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/5 active:bg-white/10"
                           style={{
-                            backgroundColor: done ? "#22c55e18" : `${session.color}15`,
+                            borderTop: (baseIndex + i) > 0 ? `1px solid ${colors.surfaceBorder}` : "none",
+                            backgroundColor: done ? `${session.color}04` : "transparent",
+                            opacity: session.optional ? 0.75 : 1,
                           }}
                         >
-                          {done ? (
-                            <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
-                          ) : (
-                            <Icon size={15} style={{ color: session.color }} />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className="text-sm font-medium leading-tight"
-                            style={{ color: done ? colors.textMuted : colors.text }}
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: done ? "#22c55e18" : `${session.color}15` }}
                           >
-                            {session.label}
-                            {session.optional && (
-                              <span className="ml-1.5 text-[9px] font-normal opacity-60">(optional)</span>
+                            {done ? (
+                              <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
+                            ) : (
+                              <Icon size={15} style={{ color: session.color }} />
                             )}
-                          </p>
-                          <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
-                            {session.sublabel}
-                          </p>
-                        </div>
-                        <span
-                          className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0"
-                          style={{
-                            backgroundColor: done ? "#22c55e15" : `${session.color}12`,
-                            color: done ? "#22c55e" : `${session.color}cc`,
-                          }}
-                        >
-                          {session.stat}
-                        </span>
-                      </button>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className="text-sm font-medium leading-tight"
+                              style={{ color: done ? colors.textMuted : colors.text }}
+                            >
+                              {session.label}
+                              {session.optional && (
+                                <span className="ml-1.5 text-[9px] font-normal opacity-60">(optional)</span>
+                              )}
+                            </p>
+                            <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
+                              {session.sublabel}
+                            </p>
+                          </div>
+                          <span
+                            className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0"
+                            style={{
+                              backgroundColor: done ? "#22c55e15" : `${session.color}12`,
+                              color: done ? "#22c55e" : `${session.color}cc`,
+                            }}
+                          >
+                            {session.stat}
+                          </span>
+                        </button>
+                      );
+                    };
+                    return (
+                      <>
+                        {flowCards.map((s, i) => renderCard(s, i, 0))}
+                        {quickLinks.length > 0 && (
+                          <>
+                            <div
+                              className="px-4 py-1.5 flex items-center gap-2"
+                              style={{ borderTop: `1px solid ${colors.surfaceBorder}`, backgroundColor: `${colors.surfaceBorder}30` }}
+                            >
+                              <span
+                                className="text-[9px] uppercase tracking-[0.14em] font-semibold"
+                                style={{ color: colors.textMuted }}
+                              >
+                                Also today
+                              </span>
+                            </div>
+                            {quickLinks.map((s, i) => renderCard(s, i, flowCards.length + 1))}
+                          </>
+                        )}
+                      </>
                     );
-                  })}
+                  })()}
                   <button
                     type="button"
                     onClick={() => navigate("/sleep-settings")}

@@ -25,6 +25,12 @@ export interface PathSessionCard {
   route?: string;
   /** When true the card is shown with a softer style and "(optional)" hint */
   optional?: boolean;
+  /**
+   * When true the card is a navigation shortcut, NOT part of the guided Daily
+   * Flow sequence.  Rendered in a separate "Also today" section below the flow
+   * steps so there is no ambiguity about what the flow actually contains.
+   */
+  isQuickLink?: boolean;
 }
 
 export interface PathFlowConfig {
@@ -88,6 +94,7 @@ export const PATH_FLOW_CONFIGS: Record<WorkoutLevel, PathFlowConfig> = {
         color: "#a855f7",
         stat: "Habits",
         route: "/habits",
+        isQuickLink: true,
       },
     ],
   },
