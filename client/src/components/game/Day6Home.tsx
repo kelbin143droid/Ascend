@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
-  ArrowRight, Heart, Zap, Shield, Flame,
+  ArrowRight, Heart, Zap, Shield, Flame, Moon, Droplets,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -194,13 +194,23 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const featuredCard = DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
   const supportCards = DASH_CARDS.filter(d => d !== featuredCard);
 
-  // Helper: resolve route for a support card
-  const resolveRoute = (dc: (typeof DASH_CARDS)[number]) => {
-    if (dc.activityId === "") return dc.fallbackRoute;
-    const inFlow = todayIds.has(dc.activityId);
-    const isDone = completedIds.has(dc.activityId);
-    if (inFlow && !isDone) return metaById[dc.activityId]?.route ?? `/guided-session/${dc.activityId}`;
-    return dc.fallbackRoute;
+  // Correct session routes per activity (GuidedSessionPage only knows these IDs)
+  const ACTIVITY_SESSION: Record<string, string> = {
+    phase1_meditation: "/guided-session/calm-breathing",
+    phase1_agility:    "/guided-session/light-movement",
+  };
+
+  // Resolve the click action for a supporting card
+  const resolveAction = (dc: (typeof DASH_CARDS)[number]): () => void => {
+    if (dc.id === "vitality") return () => navigate("/sectograph");
+    const sessionRoute = ACTIVITY_SESSION[dc.activityId];
+    if (sessionRoute) return () => navigate(sessionRoute);
+    // Strength: no standalone session — use flow engine if pending, training page if done/absent
+    if (dc.activityId === "phase1_strength") {
+      const pendingStrength = todayIds.has("phase1_strength") && !completedIds.has("phase1_strength");
+      return pendingStrength ? () => setFlowActive(true) : () => navigate("/training");
+    }
+    return () => navigate(dc.fallbackRoute);
   };
 
   // Helper: task description for support card
@@ -409,7 +419,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           const dur   = actDurMap[dc.activityId] ?? 2;
           const barPct = dc.barType === "mp" ? mpPct : dc.barType === "hp" ? hpPct
             : (() => { const sl = playerData?.statLevels?.[dc.statKey]; return sl ? Math.min(100, (sl.currentXP / sl.xpForNext) * 100) : 0; })();
-          const dest  = metaById[dc.activityId]?.route ?? `/guided-session/${dc.activityId}`;
 
           return (
             <motion.div
@@ -430,7 +439,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               >
                 <motion.button
                   type="button"
-                  onClick={() => navigate(dest)}
+                  onClick={() => setFlowActive(true)}
                   whileTap={{ scale: 0.985 }}
                   className={`${CARD_BASE} gap-4`}
                   style={{
