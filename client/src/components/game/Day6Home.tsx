@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Brain, Wind, Dumbbell, CheckCircle2, Sparkles, X, Palette, ArrowRight, Play,
-  Heart, Flame, Shield, Zap,
+  Brain, Wind, Dumbbell, CheckCircle2, Sparkles, X, Palette,
+  ArrowRight, Play, Heart, Zap, Shield,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -20,20 +20,15 @@ import { getWorkoutLevel } from "@/lib/workoutProgressStore";
 import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
 import { getPathAwareRecommendation } from "@/lib/dailyRecommendationEngine";
-import {
-  recordSleepCheck, recordBreathingSession,
-  initLevelBaseline,
-} from "@/lib/statsSystem";
+import { recordSleepCheck, recordBreathingSession, initLevelBaseline } from "@/lib/statsSystem";
 import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
 import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 import { useSessionProgress } from "@/hooks/useSessionProgress";
 
-// ── Icon map ──────────────────────────────────────────────────────────────────
-
-const ICON_MAP = { Brain, Wind, Dumbbell, Sparkles } as const;
-
-// ── Interfaces ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface HomeData {
   phase: { number: number; name: string };
@@ -43,188 +38,178 @@ interface HomeData {
   streak: number;
   stability?: { consecutiveActiveDays?: number };
 }
-
-interface StatLevel {
-  level: number;
-  currentXP: number;
-  xpForNext: number;
-}
-
+interface StatLevel { level: number; currentXP: number; xpForNext: number; }
 interface PlayerData {
-  level: number;
-  exp: number;
-  maxExp: number;
-  totalExp: number;
+  level: number; exp: number; maxExp: number; totalExp: number;
   name?: string;
   statLevels?: Record<string, StatLevel>;
   displayStats?: Record<string, number>;
-  hp?: number;
-  maxHp?: number;
-  mp?: number;
-  maxMp?: number;
+  hp?: number; maxHp?: number; mp?: number; maxMp?: number;
 }
-
 interface Player { id: string; }
-
-interface ScalingData {
-  trainingScaling?: Record<string, { tier: number }>;
-}
-
+interface ScalingData { trainingScaling?: Record<string, { tier: number }>; }
 interface Props {
-  homeData: HomeData;
-  playerData: PlayerData | null;
-  player: Player;
-  scalingData: ScalingData | null;
+  homeData: HomeData; playerData: PlayerData | null;
+  player: Player; scalingData: ScalingData | null;
 }
 
-// ── Stat card definitions ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard card definitions — always shown as a 2×2 grid
+// Each maps to a stat + optionally a daily activity
+// ─────────────────────────────────────────────────────────────────────────────
 
-const STAT_DEFS = [
+const DASH_CARDS = [
   {
-    key: "vitality",
-    label: "Vitality",
-    barLabel: "HP",
-    icon: Heart,
-    color: "#ef4444",
-    glow: "rgba(239,68,68,0.4)",
-  },
-  {
-    key: "sense",
+    id: "calm",
+    activityId: "phase1_meditation",
+    statKey: "sense",
     label: "Calm Mind",
-    barLabel: "MP",
+    sub: "Focus & Recovery",
     icon: Brain,
-    color: "#818cf8",
-    glow: "rgba(129,140,248,0.4)",
+    color: "#818cf8",      // indigo
+    glow: "rgba(129,140,248,0.50)",
+    barLabel: "MP",
   },
   {
-    key: "strength",
+    id: "vitality",
+    activityId: "",           // no dedicated guided activity in current paths
+    statKey: "vitality",
+    label: "Vitality",
+    sub: "Health & Endurance",
+    icon: Heart,
+    color: "#f87171",      // rose
+    glow: "rgba(248,113,113,0.50)",
+    barLabel: "HP",
+  },
+  {
+    id: "strength",
+    activityId: "phase1_strength",
+    statKey: "strength",
     label: "Strength",
-    barLabel: "STR",
+    sub: "Power & Resilience",
     icon: Shield,
-    color: "#f59e0b",
-    glow: "rgba(245,158,11,0.4)",
+    color: "#fbbf24",      // amber
+    glow: "rgba(251,191,36,0.50)",
+    barLabel: "STR",
   },
   {
-    key: "agility",
+    id: "agility",
+    activityId: "phase1_agility",
+    statKey: "agility",
     label: "Agility",
-    barLabel: "AGI",
+    sub: "Speed & Flow",
     icon: Zap,
-    color: "#22c55e",
-    glow: "rgba(34,197,94,0.4)",
+    color: "#34d399",      // emerald
+    glow: "rgba(52,211,153,0.50)",
+    barLabel: "AGI",
   },
 ] as const;
 
-// ── Main component ────────────────────────────────────────────────────────────
+type DashCardId = (typeof DASH_CARDS)[number]["id"];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const { backgroundTheme } = useTheme();
-  const colors = backgroundTheme.colors;
-  const isIronSovereign = backgroundTheme.id === "male";
-  const isNeonEmpress   = backgroundTheme.id === "female";
+  const colors    = backgroundTheme.colors;
+  const isIronSov = backgroundTheme.id === "male";
+  const isNeonEmp = backgroundTheme.id === "female";
 
-  const isHud = {
-    cyan: "#22d3ee", cyanGlow: "rgba(34,211,238,0.55)",
-  };
+  const hudCyan  = "#22d3ee";
+  const hudCyanG = "rgba(34,211,238,0.55)";
   const fae = {
     peach: "#fbcaad", peachStrong: "#f4845f",
     lavender: "#c8b9ee", lavenderDeep: "#8d75c4",
-    inkText: "#2d1b4e",
+    ink: "#2d1b4e",
   };
 
   const [, navigate] = useLocation();
 
-  // ── Core state ──────────────────────────────────────────────────────────────
+  // state
   const [showCustomize, setShowCustomize] = useState(false);
   const [showAvatar,    setShowAvatar]    = useState(false);
-  const [avatarIcon,    setAvatarIconState] = useState(() => getAvatarIcon());
+  const [avatarIcon,    setAvatarState]   = useState(() => getAvatarIcon());
   const [flowActive,    setFlowActive]    = useState(false);
 
-  // ── Session progress ────────────────────────────────────────────────────────
   const { completedIds, markComplete } = useSessionProgress();
 
-  // ── Derived data ─────────────────────────────────────────────────────────
+  // derived config
   const tiers: CategoryTiers = {
     strength:   scalingData?.trainingScaling?.strength?.tier   ?? 1,
     agility:    scalingData?.trainingScaling?.agility?.tier    ?? 1,
     meditation: scalingData?.trainingScaling?.meditation?.tier ?? 1,
     vitality:   scalingData?.trainingScaling?.vitality?.tier   ?? 1,
   };
-  const [currentWorkoutLevel] = useState(() => getWorkoutLevel());
-  const pathConfig = getPathFlowConfig(currentWorkoutLevel);
-  const pathRec    = getPathAwareRecommendation(currentWorkoutLevel);
-  const activities = buildDailyFlowActivities(currentWorkoutLevel, {
-    dayNumber: homeData.onboardingDay,
-    tiers,
-  });
-  const totalMins = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
+  const [wlevel] = useState(() => getWorkoutLevel());
+  const pathCfg  = getPathFlowConfig(wlevel);
+  const pathRec  = getPathAwareRecommendation(wlevel);
+  const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers });
+  const totalMins  = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
-  const activityDurationMap = Object.fromEntries(
+  const actDurMap = Object.fromEntries(
     activities.map(a => [a.id, Math.max(1, Math.round(a.duration / 60))])
   );
 
+  // XP
   const xp = computeXPState(
     playerData?.totalExp ?? 0,
     playerData?.level    ?? 2,
     playerData?.exp      ?? 0,
-    playerData?.maxExp   ?? 100
+    playerData?.maxExp   ?? 100,
   );
-  const displayLevel = playerData?.level ?? 2;
-
-  // XP animation: track previous percent for from→to animation
-  const [xpAnimFrom, setXpAnimFrom] = useState(xp.percent);
-  const xpPercentRef = useRef(xp.percent);
+  const lvl = playerData?.level ?? 2;
+  const [xpFrom, setXpFrom] = useState(xp.percent);
+  const xpRef = useRef(xp.percent);
   useEffect(() => {
-    if (xp.percent !== xpPercentRef.current) {
-      setXpAnimFrom(xpPercentRef.current);
-      xpPercentRef.current = xp.percent;
+    if (xp.percent !== xpRef.current) {
+      setXpFrom(xpRef.current);
+      xpRef.current = xp.percent;
     }
   }, [xp.percent]);
 
-  // ── Mission lists (driven by actual activity sequence) ───────────────────
-  const sessionCardMetaById = Object.fromEntries(
-    pathConfig.sessionCards.map(c => [c.id, c])
-  );
-  const allCards = activities
-    .map(a => {
-      const meta = sessionCardMetaById[a.id];
-      if (!meta) return null;
-      return { ...meta, icon: ICON_MAP[meta.icon as keyof typeof ICON_MAP] };
-    })
+  // Mission lists — driven from actual activity sequence
+  const metaById = Object.fromEntries(pathCfg.sessionCards.map(c => [c.id, c]));
+  const seqCards = activities
+    .map(a => { const m = metaById[a.id]; return m ?? null; })
     .filter((c): c is NonNullable<typeof c> => c !== null);
 
-  const pendingCards  = allCards.filter(c => !completedIds.has(c.id));
-  const doneCards     = allCards.filter(c =>  completedIds.has(c.id));
-  const allDone       = pendingCards.length === 0 && allCards.length > 0;
-  const currentCard   = pendingCards[0] ?? null;
-  const upcomingCards = pendingCards.slice(1);
+  const pendingSeq = seqCards.filter(c => !completedIds.has(c.id));
+  const doneSeq    = seqCards.filter(c =>  completedIds.has(c.id));
+  const allDone    = pendingSeq.length === 0 && seqCards.length > 0;
+  const currentAid = pendingSeq[0]?.id ?? null;   // first pending activity ID
 
-  // ── Theme helpers ────────────────────────────────────────────────────────
-  const primaryColor = isIronSovereign ? isHud.cyan :
-                       isNeonEmpress   ? fae.peachStrong :
-                       colors.primary;
+  // Activity IDs in today's flow
+  const todayActivityIds = new Set(activities.map(a => a.id));
+
+  // theme primary
+  const primary = isIronSov ? hudCyan : isNeonEmp ? fae.peachStrong : colors.primary;
 
   const snap = pathRec.progressSnapshot;
 
-  // ── Effects ───────────────────────────────────────────────────────────────
-  useEffect(() => { initLevelBaseline(displayLevel); }, [displayLevel]);
+  // System guidance line
+  const currentDash = DASH_CARDS.find(d => d.activityId === currentAid);
+  const systemLine = allDone
+    ? "All missions complete. Rest and recover."
+    : currentDash
+      ? `Begin with ${currentDash.label}.`
+      : pathRec.headline;
 
+  // Effects
+  useEffect(() => { initLevelBaseline(lvl); }, [lvl]);
   useEffect(() => {
     const h = (e: Event) => {
-      const detail = (e as CustomEvent<{ sleptWell: boolean }>).detail;
-      recordSleepCheck(detail.sleptWell);
+      const d = (e as CustomEvent<{ sleptWell: boolean }>).detail;
+      recordSleepCheck(d.sleptWell);
     };
     window.addEventListener("ascend:sleep-check", h);
     return () => window.removeEventListener("ascend:sleep-check", h);
   }, []);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleStartFlow = useCallback(() => {
-    clearFlow();
-    clearSession();
-    setFlowActive(true);
-  }, []);
-
-  const handleFlowComplete = useCallback((ids: string[], _bonus: boolean) => {
+  // Handlers
+  const handleStartFlow = useCallback(() => { clearFlow(); clearSession(); setFlowActive(true); }, []);
+  const handleFlowDone  = useCallback((ids: string[], _b: boolean) => {
     if (ids.length > 0) {
       markFlowCompleted(ids);
       if (ids.includes("phase1_meditation")) recordBreathingSession(true);
@@ -235,22 +220,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   }, [markComplete]);
 
   const handleAvatarPick = (icon: string) => {
-    saveAvatarIcon(icon);
-    setAvatarIconState(icon);
-    setShowAvatar(false);
+    saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false);
   };
 
-  // ── Card style helper ─────────────────────────────────────────────────────
-  const card = (accentColor: string, opts: { glow?: boolean } = {}) => ({
-    backgroundColor: "rgba(255,255,255,0.025)",
-    border: `1px solid ${accentColor}28`,
-    borderRadius: "16px",
-    boxShadow: opts.glow
-      ? `0 0 28px ${accentColor}18, 0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04)`
-      : `0 2px 12px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)`,
-  });
-
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <SystemLayout>
       <CustomizePanel open={showCustomize} onClose={() => setShowCustomize(false)} />
@@ -258,77 +233,58 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       <AnimatePresence>
         {flowActive && (
           <DailyFlowEngine
-            activities={activities}
-            playerId={player.id}
-            onComplete={handleFlowComplete}
-            onCancel={() => setFlowActive(false)}
+            activities={activities} playerId={player.id}
+            onComplete={handleFlowDone} onCancel={() => setFlowActive(false)}
             isOnboardingComplete={true}
           />
         )}
       </AnimatePresence>
 
       <AvatarPickerSheet
-        open={showAvatar}
-        current={avatarIcon}
-        playerName={playerData?.name ?? ""}
-        onPick={handleAvatarPick}
-        onClose={() => setShowAvatar(false)}
-        isIronSovereign={isIronSovereign}
-        isNeonEmpress={isNeonEmpress}
-        colors={colors}
-        fae={{ lavender: fae.lavender, lavenderDeep: fae.lavenderDeep, inkText: fae.inkText }}
-        pathColor={pathConfig.primaryColor}
+        open={showAvatar} current={avatarIcon} playerName={playerData?.name ?? ""}
+        onPick={handleAvatarPick} onClose={() => setShowAvatar(false)}
+        isIronSovereign={isIronSov} isNeonEmpress={isNeonEmp} colors={colors}
+        fae={{ lavender: fae.lavender, lavenderDeep: fae.lavenderDeep, inkText: fae.ink }}
+        pathColor={pathCfg.primaryColor}
       />
 
-      <div
-        className="flex flex-col gap-4 py-3 px-1 max-w-md mx-auto w-full"
-        data-testid="day6-home"
-      >
+      <div className="flex flex-col gap-3.5 py-3 px-1 max-w-md mx-auto w-full" data-testid="day6-home">
+
         <AutoSwitchBanner navigate={navigate} />
 
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION 1 — PROFILE CARD
-            Avatar · Name · Level · XP bar · Path label
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* ── PROFILE STRIP ──────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.32 }}
-          className="flex items-center gap-3.5 px-4 py-3.5"
-          style={card(primaryColor, { glow: true })}
+          transition={{ duration: 0.28 }}
+          className="flex items-center gap-3"
           data-testid="daily-status-section"
         >
           {/* Avatar */}
           <button
-            onClick={() => setShowAvatar(true)}
-            data-testid="button-avatar"
+            onClick={() => setShowAvatar(true)} data-testid="button-avatar"
             className="relative shrink-0 active:scale-95 transition-transform"
-            aria-label="Change avatar"
           >
             <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-2xl"
+              className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
               style={{
-                background: isIronSovereign
-                  ? "linear-gradient(135deg, rgba(34,211,238,0.22), rgba(34,211,238,0.06))"
-                  : isNeonEmpress
-                    ? `linear-gradient(135deg, ${fae.lavender}55, ${fae.lavenderDeep}22)`
-                    : `linear-gradient(135deg, ${colors.primary}22, ${colors.primary}08)`,
-                border: `2px solid ${primaryColor}55`,
-                boxShadow: `0 0 18px ${primaryColor}40, 0 0 36px ${primaryColor}18`,
+                background: isIronSov
+                  ? "linear-gradient(135deg,rgba(34,211,238,0.22),rgba(34,211,238,0.06))"
+                  : isNeonEmp
+                    ? `linear-gradient(135deg,${fae.lavender}55,${fae.lavenderDeep}22)`
+                    : `linear-gradient(135deg,${colors.primary}22,${colors.primary}06)`,
+                border: `2px solid ${primary}55`,
+                boxShadow: `0 0 16px ${primary}40`,
               }}
             >
               {avatarIcon}
             </div>
             <div
-              className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none"
-              style={{
-                backgroundColor: primaryColor,
-                color: isNeonEmpress ? fae.inkText : "#000",
-                border: "1.5px solid rgba(0,0,0,0.3)",
-              }}
+              className="absolute -bottom-1 -right-1 px-1.5 py-px rounded-full text-[8px] font-bold leading-none"
+              style={{ backgroundColor: primary, color: isNeonEmp ? fae.ink : "#000", border: "1px solid rgba(0,0,0,0.3)" }}
               data-testid="text-player-level"
             >
-              {displayLevel}
+              {lvl}
             </div>
           </button>
 
@@ -337,45 +293,39 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
                 <span
-                  className="text-[13px] font-bold"
-                  style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
+                  className="text-[12px] font-bold"
+                  style={{ color: isNeonEmp ? fae.ink : colors.text }}
                 >
                   {playerData?.name ?? "Hunter"}
                 </span>
                 <span
-                  className="text-[9px] px-1.5 py-0.5 rounded-full font-mono"
+                  className="text-[8px] px-1.5 py-px rounded-full font-mono"
                   style={{
-                    backgroundColor: `${primaryColor}18`,
-                    color: primaryColor,
-                    border: `1px solid ${primaryColor}35`,
+                    backgroundColor: `${primary}1a`, color: primary,
+                    border: `1px solid ${primary}30`,
                   }}
                 >
-                  Lv {displayLevel}
+                  Lv {lvl}
                 </span>
               </div>
-              <span className="text-[9px] font-mono" style={{ color: colors.textMuted }}>
-                {xp.exp} / {xp.maxExp} XP
+              <span className="text-[8px] font-mono" style={{ color: colors.textMuted }}>
+                {xp.exp}/{xp.maxExp} XP
               </span>
             </div>
 
-            {isIronSovereign ? (
-              <SegmentedXpBar
-                fromPercent={xpAnimFrom}
-                percent={xp.percent}
-                fill={isHud.cyan}
-                glow={isHud.cyanGlow}
-              />
-            ) : isNeonEmpress ? (
-              <PastelGradientXpBar percent={xp.percent} />
+            {isIronSov ? (
+              <SegBar fromPct={xpFrom} pct={xp.percent} fill={hudCyan} glow={hudCyanG} />
+            ) : isNeonEmp ? (
+              <PastelBar pct={xp.percent} />
             ) : (
               <div
-                className="w-full h-2 rounded-full overflow-hidden"
-                style={{ backgroundColor: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.08)" }}
+                className="w-full h-1.5 rounded-full overflow-hidden"
+                style={{ backgroundColor: "rgba(255,255,255,0.10)" }}
                 data-testid="xp-bar-track"
               >
                 <motion.div
                   className="h-full rounded-full"
-                  initial={{ width: `${xpAnimFrom}%` }}
+                  initial={{ width: `${xpFrom}%` }}
                   animate={{ width: `${xp.percent}%` }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
                   style={{ backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primaryGlow}` }}
@@ -385,411 +335,171 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             )}
 
             <div className="flex items-center justify-between mt-1">
-              <span
-                className="text-[9px] uppercase tracking-[0.18em] font-semibold"
-                style={{ color: primaryColor, opacity: 0.75 }}
-              >
-                {pathConfig.displayLabel}
+              <span className="text-[8px] font-medium" style={{ color: primary, opacity: 0.7 }}>
+                {pathCfg.displayLabel}
               </span>
               <button
-                onClick={() => setShowCustomize(true)}
-                data-testid="button-customize"
-                className="flex items-center gap-1 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md active:scale-95 transition-transform"
-                style={{ color: colors.textMuted, backgroundColor: `${colors.primary}0e` }}
+                onClick={() => setShowCustomize(true)} data-testid="button-customize"
+                className="flex items-center gap-0.5 text-[8px] px-1.5 py-px rounded active:scale-95 transition-transform"
+                style={{ color: colors.textMuted, backgroundColor: `${colors.primary}0c` }}
               >
-                <Palette size={9} />
-                Theme
+                <Palette size={8} /> Theme
               </button>
             </div>
           </div>
         </motion.div>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION 2 — SYSTEM MESSAGE
-        ══════════════════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.32, delay: 0.06 }}
-          className="px-4 py-3.5"
-          style={card(primaryColor)}
-          data-testid="system-message"
-        >
-          <p
-            className="text-[8px] uppercase tracking-[0.28em] font-bold mb-1.5"
-            style={{ color: primaryColor }}
-          >
-            ◈ &nbsp;SYSTEM MESSAGE
-          </p>
-          <p
-            className="text-[15px] font-bold leading-snug mb-1"
-            style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
-          >
-            {pathRec.headline}
-          </p>
-          <p
-            className="text-[11px] leading-relaxed"
-            style={{ color: isNeonEmpress ? fae.inkText + "99" : colors.textMuted }}
-            data-testid="path-recommendation-text"
-          >
-            {pathRec.subtext}
-          </p>
-        </motion.div>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION 3 — MISSION STACK
-            All-done · Current · Done · Upcoming · Fallback
-        ══════════════════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36, delay: 0.12 }}
-          className="flex flex-col gap-3"
-        >
-
-          {/* ── All done ─────────────────────────────────────────────────── */}
-          {allDone && (() => {
-            const tomorrowFirst = allCards[0];
-            const TomorrowIcon  = tomorrowFirst?.icon ?? Brain;
-            return (
-              <motion.div
-                key="all-done"
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.32 }}
-                className="flex flex-col items-center text-center gap-3 py-8 px-6"
-                style={{
-                  backgroundColor: "rgba(34,197,94,0.05)",
-                  border: "1px solid rgba(34,197,94,0.25)",
-                  borderRadius: "16px",
-                  boxShadow: "0 0 36px rgba(34,197,94,0.12), 0 4px 20px rgba(0,0,0,0.3)",
-                }}
-                data-testid="text-flow-completed"
-              >
-                <CheckCircle2 size={32} style={{ color: "#22c55e" }} />
-                <div>
-                  <p className="text-base font-bold" style={{ color: "#22c55e" }}>
-                    Daily ritual complete.
-                  </p>
-                  <p className="text-[11px] mt-1" style={{ color: colors.textMuted }}>
-                    ~{totalMins} min · {pathConfig.displayLabel}
-                  </p>
-                  <p className="text-[11px] mt-1.5 font-semibold" style={{ color: "#22c55e88" }}>
-                    {xp.exp} / {xp.maxExp} XP · Lv {displayLevel}
-                  </p>
-                </div>
-                {tomorrowFirst && (
-                  <div
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5"
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.07)",
-                      borderRadius: "12px",
-                    }}
-                    data-testid="tomorrow-preview"
-                  >
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: `${tomorrowFirst.color}18` }}
-                    >
-                      <TomorrowIcon size={13} style={{ color: tomorrowFirst.color, opacity: 0.65 }} />
-                    </div>
-                    <div className="flex-1 min-w-0 text-left">
-                      <p className="text-[9px] uppercase tracking-[0.16em] font-bold" style={{ color: colors.textMuted }}>
-                        Tomorrow
-                      </p>
-                      <p className="text-[12px] font-medium" style={{ color: colors.text, opacity: 0.70 }}>
-                        {tomorrowFirst.label}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            );
-          })()}
-
-          {/* ── Current mission card (dominant) ──────────────────────────── */}
-          {currentCard && (() => {
-            const Icon    = currentCard.icon;
-            const durMins = activityDurationMap[currentCard.id] ?? 2;
-            const dest    = currentCard.route ?? `/guided-session/${currentCard.id}`;
-            return (
-              <motion.button
-                key={currentCard.id}
-                data-testid="mission-card-current"
-                onClick={() => navigate(dest)}
-                whileTap={{ scale: 0.985 }}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.32 }}
-                className="w-full text-left flex flex-col gap-4"
-                style={{
-                  padding: "18px 20px",
-                  background: `linear-gradient(145deg, ${currentCard.color}12 0%, rgba(0,0,0,0) 100%)`,
-                  border: `1px solid ${currentCard.color}40`,
-                  borderRadius: "18px",
-                  boxShadow: `0 0 40px ${currentCard.color}20, 0 0 80px ${currentCard.color}0c, 0 8px 28px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.05)`,
-                }}
-              >
-                <div className="flex items-start gap-3.5">
-                  <div
-                    className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{
-                      backgroundColor: `${currentCard.color}16`,
-                      border: `1px solid ${currentCard.color}30`,
-                    }}
-                  >
-                    <Icon size={20} style={{ color: currentCard.color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="text-[8px] uppercase tracking-[0.22em] font-bold mb-0.5"
-                      style={{ color: `${currentCard.color}aa` }}
-                    >
-                      ◈ &nbsp;Current Mission
-                    </p>
-                    <p
-                      className="text-[17px] font-bold leading-tight"
-                      style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
-                    >
-                      {currentCard.label}
-                    </p>
-                    <p
-                      className="text-[10px] mt-0.5 leading-relaxed"
-                      style={{ color: isNeonEmpress ? fae.inkText + "77" : colors.textMuted }}
-                    >
-                      {currentCard.sublabel}
-                    </p>
-                  </div>
-                  <span
-                    className="text-[9px] font-mono px-2 py-0.5 rounded-full shrink-0 mt-1"
-                    style={{
-                      backgroundColor: `${currentCard.color}14`,
-                      color: currentCard.color,
-                      border: `1px solid ${currentCard.color}28`,
-                    }}
-                  >
-                    {durMins}m
-                  </span>
-                </div>
-
-                <div
-                  className="flex items-center justify-center gap-2 py-2.5 font-bold text-[12px] uppercase tracking-[0.14em]"
-                  style={{
-                    backgroundColor: `${currentCard.color}dd`,
-                    color: "#000",
-                    borderRadius: "10px",
-                    boxShadow: `0 0 16px ${currentCard.color}50`,
-                  }}
-                >
-                  Begin
-                  <ArrowRight size={13} />
-                </div>
-              </motion.button>
-            );
-          })()}
-
-          {/* ── Completed sessions ───────────────────────────────────────── */}
-          {doneCards.length > 0 && (
-            <div>
-              <p
-                className="text-[8px] uppercase tracking-[0.22em] font-bold mb-2 px-0.5"
-                style={{ color: "#22c55e88" }}
-              >
-                Done
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {doneCards.map(card => (
-                  <div
-                    key={card.id}
-                    className="flex items-center gap-2.5 px-3.5 py-2.5"
-                    style={{
-                      backgroundColor: "rgba(34,197,94,0.04)",
-                      border: "1px solid rgba(34,197,94,0.18)",
-                      borderRadius: "12px",
-                    }}
-                    data-testid={`mission-done-${card.id}`}
-                  >
-                    <CheckCircle2 size={13} style={{ color: "#22c55e", opacity: 0.8 }} />
-                    <span
-                      className="text-[12px] font-medium"
-                      style={{ color: "#22c55e", opacity: 0.70 }}
-                    >
-                      {card.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Upcoming sessions ────────────────────────────────────────── */}
-          {upcomingCards.length > 0 && (
-            <div>
-              <p
-                className="text-[8px] uppercase tracking-[0.22em] font-bold mb-2 px-0.5"
-                style={{ color: colors.textMuted }}
-              >
-                Then
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {upcomingCards.map((card, i) => {
-                  const Icon    = card.icon;
-                  const durMins = activityDurationMap[card.id] ?? 2;
-                  const dest    = card.route ?? `/guided-session/${card.id}`;
-                  return (
-                    <button
-                      key={card.id}
-                      type="button"
-                      onClick={() => navigate(dest)}
-                      data-testid={`mission-upcoming-${i}`}
-                      className="w-full flex items-center gap-3 px-3.5 py-3 text-left transition-opacity hover:opacity-80 active:opacity-60"
-                      style={{
-                        backgroundColor: "rgba(255,255,255,0.025)",
-                        border: `1px solid ${card.color}1e`,
-                        borderRadius: "12px",
-                      }}
-                    >
-                      <div
-                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                        style={{
-                          backgroundColor: `${card.color}12`,
-                          border: `1px solid ${card.color}22`,
-                        }}
-                      >
-                        <Icon size={15} style={{ color: card.color, opacity: 0.75 }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-[12px] font-semibold leading-tight"
-                          style={{ color: isNeonEmpress ? fae.inkText : colors.text, opacity: 0.65 }}
-                        >
-                          {card.label}
-                        </p>
-                        <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted, opacity: 0.75 }}>
-                          {card.sublabel}
-                        </p>
-                      </div>
-                      <span
-                        className="text-[9px] font-mono px-1.5 py-0.5 rounded-full shrink-0"
-                        style={{
-                          backgroundColor: `${card.color}0e`,
-                          color: card.color,
-                          border: `1px solid ${card.color}20`,
-                          opacity: 0.8,
-                        }}
-                      >
-                        {durMins}m
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ── Full-flow fallback (non-prominent) ───────────────────────── */}
-          {pendingCards.length > 0 && (
-            <button
-              type="button"
-              onClick={handleStartFlow}
-              data-testid="button-begin-flow"
-              className="w-full flex items-center justify-center gap-1.5 py-2 text-[9px] uppercase tracking-[0.16em] transition-opacity hover:opacity-80"
-              style={{ color: colors.textMuted, opacity: 0.55 }}
-            >
-              <Play size={9} />
-              Start full guided flow
-            </button>
-          )}
-        </motion.div>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION 4 — STAT CARDS GRID
-            2×2 grid: Vitality · Calm Mind · Strength · Agility
-        ══════════════════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36, delay: 0.22 }}
-        >
-          <p
-            className="text-[8px] uppercase tracking-[0.28em] font-bold mb-2.5 px-0.5"
-            style={{ color: colors.textMuted }}
-          >
-            Stats
-          </p>
-          <div className="grid grid-cols-2 gap-2.5" data-testid="stat-grid">
-            {STAT_DEFS.map(def => {
-              const statLevel = playerData?.statLevels?.[def.key];
-              const lvl       = statLevel?.level    ?? 1;
-              const curXP     = statLevel?.currentXP ?? 0;
-              const nxtXP     = statLevel?.xpForNext  ?? 100;
-              const barPct    = nxtXP > 0 ? Math.min(100, (curXP / nxtXP) * 100) : 0;
-              const StatIcon  = def.icon;
-
-              return (
-                <StatCard
-                  key={def.key}
-                  icon={<StatIcon size={14} style={{ color: def.color }} />}
-                  label={def.label}
-                  barLabel={def.barLabel}
-                  level={lvl}
-                  barPct={barPct}
-                  color={def.color}
-                  glow={def.glow}
-                  isNeonEmpress={isNeonEmpress}
-                  textColor={isNeonEmpress ? fae.inkText : colors.text}
-                  mutedColor={isNeonEmpress ? fae.inkText + "77" : colors.textMuted}
-                />
-              );
-            })}
-          </div>
-        </motion.div>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION 5 — PROGRESS STRIP
-            🔥 Streak · ⚡ Readiness
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* ── SYSTEM LINE ─────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.32, delay: 0.30 }}
-          className="flex items-center justify-center gap-0 overflow-hidden"
-          style={card(primaryColor)}
+          transition={{ duration: 0.28, delay: 0.06 }}
+          className="flex items-center gap-2 px-1"
+          data-testid="system-message"
+        >
+          <span
+            className="text-[8px] font-bold tracking-[0.22em] shrink-0"
+            style={{ color: primary }}
+          >
+            SYSTEM
+          </span>
+          <span className="text-[8px]" style={{ color: colors.textMuted, opacity: 0.5 }}>·</span>
+          <span
+            className="text-[11px] font-medium leading-none"
+            style={{ color: isNeonEmp ? fae.ink : colors.text, opacity: 0.85 }}
+            data-testid="path-recommendation-text"
+          >
+            {systemLine}
+          </span>
+        </motion.div>
+
+        {/* ── ALL DONE STATE ───────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {allDone && (
+            <motion.div
+              key="all-done"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.28 }}
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+              style={{
+                background: "rgba(6,22,10,0.85)",
+                border: "1px solid rgba(34,197,94,0.35)",
+                boxShadow: "0 0 28px rgba(34,197,94,0.14)",
+                backdropFilter: "blur(12px)",
+              }}
+              data-testid="text-flow-completed"
+            >
+              <CheckCircle2 size={22} style={{ color: "#22c55e", flexShrink: 0 }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold" style={{ color: "#22c55e" }}>
+                  Daily ritual complete
+                </p>
+                <p className="text-[10px] mt-px" style={{ color: colors.textMuted }}>
+                  {xp.exp}/{xp.maxExp} XP · Lv {lvl} · ~{totalMins} min
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── 2×2 STAT DASHBOARD ──────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, delay: 0.10 }}
+          className="grid grid-cols-2 gap-2.5"
+          data-testid="stat-grid"
+        >
+          {DASH_CARDS.map((dc, idx) => {
+            const statLevel = playerData?.statLevels?.[dc.statKey];
+            const sLvl   = statLevel?.level    ?? 1;
+            const curXP  = statLevel?.currentXP ?? 0;
+            const nxtXP  = statLevel?.xpForNext  ?? 100;
+            const barPct = nxtXP > 0 ? Math.min(100, (curXP / nxtXP) * 100) : 0;
+
+            // Determine card state from today's activity sequence
+            const hasActivity = dc.activityId !== "" && todayActivityIds.has(dc.activityId);
+            const isDone      = dc.activityId !== "" && completedIds.has(dc.activityId);
+            const isCurrent   = dc.activityId !== "" && dc.activityId === currentAid;
+            const isUpcoming  = hasActivity && !isDone && !isCurrent;
+
+            const dest = hasActivity
+              ? (metaById[dc.activityId]?.route ?? `/guided-session/${dc.activityId}`)
+              : undefined;
+
+            const durMins = hasActivity ? (actDurMap[dc.activityId] ?? 2) : null;
+
+            return (
+              <DashCard
+                key={dc.id}
+                idx={idx}
+                icon={<dc.icon size={isCurrent ? 22 : 18} style={{ color: dc.color }} />}
+                label={dc.label}
+                sub={dc.sub}
+                color={dc.color}
+                glow={dc.glow}
+                barLabel={dc.barLabel}
+                barPct={barPct}
+                statLvl={sLvl}
+                isCurrent={isCurrent}
+                isDone={isDone}
+                isUpcoming={isUpcoming}
+                isInactive={!hasActivity}
+                durMins={durMins}
+                isNeonEmp={isNeonEmp}
+                inkText={fae.ink}
+                textColor={isNeonEmp ? fae.ink : colors.text}
+                mutedColor={isNeonEmp ? fae.ink + "88" : colors.textMuted}
+                onClick={dest ? () => navigate(dest) : undefined}
+              />
+            );
+          })}
+        </motion.div>
+
+        {/* ── FALLBACK FLOW TRIGGER ────────────────────────────────────────── */}
+        {pendingSeq.length > 0 && (
+          <button
+            type="button"
+            onClick={handleStartFlow}
+            data-testid="button-begin-flow"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[8px] tracking-[0.18em] uppercase"
+            style={{ color: colors.textMuted, opacity: 0.45 }}
+          >
+            <Play size={8} /> Start full guided flow
+          </button>
+        )}
+
+        {/* ── PROGRESS BAR (streak / readiness / today) ───────────────────── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.28, delay: 0.22 }}
+          className="flex items-stretch rounded-2xl overflow-hidden"
+          style={{
+            background: "rgba(8,10,24,0.80)",
+            border: `1px solid ${primary}22`,
+            backdropFilter: "blur(12px)",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.35)",
+          }}
           data-testid="progress-strip"
         >
-          <div className="flex-1 flex flex-col items-center gap-0.5 py-3" data-testid="stat-streak">
-            <span className="text-base leading-none">🔥</span>
-            <span
-              className="text-sm font-extrabold leading-none mt-0.5"
-              style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
+          {[
+            { emoji: "🔥", val: String(snap.streak), label: "Streak", tid: "stat-streak" },
+            { emoji: "⚡", val: `${snap.readinessPercent}%`, label: "Ready", tid: "stat-readiness" },
+            { emoji: "✓",  val: `${doneSeq.length}/${seqCards.length}`, label: "Today", tid: "stat-sessions" },
+          ].map((s, i, arr) => (
+            <div key={s.tid} className="flex-1 flex flex-col items-center py-3 gap-0.5" data-testid={s.tid}
+              style={{ borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}
             >
-              {snap.streak}
-            </span>
-            <span className="text-[9px] mt-0.5" style={{ color: colors.textMuted }}>Streak</span>
-          </div>
-          <div className="w-px h-10 self-center" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
-          <div className="flex-1 flex flex-col items-center gap-0.5 py-3" data-testid="stat-readiness">
-            <span className="text-base leading-none">⚡</span>
-            <span
-              className="text-sm font-extrabold leading-none mt-0.5"
-              style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
-            >
-              {snap.readinessPercent}%
-            </span>
-            <span className="text-[9px] mt-0.5" style={{ color: colors.textMuted }}>Ready</span>
-          </div>
-          <div className="w-px h-10 self-center" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
-          <div className="flex-1 flex flex-col items-center gap-0.5 py-3" data-testid="stat-sessions">
-            <span className="text-base leading-none">✓</span>
-            <span
-              className="text-sm font-extrabold leading-none mt-0.5"
-              style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
-            >
-              {doneCards.length}/{allCards.length}
-            </span>
-            <span className="text-[9px] mt-0.5" style={{ color: colors.textMuted }}>Today</span>
-          </div>
+              <span className="text-sm leading-none">{s.emoji}</span>
+              <span className="text-sm font-extrabold leading-none mt-0.5" style={{ color: isNeonEmp ? fae.ink : colors.text }}>
+                {s.val}
+              </span>
+              <span className="text-[8px] mt-0.5" style={{ color: colors.textMuted }}>{s.label}</span>
+            </div>
+          ))}
         </motion.div>
 
       </div>
@@ -797,120 +507,199 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   );
 }
 
-// ── StatCard ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// DashCard — individual 2×2 stat + mission card
+// ─────────────────────────────────────────────────────────────────────────────
 
-function StatCard({
-  icon, label, barLabel, level, barPct, color, glow,
-  isNeonEmpress, textColor, mutedColor,
-}: {
+interface DashCardProps {
+  idx: number;
   icon: React.ReactNode;
-  label: string;
-  barLabel: string;
-  level: number;
-  barPct: number;
-  color: string;
-  glow: string;
-  isNeonEmpress: boolean;
-  textColor: string;
-  mutedColor: string;
-}) {
-  return (
-    <div
-      className="flex flex-col gap-2 p-3.5"
+  label: string; sub: string;
+  color: string; glow: string;
+  barLabel: string; barPct: number; statLvl: number;
+  isCurrent: boolean; isDone: boolean; isUpcoming: boolean; isInactive: boolean;
+  durMins: number | null;
+  isNeonEmp: boolean; inkText: string; textColor: string; mutedColor: string;
+  onClick?: () => void;
+}
+
+function DashCard({
+  idx, icon, label, sub, color, glow, barLabel, barPct, statLvl,
+  isCurrent, isDone, isUpcoming, isInactive,
+  durMins, isNeonEmp, inkText, textColor, mutedColor, onClick,
+}: DashCardProps) {
+  const bg = isDone
+    ? "rgba(6,20,10,0.84)"
+    : isCurrent
+      ? "rgba(8,10,26,0.92)"
+      : "rgba(8,10,22,0.80)";
+
+  const borderColor = isDone
+    ? "rgba(34,197,94,0.40)"
+    : isCurrent
+      ? `${color}60`
+      : `${color}22`;
+
+  const shadow = isCurrent
+    ? `0 0 32px ${glow.replace("0.50", "0.22")}, 0 0 64px ${glow.replace("0.50", "0.08")}, 0 6px 24px rgba(0,0,0,0.5)`
+    : isDone
+      ? "0 0 16px rgba(34,197,94,0.10), 0 4px 16px rgba(0,0,0,0.4)"
+      : "0 2px 12px rgba(0,0,0,0.4)";
+
+  const opacity = isUpcoming ? 0.75 : isInactive ? 0.60 : 1;
+
+  const inner = (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity, y: 0 }}
+      transition={{ duration: 0.32, delay: idx * 0.06 }}
+      whileTap={onClick ? { scale: 0.97 } : {}}
+      className="flex flex-col gap-2.5 p-3.5 rounded-2xl h-full"
       style={{
-        backgroundColor: "rgba(255,255,255,0.025)",
-        border: `1px solid ${color}22`,
-        borderRadius: "14px",
-        boxShadow: `0 0 20px ${color}0c, 0 2px 12px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)`,
+        background: bg,
+        border: `1px solid ${borderColor}`,
+        boxShadow: shadow,
+        backdropFilter: "blur(14px)",
+        minHeight: isCurrent ? "155px" : "138px",
       }}
     >
-      {/* Icon + label row */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <div
-            className="w-6 h-6 rounded-lg flex items-center justify-center"
-            style={{
-              backgroundColor: `${color}14`,
-              border: `1px solid ${color}28`,
-            }}
-          >
-            {icon}
-          </div>
-          <span className="text-[11px] font-semibold" style={{ color: textColor }}>
-            {label}
-          </span>
-        </div>
-        <span
-          className="text-[9px] font-mono px-1.5 py-0.5 rounded-full"
+      {/* Top row: icon + level badge */}
+      <div className="flex items-start justify-between">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center"
           style={{
-            backgroundColor: `${color}14`,
-            color,
-            border: `1px solid ${color}28`,
+            backgroundColor: isDone ? "rgba(34,197,94,0.12)" : `${color}14`,
+            border: `1px solid ${isDone ? "rgba(34,197,94,0.25)" : `${color}28`}`,
           }}
         >
-          Lv {level}
-        </span>
+          {isDone
+            ? <CheckCircle2 size={18} style={{ color: "#22c55e" }} />
+            : icon}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          {isCurrent && (
+            <span
+              className="text-[7px] font-bold uppercase tracking-[0.18em] px-1.5 py-px rounded-full"
+              style={{ backgroundColor: `${color}20`, color, border: `1px solid ${color}35` }}
+            >
+              Active
+            </span>
+          )}
+          {isDone && (
+            <span
+              className="text-[7px] font-bold uppercase tracking-[0.18em] px-1.5 py-px rounded-full"
+              style={{ backgroundColor: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}
+            >
+              Done
+            </span>
+          )}
+          <span
+            className="text-[8px] font-mono px-1.5 py-px rounded-full"
+            style={{
+              backgroundColor: `${color}0e`,
+              color: isDone ? "#22c55e" : color,
+              border: `1px solid ${isDone ? "rgba(34,197,94,0.18)" : `${color}20`}`,
+            }}
+          >
+            Lv {statLvl}
+          </span>
+        </div>
+      </div>
+
+      {/* Label */}
+      <div className="flex-1">
+        <p
+          className="text-[13px] font-bold leading-tight"
+          style={{ color: isDone ? "#22c55e" : textColor }}
+        >
+          {label}
+        </p>
+        <p className="text-[9px] mt-0.5" style={{ color: mutedColor }}>
+          {sub}
+        </p>
       </div>
 
       {/* Progress bar */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[8px] uppercase tracking-[0.14em]" style={{ color: mutedColor }}>
-            {barLabel}
-          </span>
-          <span className="text-[8px] font-mono" style={{ color: mutedColor }}>
-            {Math.round(barPct)}%
-          </span>
+          <span className="text-[7px] uppercase tracking-[0.14em]" style={{ color: mutedColor }}>{barLabel}</span>
+          <span className="text-[7px] font-mono" style={{ color: mutedColor }}>{Math.round(barPct)}%</span>
         </div>
         <div
-          className="w-full h-1.5 rounded-full overflow-hidden"
-          style={{ backgroundColor: `${color}14` }}
+          className="w-full h-1 rounded-full overflow-hidden"
+          style={{ backgroundColor: isDone ? "rgba(34,197,94,0.12)" : `${color}12` }}
         >
           <motion.div
             className="h-full rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${barPct}%` }}
-            transition={{ duration: 0.7, ease: "easeOut", delay: 0.3 }}
+            transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 + idx * 0.06 }}
             style={{
-              backgroundColor: color,
-              boxShadow: `0 0 6px ${glow}`,
+              backgroundColor: isDone ? "#22c55e" : color,
+              boxShadow: isDone ? "0 0 6px rgba(34,197,94,0.5)" : `0 0 6px ${glow}`,
             }}
           />
         </div>
       </div>
+
+      {/* Begin button — only on current active mission */}
+      {isCurrent && durMins && (
+        <div
+          className="flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-[10px] uppercase tracking-[0.12em]"
+          style={{
+            backgroundColor: color,
+            color: "#000",
+            boxShadow: `0 0 16px ${glow}`,
+          }}
+        >
+          Begin · {durMins}m <ArrowRight size={11} />
+        </div>
+      )}
+    </motion.div>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        data-testid={isCurrent ? "mission-card-current" : `mission-card-${label.toLowerCase().replace(/\s/g, "-")}`}
+        className="w-full text-left"
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <div data-testid={`mission-card-${label.toLowerCase().replace(/\s/g, "-")}`}>
+      {inner}
     </div>
   );
 }
 
-// ── SegmentedXpBar ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// XP bars
+// ─────────────────────────────────────────────────────────────────────────────
 
-function SegmentedXpBar({
-  fromPercent = 0, percent, fill, glow, segments = 20,
-}: {
-  fromPercent?: number; percent: number; fill: string; glow: string; segments?: number;
+function SegBar({ fromPct = 0, pct, fill, glow, segs = 20 }: {
+  fromPct?: number; pct: number; fill: string; glow: string; segs?: number;
 }) {
-  const filledTarget = Math.round((Math.max(0, Math.min(100, percent))     / 100) * segments);
-  const filledFrom   = Math.round((Math.max(0, Math.min(100, fromPercent)) / 100) * segments);
-  const newCount     = Math.max(0, filledTarget - filledFrom);
-
+  const target = Math.round((Math.max(0, Math.min(100, pct))     / 100) * segs);
+  const from   = Math.round((Math.max(0, Math.min(100, fromPct)) / 100) * segs);
+  const newN   = Math.max(0, target - from);
   return (
     <div className="w-full flex gap-[2px] h-1.5 items-center" data-testid="xp-bar-track">
-      {Array.from({ length: segments }).map((_, i) => {
-        const isOn  = i < filledTarget;
-        const isNew = i >= filledFrom && i < filledTarget;
+      {Array.from({ length: segs }).map((_, i) => {
+        const on  = i < target;
+        const isN = i >= from && i < target;
         return (
           <motion.div
-            key={i}
-            className="flex-1 h-full rounded-[2px]"
+            key={i} className="flex-1 h-full rounded-[2px]"
             animate={{
-              backgroundColor: isOn ? fill : "rgba(255,255,255,0.08)",
-              boxShadow:       isOn ? `0 0 4px ${glow}` : "none",
+              backgroundColor: on ? fill : "rgba(255,255,255,0.07)",
+              boxShadow: on ? `0 0 4px ${glow}` : "none",
             }}
-            transition={{
-              duration: 0.12,
-              ease: "easeOut",
-              delay: isNew ? ((i - filledFrom) / Math.max(newCount, 1)) * 0.8 : 0,
-            }}
+            transition={{ duration: 0.10, ease: "easeOut", delay: isN ? ((i - from) / Math.max(newN, 1)) * 0.8 : 0 }}
             data-testid={i === 0 ? "xp-bar-fill" : undefined}
           />
         );
@@ -919,32 +708,27 @@ function SegmentedXpBar({
   );
 }
 
-// ── PastelGradientXpBar ───────────────────────────────────────────────────────
-
-function PastelGradientXpBar({ percent }: { percent: number }) {
-  const pct = Math.max(0, Math.min(100, percent));
+function PastelBar({ pct }: { pct: number }) {
   return (
     <div
       className="w-full h-1.5 rounded-full overflow-hidden"
-      style={{ backgroundColor: "rgba(255,255,255,0.40)" }}
+      style={{ backgroundColor: "rgba(255,255,255,0.35)" }}
       data-testid="xp-bar-track"
     >
       <motion.div
         className="h-full rounded-full"
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
+        initial={{ width: 0 }} animate={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        style={{
-          background: "linear-gradient(90deg, #f7e5b6 0%, #f4a6c8 50%, #b59cf2 100%)",
-          boxShadow: "0 0 6px rgba(180,150,240,0.55)",
-        }}
+        style={{ background: "linear-gradient(90deg,#f7e5b6,#f4a6c8,#b59cf2)", boxShadow: "0 0 6px rgba(180,150,240,0.5)" }}
         data-testid="xp-bar-fill"
       />
     </div>
   );
 }
 
-// ── AutoSwitchBanner ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// AutoSwitchBanner
+// ─────────────────────────────────────────────────────────────────────────────
 
 function AutoSwitchBanner({ navigate }: { navigate: (to: string) => void }) {
   const { backgroundTheme } = useTheme();
@@ -953,65 +737,58 @@ function AutoSwitchBanner({ navigate }: { navigate: (to: string) => void }) {
 
   useEffect(() => {
     setShow(shouldPromptAutoSwitch());
-    const handler = () => setShow(shouldPromptAutoSwitch());
-    window.addEventListener("ascend:vitality-flow-changed", handler);
-    window.addEventListener("ascend:sleep-mode-changed", handler);
+    const h = () => setShow(shouldPromptAutoSwitch());
+    window.addEventListener("ascend:vitality-flow-changed", h);
+    window.addEventListener("ascend:sleep-mode-changed", h);
     return () => {
-      window.removeEventListener("ascend:vitality-flow-changed", handler);
-      window.removeEventListener("ascend:sleep-mode-changed", handler);
+      window.removeEventListener("ascend:vitality-flow-changed", h);
+      window.removeEventListener("ascend:sleep-mode-changed", h);
     };
   }, []);
 
   if (!show) return null;
-
   const accept  = () => { setSleepMode("adaptive"); setShow(false); navigate("/sleep-settings"); };
   const dismiss = () => { dismissAutoSwitchPrompt(); setShow(false); };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-3 flex items-start gap-3"
+      initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+      className="flex items-start gap-3 p-3 rounded-2xl"
       style={{
-        backgroundColor: "rgba(251,191,36,0.06)",
+        background: "rgba(8,10,24,0.82)",
         border: "1px solid rgba(251,191,36,0.28)",
-        borderRadius: "14px",
-        boxShadow: "0 0 20px rgba(251,191,36,0.12)",
+        boxShadow: "0 0 20px rgba(251,191,36,0.10)",
+        backdropFilter: "blur(12px)",
       }}
       data-testid="auto-switch-banner"
     >
       <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-        style={{ backgroundColor: "rgba(251,191,36,0.14)", border: "1px solid rgba(251,191,36,0.22)" }}
+        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+        style={{ backgroundColor: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.22)" }}
       >
-        <Sparkles size={15} style={{ color: "#fbbf24" }} />
+        <Sparkles size={14} style={{ color: "#fbbf24" }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold" style={{ color: "#fde68a" }}>You're doing great</p>
-        <p className="text-[11px] mt-0.5 leading-snug" style={{ color: colors.textMuted }}>
-          Switch to Adaptive Mode? It'll quietly trim guidance you no longer need.
+        <p className="text-[12px] font-bold" style={{ color: "#fde68a" }}>You're doing great</p>
+        <p className="text-[10px] mt-px leading-snug" style={{ color: colors.textMuted }}>
+          Switch to Adaptive Mode to trim guidance you no longer need.
         </p>
-        <div className="flex items-center gap-2 mt-2">
-          <button
-            type="button" onClick={accept} data-testid="button-accept-adaptive"
-            className="text-[11px] font-bold px-3 py-1 rounded-lg"
+        <div className="flex gap-2 mt-2">
+          <button type="button" onClick={accept} data-testid="button-accept-adaptive"
+            className="text-[10px] font-bold px-3 py-1 rounded-lg"
             style={{ backgroundColor: "#fbbf24", color: "#1a1208" }}
           >
-            Switch to Adaptive
+            Switch
           </button>
-          <button
-            type="button" onClick={dismiss} data-testid="button-dismiss-adaptive"
-            className="text-[11px] px-2 py-1 rounded-lg" style={{ color: colors.textMuted }}
+          <button type="button" onClick={dismiss} data-testid="button-dismiss-adaptive"
+            className="text-[10px] px-2 py-1 rounded-lg" style={{ color: colors.textMuted }}
           >
             Not now
           </button>
         </div>
       </div>
-      <button
-        type="button" onClick={dismiss} aria-label="Dismiss"
-        className="shrink-0 p-1 rounded-md" style={{ color: colors.textMuted }}
-      >
-        <X size={14} />
+      <button type="button" onClick={dismiss} className="shrink-0 p-1" style={{ color: colors.textMuted }}>
+        <X size={13} />
       </button>
     </motion.div>
   );
