@@ -141,9 +141,20 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   }, [xp.percent]);
 
   // ── Session lists ───────────────────────────────────────────────────────────
-  const allCards = pathConfig.sessionCards
-    .filter(c => !c.isQuickLink)
-    .map(c => ({ ...c, icon: ICON_MAP[c.icon as keyof typeof ICON_MAP] }));
+  // Drive the mission sequence from the *actual* daily flow activities so that
+  // optional or external-route cards (e.g. phase1_cardio → /training) never
+  // block the "Daily ritual complete" state.  pathConfig.sessionCards is only
+  // used as a display-metadata lookup (label / sublabel / icon / color).
+  const sessionCardMetaById = Object.fromEntries(
+    pathConfig.sessionCards.map(c => [c.id, c])
+  );
+  const allCards = activities
+    .map(a => {
+      const meta = sessionCardMetaById[a.id];
+      if (!meta) return null;
+      return { ...meta, icon: ICON_MAP[meta.icon as keyof typeof ICON_MAP] };
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null);
 
   const pendingCards  = allCards.filter(c => !completedIds.has(c.id));
   const doneCards     = allCards.filter(c =>  completedIds.has(c.id));
