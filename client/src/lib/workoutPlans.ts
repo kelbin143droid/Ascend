@@ -113,7 +113,7 @@ const CARDIO_EXERCISES: Record<Exclude<CardioIntensity, "off">, ExerciseDef[]> =
 export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
   entry: {
     level: "entry",
-    label: "Entry",
+    label: "Foundation",
     description: "Prep Stage — build foundational strength",
     color: "#22c55e",
     exercises: [
@@ -126,7 +126,7 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
   },
   beginner: {
     level: "beginner",
-    label: "Beginner",
+    label: "Build",
     description: "Core moves with guided animation",
     color: "#3b82f6",
     exercises: [
@@ -139,7 +139,7 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
   },
   intermediate: {
     level: "intermediate",
-    label: "Intermediate",
+    label: "Evolve",
     description: "Compound moves and increased volume",
     color: "#f59e0b",
     exercises: [
@@ -152,7 +152,7 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
   },
   advanced: {
     level: "advanced",
-    label: "Advanced",
+    label: "Ascend",
     description: "High intensity with added resistance",
     color: "#ef4444",
     exercises: [
@@ -400,6 +400,14 @@ export const LEVEL_COLORS: Record<WorkoutLevel, string> = {
   beginner:     "#3b82f6",
   intermediate: "#f59e0b",
   advanced:     "#ef4444",
+};
+
+/** Display-only labels — internal type values are unchanged. */
+export const LEVEL_DISPLAY_NAMES: Record<WorkoutLevel, string> = {
+  entry:        "Foundation",
+  beginner:     "Build",
+  intermediate: "Evolve",
+  advanced:     "Ascend",
 };
 
 export const CARDIO_LABELS: Record<CardioIntensity, string> = {

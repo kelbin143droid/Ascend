@@ -3,14 +3,24 @@ import { useGame } from "@/context/GameContext";
 import { IntroScreen } from "./IntroScreen";
 import { PlayerInfoScreen } from "./PlayerInfoScreen";
 import { GenderSelectScreen } from "./GenderSelectScreen";
+import { CalibrationFlow } from "./CalibrationFlow";
+import { RecommendedPathScreen } from "./RecommendedPathScreen";
 import { motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
+import {
+  deriveCalibrationLevel,
+  saveCalibrationProfile,
+  type CalibrationAnswers,
+  type CalibrationProfile,
+} from "@/lib/calibrationEngine";
+import { setWorkoutLevel } from "@/lib/workoutProgressStore";
+import type { WorkoutLevel } from "@/lib/workoutPlans";
 
 interface IntroWrapperProps {
   children: React.ReactNode;
 }
 
-type IntroStep = "loading" | "intro" | "gender" | "info" | "welcome" | "complete";
+type IntroStep = "loading" | "intro" | "gender" | "info" | "welcome" | "calibration" | "recommendation" | "complete";
 
 function WelcomeScreen({
   gender,
@@ -287,6 +297,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   const [step, setStep] = useState<IntroStep>("loading");
   const [playerName, setPlayerName] = useState("");
   const [playerGender, setPlayerGender] = useState<"male" | "female">("male");
+  const [pendingProfile, setPendingProfile] = useState<CalibrationProfile | null>(null);
   const initialCheckDone = useRef(false);
 
   useEffect(() => {
@@ -317,7 +328,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     if (player?.name && player.name.trim() !== "") {
       setPlayerName(player.name);
       setStep("welcome");
-      setTimeout(() => setStep("complete"), 3800);
+      setTimeout(() => setStep("calibration"), 3800);
     } else {
       setStep("info");
     }
@@ -328,8 +339,27 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     updatePlayer({ name: data.name, onboardingCompleted: 1 });
     setStep("welcome");
     setTimeout(() => {
-      setStep("complete");
+      setStep("calibration");
     }, 3800);
+  };
+
+  const handleCalibrationComplete = (answers: CalibrationAnswers) => {
+    const derivedLevel = deriveCalibrationLevel(answers);
+    const profile: CalibrationProfile = {
+      ...answers,
+      derivedLevel,
+      completedAt: new Date().toISOString(),
+    };
+    setPendingProfile(profile);
+    setStep("recommendation");
+  };
+
+  const handleRecommendationConfirm = (chosenLevel: WorkoutLevel) => {
+    const profile = pendingProfile!;
+    const finalProfile: CalibrationProfile = { ...profile, derivedLevel: chosenLevel };
+    saveCalibrationProfile(finalProfile);
+    setWorkoutLevel(chosenLevel);
+    setStep("complete");
   };
 
   const getFirstName = () => {
@@ -384,6 +414,25 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
 
   if (step === "welcome") {
     return <WelcomeScreen gender={playerGender} firstName={getFirstName()} />;
+  }
+
+  if (step === "calibration") {
+    return (
+      <CalibrationFlow
+        gender={playerGender}
+        onComplete={handleCalibrationComplete}
+      />
+    );
+  }
+
+  if (step === "recommendation" && pendingProfile) {
+    return (
+      <RecommendedPathScreen
+        gender={playerGender}
+        profile={pendingProfile}
+        onConfirm={handleRecommendationConfirm}
+      />
+    );
   }
 
   return <>{children}</>;
