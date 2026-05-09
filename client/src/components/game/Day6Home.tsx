@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Brain, Wind, Dumbbell, CheckCircle2, Sparkles, X, Palette, ArrowRight,
+  Brain, Wind, Dumbbell, CheckCircle2, Sparkles, X, Palette, ArrowRight, Play,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -12,14 +12,20 @@ import {
 } from "@/lib/sleepModeStore";
 import { useLocation } from "wouter";
 import { useTheme } from "@/context/ThemeContext";
+import { DailyFlowEngine } from "./DailyFlowEngine";
 import { SystemLayout } from "./SystemLayout";
 import { type CategoryTiers } from "@/lib/activityEngine";
 import { getWorkoutLevel } from "@/lib/workoutProgressStore";
 import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
 import { getPathAwareRecommendation } from "@/lib/dailyRecommendationEngine";
-import { recordSleepCheck, initLevelBaseline } from "@/lib/statsSystem";
+import {
+  recordSleepCheck, recordBreathingSession,
+  initLevelBaseline,
+} from "@/lib/statsSystem";
+import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
+import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 import { useSessionProgress } from "@/hooks/useSessionProgress";
 
 // ── Icon map for session cards ────────────────────────────────────────────────
@@ -68,7 +74,7 @@ interface Props {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function Day6Home({ homeData, playerData, scalingData }: Props) {
+export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const isIronSovereign = backgroundTheme.id === "male";
@@ -89,6 +95,7 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
   const [showCustomize, setShowCustomize] = useState(false);
   const [showAvatar,    setShowAvatar]    = useState(false);
   const [avatarIcon,    setAvatarIconState] = useState(() => getAvatarIcon());
+  const [flowActive,    setFlowActive]    = useState(false);
 
   // ── Session progress (per-activity localStorage tracking) ───────────────────
   const { completedIds } = useSessionProgress();
@@ -121,15 +128,27 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
   );
   const displayLevel = playerData?.level ?? 2;
 
+  // ── XP animation — explicit from→to tracking ──────────────────────────────
+  // Capture the previous XP percent so SegmentedXpBar can animate only the
+  // newly-earned segments (old fill count → new fill count) over 0.8 s ease-out.
+  const [xpAnimFrom, setXpAnimFrom] = useState(xp.percent);
+  const xpPercentRef = useRef(xp.percent);
+  useEffect(() => {
+    if (xp.percent !== xpPercentRef.current) {
+      setXpAnimFrom(xpPercentRef.current);   // remember where we started
+      xpPercentRef.current = xp.percent;     // update ref to current
+    }
+  }, [xp.percent]);
+
   // ── Session lists ───────────────────────────────────────────────────────────
   const allCards = pathConfig.sessionCards
     .filter(c => !c.isQuickLink)
     .map(c => ({ ...c, icon: ICON_MAP[c.icon as keyof typeof ICON_MAP] }));
 
-  const pendingCards = allCards.filter(c => !completedIds.has(c.id));
-  const doneCards    = allCards.filter(c =>  completedIds.has(c.id));
-  const allDone      = pendingCards.length === 0 && allCards.length > 0;
-  const currentCard  = pendingCards[0] ?? null;
+  const pendingCards  = allCards.filter(c => !completedIds.has(c.id));
+  const doneCards     = allCards.filter(c =>  completedIds.has(c.id));
+  const allDone       = pendingCards.length === 0 && allCards.length > 0;
+  const currentCard   = pendingCards[0] ?? null;
   const upcomingCards = pendingCards.slice(1);
 
   // ── Theme helpers ───────────────────────────────────────────────────────────
@@ -152,6 +171,23 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
   }, []);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
+  const handleStartFlow = useCallback(() => {
+    clearFlow();
+    clearSession();
+    setFlowActive(true);
+  }, []);
+
+  const handleFlowComplete = useCallback((ids: string[], _bonus: boolean) => {
+    if (ids.length > 0) {
+      markFlowCompleted(ids);
+      if (ids.includes("phase1_meditation")) {
+        recordBreathingSession(true);
+      }
+      localStorage.setItem("ascend_first_mission_done", "1");
+    }
+    setFlowActive(false);
+  }, []);
+
   const handleAvatarPick = (icon: string) => {
     saveAvatarIcon(icon);
     setAvatarIconState(icon);
@@ -162,6 +198,20 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
   return (
     <SystemLayout>
       <CustomizePanel open={showCustomize} onClose={() => setShowCustomize(false)} />
+
+      {/* DailyFlowEngine — non-prominent fallback overlay */}
+      <AnimatePresence>
+        {flowActive && (
+          <DailyFlowEngine
+            activities={activities}
+            playerId={player.id}
+            onComplete={handleFlowComplete}
+            onCancel={() => setFlowActive(false)}
+            isOnboardingComplete={true}
+          />
+        )}
+      </AnimatePresence>
+
       <AvatarPickerSheet
         open={showAvatar}
         current={avatarIcon}
@@ -250,7 +300,12 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
             </div>
 
             {isIronSovereign ? (
-              <SegmentedXpBar percent={xp.percent} fill={isHud.cyan} glow={isHud.cyanGlow} />
+              <SegmentedXpBar
+                fromPercent={xpAnimFrom}
+                percent={xp.percent}
+                fill={isHud.cyan}
+                glow={isHud.cyanGlow}
+              />
             ) : isNeonEmpress ? (
               <PastelGradientXpBar percent={xp.percent} />
             ) : (
@@ -261,9 +316,9 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
               >
                 <motion.div
                   className="h-full rounded-full"
-                  initial={{ width: 0 }}
+                  initial={{ width: `${xpAnimFrom}%` }}
                   animate={{ width: `${xp.percent}%` }}
-                  transition={{ duration: 0.7, ease: "easeOut" }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
                   style={{ backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primaryGlow}` }}
                   data-testid="xp-bar-fill"
                 />
@@ -356,14 +411,11 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
                   </p>
                 </div>
 
-                {/* Tomorrow's first session preview */}
+                {/* Tomorrow's first session preview — no border */}
                 {tomorrowFirst && (
                   <div
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left"
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.07)",
-                    }}
+                    style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
                     data-testid="tomorrow-preview"
                   >
                     <div
@@ -394,9 +446,9 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
 
           {/* Current mission card */}
           {currentCard && (() => {
-            const Icon = currentCard.icon;
+            const Icon    = currentCard.icon;
             const durMins = activityDurationMap[currentCard.id] ?? 2;
-            const dest = currentCard.route ?? `/guided-session/${currentCard.id}`;
+            const dest    = currentCard.route ?? `/guided-session/${currentCard.id}`;
             return (
               <motion.button
                 key={currentCard.id}
@@ -414,12 +466,10 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
                 }}
               >
                 <div className="flex items-start gap-3.5">
+                  {/* Icon — no border, shadow only */}
                   <div
                     className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{
-                      backgroundColor: `${currentCard.color}22`,
-                      border: `1px solid ${currentCard.color}38`,
-                    }}
+                    style={{ backgroundColor: `${currentCard.color}20` }}
                   >
                     <Icon size={22} style={{ color: currentCard.color }} />
                   </div>
@@ -480,9 +530,9 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
               </p>
               <div className="rounded-xl overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.03)" }}>
                 {upcomingCards.map((card, i) => {
-                  const Icon = card.icon;
+                  const Icon    = card.icon;
                   const durMins = activityDurationMap[card.id] ?? 2;
-                  const dest = card.route ?? `/guided-session/${card.id}`;
+                  const dest    = card.route ?? `/guided-session/${card.id}`;
                   return (
                     <button
                       key={card.id}
@@ -507,10 +557,7 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
                         >
                           {card.label}
                         </p>
-                        <p
-                          className="text-[10px] mt-0.5"
-                          style={{ color: colors.textMuted }}
-                        >
+                        <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
                           {card.sublabel}
                         </p>
                       </div>
@@ -561,14 +608,28 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
             </div>
           )}
 
+          {/* Full-flow fallback — non-prominent, for users who prefer the guided overlay */}
+          {pendingCards.length > 0 && (
+            <button
+              type="button"
+              onClick={handleStartFlow}
+              data-testid="button-begin-flow"
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-[10px] uppercase tracking-[0.14em] rounded-xl transition-colors hover:bg-white/5 active:bg-white/10"
+              style={{ color: colors.textMuted }}
+            >
+              <Play size={9} />
+              Start full guided flow
+            </button>
+          )}
+
         </motion.div>
 
-        {/* ── PROGRESS STRIP ──────────────────────────────────────────────── */}
+        {/* ── PROGRESS STRIP — streak + readiness only ──────────────────── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.32, delay: 0.28 }}
-          className="flex items-center justify-center gap-5 pt-1 pb-2"
+          className="flex items-center justify-center gap-8 pt-1 pb-2"
           data-testid="progress-strip"
         >
           <div className="flex flex-col items-center gap-0.5" data-testid="stat-streak">
@@ -595,20 +656,6 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
             </span>
             <span className="text-[9px]" style={{ color: colors.textMuted }}>Ready</span>
           </div>
-          <div
-            className="w-px h-8"
-            style={{ backgroundColor: "rgba(255,255,255,0.10)" }}
-          />
-          <div className="flex flex-col items-center gap-0.5" data-testid="stat-sessions">
-            <span className="text-lg leading-none">✓</span>
-            <span
-              className="text-sm font-extrabold leading-none"
-              style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
-            >
-              {doneCards.length}/{allCards.length}
-            </span>
-            <span className="text-[9px]" style={{ color: colors.textMuted }}>Today</span>
-          </div>
         </motion.div>
 
       </div>
@@ -617,32 +664,37 @@ export function Day6Home({ homeData, playerData, scalingData }: Props) {
 }
 
 // ── SegmentedXpBar ────────────────────────────────────────────────────────────
+// Animates only the newly-earned segments (fromPercent → percent) sequentially
+// over 0.8 s ease-out. Previously-filled segments are stationary.
 
 function SegmentedXpBar({
-  percent, fill, glow, segments = 20,
+  fromPercent = 0, percent, fill, glow, segments = 20,
 }: {
-  percent: number; fill: string; glow: string; segments?: number;
+  fromPercent?: number; percent: number; fill: string; glow: string; segments?: number;
 }) {
-  const filled = Math.round((Math.max(0, Math.min(100, percent)) / 100) * segments);
-  // Stagger delay: each segment's fill delay is proportional to its index,
-  // distributing the total fill animation over 0.8 s (ease-out).
-  const totalDuration = 0.8;
+  const filledTarget = Math.round((Math.max(0, Math.min(100, percent))    / 100) * segments);
+  const filledFrom   = Math.round((Math.max(0, Math.min(100, fromPercent)) / 100) * segments);
+  const newCount     = Math.max(0, filledTarget - filledFrom);
+
   return (
     <div className="w-full flex gap-[2px] h-2 items-center" data-testid="xp-bar-track">
       {Array.from({ length: segments }).map((_, i) => {
-        const on = i < filled;
+        const isOn  = i < filledTarget;
+        const isNew = i >= filledFrom && i < filledTarget;
         return (
           <motion.div
             key={i}
             className="flex-1 h-full rounded-[2px]"
             animate={{
-              backgroundColor: on ? fill : "rgba(255,255,255,0.08)",
-              boxShadow:       on ? `0 0 5px ${glow}` : "none",
+              backgroundColor: isOn ? fill : "rgba(255,255,255,0.08)",
+              boxShadow:       isOn ? `0 0 5px ${glow}` : "none",
             }}
             transition={{
               duration: 0.12,
               ease: "easeOut",
-              delay: on ? (i / Math.max(filled, 1)) * totalDuration : 0,
+              // New segments stagger in from left to right over 0.8 s;
+              // previously-filled and unfilled segments snap immediately.
+              delay: isNew ? ((i - filledFrom) / Math.max(newCount, 1)) * 0.8 : 0,
             }}
             data-testid={i === 0 ? "xp-bar-fill" : undefined}
           />
@@ -666,7 +718,7 @@ function PastelGradientXpBar({ percent }: { percent: number }) {
         className="h-full rounded-full"
         initial={{ width: 0 }}
         animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
         style={{
           background: "linear-gradient(90deg, #f7e5b6 0%, #f4a6c8 50%, #b59cf2 100%)",
           boxShadow: "0 0 6px rgba(180,150,240,0.55)",
