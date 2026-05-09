@@ -117,7 +117,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [showCustomize, setShowCustomize] = useState(false);
   const [showAvatar,    setShowAvatar]    = useState(false);
   const [avatarIcon,    setAvatarState]   = useState(() => getAvatarIcon());
-  const [flowActive,    setFlowActive]    = useState(false);
+  const [flowActive,       setFlowActive]       = useState(false);
+  const [singleActivityId, setSingleActivityId] = useState<string | null>(null);
 
   const { completedIds, markComplete } = useSessionProgress();
 
@@ -145,13 +146,33 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   }, [xp.percent]);
 
   // Mission sequencing
-  const metaById   = Object.fromEntries(pathCfg.sessionCards.map(c => [c.id, c]));
-  const seqCards   = activities.map(a => metaById[a.id] ?? null).filter(Boolean) as NonNullable<typeof metaById[string]>[];
-  const pendingSeq = seqCards.filter(c => !completedIds.has(c.id));
-  const doneSeq    = seqCards.filter(c =>  completedIds.has(c.id));
+  // GuidedSessionPage stores "calm-breathing" / "light-movement" as session IDs.
+  // Day6Home tracks phase1 activity IDs. These maps bridge the two systems.
+  const ACTIVITY_TO_SESSION: Record<string, string> = {
+    phase1_meditation: "calm-breathing",
+    phase1_agility:    "light-movement",
+  };
+
+  const metaById = Object.fromEntries(pathCfg.sessionCards.map(c => [c.id, c]));
+  const seqCards = activities.map(a => metaById[a.id] ?? null).filter(Boolean) as NonNullable<typeof metaById[string]>[];
+
+  // isActivityDone checks both the phase1 ID and the standalone session page ID
+  const isActivityDone = (activityId: string): boolean => {
+    if (completedIds.has(activityId)) return true;
+    const sessionId = ACTIVITY_TO_SESSION[activityId];
+    return sessionId ? completedIds.has(sessionId) : false;
+  };
+
+  const pendingSeq = seqCards.filter(c => !isActivityDone(c.id));
+  const doneSeq    = seqCards.filter(c =>  isActivityDone(c.id));
   const allDone    = pendingSeq.length === 0 && seqCards.length > 0;
   const currentAid = pendingSeq[0]?.id ?? null;
   const todayIds   = new Set(activities.map(a => a.id));
+
+  // When singleActivityId is set, restrict the flow engine to that one activity
+  const flowActivities = singleActivityId
+    ? activities.filter(a => a.id === singleActivityId)
+    : activities;
 
   // Living stats
   const hp    = playerData?.hp    ?? 100;
@@ -187,7 +208,22 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       ids.forEach(id => markComplete(id));
     }
     setFlowActive(false);
+    setSingleActivityId(null);
   }, [markComplete]);
+
+  // Featured card tap — navigate to the correct standalone session,
+  // or start an isolated single-activity flow for strength (no standalone page).
+  const handleFeaturedTap = () => {
+    const aid = featuredCard?.activityId;
+    if (!aid) return;
+    const sessionSlug = ACTIVITY_TO_SESSION[aid];
+    if (sessionSlug) {
+      navigate(`/guided-session/${sessionSlug}`);
+    } else {
+      setSingleActivityId(aid);
+      setFlowActive(true);
+    }
+  };
   const handleAvatarPick = (icon: string) => { saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false); };
 
   // Featured vs supporting
@@ -205,10 +241,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (dc.id === "vitality") return () => navigate("/sectograph");
     const sessionRoute = ACTIVITY_SESSION[dc.activityId];
     if (sessionRoute) return () => navigate(sessionRoute);
-    // Strength: no standalone session — use flow engine if pending, training page if done/absent
+    // Strength: no standalone session — run isolated single-activity flow if pending
     if (dc.activityId === "phase1_strength") {
-      const pendingStrength = todayIds.has("phase1_strength") && !completedIds.has("phase1_strength");
-      return pendingStrength ? () => setFlowActive(true) : () => navigate("/training");
+      const pendingStrength = todayIds.has("phase1_strength") && !isActivityDone("phase1_strength");
+      return pendingStrength
+        ? () => { setSingleActivityId("phase1_strength"); setFlowActive(true); }
+        : () => navigate("/training");
     }
     return () => navigate(dc.fallbackRoute);
   };
@@ -229,7 +267,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       <CustomizePanel open={showCustomize} onClose={() => setShowCustomize(false)} />
       <AnimatePresence>
         {flowActive && (
-          <DailyFlowEngine activities={activities} playerId={player.id}
+          <DailyFlowEngine activities={flowActivities} playerId={player.id}
             onComplete={handleFlowDone} onCancel={() => setFlowActive(false)}
             isOnboardingComplete={true} />
         )}
@@ -439,7 +477,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               >
                 <motion.button
                   type="button"
-                  onClick={() => setFlowActive(true)}
+                  onClick={handleFeaturedTap}
                   whileTap={{ scale: 0.985 }}
                   className={`${CARD_BASE} gap-4`}
                   style={{
@@ -524,7 +562,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           data-testid="stat-grid"
         >
           {(allDone ? [...DASH_CARDS] : supportCards).map((dc, idx) => {
-            const isDone     = dc.activityId !== "" && completedIds.has(dc.activityId);
+            const isDone     = dc.activityId !== "" && isActivityDone(dc.activityId);
             const inFlow     = dc.activityId !== "" && todayIds.has(dc.activityId);
             const isUpcoming = inFlow && !isDone;
             const action     = resolveAction(dc);
