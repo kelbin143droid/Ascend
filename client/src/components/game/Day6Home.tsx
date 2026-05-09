@@ -197,8 +197,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         readiness:        0,
       });
     }
+  // Re-derive on day rollover AND when the user completes a flow mid-day so the
+  // top card immediately reflects the new state (e.g. switches to "flow done" card).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [today]);
+  }, [today, flowCompletedToday]);
 
   const tiers: CategoryTiers = {
     strength: scalingData?.trainingScaling?.strength?.tier ?? 1,
