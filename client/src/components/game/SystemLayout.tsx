@@ -77,6 +77,14 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         }
       `}</style>
 
+      {/* Dark atmospheric overlay — extra depth on image backgrounds so UI cards read clearly */}
+      {(usingThemeImage || hasCustomBg) && (
+        <div
+          className="fixed inset-0 z-[2] pointer-events-none"
+          style={{ background: "rgba(2,3,14,0.52)" }}
+        />
+      )}
+
       {/* Background layer — static image / animated video / gradient */}
       {(isIronSovereign || isNeonEmpress) && animatedBg ? (
         <video
