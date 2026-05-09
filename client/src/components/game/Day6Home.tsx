@@ -527,13 +527,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             const isDone     = dc.activityId !== "" && completedIds.has(dc.activityId);
             const inFlow     = dc.activityId !== "" && todayIds.has(dc.activityId);
             const isUpcoming = inFlow && !isDone;
-            const route      = resolveRoute(dc);
+            const action     = resolveAction(dc);
             const desc       = taskDesc(dc);
 
             const sl     = playerData?.statLevels?.[dc.statKey];
             const sLvl   = sl?.level ?? 1;
 
-            // HP/MP cards always show bar; XP cards show bar only in allDone 2×2 view
             const showBar = dc.barType === "hp" || dc.barType === "mp" || allDone;
             const barPct  = dc.barType === "mp" ? mpPct
               : dc.barType === "hp" ? hpPct
@@ -545,11 +544,93 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               ? "0 0 14px rgba(34,197,94,0.08), 0 4px 18px rgba(0,0,0,0.45)"
               : `0 0 14px ${dc.glow.replace("0.45","0.08")}, 0 4px 18px rgba(0,0,0,0.45)`;
 
+            // ── Vitality: dual sleep + hydration card ──────────────────────
+            if (dc.id === "vitality") {
+              return (
+                <motion.div
+                  key={dc.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.24 + idx * 0.05 }}
+                  className="rounded-2xl flex flex-col gap-2 w-full overflow-hidden"
+                  style={{
+                    background: cardBg,
+                    border: `1px solid ${borderCol}`,
+                    boxShadow: glowShadow,
+                    backdropFilter: "blur(16px)",
+                    minHeight: allDone ? 145 : 130,
+                    padding: "10px",
+                  }}
+                  data-testid="mission-card-vitality"
+                >
+                  {/* Card header */}
+                  <div className="flex items-center justify-between px-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+                        style={{ background: `${dc.color}14`, border: `1px solid ${dc.color}22` }}>
+                        <Heart size={12} style={{ color: dc.color }} />
+                      </div>
+                      <p className="text-[11px] font-bold" style={{ color: textCol }}>Vitality</p>
+                    </div>
+                    <span className="text-[7px] font-mono px-1.5 py-0.5 rounded-full"
+                      style={{ background: `${dc.color}0e`, color: dc.color }}>
+                      HP {Math.round(hpPct)}%
+                    </span>
+                  </div>
+
+                  {/* HP bar */}
+                  <div className="px-0.5">
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: `${dc.color}12` }}>
+                      <motion.div className="h-full rounded-full"
+                        initial={{ width: 0 }} animate={{ width: `${hpPct}%` }}
+                        transition={{ duration: 0.75, ease: "easeOut", delay: 0.3 }}
+                        style={{ background: dc.color, boxShadow: `0 0 5px ${dc.glow}` }} />
+                    </div>
+                  </div>
+
+                  {/* Sleep row */}
+                  <motion.button
+                    type="button"
+                    onClick={() => navigate("/sectograph")}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-2 w-full rounded-xl px-2.5 py-2 text-left"
+                    style={{ background: "rgba(129,140,248,0.07)", border: "1px solid rgba(129,140,248,0.14)" }}
+                    data-testid="vitality-sleep-btn"
+                  >
+                    <Moon size={11} style={{ color: "#818cf8", flexShrink: 0 }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] font-bold leading-none" style={{ color: "#818cf8" }}>Sleep</p>
+                      <p className="text-[8px] leading-none mt-0.5" style={{ color: mutedCol }}>Schedule &amp; wind-down</p>
+                    </div>
+                    <ArrowRight size={8} style={{ color: "#818cf888", flexShrink: 0 }} />
+                  </motion.button>
+
+                  {/* Hydration row */}
+                  <motion.button
+                    type="button"
+                    onClick={() => navigate("/nutrition")}
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-2 w-full rounded-xl px-2.5 py-2 text-left"
+                    style={{ background: "rgba(34,211,238,0.07)", border: "1px solid rgba(34,211,238,0.14)" }}
+                    data-testid="vitality-hydration-btn"
+                  >
+                    <Droplets size={11} style={{ color: "#22d3ee", flexShrink: 0 }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] font-bold leading-none" style={{ color: "#22d3ee" }}>Hydration</p>
+                      <p className="text-[8px] leading-none mt-0.5" style={{ color: mutedCol }}>Water intake log</p>
+                    </div>
+                    <ArrowRight size={8} style={{ color: "#22d3ee88", flexShrink: 0 }} />
+                  </motion.button>
+                </motion.div>
+              );
+            }
+
+            // ── Standard ritual card ────────────────────────────────────────
             return (
               <motion.button
                 key={dc.id}
                 type="button"
-                onClick={() => navigate(route)}
+                onClick={action}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: isUpcoming || !inFlow ? 0.82 : 1, y: 0 }}
                 whileHover={{ scale: 1.025, transition: { duration: 0.18 } }}
@@ -600,7 +681,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   </p>
                 </div>
 
-                {/* Bar — HP/MP living stats always; XP only in 2×2 view */}
+                {/* Bar */}
                 {showBar && (
                   <div>
                     <div className="w-full h-1 rounded-full overflow-hidden"
@@ -619,7 +700,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 {/* Tap hint */}
                 <div className="flex items-center justify-end">
                   <span className="text-[7px] flex items-center gap-0.5" style={{ color: isDone ? "#22c55e88" : `${dc.color}70` }}>
-                    {isDone ? "done" : "tap to open"} <ArrowRight size={7} />
+                    {isDone ? "done ✓" : "tap to begin"} <ArrowRight size={7} />
                   </span>
                 </div>
               </motion.button>
