@@ -331,7 +331,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             ) : (
               <div
                 className="w-full h-1.5 rounded-full overflow-hidden"
-                style={{ backgroundColor: `${colors.primary}18` }}
+                style={{ backgroundColor: `${colors.primary}35` }}
                 data-testid="xp-bar-track"
               >
                 <motion.div
@@ -395,8 +395,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               Complete Your First Daily Flow
             </h3>
             <p
-              className="text-xs leading-relaxed"
-              style={{ color: colors.textMuted }}
+              className="text-xs leading-relaxed font-medium"
+              style={{ color: colors.text }}
             >
               {totalMins} min · Breath · Movement · Strength. Your progression system activates on completion.
             </p>
@@ -462,7 +462,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   backgroundSize: "180px 180px",
                   backgroundRepeat: "repeat",
                 }
-              : { backgroundColor: `${colors.primary}08`, border: `1px solid ${colors.primary}15` }
+              : { backgroundColor: `${colors.primary}18`, border: `1px solid ${colors.primary}45` }
           }
           data-testid="coach-insight-card"
         >
@@ -490,13 +490,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   ? "text-[10px] uppercase tracking-[0.18em] font-extrabold mb-0.5"
                   : "text-[9px] uppercase tracking-[0.14em] font-bold mb-0.5"
               }
-              style={{ color: isNeonEmpress ? fae.inkText : `${colors.primary}80` }}
+              style={{ color: isNeonEmpress ? fae.inkText : colors.primary }}
             >
               Coach
             </p>
             <p
-              className={isNeonEmpress ? "text-sm leading-relaxed" : "text-xs leading-relaxed"}
-              style={{ color: isNeonEmpress ? fae.inkText : `${colors.text}cc` }}
+              className={isNeonEmpress ? "text-sm leading-relaxed" : "text-xs leading-relaxed font-medium"}
+              style={{ color: isNeonEmpress ? fae.inkText : colors.text }}
             >
               {homeData.insight ?? "Consistency is becoming your baseline. Each session builds the next."}
             </p>
@@ -629,7 +629,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                           >
                             {session.label}
                           </p>
-                          <p className="text-[10px] mt-0.5" style={{ color: `${colors.textMuted}88` }}>
+                          <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
                             {session.sublabel}
                           </p>
                         </div>
@@ -662,7 +662,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       <p className="text-sm font-medium leading-tight" style={{ color: colors.text }}>
                         Sleep Optimization
                       </p>
-                      <p className="text-[10px] mt-0.5" style={{ color: `${colors.textMuted}88` }}>
+                      <p className="text-[10px] mt-0.5" style={{ color: colors.textMuted }}>
                         Choose how the night flow guides you
                       </p>
                     </div>
@@ -739,7 +739,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 style={{
                   backgroundColor: isNeonEmpress
                     ? "rgba(255,255,255,0.45)"
-                    : `${hpColor}18`,
+                    : `${hpColor}38`,
                 }}
                 data-testid="hp-bar-track"
               >
@@ -779,7 +779,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               </div>
               <div
                 className="w-full h-2 rounded-full overflow-hidden"
-                style={{ backgroundColor: `${manaColor}18` }}
+                style={{ backgroundColor: `${manaColor}38` }}
                 data-testid="mana-bar-track"
               >
                 <motion.div
