@@ -40,7 +40,7 @@ const QUICK_ACTIONS_CONFIG = [
   { label: "Stretch", Icon: Heart,    route: "/guided-session/phase1_agility",    color: "#22c55e" },
   { label: "Train",   Icon: Dumbbell, route: "/training",                          color: "#f59e0b" },
   { label: "Focus",   Icon: Brain,    route: "/coach",                             color: "#a855f7" },
-  { label: "Tasks",   Icon: Target,   route: "/habits",                            color: "#ef4444" },
+  { label: "Task",    Icon: Target,   route: "/habits",                            color: "#ef4444" },
 ] as const;
 
 // ── Icon map for session cards ────────────────────────────────────────────────
@@ -130,9 +130,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [flowCompletedDate, setFlowCompletedDate]  = useState(
     () => localStorage.getItem("ascend_light_movement_completed") ?? ""
   );
-  const [isFirstMission, setIsFirstMission] = useState(
-    () => localStorage.getItem("ascend_first_mission_done") !== "1"
-  );
   // Today's Focus accordion — open on first visit, closed on repeat
   const [showFocus, setShowFocus] = useState(
     () => localStorage.getItem("ascend_first_mission_done") !== "1"
@@ -208,7 +205,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       }
       setFlowCompletedDate(new Date().toISOString().split("T")[0]);
       localStorage.setItem("ascend_first_mission_done", "1");
-      setIsFirstMission(false);
     }
     setFlowActive(false);
     refreshStats();
@@ -960,45 +956,6 @@ function Waveform({ side }: { side: "left" | "right" }) {
         />
       ))}
     </div>
-  );
-}
-
-// ── LaurelLevel / LaurelBranch (unused in new layout, kept for safety) ────────
-
-function LaurelLevel({ level, gold, glow }: { level: number; gold: string; glow: string }) {
-  return (
-    <div className="flex items-center gap-1" data-testid="text-player-level">
-      <LaurelBranch side="left" gold={gold} />
-      <span style={{
-        color: gold,
-        fontFamily: "'Brush Script MT', cursive, serif",
-        fontStyle: "italic", fontWeight: 700, fontSize: 24, lineHeight: 1,
-        textShadow: `0 1px 0 rgba(255,255,255,0.65), 0 0 10px ${glow}`,
-      }}>
-        Lv {level}
-      </span>
-      <LaurelBranch side="right" gold={gold} />
-    </div>
-  );
-}
-
-function LaurelBranch({ side, gold }: { side: "left" | "right"; gold: string }) {
-  const transform = side === "right" ? "scaleX(-1)" : undefined;
-  const leaves = [
-    { cx: 4, cy: 28, rx: 1.6, ry: 3.6, rot: -55 }, { cx: 5, cy: 22, rx: 1.6, ry: 3.6, rot: -50 },
-    { cx: 6, cy: 16, rx: 1.6, ry: 3.4, rot: -45 }, { cx: 7.5, cy: 10, rx: 1.5, ry: 3.2, rot: -38 },
-    { cx: 9, cy: 5, rx: 1.4, ry: 2.8, rot: -28 },  { cx: 7, cy: 26, rx: 1.5, ry: 3.4, rot: 60 },
-    { cx: 8, cy: 19, rx: 1.5, ry: 3.2, rot: 55 },  { cx: 9, cy: 13, rx: 1.4, ry: 3.0, rot: 48 },
-  ];
-  return (
-    <svg width={22} height={36} viewBox="0 0 22 36" style={{ transform, display: "block" }} aria-hidden>
-      <path d="M3 34 Q 6 22 9 10 Q 10 6 11 3" stroke={gold} strokeWidth={1.3} fill="none" strokeLinecap="round" opacity={0.85} />
-      <g fill={gold} opacity={0.92}>
-        {leaves.map((l, i) => (
-          <ellipse key={i} cx={l.cx} cy={l.cy} rx={l.rx} ry={l.ry} transform={`rotate(${l.rot} ${l.cx} ${l.cy})`} />
-        ))}
-      </g>
-    </svg>
   );
 }
 
