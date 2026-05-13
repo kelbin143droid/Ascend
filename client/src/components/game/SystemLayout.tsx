@@ -277,10 +277,10 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       <nav
         className="fixed bottom-0 left-0 right-0 z-30"
         style={{
-          background: `linear-gradient(to top, ${colors.background}f8 0%, ${colors.background}e0 80%, transparent 100%)`,
-          backdropFilter: "blur(20px)",
-          borderTop: `1px solid ${colors.primary}18`,
-          boxShadow: `0 -4px 24px rgba(0,0,0,0.45)`,
+          background: `linear-gradient(to top, ${colors.background}fc 0%, ${colors.background}d8 70%, transparent 100%)`,
+          backdropFilter: "blur(24px)",
+          borderTop: `1px solid ${colors.primary}14`,
+          boxShadow: `0 -1px 0 ${colors.primary}0a, 0 -8px 40px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.04)`,
         }}
         data-testid="bottom-nav"
       >
@@ -299,13 +299,22 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                     className="relative flex items-center justify-center rounded-xl transition-all duration-200"
                     style={{
                       width: 40, height: 30,
-                      background: isActive ? `${colors.primary}1c` : "transparent",
-                      boxShadow: isActive ? `0 0 14px ${colors.primaryGlow}` : "none",
+                      background: isActive
+                        ? `radial-gradient(ellipse at 50% 40%, ${colors.primary}28 0%, ${colors.primary}10 100%)`
+                        : "transparent",
+                      border: isActive ? `1px solid ${colors.primary}28` : "1px solid transparent",
+                      boxShadow: isActive
+                        ? `0 0 20px ${colors.primaryGlow}, 0 2px 10px ${colors.primaryGlow}40, inset 0 1px 0 ${colors.primary}30`
+                        : "none",
                     }}
                   >
                     <item.icon
                       size={isActive ? 20 : 19}
-                      style={{ filter: isActive ? `drop-shadow(0 0 4px ${colors.primary})` : "none" }}
+                      style={{
+                        filter: isActive
+                          ? `drop-shadow(0 0 5px ${colors.primary}) drop-shadow(0 0 2px ${colors.primary})`
+                          : "none",
+                      }}
                     />
                   </div>
                   <span

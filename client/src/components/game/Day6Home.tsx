@@ -295,9 +295,51 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           0%, 100% { transform: scale(0.96); opacity: 0.13; }
           50%       { transform: scale(1.02); opacity: 0.26; }
         }
+        @keyframes xpShimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+        @keyframes ambientFloat {
+          0%, 100% { transform: translateY(0px); opacity: 0.45; }
+          50%       { transform: translateY(-7px); opacity: 0.75; }
+        }
+        @keyframes iconGlowPulse {
+          0%, 100% { filter: drop-shadow(0 0 3px var(--ig-color)); }
+          50%       { filter: drop-shadow(0 0 8px var(--ig-color)); }
+        }
+        @keyframes blobDrift {
+          0%, 100% { transform: translate(0,0) scale(1); }
+          33%       { transform: translate(6px, -10px) scale(1.06); }
+          66%       { transform: translate(-4px, 5px)  scale(0.96); }
+        }
       `}</style>
 
-      <div className="flex flex-col gap-5 py-3 px-1 max-w-md mx-auto w-full" data-testid="day6-home">
+      <div className="flex flex-col gap-5 py-3 px-1 max-w-md mx-auto w-full relative" data-testid="day6-home">
+
+        {/* ── ATMOSPHERIC BLOOM ORBS (immersive bg lighting) ──────────── */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+          <div style={{
+            position: "absolute", top: "5%", left: "-25%",
+            width: 260, height: 260, borderRadius: "50%",
+            background: `radial-gradient(circle, ${primary}14 0%, transparent 68%)`,
+            filter: "blur(50px)",
+            animation: "blobDrift 12s ease-in-out infinite",
+          }} />
+          <div style={{
+            position: "absolute", top: "45%", right: "-20%",
+            width: 200, height: 200, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(129,140,248,0.12) 0%, transparent 65%)",
+            filter: "blur(44px)",
+            animation: "blobDrift 15s ease-in-out 3s infinite",
+          }} />
+          <div style={{
+            position: "absolute", bottom: "15%", left: "10%",
+            width: 180, height: 180, borderRadius: "50%",
+            background: `radial-gradient(circle, ${primary}0c 0%, transparent 70%)`,
+            filter: "blur(40px)",
+            animation: "blobDrift 18s ease-in-out 6s infinite",
+          }} />
+        </div>
 
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
@@ -334,10 +376,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           transition={{ duration: 0.30, delay: 0.04 }}
           className="rounded-2xl"
           style={{
-            background: `linear-gradient(135deg, rgba(6,8,22,0.85) 0%, rgba(8,10,26,0.75) 100%)`,
-            border: `1px solid ${primary}18`,
-            backdropFilter: "blur(16px)",
-            boxShadow: `0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 ${primary}0c`,
+            background: `linear-gradient(135deg, rgba(6,8,24,0.90) 0%, rgba(8,10,28,0.82) 100%)`,
+            border: `1px solid ${primary}20`,
+            backdropFilter: "blur(18px)",
+            boxShadow: `0 0 0 1px ${primary}08, 0 2px 20px ${primary}14, 0 8px 32px rgba(0,0,0,0.50), inset 0 1px 0 ${primary}18, inset 0 -1px 0 rgba(0,0,0,0.30)`,
             padding: "14px 16px",
           }}
           data-testid="daily-status-section"
@@ -413,14 +455,22 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 ) : isNeonEmp ? (
                   <PastelBar pct={xp.percent} />
                 ) : (
-                  <div className="w-full h-[7px] rounded-full overflow-hidden"
-                    style={{ backgroundColor: "rgba(255,255,255,0.08)" }} data-testid="xp-bar-track">
+                  <div className="w-full h-[7px] rounded-full overflow-hidden relative"
+                    style={{ backgroundColor: "rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.40)" }}
+                    data-testid="xp-bar-track">
                     <motion.div className="h-full rounded-full"
                       initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
                       transition={{ duration: 1.0, ease: [0.22, 0.61, 0.36, 1] }}
-                      style={{ background: `linear-gradient(90deg, ${colors.primary}, ${colors.primary}cc)`,
-                        boxShadow: `0 0 10px ${colors.primaryGlow}` }}
+                      style={{
+                        background: `linear-gradient(90deg, ${colors.primary}dd, ${colors.primary}, ${colors.primary}cc)`,
+                        boxShadow: `0 0 12px ${colors.primaryGlow}, 0 0 4px ${colors.primaryGlow}`,
+                      }}
                       data-testid="xp-bar-fill" />
+                    <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                      background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "xpShimmer 3s linear infinite",
+                    }} />
                   </div>
                 )}
               </div>
@@ -445,24 +495,33 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         <motion.div
           initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.06 }}
-          className="rounded-2xl px-4 py-3"
+          className="rounded-2xl px-4 py-3 relative overflow-hidden"
           style={{
-            background: "rgba(6,8,20,0.90)",
+            background: `linear-gradient(135deg, rgba(5,7,20,0.94) 0%, rgba(8,5,22,0.90) 100%)`,
             borderLeft: `3px solid ${primary}`,
-            boxShadow: `0 0 20px ${primary}12, 0 4px 20px rgba(0,0,0,0.45)`,
-            backdropFilter: "blur(16px)",
+            boxShadow: `0 0 30px ${primary}14, 0 0 60px ${primary}07, 0 4px 24px rgba(0,0,0,0.50), inset 0 1px 0 ${primary}10`,
+            backdropFilter: "blur(18px)",
           }}
           data-testid="system-message"
         >
-          <p className="text-[8px] font-bold tracking-[0.26em] mb-1" style={{ color: primary }}>
+          {/* Background icon decoration */}
+          {DASH_CARDS.find(d => d.activityId === currentAid) && (() => {
+            const Icon = DASH_CARDS.find(d => d.activityId === currentAid)!.icon;
+            return (
+              <div className="absolute top-2 right-3 pointer-events-none" style={{ opacity: 0.07 }}>
+                <Icon size={44} style={{ color: primary }} />
+              </div>
+            );
+          })()}
+          <p className="text-[8px] font-bold tracking-[0.28em] mb-[5px]" style={{ color: primary, textShadow: `0 0 8px ${primary}80` }}>
             SYSTEM
           </p>
-          <p className="text-[13px] font-semibold leading-snug" style={{ color: textCol }}
+          <p className="text-[13px] font-semibold leading-snug tracking-tight" style={{ color: textCol }}
             data-testid="path-recommendation-text">
             {systemMission}
           </p>
           {systemHint && (
-            <p className="text-[10px] mt-0.5 leading-snug" style={{ color: mutedCol }}>{systemHint}</p>
+            <p className="text-[10px] mt-1 leading-snug" style={{ color: mutedCol, opacity: 0.75 }}>{systemHint}</p>
           )}
         </motion.div>
 
@@ -508,9 +567,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 className="rounded-2xl"
                 animate={{
                   boxShadow: [
-                    `0 0 16px ${dc.glow.replace("0.45","0.14")}, 0 6px 24px rgba(0,0,0,0.55)`,
-                    `0 0 32px ${dc.glow.replace("0.45","0.28")}, 0 6px 24px rgba(0,0,0,0.55)`,
-                    `0 0 16px ${dc.glow.replace("0.45","0.14")}, 0 6px 24px rgba(0,0,0,0.55)`,
+                    `0 0 20px ${dc.glow.replace("0.45","0.18")}, 0 0 50px ${dc.glow.replace("0.45","0.07")}, 0 8px 32px rgba(0,0,0,0.60)`,
+                    `0 0 50px ${dc.glow.replace("0.45","0.48")}, 0 0 100px ${dc.glow.replace("0.45","0.20")}, 0 8px 32px rgba(0,0,0,0.60)`,
+                    `0 0 20px ${dc.glow.replace("0.45","0.18")}, 0 0 50px ${dc.glow.replace("0.45","0.07")}, 0 8px 32px rgba(0,0,0,0.60)`,
                   ],
                 }}
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
@@ -522,31 +581,56 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   whileTap={{ scale: 0.982, transition: { duration: 0.12 } }}
                   className={`${CARD_BASE} gap-3 relative overflow-hidden`}
                   style={{
-                    background: `linear-gradient(140deg, rgba(8,10,26,0.98) 0%, rgba(10,12,28,0.96) 100%)`,
-                    border: `1.5px solid ${dc.color}40`,
-                    backdropFilter: "blur(12px)",
+                    background: `linear-gradient(140deg, rgba(6,7,22,0.98) 0%, rgba(10,6,28,0.97) 60%, rgba(6,8,24,0.98) 100%)`,
+                    border: `1.5px solid ${dc.color}45`,
+                    backdropFilter: "blur(16px)",
                     padding: "16px 18px",
+                    boxShadow: `inset 0 1px 0 ${dc.color}18, inset 0 -1px 0 rgba(0,0,0,0.40)`,
                   }}
                   data-testid="mission-card-current"
                 >
+                  {/* Radial bloom centre glow */}
+                  <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{
+                    background: `radial-gradient(ellipse at 72% 50%, ${dc.color}14 0%, transparent 60%)`,
+                  }} />
+                  {/* Top-edge reflection */}
+                  <div className="absolute top-0 left-[10%] right-[10%] h-px pointer-events-none" style={{
+                    background: `linear-gradient(90deg, transparent, ${dc.color}40, transparent)`,
+                  }} />
                   {/* Animated concentric ring backdrop */}
                   <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl pointer-events-none">
                     <div className="absolute rounded-full" style={{
                       width: 160, height: 160,
-                      border: `1px solid ${dc.color}`,
+                      border: `1px solid ${dc.color}cc`,
+                      boxShadow: `0 0 12px ${dc.glow.replace("0.45","0.20")} inset`,
                       animation: "ringSwell 4s ease-in-out 0s infinite",
                     }} />
                     <div className="absolute rounded-full" style={{
                       width: 220, height: 220,
-                      border: `1px solid ${dc.color}`,
+                      border: `1px solid ${dc.color}88`,
                       animation: "ringSwellB 5s ease-in-out 0.7s infinite",
                     }} />
                     <div className="absolute rounded-full" style={{
                       width: 290, height: 290,
-                      border: `1px solid ${dc.color}`,
+                      border: `1px solid ${dc.color}44`,
                       animation: "ringSwellC 6s ease-in-out 1.4s infinite",
                     }} />
                   </div>
+                  {/* Ambient particle dots */}
+                  {[
+                    { top: "22%", left: "78%", s: 2,   delay: "0s"   },
+                    { top: "68%", left: "85%", s: 1.5, delay: "1.3s" },
+                    { top: "42%", left: "90%", s: 1.2, delay: "0.6s" },
+                    { top: "82%", left: "72%", s: 2,   delay: "2.1s" },
+                  ].map((p, i) => (
+                    <div key={i} className="absolute rounded-full pointer-events-none" style={{
+                      top: p.top, left: p.left,
+                      width: p.s, height: p.s,
+                      background: dc.color,
+                      boxShadow: `0 0 6px ${dc.color}, 0 0 2px ${dc.color}`,
+                      animation: `ambientFloat ${3.5 + i * 0.9}s ease-in-out ${p.delay} infinite`,
+                    }} />
+                  ))}
                   {/* Header */}
                   <div className="relative flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -554,18 +638,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                         className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                         animate={{
                           boxShadow: [
-                            `0 0 10px ${dc.glow.replace("0.45","0.16")}`,
-                            `0 0 22px ${dc.glow.replace("0.45","0.36")}`,
-                            `0 0 10px ${dc.glow.replace("0.45","0.16")}`,
+                            `0 0 12px ${dc.glow.replace("0.45","0.20")}, inset 0 1px 0 ${dc.color}20`,
+                            `0 0 28px ${dc.glow.replace("0.45","0.55")}, 0 0 50px ${dc.glow.replace("0.45","0.18")}, inset 0 1px 0 ${dc.color}30`,
+                            `0 0 12px ${dc.glow.replace("0.45","0.20")}, inset 0 1px 0 ${dc.color}20`,
                           ],
                         }}
                         transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
                         style={{
-                          background: `linear-gradient(135deg, ${dc.color}1e, ${dc.color}08)`,
-                          border: `1px solid ${dc.color}30`,
+                          background: `radial-gradient(circle at 35% 35%, ${dc.color}28 0%, ${dc.color}0c 100%)`,
+                          border: `1px solid ${dc.color}38`,
                         }}
                       >
-                        <dc.icon size={20} style={{ color: dc.color }} />
+                        <dc.icon size={20} style={{ color: dc.color, filter: `drop-shadow(0 0 4px ${dc.color})` }} />
                       </motion.div>
                       <div>
                         <p className="text-[16px] font-bold leading-none tracking-tight" style={{ color: textCol }}>
@@ -598,13 +682,19 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
                   {/* Begin button */}
                   <div
-                    className="relative flex items-center justify-center gap-2 w-full py-[10px] rounded-xl font-bold text-[12px] tracking-wide"
+                    className="relative flex items-center justify-center gap-2 w-full py-[10px] rounded-xl font-bold text-[12px] tracking-wide overflow-hidden"
                     style={{
-                      background: `linear-gradient(90deg, ${dc.color}e8, ${dc.color}b8)`,
-                      color: "#000",
-                      boxShadow: `0 3px 18px ${dc.glow.replace("0.45","0.35")}`,
+                      background: `linear-gradient(90deg, #4f46e5ee, ${dc.color}dd, #7c3aedcc)`,
+                      color: "#fff",
+                      boxShadow: `0 3px 20px ${dc.glow.replace("0.45","0.40")}, 0 0 40px ${dc.glow.replace("0.45","0.16")}, inset 0 1px 0 rgba(255,255,255,0.18)`,
+                      textShadow: "0 1px 4px rgba(0,0,0,0.40)",
                     }}
                   >
+                    <div className="absolute inset-0 pointer-events-none" style={{
+                      background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "xpShimmer 2.5s linear infinite",
+                    }} />
                     Begin · {dur} min <ArrowRight size={13} />
                   </div>
                 </motion.button>
@@ -641,9 +731,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             const cardBg      = isDone ? "rgba(4,16,8,0.92)" : "rgba(6,8,20,0.90)";
             const borderCol   = isDone ? "rgba(34,197,94,0.22)" : `${dc.color}20`;
 
-            const restShadow   = `0 2px 12px rgba(0,0,0,0.38)`;
-            const hoverShadow  = `0 4px 20px rgba(0,0,0,0.50), 0 0 14px ${accentColor}1a`;
-            const tapShadow    = `0 1px 6px rgba(0,0,0,0.32)`;
+            const restShadow   = `0 2px 14px rgba(0,0,0,0.42), 0 0 0 1px ${accentColor}0a`;
+            const hoverShadow  = `0 6px 24px rgba(0,0,0,0.55), 0 0 18px ${accentColor}20`;
+            const tapShadow    = `0 1px 6px rgba(0,0,0,0.35)`;
 
             // Circular SVG progress ring
             const RING_R    = 11;
@@ -668,11 +758,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 transition={{ duration: 0.28, delay: 0.22 + idx * 0.06 }}
                 className="rounded-2xl flex flex-col w-full text-left"
                 style={{
-                  background: cardBg,
+                  background: isDone
+                    ? `linear-gradient(145deg, rgba(4,20,8,0.96) 0%, rgba(4,14,6,0.92) 100%)`
+                    : `linear-gradient(145deg, ${dc.color}0a 0%, rgba(5,6,20,0.94) 40%, rgba(3,4,16,0.96) 100%)`,
                   border: `1px solid ${borderCol}`,
-                  backdropFilter: "blur(10px)",
+                  backdropFilter: "blur(12px)",
                   padding: "12px 10px",
                   gap: "7px",
+                  boxShadow: `inset 0 1px 0 ${accentColor}10`,
                 }}
                 data-testid={`mission-card-${dc.id}`}
               >
@@ -682,13 +775,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                       style={{
-                        background: `${accentColor}10`,
-                        border: `1px solid ${accentColor}1c`,
+                        background: `radial-gradient(circle at 35% 35%, ${accentColor}22 0%, ${accentColor}08 100%)`,
+                        border: `1px solid ${accentColor}28`,
+                        boxShadow: `0 0 8px ${accentColor}20, inset 0 1px 0 ${accentColor}18`,
                       }}
                     >
                       {isDone
-                        ? <CheckCircle2 size={12} style={{ color: accentColor }} />
-                        : <dc.icon size={12} style={{ color: accentColor }} />}
+                        ? <CheckCircle2 size={12} style={{ color: accentColor, filter: `drop-shadow(0 0 3px ${accentColor})` }} />
+                        : <dc.icon size={12} style={{ color: accentColor, filter: `drop-shadow(0 0 3px ${accentColor})` }} />}
                     </div>
                     <span className="text-[7px] font-semibold tabular-nums leading-none"
                       style={{ color: accentColor, opacity: 0.60 }}>
