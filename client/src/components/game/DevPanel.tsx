@@ -109,7 +109,7 @@ export function DevPanel() {
   if (!player?.id) return null;
 
   return (
-    <div className="fixed bottom-20 right-3 z-[60]" style={{ maxWidth: "260px" }}>
+    <div className="fixed z-[60]" style={{ bottom: "84px", right: "20px", maxWidth: "260px" }}>
       <button
         onClick={handleOpen}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider"

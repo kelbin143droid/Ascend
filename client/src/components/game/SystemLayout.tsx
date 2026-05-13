@@ -311,8 +311,10 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                     <item.icon
                       size={isActive ? 20 : 19}
                       style={{
+                        transform: isActive ? "scale(1.10)" : "scale(1)",
+                        transition: "transform 0.2s ease",
                         filter: isActive
-                          ? `drop-shadow(0 0 5px ${colors.primary}) drop-shadow(0 0 2px ${colors.primary})`
+                          ? `drop-shadow(0 0 6px ${colors.primary}) drop-shadow(0 0 3px ${colors.primary}aa)`
                           : "none",
                       }}
                     />

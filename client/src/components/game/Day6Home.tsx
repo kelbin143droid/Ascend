@@ -312,6 +312,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           33%       { transform: translate(6px, -10px) scale(1.06); }
           66%       { transform: translate(-4px, 5px)  scale(0.96); }
         }
+        @keyframes buttonSweep {
+          0%, 60%    { transform: translateX(-160%); opacity: 0; }
+          65%        { opacity: 1; }
+          82%        { transform: translateX(160%); opacity: 0.7; }
+          88%, 100%  { transform: translateX(160%); opacity: 0; }
+        }
       `}</style>
 
       <div className="flex flex-col gap-5 py-3 px-1 max-w-md mx-auto w-full relative" data-testid="day6-home">
@@ -438,9 +444,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     </span>
                   )}
                 </div>
-                <span className="text-[9px] font-mono tabular-nums leading-none" style={{ color: mutedCol }}>
-                  <span style={{ color: textCol, opacity: 0.8 }}>XP {xp.exp}</span>
-                  <span style={{ opacity: 0.38 }}> / {xp.maxExp}</span>
+                <span className="text-[11px] font-mono tabular-nums leading-none font-semibold">
+                  <span style={{ color: primary, textShadow: `0 0 8px ${primary}60` }}>XP {xp.exp}</span>
+                  <span style={{ color: "rgba(160,175,200,0.70)" }}> / {xp.maxExp}</span>
                 </span>
               </div>
 
@@ -455,8 +461,16 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 ) : isNeonEmp ? (
                   <PastelBar pct={xp.percent} />
                 ) : (
-                  <div className="w-full h-[7px] rounded-full overflow-hidden relative"
-                    style={{ backgroundColor: "rgba(255,255,255,0.07)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.40)" }}
+                  <motion.div className="w-full h-[7px] rounded-full overflow-hidden relative"
+                    animate={{
+                      boxShadow: [
+                        `0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`,
+                        `0 0 18px ${colors.primaryGlow}90, 0 0 32px ${colors.primaryGlow}30, inset 0 1px 2px rgba(0,0,0,0.40)`,
+                        `0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`,
+                      ],
+                    }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ backgroundColor: "rgba(255,255,255,0.07)" }}
                     data-testid="xp-bar-track">
                     <motion.div className="h-full rounded-full"
                       initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
@@ -471,7 +485,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       backgroundSize: "200% 100%",
                       animation: "xpShimmer 3s linear infinite",
                     }} />
-                  </div>
+                  </motion.div>
                 )}
               </div>
 
@@ -521,7 +535,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             {systemMission}
           </p>
           {systemHint && (
-            <p className="text-[10px] mt-1 leading-snug" style={{ color: mutedCol, opacity: 0.75 }}>{systemHint}</p>
+            <p className="text-[10px] mt-1 leading-snug" style={{ color: "rgba(175,190,215,0.92)" }}>{systemHint}</p>
           )}
         </motion.div>
 
@@ -690,11 +704,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       textShadow: "0 1px 4px rgba(0,0,0,0.40)",
                     }}
                   >
-                    <div className="absolute inset-0 pointer-events-none" style={{
-                      background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)",
-                      backgroundSize: "200% 100%",
-                      animation: "xpShimmer 2.5s linear infinite",
-                    }} />
+                    <div className="absolute top-0 left-0 h-full w-[55%] pointer-events-none"
+                      style={{
+                        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)",
+                        animation: "buttonSweep 6s ease-in-out 1.5s infinite",
+                        willChange: "transform, opacity",
+                      }} />
                     Begin · {dur} min <ArrowRight size={13} />
                   </div>
                 </motion.button>
@@ -812,11 +827,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     {dc.label}
                   </p>
                   <p className="text-[8px] leading-snug mt-[2px]"
-                    style={{ color: mutedCol, opacity: 0.85 }}>
+                    style={{ color: "rgba(172,186,208,0.95)" }}>
                     {sublabel}
                   </p>
                   <p className="text-[7px] leading-snug mt-[1px]"
-                    style={{ color: mutedCol, opacity: 0.45 }}>
+                    style={{ color: "rgba(140,155,180,0.65)" }}>
                     {dc.desc}
                   </p>
                 </div>
