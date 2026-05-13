@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
-  ArrowRight, Heart, Zap, Shield, Flame,
+  ArrowRight, Heart, Zap, Shield, Flame, Settings,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -58,25 +58,25 @@ interface Props {
 const DASH_CARDS = [
   {
     id: "calm",       activityId: "phase1_meditation", statKey: "sense",
-    label: "Calm Mind",  sub: "Breathing Reset",
+    label: "Calm Mind",  sub: "Breathing Reset",    desc: "Mental clarity",
     icon: Brain,  color: "#818cf8", glow: "rgba(129,140,248,0.45)",
     barLabel: "MP", barType: "mp" as const, fallbackRoute: "/coach",
   },
   {
     id: "vitality",   activityId: "",                  statKey: "vitality",
-    label: "Vitality",   sub: "Recovery",
+    label: "Vitality",   sub: "Recovery",             desc: "Sleep & hydration",
     icon: Heart,  color: "#f87171", glow: "rgba(248,113,113,0.45)",
     barLabel: "HP", barType: "hp" as const, fallbackRoute: "/sectograph",
   },
   {
     id: "strength",   activityId: "phase1_strength",   statKey: "strength",
-    label: "Strength",   sub: "Power Training",
+    label: "Strength",   sub: "Power Training",       desc: "Build resilience",
     icon: Shield, color: "#fbbf24", glow: "rgba(251,191,36,0.45)",
     barLabel: "STR", barType: "xp" as const, fallbackRoute: "/training",
   },
   {
     id: "agility",    activityId: "phase1_agility",    statKey: "agility",
-    label: "Agility",    sub: "Mobility Flow",
+    label: "Agility",    sub: "Mobility Flow",        desc: "Movement & flex",
     icon: Zap,    color: "#34d399", glow: "rgba(52,211,153,0.45)",
     barLabel: "AGI", barType: "xp" as const, fallbackRoute: "/training",
   },
@@ -273,7 +273,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         pathColor={pathCfg.primaryColor}
       />
 
-      {/* Streak glow keyframe */}
+      {/* Keyframes */}
       <style>{`
         @keyframes streakRingPulse {
           0%, 100% { opacity: 0.45; transform: scale(1); }
@@ -283,9 +283,17 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           0%, 100% { opacity: 0.55; }
           50%       { opacity: 1; }
         }
-        @keyframes cardBorderPulse {
-          0%, 100% { opacity: 0.55; }
-          50%       { opacity: 1; }
+        @keyframes ringSwell {
+          0%, 100% { transform: scale(0.88); opacity: 0.28; }
+          50%       { transform: scale(1.06); opacity: 0.50; }
+        }
+        @keyframes ringSwellB {
+          0%, 100% { transform: scale(0.92); opacity: 0.20; }
+          50%       { transform: scale(1.04); opacity: 0.38; }
+        }
+        @keyframes ringSwellC {
+          0%, 100% { transform: scale(0.96); opacity: 0.13; }
+          50%       { transform: scale(1.02); opacity: 0.26; }
         }
       `}</style>
 
@@ -293,108 +301,142 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
-        {/* ── PROFILE STRIP — HUD panel ─────────────────────────────────── */}
+        {/* ── SYSTEM TITLE HEADER ───────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.32 }}
-          className="flex items-center gap-3 rounded-2xl"
+          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="flex items-center justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[11px]" style={{ color: primary, opacity: 0.55 }}>✦</span>
+            <h1 className="text-[15px] font-bold tracking-wide leading-none" style={{ color: textCol }}>
+              {playerData?.name ? `${playerData.name}'s System` : "Ascend System"}
+            </h1>
+            <span className="text-[11px]" style={{ color: primary, opacity: 0.55 }}>✦</span>
+          </div>
+          <button
+            onClick={() => navigate("/profile")}
+            data-testid="button-settings"
+            className="flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-150 active:scale-90"
+            style={{
+              background: `${primary}0e`,
+              border: `1px solid ${primary}18`,
+              color: mutedCol,
+            }}
+          >
+            <Settings size={14} />
+          </button>
+        </motion.div>
+
+        {/* ── PROFILE HUD ───────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.30, delay: 0.04 }}
+          className="rounded-2xl"
           style={{
-            background: `linear-gradient(135deg, rgba(6,8,22,0.80) 0%, rgba(8,10,26,0.70) 100%)`,
-            border: `1px solid ${primary}16`,
-            backdropFilter: "blur(14px)",
-            boxShadow: `0 2px 20px rgba(0,0,0,0.38), inset 0 1px 0 ${primary}0a`,
-            padding: "12px 14px",
+            background: `linear-gradient(135deg, rgba(6,8,22,0.85) 0%, rgba(8,10,26,0.75) 100%)`,
+            border: `1px solid ${primary}18`,
+            backdropFilter: "blur(16px)",
+            boxShadow: `0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 ${primary}0c`,
+            padding: "14px 16px",
           }}
           data-testid="daily-status-section"
         >
-          {/* Avatar */}
-          <button onClick={() => setShowAvatar(true)} data-testid="button-avatar"
-            className="relative shrink-0 transition-transform duration-150 active:scale-90">
-            {hasStreak && (
-              <div className="absolute inset-[-4px] rounded-full pointer-events-none"
+          <div className="flex items-center gap-3">
+            {/* Avatar */}
+            <button onClick={() => setShowAvatar(true)} data-testid="button-avatar"
+              className="relative shrink-0 transition-transform duration-150 active:scale-90">
+              {hasStreak && (
+                <div className="absolute inset-[-5px] rounded-full pointer-events-none"
+                  style={{
+                    border: `1.5px solid ${primary}`,
+                    boxShadow: `0 0 12px ${primary}50`,
+                    animation: "streakRingPulse 2.4s ease-in-out infinite",
+                  }} />
+              )}
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center text-xl relative z-10"
                 style={{
-                  border: `1.5px solid ${primary}`,
-                  boxShadow: `0 0 10px ${primary}50`,
-                  animation: "streakRingPulse 2.4s ease-in-out infinite",
-                }} />
-            )}
-            <div
-              className="w-11 h-11 rounded-full flex items-center justify-center text-lg relative z-10"
-              style={{
-                background: `linear-gradient(135deg,${primary}22,${primary}08)`,
-                border: `1.5px solid ${primary}38`,
-                boxShadow: hasStreak ? `0 0 16px ${primary}40` : `0 0 6px ${primary}1e`,
-              }}
-            >
-              {avatarIcon}
-            </div>
-            <div
-              className="absolute -bottom-[2px] -right-[2px] w-[17px] h-[17px] rounded-full flex items-center justify-center text-[7px] font-bold leading-none z-20"
-              style={{ backgroundColor: primary, color: isNeonEmp ? fae.ink : "#000",
-                boxShadow: `0 0 6px ${primary}55` }}
-              data-testid="text-player-level"
-            >
-              {lvl}
-            </div>
-          </button>
+                  background: `linear-gradient(135deg,${primary}28,${primary}0c)`,
+                  border: `1.5px solid ${primary}40`,
+                  boxShadow: hasStreak ? `0 0 20px ${primary}45` : `0 0 8px ${primary}22`,
+                }}
+              >
+                {avatarIcon}
+              </div>
+              <div
+                className="absolute -bottom-[2px] -right-[2px] w-[18px] h-[18px] rounded-full flex items-center justify-center text-[7px] font-bold leading-none z-20"
+                style={{ backgroundColor: primary, color: isNeonEmp ? fae.ink : "#000",
+                  boxShadow: `0 0 8px ${primary}60` }}
+                data-testid="text-player-level"
+              >
+                {lvl}
+              </div>
+            </button>
 
-          {/* Name + XP */}
-          <div className="flex-1 min-w-0" data-testid="xp-progress-section">
-            {/* Row 1: name + streak + XP counter */}
-            <div className="flex items-center justify-between mb-[5px]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[13px] font-semibold tracking-tight leading-none" style={{ color: textCol }}>
-                  {playerData?.name ?? "Hunter"}
-                </span>
-                {hasStreak && (
-                  <span
-                    className="flex items-center gap-[3px] text-[8px] font-bold px-[5px] py-[2px] rounded-full"
-                    style={{ background: `${primary}16`, color: primary, border: `1px solid ${primary}24` }}
-                    data-testid="stat-streak"
-                  >
-                    <Flame size={7} /> {streak}
+            {/* Level + XP section */}
+            <div className="flex-1 min-w-0" data-testid="xp-progress-section">
+              {/* Row 1: LEVEL label + number + XP counter */}
+              <div className="flex items-baseline justify-between mb-[7px]">
+                <div className="flex items-baseline gap-[5px]">
+                  <span className="text-[9px] font-bold tracking-[0.22em] uppercase leading-none"
+                    style={{ color: mutedCol, opacity: 0.7 }}>LEVEL</span>
+                  <span className="text-[22px] font-bold leading-none tabular-nums"
+                    style={{ color: primary, lineHeight: 1, textShadow: `0 0 12px ${primary}60` }}
+                    data-testid="stat-level">
+                    {lvl}
                   </span>
+                  {hasStreak && (
+                    <span
+                      className="flex items-center gap-[3px] text-[8px] font-bold px-[5px] py-[2px] rounded-full ml-1"
+                      style={{ background: `${primary}16`, color: primary, border: `1px solid ${primary}24` }}
+                      data-testid="stat-streak"
+                    >
+                      <Flame size={7} /> {streak}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[9px] font-mono tabular-nums leading-none" style={{ color: mutedCol }}>
+                  <span style={{ color: textCol, opacity: 0.8 }}>XP {xp.exp}</span>
+                  <span style={{ opacity: 0.38 }}> / {xp.maxExp}</span>
+                </span>
+              </div>
+
+              {/* Row 2: XP bar */}
+              <div className="relative">
+                {hasStreak && (
+                  <div className="absolute inset-0 rounded-full pointer-events-none"
+                    style={{ boxShadow: `0 0 10px ${primary}30`, animation: "streakBarGlow 2.4s ease-in-out infinite" }} />
+                )}
+                {isIronSov ? (
+                  <SegBar fromPct={xpFrom} pct={xp.percent} fill={hudCyan} glow={hudCyanG} />
+                ) : isNeonEmp ? (
+                  <PastelBar pct={xp.percent} />
+                ) : (
+                  <div className="w-full h-[7px] rounded-full overflow-hidden"
+                    style={{ backgroundColor: "rgba(255,255,255,0.08)" }} data-testid="xp-bar-track">
+                    <motion.div className="h-full rounded-full"
+                      initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
+                      transition={{ duration: 1.0, ease: [0.22, 0.61, 0.36, 1] }}
+                      style={{ background: `linear-gradient(90deg, ${colors.primary}, ${colors.primary}cc)`,
+                        boxShadow: `0 0 10px ${colors.primaryGlow}` }}
+                      data-testid="xp-bar-fill" />
+                  </div>
                 )}
               </div>
-              <span className="text-[9px] font-mono tabular-nums leading-none" style={{ color: mutedCol }}>
-                <span style={{ color: textCol, opacity: 0.75 }}>{xp.exp}</span>
-                <span style={{ opacity: 0.35 }}>/{xp.maxExp} xp</span>
-              </span>
-            </div>
 
-            {/* Row 2: XP bar */}
-            <div className="relative">
-              {hasStreak && (
-                <div className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{ boxShadow: `0 0 8px ${primary}28`, animation: "streakBarGlow 2.4s ease-in-out infinite" }} />
-              )}
-              {isIronSov ? (
-                <SegBar fromPct={xpFrom} pct={xp.percent} fill={hudCyan} glow={hudCyanG} />
-              ) : isNeonEmp ? (
-                <PastelBar pct={xp.percent} />
-              ) : (
-                <div className="w-full h-[6px] rounded-full overflow-hidden"
-                  style={{ backgroundColor: "rgba(255,255,255,0.09)" }} data-testid="xp-bar-track">
-                  <motion.div className="h-full rounded-full"
-                    initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
-                    transition={{ duration: 0.9, ease: "easeOut" }}
-                    style={{ backgroundColor: colors.primary, boxShadow: `0 0 8px ${colors.primaryGlow}` }}
-                    data-testid="xp-bar-fill" />
-                </div>
-              )}
-            </div>
-
-            {/* Row 3: path label + theme */}
-            <div className="flex items-center justify-between mt-[5px]">
-              <span className="text-[8px] tracking-[0.12em] uppercase leading-none"
-                style={{ color: primary, opacity: 0.75 }}>
-                {pathCfg.displayLabel}
-              </span>
-              <button onClick={() => setShowCustomize(true)} data-testid="button-customize"
-                className="flex items-center justify-center w-5 h-5 rounded-md transition-transform duration-150 active:scale-90"
-                style={{ color: mutedCol, backgroundColor: `${primary}10`, border: `1px solid ${primary}14` }}>
-                <Palette size={9} />
-              </button>
+              {/* Row 3: path label + theme button */}
+              <div className="flex items-center justify-between mt-[6px]">
+                <span className="text-[9px] tracking-[0.10em] leading-none flex items-center gap-1"
+                  style={{ color: primary, opacity: 0.80 }}>
+                  <span style={{ fontSize: "7px" }}>◆</span> {pathCfg.displayLabel}
+                </span>
+                <button onClick={() => setShowCustomize(true)} data-testid="button-customize"
+                  className="flex items-center justify-center w-[22px] h-[22px] rounded-lg transition-all duration-150 active:scale-90"
+                  style={{ color: mutedCol, backgroundColor: `${primary}10`, border: `1px solid ${primary}16` }}>
+                  <Palette size={10} />
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -478,7 +520,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   onClick={handleFeaturedTap}
                   whileHover={{ scale: 1.006, transition: { duration: 0.2 } }}
                   whileTap={{ scale: 0.982, transition: { duration: 0.12 } }}
-                  className={`${CARD_BASE} gap-3`}
+                  className={`${CARD_BASE} gap-3 relative overflow-hidden`}
                   style={{
                     background: `linear-gradient(140deg, rgba(8,10,26,0.98) 0%, rgba(10,12,28,0.96) 100%)`,
                     border: `1.5px solid ${dc.color}40`,
@@ -487,8 +529,26 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   }}
                   data-testid="mission-card-current"
                 >
+                  {/* Animated concentric ring backdrop */}
+                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl pointer-events-none">
+                    <div className="absolute rounded-full" style={{
+                      width: 160, height: 160,
+                      border: `1px solid ${dc.color}`,
+                      animation: "ringSwell 4s ease-in-out 0s infinite",
+                    }} />
+                    <div className="absolute rounded-full" style={{
+                      width: 220, height: 220,
+                      border: `1px solid ${dc.color}`,
+                      animation: "ringSwellB 5s ease-in-out 0.7s infinite",
+                    }} />
+                    <div className="absolute rounded-full" style={{
+                      width: 290, height: 290,
+                      border: `1px solid ${dc.color}`,
+                      animation: "ringSwellC 6s ease-in-out 1.4s infinite",
+                    }} />
+                  </div>
                   {/* Header */}
-                  <div className="flex items-center justify-between">
+                  <div className="relative flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <motion.div
                         className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -523,7 +583,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   </div>
 
                   {/* Bar */}
-                  <div>
+                  <div className="relative">
                     <div className="flex justify-between mb-1">
                       <span className="text-[8px] tracking-wide" style={{ color: mutedCol }}>{dc.barLabel}</span>
                       <span className="text-[8px] font-mono tabular-nums" style={{ color: mutedCol }}>{Math.round(barPct)}%</span>
@@ -538,11 +598,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
                   {/* Begin button */}
                   <div
-                    className="flex items-center justify-center gap-2 w-full py-[10px] rounded-xl font-bold text-[12px] tracking-wide"
+                    className="relative flex items-center justify-center gap-2 w-full py-[10px] rounded-xl font-bold text-[12px] tracking-wide"
                     style={{
-                      background: `linear-gradient(90deg, ${dc.color}e8, ${dc.color}c0)`,
+                      background: `linear-gradient(90deg, ${dc.color}e8, ${dc.color}b8)`,
                       color: "#000",
-                      boxShadow: `0 3px 16px ${dc.glow.replace("0.45","0.32")}`,
+                      boxShadow: `0 3px 18px ${dc.glow.replace("0.45","0.35")}`,
                     }}
                   >
                     Begin · {dur} min <ArrowRight size={13} />
@@ -585,6 +645,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             const hoverShadow  = `0 4px 20px rgba(0,0,0,0.50), 0 0 14px ${accentColor}1a`;
             const tapShadow    = `0 1px 6px rgba(0,0,0,0.32)`;
 
+            // Circular SVG progress ring
+            const RING_R    = 11;
+            const RING_CIRC = 2 * Math.PI * RING_R;
+            const ringOffset = RING_CIRC * (1 - barPct / 100);
+
             return (
               <motion.button
                 key={dc.id}
@@ -606,54 +671,66 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   background: cardBg,
                   border: `1px solid ${borderCol}`,
                   backdropFilter: "blur(10px)",
-                  padding: "13px 11px",
-                  gap: "9px",
+                  padding: "12px 10px",
+                  gap: "7px",
                 }}
                 data-testid={`mission-card-${dc.id}`}
               >
-                {/* Top row: icon + level badge */}
-                <div className="flex items-center justify-between">
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{
-                      background: `${accentColor}10`,
-                      border: `1px solid ${accentColor}1c`,
-                    }}
-                  >
-                    {isDone
-                      ? <CheckCircle2 size={13} style={{ color: accentColor }} />
-                      : <dc.icon size={13} style={{ color: accentColor }} />}
+                {/* Top row: icon+level (left) · circular ring (right) */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-1">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{
+                        background: `${accentColor}10`,
+                        border: `1px solid ${accentColor}1c`,
+                      }}
+                    >
+                      {isDone
+                        ? <CheckCircle2 size={12} style={{ color: accentColor }} />
+                        : <dc.icon size={12} style={{ color: accentColor }} />}
+                    </div>
+                    <span className="text-[7px] font-semibold tabular-nums leading-none"
+                      style={{ color: accentColor, opacity: 0.60 }}>
+                      {sLvl}
+                    </span>
                   </div>
-                  <span
-                    className="text-[8px] font-semibold tabular-nums leading-none"
-                    style={{ color: accentColor, opacity: 0.65 }}
-                  >
-                    {sLvl}
-                  </span>
+
+                  {/* SVG circular progress ring */}
+                  <svg width="28" height="28" className="shrink-0 -mt-[1px]">
+                    <circle cx="14" cy="14" r={RING_R} fill="none"
+                      stroke={`${accentColor}18`} strokeWidth="2" />
+                    <motion.circle cx="14" cy="14" r={RING_R} fill="none"
+                      stroke={accentColor} strokeWidth="2" strokeLinecap="round"
+                      transform="rotate(-90 14 14)"
+                      initial={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC }}
+                      animate={{ strokeDasharray: RING_CIRC, strokeDashoffset: ringOffset }}
+                      transition={{ duration: 1.0, ease: "easeOut", delay: 0.32 + idx * 0.08 }}
+                      style={{ filter: `drop-shadow(0 0 3px ${accentColor}80)` }}
+                    />
+                  </svg>
                 </div>
 
-                {/* Title + sublabel */}
-                <div className="flex-1">
+                {/* Title + sublabel + desc */}
+                <div>
                   <p className="text-[11px] font-bold leading-tight tracking-tight"
                     style={{ color: isDone ? "#22c55e" : textCol }}>
                     {dc.label}
                   </p>
                   <p className="text-[8px] leading-snug mt-[2px]"
-                    style={{ color: mutedCol, opacity: 0.8 }}>
+                    style={{ color: mutedCol, opacity: 0.85 }}>
                     {sublabel}
+                  </p>
+                  <p className="text-[7px] leading-snug mt-[1px]"
+                    style={{ color: mutedCol, opacity: 0.45 }}>
+                    {dc.desc}
                   </p>
                 </div>
 
-                {/* Thin stat bar */}
-                <div className="w-full h-[2px] rounded-full overflow-hidden"
-                  style={{ background: `${accentColor}0e` }}>
-                  <motion.div className="h-full rounded-full"
-                    initial={{ width: 0 }} animate={{ width: `${barPct}%` }}
-                    transition={{ duration: 0.7, ease: "easeOut", delay: 0.28 + idx * 0.06 }}
-                    style={{
-                      background: accentColor,
-                      boxShadow: `0 0 3px ${accentGlow.replace("0.45","0.40")}`,
-                    }} />
+                {/* Arrow hint */}
+                <div className="flex justify-end">
+                  <span className="text-[11px] leading-none"
+                    style={{ color: accentColor, opacity: 0.40 }}>›</span>
                 </div>
               </motion.button>
             );

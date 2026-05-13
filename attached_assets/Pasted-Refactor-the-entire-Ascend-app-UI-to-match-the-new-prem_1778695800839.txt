@@ -1,0 +1,85 @@
+Refactor the entire Ascend app UI to match the new premium futuristic system design reference.
+
+The app should feel like a polished sci-fi RPG operating system inspired by Solo Leveling, not a standard productivity app.
+
+Apply this new visual language consistently across ALL screens:
+
+- Home
+- Profile
+- Habits
+- System/Coach
+- Meditation
+- Stretching
+- Training
+- Sectograph
+- Settings
+- Onboarding
+- Progress screens
+- Modals and popups
+
+Design direction:
+
+- dark futuristic interface
+- premium glassmorphism
+- neon cyan + purple accent glow
+- soft ambient lighting
+- smooth rounded cards
+- immersive RPG system aesthetic
+- minimal but powerful UI
+- clean hierarchy and spacing
+- cinematic atmosphere
+- subtle glow edges instead of harsh borders
+
+Global UI rules:
+
+- use layered glass cards with soft transparency
+- improve typography consistency and spacing
+- increase breathing room between sections
+- keep layouts focused and uncluttered
+- active cards/tasks should glow subtly
+- buttons should feel responsive and premium
+- smooth hover/tap animations
+- soft transitions between screens
+- use elegant micro-interactions everywhere
+
+Home screen changes:
+
+- keep the current structure and hierarchy
+- use the new premium visual style from the latest reference image
+- maintain one primary active mission card
+- supporting stat cards should stay smaller and secondary
+- keep the XP HUD clean and futuristic
+- improve bottom navigation styling to match the premium cards
+- add smoother XP bar animations and subtle glow movement
+
+Mission/task cards:
+
+- each task card should feel alive and interactive
+- use animated progress bars
+- subtle icon glow
+- active state pulse
+- smooth press feedback
+- premium sci-fi gradients
+
+Stat cards:
+
+- Vitality = health/recovery
+- Strength = power training
+- Agility = mobility flow
+- Calm Mind = meditation/breathing
+- use clean short descriptions only
+- no cluttered text blocks
+
+Motion and immersion:
+
+- smooth transitions between tasks
+- satisfying XP fill animations
+- subtle floating ambient particles
+- responsive card elevation
+- dynamic glow feedback on active systems
+
+Keep the UI clean and immersive.
+Do not overload the screens with extra widgets or unnecessary metrics.
+
+The final app should feel like:
+“A premium futuristic RPG life operating system with immersive progression, emotional feedback, and high-end cinematic UI polish.”

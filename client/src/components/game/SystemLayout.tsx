@@ -275,55 +275,46 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       <StreakCelebrationOverlay />
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-xl"
+        className="fixed bottom-0 left-0 right-0 z-30"
         style={{
-          backgroundColor: `${colors.background}99`,
-          borderTop: `1px solid ${colors.surfaceBorder}`,
+          background: `linear-gradient(to top, ${colors.background}f8 0%, ${colors.background}e0 80%, transparent 100%)`,
+          backdropFilter: "blur(20px)",
+          borderTop: `1px solid ${colors.primary}18`,
+          boxShadow: `0 -4px 24px rgba(0,0,0,0.45)`,
         }}
         data-testid="bottom-nav"
       >
-        <div className="flex justify-around items-end h-16 w-full mx-auto pb-2 max-w-md">
+        <div className="flex justify-around items-center h-16 w-full mx-auto max-w-md px-2">
           {NAV_ITEMS.map((item) => {
             const isActive = location === item.path;
 
             return (
               <Link key={item.path} href={item.path}>
-                <div className="relative flex flex-col items-center">
-                  <button
-                    data-testid={`nav-${item.label.toLowerCase()}`}
-                    className={cn(
-                      "flex flex-col items-center justify-center transition-all duration-300 group min-w-[60px]"
-                    )}
+                <button
+                  data-testid={`nav-${item.label.toLowerCase()}`}
+                  className="flex flex-col items-center justify-center transition-all duration-200 min-w-[56px] py-1"
+                  style={{ color: isActive ? colors.primary : `${colors.text}60` }}
+                >
+                  <div
+                    className="relative flex items-center justify-center rounded-xl transition-all duration-200"
                     style={{
-                      color: isActive ? colors.primary : colors.text,
-                      opacity: isActive ? 1 : 0.75,
-                      transform: isActive ? "scale(1.1)" : "scale(1)",
+                      width: 40, height: 30,
+                      background: isActive ? `${colors.primary}1c` : "transparent",
+                      boxShadow: isActive ? `0 0 14px ${colors.primaryGlow}` : "none",
                     }}
                   >
-                    <div
-                      className="relative p-1.5 rounded-sm transition-all duration-500"
-                      style={
-                        isActive
-                          ? {
-                              backgroundColor: `${colors.primary}33`,
-                              boxShadow: `0 0 25px ${colors.primaryGlow}`,
-                              border: `1px solid ${colors.surfaceBorder}`,
-                            }
-                          : {}
-                      }
-                    >
-                      <item.icon
-                        size={22}
-                        className={cn("transition-transform", isActive && "animate-pulse")}
-                      />
-                    </div>
-                    <span
-                      className="text-[9px] tracking-[0.15em] mt-1.5 font-display font-bold uppercase transition-all"
-                    >
-                      {t(item.label)}
-                    </span>
-                  </button>
-                </div>
+                    <item.icon
+                      size={isActive ? 20 : 19}
+                      style={{ filter: isActive ? `drop-shadow(0 0 4px ${colors.primary})` : "none" }}
+                    />
+                  </div>
+                  <span
+                    className="text-[8px] tracking-[0.12em] mt-0.5 font-bold uppercase transition-all"
+                    style={{ opacity: isActive ? 1 : 0.55 }}
+                  >
+                    {t(item.label)}
+                  </span>
+                </button>
               </Link>
             );
           })}
