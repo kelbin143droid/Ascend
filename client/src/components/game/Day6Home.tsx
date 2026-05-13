@@ -72,13 +72,13 @@ const DASH_CARDS = [
     id: "strength",   activityId: "phase1_strength",   statKey: "strength",
     label: "Strength",   sub: "Power Training",       desc: "Build resilience",
     icon: Shield, color: "#fbbf24", glow: "rgba(251,191,36,0.45)",
-    barLabel: "STR", barType: "xp" as const, fallbackRoute: "/training",
+    barLabel: "STR", barType: "xp" as const, fallbackRoute: "/train",
   },
   {
     id: "agility",    activityId: "phase1_agility",    statKey: "agility",
     label: "Agility",    sub: "Mobility Flow",        desc: "Movement & flex",
     icon: Zap,    color: "#34d399", glow: "rgba(52,211,153,0.45)",
-    barLabel: "AGI", barType: "xp" as const, fallbackRoute: "/training",
+    barLabel: "AGI", barType: "xp" as const, fallbackRoute: "/train",
   },
 ] as const;
 
@@ -246,7 +246,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       const pendingStrength = todayIds.has("phase1_strength") && !isActivityDone("phase1_strength");
       return pendingStrength
         ? () => { setSingleActivityId("phase1_strength"); setFlowActive(true); }
-        : () => navigate("/training");
+        : () => navigate("/train");
     }
     return () => navigate(dc.fallbackRoute);
   };
