@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
+import { RadarChart, type RadarChartValues } from "@/components/game/RadarChart";
+import { getCalibrationProfile } from "@/lib/calibrationEngine";
 import { motion, AnimatePresence } from "framer-motion";
 import { Shield, Calendar, Play, User, Bell, Clock, Settings, ChevronRight } from "lucide-react";
 import { PHASE_STAT_CAPS, PHASE_NAMES } from "@shared/schema";
@@ -52,6 +54,23 @@ export default function ProfilePage() {
     if (player) syncPlayerToCache(player as any);
   }, [player?.id]);
 
+  // ── Calibration radar data ─────────────────────────────────────────────
+  const calibProfile = getCalibrationProfile();
+  const radarValues: RadarChartValues | null = calibProfile
+    ? {
+        strength:   calibProfile.powerOutput,
+        vitality:   calibProfile.recoveryRate,
+        sense:      calibProfile.signalStability,
+        discipline: calibProfile.syncRegularity,
+      }
+    : null;
+
+  const calibDate = calibProfile
+    ? new Date(calibProfile.completedAt).toLocaleDateString("en-US", {
+        month: "short", day: "numeric", year: "numeric",
+      })
+    : null;
+
   if (isLoading || !player) {
     return (
       <SystemLayout>
@@ -79,10 +98,18 @@ export default function ProfilePage() {
   };
 
   const SETTINGS_ITEMS: { icon: any; label: string; key: string; route?: string }[] = [
-    { icon: User, label: "Edit Profile", key: "edit-profile" },
-    { icon: Bell, label: "Notification Settings", key: "notifications", route: "/notification-settings" },
-    { icon: Clock, label: "Sectograph Preferences", key: "sectograph" },
-    { icon: Settings, label: "App Settings", key: "app-settings" },
+    { icon: User,     label: "Edit Profile",              key: "edit-profile" },
+    { icon: Bell,     label: "Notification Settings",     key: "notifications", route: "/notification-settings" },
+    { icon: Clock,    label: "Sectograph Preferences",    key: "sectograph" },
+    { icon: Settings, label: "App Settings",              key: "app-settings" },
+  ];
+
+  // Stat accent colours matching RadarChart axes
+  const STAT_META = [
+    { key: "strength"   as const, label: "STR", color: "#fbbf24" },
+    { key: "vitality"   as const, label: "VIT", color: "#34d399" },
+    { key: "sense"      as const, label: "SNS", color: "#a78bfa" },
+    { key: "discipline" as const, label: "DIS", color: "#fb923c" },
   ];
 
   return (
@@ -187,6 +214,89 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* ── SYNC PROFILE (Radar Chart) ───────────────────────── */}
+        {radarValues && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.45 }}
+            className="rounded-xl overflow-hidden"
+            style={{ backgroundColor: `${colors.surface}cc`, border: `1px solid ${colors.surfaceBorder}` }}
+            data-testid="sync-profile-card"
+          >
+            {/* Card header */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-1">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-4" style={{ backgroundColor: colors.primary }} />
+                <h2 className="text-[10px] font-display tracking-widest" style={{ color: colors.primary }}>
+                  SYNC PROFILE
+                </h2>
+              </div>
+              {calibDate && (
+                <span className="text-[9px] font-mono" style={{ color: colors.textMuted }}>
+                  Calibrated {calibDate}
+                </span>
+              )}
+            </div>
+
+            {/* Radar chart — centred, no draw animation on profile (gentle fade-in instead) */}
+            <div className="flex justify-center pt-1 pb-2">
+              <RadarChart
+                values={radarValues}
+                chartSize={150}
+                color={colors.primary}
+                animate={true}
+                delay={200}
+              />
+            </div>
+
+            {/* Stat value grid */}
+            <div className="grid grid-cols-4 gap-2 px-4 pb-4">
+              {STAT_META.map(s => {
+                const val = radarValues[s.key];
+                const pct = Math.round(val);
+                return (
+                  <div key={s.key} className="flex flex-col items-center gap-1 py-2 rounded-lg"
+                    style={{ background: `${s.color}0a`, border: `1px solid ${s.color}20` }}>
+                    <span className="text-[8px] font-mono font-bold tracking-widest"
+                      style={{ color: s.color }}>
+                      {s.label}
+                    </span>
+                    <span className="text-[13px] font-mono font-bold tabular-nums"
+                      style={{ color: s.color }}>
+                      {pct}<span className="text-[9px] ml-0.5" style={{ opacity: 0.55 }}>%</span>
+                    </span>
+                    {/* Mini progress bar */}
+                    <div className="w-full px-1.5">
+                      <div className="h-[3px] rounded-full overflow-hidden"
+                        style={{ background: `${s.color}18` }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${pct}%`, background: s.color, boxShadow: `0 0 4px ${s.color}80` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Protocol label */}
+            {calibProfile && (
+              <div className="px-4 pb-4 pt-1 flex items-center justify-between"
+                style={{ borderTop: `1px solid ${colors.surfaceBorder}` }}>
+                <span className="text-[9px] font-mono" style={{ color: colors.textMuted }}>
+                  Assigned Protocol
+                </span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded"
+                  style={{ color: colors.primary, background: `${colors.primary}12`, border: `1px solid ${colors.primary}20` }}>
+                  {calibProfile.derivedLevel.toUpperCase()}
+                </span>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* ── PHASE HISTORY ───────────────────────────────────── */}
         <div>

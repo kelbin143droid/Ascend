@@ -1,8 +1,8 @@
 /**
  * RecommendedPathScreen.tsx
  * "SYNC SUCCESSFUL" result screen shown after System Sync calibration.
- * Displays the derived protocol, a monospace system-status report,
- * the prescribed body copy, and lets the user optionally adjust before confirming.
+ * Features an animated radar chart that draws itself from the centre,
+ * the required narrative text below it, protocol rationale, and the CTA.
  */
 
 import { useState } from "react";
@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Check } from "lucide-react";
 import { LEVEL_COLORS, LEVEL_DISPLAY_NAMES, type WorkoutLevel } from "@/lib/workoutPlans";
 import type { CalibrationProfile } from "@/lib/calibrationEngine";
+import { RadarChart } from "./RadarChart";
 
 interface Props {
   gender:    "male" | "female";
@@ -27,7 +28,7 @@ const PROTOCOL_NAMES: Record<WorkoutLevel, string> = {
 };
 
 const PROTOCOL_RATIONALE: Record<WorkoutLevel, string> = {
-  entry:        "Parameters indicate an initializing system. Foundation Protocol maximises long-term retention by anchoring habits before intensity.",
+  entry:        "Parameters indicate an initialising system. Foundation Protocol anchors habits before intensity to maximise long-term retention.",
   beginner:     "Parameters indicate a developing system. Build Protocol layers progressive stimulus while protecting recovery bandwidth.",
   intermediate: "Parameters indicate a stable system under load. Evolve Protocol applies compound challenge to accelerate capacity expansion.",
   advanced:     "Parameters indicate a high-output system. Ascend Protocol operates at full-capacity resistance with disciplined recovery cycles.",
@@ -39,7 +40,6 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
     ? "linear-gradient(145deg, #04000e 0%, #080018 50%, #05000f 100%)"
     : "linear-gradient(145deg, #020810 0%, #03101e 50%, #020810 100%)";
 
-  // Neon-blue accent (matches CalibrationFlow)
   const color    = "#0ea5e9";
   const colorAlt = "#38bdf8";
   const glow     = "rgba(14,165,233,0.38)";
@@ -54,29 +54,23 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
   const protocolName = PROTOCOL_NAMES[chosenLevel];
   const rationale    = PROTOCOL_RATIONALE[chosenLevel];
 
-  const fmt = (v: number) => String(v).padStart(3, " ");
+  // Map calibration slider values → radar axes
+  const radarValues = {
+    strength:   profile.powerOutput,
+    vitality:   profile.recoveryRate,
+    sense:      profile.signalStability,
+    discipline: profile.syncRegularity,
+  };
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex flex-col items-center overflow-hidden"
+      className="fixed inset-0 z-[100] flex flex-col items-center overflow-y-auto overflow-x-hidden"
       style={{ background: bgGradient }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.60 }}
     >
-      {/* ── Ambient orbs ── */}
-      <motion.div className="absolute pointer-events-none"
-        style={{ top: "18%", left: "-10%", width: 360, height: 360, borderRadius: "50%",
-          background: `radial-gradient(circle, ${glowAlt} 0%, transparent 70%)`, filter: "blur(60px)" }}
-        animate={{ scale: [1, 1.10, 1], opacity: [0.42, 0.72, 0.42] }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }} />
-      <motion.div className="absolute pointer-events-none"
-        style={{ bottom: "14%", right: "-10%", width: 300, height: 300, borderRadius: "50%",
-          background: `radial-gradient(circle, ${glow} 0%, transparent 70%)`, filter: "blur(55px)" }}
-        animate={{ scale: [1, 1.20, 1], opacity: [0.32, 0.60, 0.32] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.8 }} />
-
-      {/* ── Top label ── */}
+      {/* ── Keyframe ── */}
       <style>{`
         @keyframes xpShimmer {
           0%   { background-position: -200% center; }
@@ -84,10 +78,23 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
         }
       `}</style>
 
-      <div className="relative z-10 w-full max-w-md px-6 pt-14 flex flex-col items-center gap-3">
+      {/* ── Ambient orbs ── */}
+      <motion.div className="absolute pointer-events-none"
+        style={{ top: "8%", left: "-10%", width: 320, height: 320, borderRadius: "50%",
+          background: `radial-gradient(circle, ${glowAlt} 0%, transparent 70%)`, filter: "blur(60px)" }}
+        animate={{ scale: [1, 1.10, 1], opacity: [0.38, 0.65, 0.38] }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }} />
+      <motion.div className="absolute pointer-events-none"
+        style={{ bottom: "8%", right: "-10%", width: 280, height: 280, borderRadius: "50%",
+          background: `radial-gradient(circle, ${glow} 0%, transparent 70%)`, filter: "blur(55px)" }}
+        animate={{ scale: [1, 1.18, 1], opacity: [0.28, 0.55, 0.28] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.8 }} />
+
+      {/* ── Top status label ── */}
+      <div className="relative z-10 w-full max-w-md px-6 pt-12 flex flex-col items-center gap-3 shrink-0">
         <motion.div className="flex items-center gap-2"
           initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12 }}>
+          transition={{ delay: 0.10 }}>
           <motion.div className="w-1.5 h-1.5 rounded-full" style={{ background: color }}
             animate={{ opacity: [1, 0.15, 1] }} transition={{ duration: 1.2, repeat: Infinity }} />
           <span className="text-[9px] tracking-[0.32em] uppercase font-mono font-bold"
@@ -97,110 +104,99 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
         </motion.div>
       </div>
 
-      {/* ── Main content ── */}
-      <div className="relative z-10 flex-1 w-full max-w-md px-5 flex flex-col justify-center gap-5 py-4">
+      {/* ── Main scrollable content ── */}
+      <div className="relative z-10 w-full max-w-md px-5 flex flex-col items-center gap-4 py-3 pb-6">
 
-        {/* SYNC SUCCESSFUL header */}
+        {/* SYNC SUCCESSFUL heading */}
         <motion.div className="text-center"
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22, duration: 0.52 }}>
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18, duration: 0.48 }}>
           <h1
-            className="text-[32px] font-extrabold tracking-[0.08em] uppercase"
+            className="text-[28px] font-extrabold uppercase tracking-[0.10em]"
             style={{
               color,
               fontFamily: "Inter, system-ui, sans-serif",
-              textShadow: `0 0 30px ${glow}, 0 0 60px ${glow}50`,
-              letterSpacing: "0.10em",
+              textShadow: `0 0 28px ${glow}, 0 0 56px ${glow}50`,
             }}>
             SYNC SUCCESSFUL
           </h1>
-          <p className="text-[13px] mt-1.5 leading-snug"
-            style={{ color: "rgba(255,255,255,0.60)", fontFamily: "Inter, system-ui, sans-serif" }}>
+        </motion.div>
+
+        {/* ── Radar chart ── */}
+        <motion.div
+          className="flex justify-center"
+          initial={{ opacity: 0, scale: 0.80 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.28, duration: 0.55, ease: "easeOut" }}>
+          <RadarChart
+            values={radarValues}
+            chartSize={158}
+            color={color}
+            animate
+            delay={520}
+          />
+        </motion.div>
+
+        {/* Narrative text — directly below chart as spec'd */}
+        <motion.div
+          className="text-center px-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45, duration: 0.40 }}>
+          <p className="text-[13px] leading-snug"
+            style={{ color: "rgba(255,255,255,0.58)", fontFamily: "Inter, system-ui, sans-serif" }}>
             System calibrated to your current rhythm.{" "}
-            <span style={{ color: colorAlt, fontWeight: 600 }}>Efficiency at 100%.</span>
+            <span className="font-semibold" style={{ color: colorAlt }}>
+              Efficiency at 100%.
+            </span>
+          </p>
+          <p className="text-[10px] font-mono mt-1.5 leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.28)" }}>
+            Your current parameters are the optimal baseline for sustainable growth.
+            All protocols have been adjusted to match your sync level.
           </p>
         </motion.div>
 
-        {/* Monospace system-status report */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.36, duration: 0.44 }}
-          className="rounded-xl overflow-hidden"
-          style={{ border: `1px solid ${color}28`, background: "rgba(0,0,0,0.40)", backdropFilter: "blur(12px)" }}>
-
-          {/* Report header bar */}
-          <div className="flex items-center gap-2 px-4 py-2.5"
-            style={{ borderBottom: `1px solid ${color}18`, background: `${color}0a` }}>
-            <div className="flex gap-1.5">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="w-2 h-2 rounded-full"
-                  style={{ background: i === 0 ? "#ef4444" : i === 1 ? "#f59e0b" : "#22c55e", opacity: 0.7 }} />
-              ))}
-            </div>
-            <span className="text-[9px] font-mono ml-1" style={{ color: `${color}70` }}>
-              ASCEND_OS · CALIBRATION_REPORT.log
-            </span>
-          </div>
-
-          {/* Report body */}
-          <div className="px-4 py-4 flex flex-col gap-[5px]">
-            <AnimatePresence mode="wait">
-              <motion.div key={chosenLevel}
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.22 }}
-                className="flex flex-col gap-[5px]">
-                {[
-                  { label: "PROTOCOL",       value: protocolName,                          col: color },
-                  { label: "LEVEL_REF",      value: displayName.toUpperCase(),             col: levelColor },
-                  { label: "STR_OUTPUT",     value: `${fmt(profile.powerOutput)}%`,        col: "rgba(251,191,36,0.90)" },
-                  { label: "VIT_RATE",       value: `${fmt(profile.recoveryRate)}%`,       col: "rgba(52,211,153,0.90)" },
-                  { label: "SNS_STABILITY",  value: `${fmt(profile.signalStability)}%`,    col: "rgba(167,139,250,0.90)" },
-                  { label: "DISC_SYNC",      value: `${fmt(profile.syncRegularity)}%`,     col: "rgba(251,146,60,0.90)" },
-                  { label: "STATUS",         value: "OPTIMAL BASELINE CONFIRMED",          col: "#22c55e" },
-                ].map(({ label, value, col }) => (
-                  <div key={label} className="flex items-baseline gap-2">
-                    <span className="text-[10px] font-mono shrink-0 w-[100px]"
-                      style={{ color: "rgba(255,255,255,0.28)" }}>
-                      {`>`} {label}
-                    </span>
-                    <span className="text-[10px] font-mono font-semibold"
-                      style={{ color: col }}>
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Divider + body copy */}
-            <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${color}14` }}>
-              <p className="text-[10px] font-mono leading-[1.65]"
-                style={{ color: "rgba(255,255,255,0.38)" }}>
-                Your current parameters are the optimal baseline for sustainable<br />
-                growth. All protocols have been adjusted to match your sync level.
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Rationale card */}
+        {/* Protocol badge */}
         <AnimatePresence mode="wait">
-          <motion.div key={chosenLevel}
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.26 }}
-            className="rounded-xl px-4 py-3.5"
-            style={{ background: `${levelColor}0c`, border: `1px solid ${levelColor}30` }}>
-            <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.48)" }}>
-              {rationale}
-            </p>
+          <motion.div key={`badge-${chosenLevel}`}
+            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.24 }}
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl w-full"
+            style={{ background: `${levelColor}0d`, border: `1px solid ${levelColor}30` }}>
+            <div className="flex flex-col flex-1">
+              <span className="text-[9px] font-mono tracking-[0.20em] uppercase"
+                style={{ color: `${levelColor}80` }}>
+                Assigned Protocol
+              </span>
+              <span className="text-[14px] font-bold font-mono tracking-[0.06em]"
+                style={{ color: levelColor }}>
+                {protocolName}
+              </span>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded"
+              style={{ background: `${levelColor}18`, color: levelColor, border: `1px solid ${levelColor}25` }}>
+              {displayName}
+            </span>
           </motion.div>
         </AnimatePresence>
 
+        {/* Rationale */}
+        <AnimatePresence mode="wait">
+          <motion.p key={`rat-${chosenLevel}`}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="text-[11px] leading-relaxed text-center px-1"
+            style={{ color: "rgba(255,255,255,0.40)" }}>
+            {rationale}
+          </motion.p>
+        </AnimatePresence>
+
         {/* Adjust manually toggle */}
-        <div>
+        <div className="w-full">
           <button onClick={() => setAdjustOpen(o => !o)} data-testid="button-adjust-level"
             className="flex items-center gap-1.5 mx-auto text-[11px] font-mono transition-all"
-            style={{ color: `${color}55` }}>
+            style={{ color: `${color}50` }}>
             {adjustOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             {isAdjusted ? "Protocol adjusted manually" : "Adjust manually"}
           </button>
@@ -231,9 +227,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
                           {dn}
                         </span>
                         {isRec && !isMe && (
-                          <span className="text-[8px] font-mono" style={{ color: `${color}65` }}>
-                            rec
-                          </span>
+                          <span className="text-[8px] font-mono" style={{ color: `${color}65` }}>rec</span>
                         )}
                         {isMe && <Check size={10} style={{ color: lc }} />}
                       </button>
@@ -245,16 +239,13 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           </AnimatePresence>
         </div>
 
-      </div>
-
-      {/* ── CTA ── */}
-      <div className="relative z-10 w-full max-w-md px-5 pb-12 flex flex-col gap-3">
+        {/* ── CTA ── */}
         <motion.button
-          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.52, duration: 0.4 }}
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55, duration: 0.38 }}
           onClick={() => onConfirm(chosenLevel)}
           data-testid="button-begin-path"
-          className="w-full py-[14px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] transition-all active:scale-[0.98] relative overflow-hidden"
+          className="w-full mt-1 py-[14px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] transition-all active:scale-[0.98] relative overflow-hidden"
           style={{
             background: `linear-gradient(90deg, ${color}, ${colorAlt})`,
             color: "#fff",
@@ -269,6 +260,8 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
             }} />
           Initialise Protocol  →
         </motion.button>
+
+        <div className="pb-4" />
       </div>
     </motion.div>
   );
