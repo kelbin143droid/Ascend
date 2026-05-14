@@ -101,6 +101,11 @@ const STAT_COLORS: Record<string, string> = {
   vitality: "#f59e0b",
 };
 
+const SESSION_TO_PHASE_ID: Record<string, string> = {
+  "calm-breathing": "phase1_meditation",
+  "light-movement": "phase1_agility",
+};
+
 function createPadOscillator(
   ctx: AudioContext,
   freq: number,
@@ -128,6 +133,7 @@ function useBreathingAudio(active: boolean) {
 
     try {
       const ctx = new AudioContext();
+      ctx.resume().catch(() => {});
       audioCtxRef.current = ctx;
 
       const masterGain = ctx.createGain();
@@ -229,6 +235,7 @@ function useCalmMusic(active: boolean) {
 
     try {
       const ctx = new AudioContext();
+      ctx.resume().catch(() => {});
       ctxRef.current = ctx;
 
       const master = ctx.createGain();
@@ -731,21 +738,15 @@ export default function GuidedSessionPage() {
     localStorage.setItem(`ascend_ob_day${day}_ts`, String(Date.now()));
   };
 
-  // Maps standalone session IDs → their phase1 activity IDs used on the dashboard
-  const SESSION_TO_PHASE_ID: Record<string, string> = {
-    "calm-breathing": "phase1_meditation",
-    "light-movement": "phase1_agility",
-  };
-
-  /* Advance out of "completing" — only called on confirmed server success.
-     Note: onSuccess already awaited refetchQueries, so cache is fresh here. */
+  /* Advance out of "completing" — called on server success or "Continue anyway".
+     localStorage is already written by handleComplete, so this only handles routing. */
   const advanceFromCompleting = useCallback(() => {
     if (completeTimeoutRef.current) {
       clearTimeout(completeTimeoutRef.current);
       completeTimeoutRef.current = null;
     }
 
-    // Check if this session chains to a follow-up (e.g. hydration-check → quick-reflection)
+    // Chain check: hydration-check → quick-reflection
     const chainTarget = ONBOARDING_SESSION_CHAINS[sessionId];
     if (chainTarget) {
       localStorage.setItem("ascend_day3_hydration_done", "true");
@@ -753,31 +754,14 @@ export default function GuidedSessionPage() {
       return;
     }
 
-    // Write BOTH the session ID and the mapped phase1 activity ID to localStorage
-    // so the dashboard's isActivityDone() sees the completion under either key.
-    try {
-      const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
-      const existing = localStorage.getItem(todayKey);
-      const ids: string[] = existing ? (JSON.parse(existing) as string[]) : [];
-      const idsToWrite = [sessionId, SESSION_TO_PHASE_ID[sessionId]].filter(Boolean) as string[];
-      idsToWrite.forEach(id => { if (!ids.includes(id)) ids.push(id); });
-      localStorage.setItem(todayKey, JSON.stringify(ids));
-      // Dispatch one event per ID so useSessionProgress picks up both
-      idsToWrite.forEach(id => {
-        window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
-      });
-    } catch { /* noop */ }
-
     // For calm-breathing: show the BreathingFeedbackModal before navigating.
-    // The modal's Continue/Return buttons drive the final navigation.
     if (sessionId === "calm-breathing") {
       setShowBreathingFeedback(true);
       return;
     }
 
-    // All other post-onboarding sessions: go straight to done
     setState("done");
-  }, [homeData, sessionId, setLocation]);
+  }, [sessionId, setLocation]);
 
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -808,6 +792,26 @@ export default function GuidedSessionPage() {
       setSaveError(true);
     },
   });
+
+  // Unlock Web Audio API on mount — must fire while the navigation tap gesture is fresh.
+  // Without this, AudioContext starts suspended on mobile Chrome and all audio is silent.
+  useEffect(() => {
+    try {
+      const ctx = new AudioContext();
+      ctx.resume().catch(() => {});
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      [INHALE_URL, HOLD_URL, EXHALE_URL].forEach(url => {
+        const a = new Audio(url);
+        a.volume = 0;
+        a.play().then(() => a.pause()).catch(() => {});
+      });
+      setTimeout(() => { try { ctx.close(); } catch {} }, 1000);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (state !== "countdown") return;
@@ -867,13 +871,30 @@ export default function GuidedSessionPage() {
     if (state !== "active") return;
     setState("completing");
     setSaveError(false);
-    // Network-hang guard: if the mutation takes >12s, surface the retry UI instead of auto-advancing
+
+    // Write progress locally right away — dashboard updates even if the server save fails.
+    // light-movement and focus-block manage their own writes via their completion handlers.
+    if (sessionId !== "light-movement" && sessionId !== "focus-block") {
+      try {
+        const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+        const existing = localStorage.getItem(todayKey);
+        const ids: string[] = existing ? (JSON.parse(existing) as string[]) : [];
+        const idsToWrite = [sessionId, SESSION_TO_PHASE_ID[sessionId]].filter(Boolean) as string[];
+        idsToWrite.forEach(id => { if (!ids.includes(id)) ids.push(id); });
+        localStorage.setItem(todayKey, JSON.stringify(ids));
+        idsToWrite.forEach(id => {
+          window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
+        });
+      } catch { /* noop */ }
+    }
+
+    // Network-hang guard: surface retry UI after 12 s
     completeTimeoutRef.current = setTimeout(() => {
       setSaveError(true);
       completeTimeoutRef.current = null;
     }, 12000);
     completeMutation.mutate();
-  }, [state, completeMutation]);
+  }, [state, completeMutation, sessionId]);
 
   const handleInstantDone = () => {
     handleComplete();
@@ -1099,6 +1120,14 @@ export default function GuidedSessionPage() {
                   style={{ backgroundColor: `${accentColor}20`, border: `1px solid ${accentColor}40`, color: accentColor }}
                 >
                   Retry
+                </button>
+                <button
+                  data-testid="button-continue-anyway"
+                  onClick={() => { setSaveError(false); advanceFromCompleting(); }}
+                  className="px-4 py-1.5 text-xs transition-all active:scale-95"
+                  style={{ color: "rgba(255,255,255,0.28)" }}
+                >
+                  Continue anyway
                 </button>
               </>
             ) : (
