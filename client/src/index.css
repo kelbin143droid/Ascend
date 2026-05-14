@@ -243,3 +243,8 @@ h1, h2, h3, h4, h5, h6 {
 .text-sm  { font-size: 15.5px !important; line-height: 1.5 !important; }
 .text-base { font-size: 17px !important; line-height: 1.55 !important; }
 
+@keyframes xpShimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+

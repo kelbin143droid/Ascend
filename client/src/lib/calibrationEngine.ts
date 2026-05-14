@@ -1,26 +1,23 @@
 /**
  * calibrationEngine.ts
- * Pure functions for the post-onboarding calibration flow.
- * Derives a recommended WorkoutLevel from 5 answered questions and
- * persists the profile in localStorage under "ascend_calibration".
+ * Pure functions for the System Sync calibration flow.
+ * Uses 4 slider values (0–100 each) to derive a WorkoutLevel and persist
+ * the calibration profile in localStorage under "ascend_calibration".
  */
 
 import type { WorkoutLevel } from "./workoutPlans";
 
-// ── Answer types ───────────────────────────────────────────────────────────────
-
-export type PhysicalReadiness = "inactive" | "somewhat" | "consistent" | "disciplined";
-export type FocusStability    = "very_difficult" | "inconsistent" | "manageable" | "strong";
-export type RoutineConsistency = "struggles" | "starts_stops" | "fairly" | "structured";
-export type EnergyState       = "exhausted" | "unstable" | "balanced" | "strong";
-export type StartingPace      = "slow" | "balanced" | "challenging";
+// ── Answer types (slider-based) ────────────────────────────────────────────────
 
 export interface CalibrationAnswers {
-  physicalReadiness:  PhysicalReadiness;
-  focusStability:     FocusStability;
-  routineConsistency: RoutineConsistency;
-  energyState:        EnergyState;
-  startingPace?:      StartingPace;
+  /** Physical output level 0–100 (maps to Strength) */
+  powerOutput:     number;
+  /** Recovery efficiency 0–100 (maps to Vitality) */
+  recoveryRate:    number;
+  /** Mental signal clarity 0–100 (maps to Sense) */
+  signalStability: number;
+  /** Behavioral sync consistency 0–100 (maps to Discipline / Agility) */
+  syncRegularity:  number;
 }
 
 export interface CalibrationProfile extends CalibrationAnswers {
@@ -28,33 +25,28 @@ export interface CalibrationProfile extends CalibrationAnswers {
   completedAt:  string;
 }
 
-// ── Scoring tables ─────────────────────────────────────────────────────────────
-
-const PHYS_SCORE: Record<PhysicalReadiness, number>    = { inactive: 0, somewhat: 1, consistent: 2, disciplined: 3 };
-const FOCUS_SCORE: Record<FocusStability, number>      = { very_difficult: 0, inconsistent: 1, manageable: 2, strong: 3 };
-const ROUTINE_SCORE: Record<RoutineConsistency, number> = { struggles: 0, starts_stops: 1, fairly: 2, structured: 3 };
-const ENERGY_SCORE: Record<EnergyState, number>        = { exhausted: 0, unstable: 1, balanced: 2, strong: 3 };
-
 // ── Engine ─────────────────────────────────────────────────────────────────────
 
 /**
- * Derives a recommended WorkoutLevel from the calibration answers.
- * Body score   = physical + energy   (0–6)
- * Discipline   = focus + routine     (0–6)
- * Total        = body + discipline   (0–12)
- * Pace modifier: slow → −2, challenging → +2
+ * Derives a recommended WorkoutLevel from 4 slider values.
+ *
+ * Average of all 4 sliders (0–100):
+ *   < 25  → entry        (Foundation)
+ *   < 50  → beginner     (Build)
+ *   < 75  → intermediate (Evolve)
+ *   ≥ 75  → advanced     (Ascend)
  */
 export function deriveCalibrationLevel(answers: CalibrationAnswers): WorkoutLevel {
-  const body       = PHYS_SCORE[answers.physicalReadiness]    + ENERGY_SCORE[answers.energyState];
-  const discipline = FOCUS_SCORE[answers.focusStability]      + ROUTINE_SCORE[answers.routineConsistency];
-  let total        = body + discipline; // 0–12
+  const avg = (
+    answers.powerOutput +
+    answers.recoveryRate +
+    answers.signalStability +
+    answers.syncRegularity
+  ) / 4;
 
-  if (answers.startingPace === "slow")        total = Math.max(0, total - 2);
-  if (answers.startingPace === "challenging") total = Math.min(12, total + 2);
-
-  if (total <= 3)  return "entry";
-  if (total <= 6)  return "beginner";
-  if (total <= 9)  return "intermediate";
+  if (avg < 25) return "entry";
+  if (avg < 50) return "beginner";
+  if (avg < 75) return "intermediate";
   return "advanced";
 }
 

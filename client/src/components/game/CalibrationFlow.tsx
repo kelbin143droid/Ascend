@@ -1,342 +1,388 @@
 /**
  * CalibrationFlow.tsx
- * Immersive 5-question calibration sequence shown after onboarding.
- * Each card slides in from the right; selecting an answer auto-advances.
+ * "System Sync" calibration — 4 glowing linear sliders.
+ * A scanning-line animation sweeps on each question transition.
+ * Neon-blue accents throughout; dark cinematic background.
  */
 
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type {
-  CalibrationAnswers,
-  PhysicalReadiness,
-  FocusStability,
-  RoutineConsistency,
-  EnergyState,
-  StartingPace,
-} from "@/lib/calibrationEngine";
+import type { CalibrationAnswers } from "@/lib/calibrationEngine";
 
 interface Props {
   gender: "male" | "female";
   onComplete: (answers: CalibrationAnswers) => void;
 }
 
-type AnyAnswer = PhysicalReadiness | FocusStability | RoutineConsistency | EnergyState | StartingPace;
+// ── Question definitions ───────────────────────────────────────────────────────
 
-interface Question {
-  key: keyof CalibrationAnswers;
-  sectionLabel: string;
-  prompt: string;
-  options: { value: AnyAnswer; label: string; sub?: string }[];
+const QUESTIONS = [
+  {
+    key:          "powerOutput" as keyof CalibrationAnswers,
+    sectionLabel: "Power Output",
+    stat:         "Strength",
+    prompt:       "What is your current physical output level?",
+    stages:       ["Conservation Mode", "Building Phase", "Active Protocol", "High Intensity"],
+    low:          "Conservation Mode",
+    high:         "High Intensity",
+  },
+  {
+    key:          "recoveryRate" as keyof CalibrationAnswers,
+    sectionLabel: "Recovery Rate",
+    stat:         "Vitality",
+    prompt:       "How efficiently does your system recover?",
+    stages:       ["Depleted", "Recovering", "Balanced", "Peak Recovery"],
+    low:          "Depleted",
+    high:         "Peak Recovery",
+  },
+  {
+    key:          "signalStability" as keyof CalibrationAnswers,
+    sectionLabel: "Signal Stability",
+    stat:         "Sense",
+    prompt:       "Assess your current mental signal clarity.",
+    stages:       ["Static Interference", "Unstable Signal", "Steady State", "Clear Channel"],
+    low:          "Static Interference",
+    high:         "Clear Channel",
+  },
+  {
+    key:          "syncRegularity" as keyof CalibrationAnswers,
+    sectionLabel: "Sync Regularity",
+    stat:         "Discipline",
+    prompt:       "How consistent is your behavioral sync pattern?",
+    stages:       ["Irregular", "Intermittent", "Consistent", "Fully Synchronized"],
+    low:          "Irregular",
+    high:         "Fully Synchronized",
+  },
+] as const;
+
+function getStage(value: number, stages: readonly string[]): string {
+  if (value < 25) return stages[0];
+  if (value < 50) return stages[1];
+  if (value < 75) return stages[2];
+  return stages[3];
 }
 
-const QUESTIONS: Question[] = [
-  {
-    key: "physicalReadiness",
-    sectionLabel: "Physical Status",
-    prompt: "How active have you been recently?",
-    options: [
-      { value: "inactive",    label: "Mostly inactive",      sub: "Little to no movement" },
-      { value: "somewhat",    label: "Somewhat active",      sub: "Occasional walks or light exercise" },
-      { value: "consistent",  label: "Consistently active",  sub: "Regular workouts or sport" },
-      { value: "disciplined", label: "Highly disciplined",   sub: "Structured training routine" },
-    ],
-  },
-  {
-    key: "energyState",
-    sectionLabel: "Energy Levels",
-    prompt: "How has your energy been recently?",
-    options: [
-      { value: "exhausted", label: "Often exhausted",      sub: "Hard to get through the day" },
-      { value: "unstable",  label: "Unstable",             sub: "Fluctuates a lot" },
-      { value: "balanced",  label: "Mostly balanced",      sub: "Generally good energy" },
-      { value: "strong",    label: "Strong and consistent", sub: "Consistent high energy" },
-    ],
-  },
-  {
-    key: "focusStability",
-    sectionLabel: "Mental State",
-    prompt: "How easy is it to stay mentally focused?",
-    options: [
-      { value: "very_difficult", label: "Very difficult",       sub: "Mind wanders constantly" },
-      { value: "inconsistent",   label: "Inconsistent",         sub: "Some days better than others" },
-      { value: "manageable",     label: "Usually manageable",   sub: "Can maintain focus with effort" },
-      { value: "strong",         label: "Strong focus",         sub: "Rarely distracted" },
-    ],
-  },
-  {
-    key: "routineConsistency",
-    sectionLabel: "Consistency",
-    prompt: "How consistent are your daily routines?",
-    options: [
-      { value: "struggles",    label: "Struggle to stay consistent", sub: "Routines rarely stick" },
-      { value: "starts_stops", label: "Start and stop often",        sub: "Good intention, poor follow-through" },
-      { value: "fairly",       label: "Fairly consistent",           sub: "Most days I show up" },
-      { value: "structured",   label: "Highly structured",           sub: "Strong systems in place" },
-    ],
-  },
-  {
-    key: "startingPace",
-    sectionLabel: "Preferred Pace",
-    prompt: "How should your journey begin?",
-    options: [
-      { value: "slow",        label: "Slow and manageable",         sub: "Build gradually, minimize overwhelm" },
-      { value: "balanced",    label: "Balanced progression",        sub: "Steady challenge with room to grow" },
-      { value: "challenging", label: "Push me harder",              sub: "I want to feel challenged from day one" },
-    ],
-  },
-];
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function CalibrationFlow({ gender, onComplete }: Props) {
   const isFemale   = gender === "female";
-  const color      = isFemale ? "#d946ef" : "#0ea5e9";
-  const colorAlt   = isFemale ? "#8b5cf6" : "#38bdf8";
-  const glow       = isFemale ? "rgba(217,70,239,0.35)" : "rgba(14,165,233,0.35)";
-  const glowAlt    = isFemale ? "rgba(139,92,246,0.20)" : "rgba(56,189,248,0.20)";
   const bgGradient = isFemale
     ? "linear-gradient(145deg, #04000e 0%, #080018 50%, #05000f 100%)"
     : "linear-gradient(145deg, #020810 0%, #03101e 50%, #020810 100%)";
 
-  const [currentIndex, setCurrentIndex]   = useState(0);
-  const [selectedValue, setSelectedValue] = useState<AnyAnswer | null>(null);
-  const [direction, setDirection]         = useState(1); // 1 = right→left, −1 = left→right
-  const [answers, setAnswers]             = useState<Partial<CalibrationAnswers>>({});
+  // Neon-blue accents as specified
+  const color    = "#0ea5e9";
+  const colorAlt = "#38bdf8";
+  const glow     = "rgba(14,165,233,0.40)";
+  const glowAlt  = "rgba(56,189,248,0.22)";
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [scanning,     setScanning]     = useState(false);
+  const [direction,    setDirection]    = useState(1);
+  const [values, setValues] = useState<Record<string, number>>({
+    powerOutput: 50, recoveryRate: 50, signalStability: 50, syncRegularity: 50,
+  });
   const advancing = useRef(false);
 
+  const q            = QUESTIONS[currentIndex];
+  const currentValue = values[q.key] ?? 50;
+  const stageLabel   = getStage(currentValue, q.stages);
+
+  const handleSliderChange = (val: number) => {
+    setValues(prev => ({ ...prev, [q.key]: val }));
+  };
+
+  const handleConfirm = () => {
+    if (advancing.current || scanning) return;
+    advancing.current = true;
+    setScanning(true);
+
+    setTimeout(() => {
+      setScanning(false);
+      if (currentIndex < QUESTIONS.length - 1) {
+        setDirection(1);
+        setCurrentIndex(i => i + 1);
+        advancing.current = false;
+      } else {
+        onComplete({
+          powerOutput:     values.powerOutput     ?? 50,
+          recoveryRate:    values.recoveryRate     ?? 50,
+          signalStability: values.signalStability  ?? 50,
+          syncRegularity:  values.syncRegularity   ?? 50,
+        });
+      }
+    }, 780);
+  };
+
   const stars = useRef(
-    Array.from({ length: 32 }, (_, i) => ({
+    Array.from({ length: 28 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: 0.7 + Math.random() * 1.8,
+      size: 0.7 + Math.random() * 1.6,
       duration: 2.5 + Math.random() * 4,
       delay: Math.random() * 3,
-      opacity: 0.18 + Math.random() * 0.45,
+      opacity: 0.15 + Math.random() * 0.42,
     }))
   ).current;
 
-  const q = QUESTIONS[currentIndex];
-
-  const handleSelect = (value: AnyAnswer) => {
-    if (advancing.current) return;
-    setSelectedValue(value);
-    advancing.current = true;
-
-    setTimeout(() => {
-      const next = { ...answers, [q.key]: value } as Partial<CalibrationAnswers>;
-      setAnswers(next);
-
-      if (currentIndex < QUESTIONS.length - 1) {
-        setDirection(1);
-        setCurrentIndex((i) => i + 1);
-        setSelectedValue(null);
-        advancing.current = false;
-      } else {
-        onComplete(next as CalibrationAnswers);
-      }
-    }, 300);
-  };
-
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-between overflow-hidden"
+      className="fixed inset-0 z-[100] flex flex-col items-center overflow-hidden"
       style={{ background: bgGradient }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.55 }}
     >
-      {/* Ambient stars */}
-      {stars.map((s) => (
-        <motion.div
-          key={s.id}
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: s.size, height: s.size,
-            left: `${s.x}%`, top: `${s.y}%`,
-            background: s.id % 3 === 0 ? color : s.id % 3 === 1 ? colorAlt : "rgba(255,255,255,0.7)",
-          }}
+      {/* ── Custom slider CSS ── */}
+      <style>{`
+        .sync-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 100%;
+          height: 5px;
+          border-radius: 3px;
+          outline: none;
+          cursor: pointer;
+        }
+        .sync-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 35% 35%, #38bdf8, #0ea5e9);
+          border: 2px solid rgba(255,255,255,0.30);
+          box-shadow: 0 0 18px rgba(14,165,233,0.55), 0 0 6px #0ea5e9, inset 0 1px 0 rgba(255,255,255,0.25);
+          cursor: pointer;
+          transition: box-shadow 0.15s, transform 0.1s;
+        }
+        .sync-slider:active::-webkit-slider-thumb {
+          transform: scale(1.18);
+          box-shadow: 0 0 32px rgba(14,165,233,0.80), 0 0 12px #0ea5e9;
+        }
+        .sync-slider::-moz-range-thumb {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          background: #0ea5e9;
+          border: 2px solid rgba(255,255,255,0.30);
+          box-shadow: 0 0 18px rgba(14,165,233,0.55);
+          cursor: pointer;
+        }
+        .sync-slider::-webkit-slider-runnable-track { border-radius: 3px; }
+        .sync-slider::-moz-range-track { border-radius: 3px; height: 5px; }
+        @keyframes xpShimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+      `}</style>
+
+      {/* ── Stars ── */}
+      {stars.map(s => (
+        <motion.div key={s.id} className="absolute rounded-full pointer-events-none"
+          style={{ width: s.size, height: s.size, left: `${s.x}%`, top: `${s.y}%`, background: color }}
           animate={{ opacity: [s.opacity * 0.3, s.opacity, s.opacity * 0.2] }}
-          transition={{ duration: s.duration, repeat: Infinity, delay: s.delay, ease: "easeInOut" }}
-        />
+          transition={{ duration: s.duration, repeat: Infinity, delay: s.delay, ease: "easeInOut" }} />
       ))}
 
-      {/* Left orb */}
-      <motion.div
-        className="absolute pointer-events-none"
-        style={{
-          top: "25%", left: "-12%",
-          width: 340, height: 340, borderRadius: "50%",
-          background: `radial-gradient(circle, ${glowAlt} 0%, transparent 70%)`,
-          filter: "blur(55px)",
-        }}
-        animate={{ scale: [1, 1.12, 1], opacity: [0.45, 0.75, 0.45] }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
-      />
+      {/* ── Ambient orbs ── */}
+      <motion.div className="absolute pointer-events-none"
+        style={{ top: "18%", left: "-12%", width: 340, height: 340, borderRadius: "50%",
+          background: `radial-gradient(circle, ${glowAlt} 0%, transparent 70%)`, filter: "blur(55px)" }}
+        animate={{ scale: [1, 1.12, 1], opacity: [0.4, 0.72, 0.4] }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }} />
+      <motion.div className="absolute pointer-events-none"
+        style={{ top: "52%", right: "-10%", width: 300, height: 300, borderRadius: "50%",
+          background: `radial-gradient(circle, ${glow} 0%, transparent 70%)`, filter: "blur(60px)" }}
+        animate={{ scale: [1, 1.18, 1], opacity: [0.28, 0.58, 0.28] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.5 }} />
 
-      {/* Right orb */}
-      <motion.div
-        className="absolute pointer-events-none"
-        style={{
-          top: "55%", right: "-10%",
-          width: 300, height: 300, borderRadius: "50%",
-          background: `radial-gradient(circle, ${glow} 0%, transparent 70%)`,
-          filter: "blur(60px)",
-        }}
-        animate={{ scale: [1, 1.18, 1], opacity: [0.35, 0.65, 0.35] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-      />
+      {/* ── Scanning line ── */}
+      <AnimatePresence>
+        {scanning && (
+          <motion.div
+            className="fixed left-0 right-0 z-[200] pointer-events-none"
+            style={{
+              height: 2,
+              background: `linear-gradient(90deg, transparent 0%, ${color}50 8%, ${color} 50%, ${color}50 92%, transparent 100%)`,
+              boxShadow: `0 0 20px ${glow}, 0 0 50px ${glow}60`,
+            }}
+            initial={{ top: -4 }}
+            animate={{ top: "100vh" }}
+            transition={{ duration: 0.76, ease: "linear" }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Top bar ── */}
       <div className="relative z-10 w-full max-w-md px-6 pt-14 pb-2 flex flex-col items-center gap-4">
-        {/* Label */}
-        <motion.div
-          className="flex items-center gap-2"
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <motion.div
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ background: color }}
-            animate={{ opacity: [1, 0.2, 1] }}
-            transition={{ duration: 1.1, repeat: Infinity }}
-          />
-          <span
-            className="text-[9px] tracking-[0.32em] uppercase font-mono font-bold"
-            style={{ color: `${color}90` }}
-          >
-            System Calibration
+        <motion.div className="flex items-center gap-2"
+          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}>
+          <motion.div className="w-1.5 h-1.5 rounded-full" style={{ background: color }}
+            animate={{ opacity: [1, 0.15, 1] }} transition={{ duration: 1.1, repeat: Infinity }} />
+          <span className="text-[9px] tracking-[0.32em] uppercase font-mono font-bold"
+            style={{ color: `${color}90` }}>
+            System Sync · Calibration
           </span>
         </motion.div>
 
-        {/* Step dots */}
+        {/* Progress dots */}
         <div className="flex items-center gap-2">
           {QUESTIONS.map((_, i) => (
-            <motion.div
-              key={i}
-              className="rounded-full"
+            <motion.div key={i} className="rounded-full"
               style={{
-                backgroundColor: i < currentIndex ? `${color}70` : i === currentIndex ? color : `${color}22`,
-                border: `1px solid ${i === currentIndex ? color : `${color}30`}`,
+                backgroundColor: i < currentIndex ? `${color}70` : i === currentIndex ? color : `${color}20`,
+                border: `1px solid ${i === currentIndex ? color : `${color}28`}`,
               }}
-              animate={{
-                width:  i === currentIndex ? 22 : 6,
-                height: 6,
-                boxShadow: i === currentIndex ? `0 0 8px ${glow}` : "none",
-              }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            />
+              animate={{ width: i === currentIndex ? 22 : 6, height: 6,
+                boxShadow: i === currentIndex ? `0 0 10px ${glow}` : "none" }}
+              transition={{ duration: 0.3, ease: "easeOut" }} />
           ))}
         </div>
       </div>
 
-      {/* ── Question card ── */}
+      {/* ── Question area ── */}
       <div className="relative z-10 flex-1 w-full max-w-md px-5 flex flex-col justify-center">
         <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={currentIndex}
-            custom={direction}
-            initial={{ opacity: 0, x: direction * 48 }}
+          <motion.div key={currentIndex} custom={direction}
+            initial={{ opacity: 0, x: direction * 52 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: direction * -48 }}
-            transition={{ duration: 0.32, ease: "easeOut" }}
-            className="flex flex-col gap-5"
-          >
-            {/* Section label + number */}
+            exit={{ opacity: 0, x: direction * -52 }}
+            transition={{ duration: 0.30, ease: "easeOut" }}
+            className="flex flex-col gap-6">
+
+            {/* Section label + counter */}
             <div className="flex items-center justify-between">
-              <span
-                className="text-[9px] uppercase tracking-[0.24em] font-mono font-semibold px-2.5 py-1 rounded-full"
-                style={{ color, backgroundColor: `${color}15`, border: `1px solid ${color}30` }}
-              >
-                {q.sectionLabel}
-              </span>
-              <span className="text-[9px] font-mono" style={{ color: `${color}55` }}>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                style={{ backgroundColor: `${color}12`, border: `1px solid ${color}28` }}>
+                <span className="text-[9px] uppercase tracking-[0.24em] font-mono font-semibold"
+                  style={{ color }}>
+                  {q.sectionLabel}
+                </span>
+                <span className="text-[8px] font-mono" style={{ color: `${color}65` }}>
+                  · {q.stat}
+                </span>
+              </div>
+              <span className="text-[9px] font-mono" style={{ color: `${color}50` }}>
                 {String(currentIndex + 1).padStart(2, "0")} / {String(QUESTIONS.length).padStart(2, "0")}
               </span>
             </div>
 
-            {/* Question text */}
-            <h2
-              className="text-xl font-bold leading-snug"
-              style={{
-                color: "#ffffff",
-                fontFamily: "Inter, system-ui, sans-serif",
-                textShadow: `0 0 32px ${glow}`,
-                letterSpacing: "0.01em",
-              }}
-            >
+            {/* Prompt */}
+            <h2 className="text-[20px] font-bold leading-snug"
+              style={{ color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif",
+                textShadow: `0 0 28px ${glow}`, letterSpacing: "0.01em" }}>
               {q.prompt}
             </h2>
 
-            {/* Options */}
-            <div className="flex flex-col gap-2.5">
-              {q.options.map((opt, i) => {
-                const isSelected = selectedValue === opt.value;
-                return (
-                  <motion.button
-                    key={opt.value}
-                    onClick={() => handleSelect(opt.value)}
-                    initial={{ opacity: 0, y: 14 }}
+            {/* Slider card */}
+            <div className="rounded-2xl flex flex-col gap-5"
+              style={{ background: "rgba(14,165,233,0.04)", border: `1px solid ${color}22`,
+                backdropFilter: "blur(14px)", padding: "20px 20px 16px",
+                boxShadow: `0 0 40px ${glow}14, inset 0 1px 0 ${color}14` }}>
+
+              {/* Live readout */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <motion.div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: color }}
+                    animate={{ boxShadow: [`0 0 6px ${glow}`, `0 0 14px ${glow}`, `0 0 6px ${glow}`] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.span
+                    key={stageLabel}
+                    initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.06 + i * 0.07, duration: 0.28 }}
-                    className="w-full rounded-xl text-left transition-all active:scale-[0.98]"
-                    style={{
-                      backgroundColor: isSelected ? `${color}1e` : "rgba(255,255,255,0.03)",
-                      border: `1.5px solid ${isSelected ? color : `rgba(255,255,255,0.08)`}`,
-                      padding: "14px 16px",
-                      boxShadow: isSelected ? `0 0 16px ${glow}` : "none",
-                    }}
-                    data-testid={`calibration-option-${opt.value}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <motion.div
-                        className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center"
-                        style={{
-                          border: `1.5px solid ${isSelected ? color : "rgba(255,255,255,0.2)"}`,
-                          backgroundColor: isSelected ? color : "transparent",
-                        }}
-                        animate={{ scale: isSelected ? [1, 1.2, 1] : 1 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        {isSelected && (
-                          <motion.div
-                            className="w-1.5 h-1.5 rounded-full bg-white"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                          />
-                        )}
-                      </motion.div>
-                      <div>
-                        <p
-                          className="text-sm font-semibold leading-tight"
-                          style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.75)" }}
-                        >
-                          {opt.label}
-                        </p>
-                        {opt.sub && (
-                          <p
-                            className="text-[11px] mt-0.5 leading-tight"
-                            style={{ color: isSelected ? `${color}cc` : "rgba(255,255,255,0.28)" }}
-                          >
-                            {opt.sub}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </motion.button>
-                );
-              })}
+                    transition={{ duration: 0.18 }}
+                    className="text-[13px] font-semibold"
+                    style={{ color: "#fff", fontFamily: "Inter, system-ui, sans-serif" }}>
+                    {stageLabel}
+                  </motion.span>
+                </div>
+                <span className="text-[16px] font-mono font-bold tabular-nums"
+                  style={{ color, textShadow: `0 0 10px ${glow}`, letterSpacing: "-0.02em" }}>
+                  {currentValue}<span className="text-[10px] ml-0.5" style={{ opacity: 0.6 }}>%</span>
+                </span>
+              </div>
+
+              {/* Slider */}
+              <div className="relative">
+                <input
+                  type="range" min={0} max={100} value={currentValue}
+                  onChange={e => handleSliderChange(parseInt(e.target.value))}
+                  className="sync-slider"
+                  style={{
+                    background: `linear-gradient(to right,
+                      ${color}ee 0%, ${color}ee ${currentValue}%,
+                      rgba(255,255,255,0.09) ${currentValue}%,
+                      rgba(255,255,255,0.09) 100%)`,
+                  }}
+                  data-testid={`slider-${q.key}`}
+                />
+                {/* Glow track overlay */}
+                <div className="absolute top-0 left-0 h-full pointer-events-none rounded"
+                  style={{ width: `${currentValue}%`, height: 5, marginTop: "0px",
+                    boxShadow: `0 0 8px ${glow}`, borderRadius: 3 }} />
+              </div>
+
+              {/* Endpoint labels */}
+              <div className="flex justify-between mt-[-6px]">
+                <span className="text-[10px] font-mono" style={{ color: "rgba(255,255,255,0.28)" }}>
+                  {q.low}
+                </span>
+                <span className="text-[10px] font-mono" style={{ color: "rgba(255,255,255,0.28)" }}>
+                  {q.high}
+                </span>
+              </div>
             </div>
+
+            {/* Stat mapping badge */}
+            <div className="flex items-center gap-2 self-start px-2.5 py-1 rounded-full"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="w-1 h-1 rounded-full" style={{ background: `${color}80` }} />
+              <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.30)" }}>
+                MAPS TO → {q.stat.toUpperCase()} STAT
+              </span>
+            </div>
+
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* ── Bottom hint ── */}
-      <div className="relative z-10 w-full max-w-md px-6 pb-10">
-        <p
-          className="text-center text-[10px] font-mono"
-          style={{ color: "rgba(255,255,255,0.18)" }}
-        >
-          Select to continue
+      {/* ── Confirm button ── */}
+      <div className="relative z-10 w-full max-w-md px-5 pb-10 flex flex-col gap-3 mt-2">
+        <motion.button
+          key={`btn-${currentIndex}`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          onClick={handleConfirm}
+          disabled={scanning}
+          data-testid="button-confirm-sync"
+          className="w-full py-[14px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] transition-all active:scale-[0.97] relative overflow-hidden"
+          style={{
+            background: `linear-gradient(90deg, ${color}, ${colorAlt})`,
+            color: "#fff",
+            fontFamily: "Inter, system-ui, sans-serif",
+            boxShadow: `0 0 28px ${glow}, 0 4px 16px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.20)`,
+            opacity: scanning ? 0.55 : 1,
+          }}>
+          {/* Shimmer */}
+          <div className="absolute inset-0 pointer-events-none"
+            style={{
+              background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)",
+              backgroundSize: "200% 100%",
+              animation: "xpShimmer 3s linear infinite",
+            }} />
+          {currentIndex < QUESTIONS.length - 1 ? "Lock Sync  →" : "Complete Sync  →"}
+        </motion.button>
+
+        <p className="text-center text-[10px] font-mono" style={{ color: "rgba(255,255,255,0.18)" }}>
+          {currentIndex === QUESTIONS.length - 1
+            ? "Finalizing system calibration…"
+            : "Adjust slider · Lock to advance"}
         </p>
       </div>
     </motion.div>
