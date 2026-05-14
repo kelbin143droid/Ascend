@@ -1,13 +1,11 @@
 /**
  * RecommendedPathScreen.tsx
- * "SYNC SUCCESSFUL" result screen shown after System Sync calibration.
- * Features an animated radar chart that draws itself from the centre,
- * the required narrative text below it, protocol rationale, and the CTA.
+ * "SYNC SUCCESSFUL" result screen — clean, minimal layout.
+ * Top: status label + heading + radar chart.
+ * Bottom: "Efficiency at 100%" + glowing protocol name + CTA.
  */
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Check } from "lucide-react";
+import { motion } from "framer-motion";
 import { LEVEL_COLORS, LEVEL_DISPLAY_NAMES, type WorkoutLevel } from "@/lib/workoutPlans";
 import type { CalibrationProfile } from "@/lib/calibrationEngine";
 import { RadarChart } from "./RadarChart";
@@ -18,20 +16,11 @@ interface Props {
   onConfirm: (chosenLevel: WorkoutLevel) => void;
 }
 
-const LEVEL_ORDER: WorkoutLevel[] = ["entry", "beginner", "intermediate", "advanced"];
-
-const PROTOCOL_NAMES: Record<WorkoutLevel, string> = {
-  entry:        "FOUNDATION PROTOCOL",
-  beginner:     "BUILD PROTOCOL",
-  intermediate: "EVOLVE PROTOCOL",
-  advanced:     "ASCEND PROTOCOL",
-};
-
-const PROTOCOL_RATIONALE: Record<WorkoutLevel, string> = {
-  entry:        "Parameters indicate an initialising system. Foundation Protocol anchors habits before intensity to maximise long-term retention.",
-  beginner:     "Parameters indicate a developing system. Build Protocol layers progressive stimulus while protecting recovery bandwidth.",
-  intermediate: "Parameters indicate a stable system under load. Evolve Protocol applies compound challenge to accelerate capacity expansion.",
-  advanced:     "Parameters indicate a high-output system. Ascend Protocol operates at full-capacity resistance with disciplined recovery cycles.",
+const PROTOCOL_WORD: Record<WorkoutLevel, string> = {
+  entry:        "FOUNDATION",
+  beginner:     "BUILD",
+  intermediate: "EVOLVE",
+  advanced:     "ASCEND",
 };
 
 export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
@@ -45,16 +34,10 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
   const glow     = "rgba(14,165,233,0.38)";
   const glowAlt  = "rgba(56,189,248,0.20)";
 
-  const [chosenLevel, setChosenLevel] = useState<WorkoutLevel>(profile.derivedLevel);
-  const [adjustOpen,  setAdjustOpen]  = useState(false);
-
-  const isAdjusted   = chosenLevel !== profile.derivedLevel;
+  const chosenLevel  = profile.derivedLevel;
   const levelColor   = LEVEL_COLORS[chosenLevel];
-  const displayName  = LEVEL_DISPLAY_NAMES[chosenLevel];
-  const protocolName = PROTOCOL_NAMES[chosenLevel];
-  const rationale    = PROTOCOL_RATIONALE[chosenLevel];
+  const protocolWord = PROTOCOL_WORD[chosenLevel];
 
-  // Map calibration slider values → radar axes
   const radarValues = {
     strength:   profile.powerOutput,
     vitality:   profile.recoveryRate,
@@ -70,11 +53,14 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.60 }}
     >
-      {/* ── Keyframe ── */}
       <style>{`
         @keyframes xpShimmer {
           0%   { background-position: -200% center; }
           100% { background-position:  200% center; }
+        }
+        @keyframes protocolPulse {
+          0%, 100% { opacity: 0.85; text-shadow: 0 0 32px var(--lc), 0 0 64px var(--lc60); }
+          50%       { opacity: 1;    text-shadow: 0 0 56px var(--lc), 0 0 100px var(--lc60); }
         }
       `}</style>
 
@@ -90,8 +76,10 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
         animate={{ scale: [1, 1.18, 1], opacity: [0.28, 0.55, 0.28] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.8 }} />
 
-      {/* ── Top status label ── */}
-      <div className="relative z-10 w-full max-w-md px-6 pt-12 flex flex-col items-center gap-3 shrink-0">
+      {/* ── Content ── */}
+      <div className="relative z-10 w-full max-w-md px-5 flex flex-col items-center gap-3 pt-12 pb-8">
+
+        {/* Status label */}
         <motion.div className="flex items-center gap-2"
           initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.10 }}>
@@ -102,27 +90,21 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
             System Sync · Result
           </span>
         </motion.div>
-      </div>
 
-      {/* ── Main scrollable content ── */}
-      <div className="relative z-10 w-full max-w-md px-5 flex flex-col items-center gap-4 py-3 pb-6">
-
-        {/* SYNC SUCCESSFUL heading */}
-        <motion.div className="text-center"
+        {/* SYNC SUCCESSFUL */}
+        <motion.h1
+          className="text-[30px] font-extrabold uppercase tracking-[0.10em] text-center"
+          style={{
+            color,
+            fontFamily: "Inter, system-ui, sans-serif",
+            textShadow: `0 0 28px ${glow}, 0 0 56px ${glow}50`,
+          }}
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.18, duration: 0.48 }}>
-          <h1
-            className="text-[28px] font-extrabold uppercase tracking-[0.10em]"
-            style={{
-              color,
-              fontFamily: "Inter, system-ui, sans-serif",
-              textShadow: `0 0 28px ${glow}, 0 0 56px ${glow}50`,
-            }}>
-            SYNC SUCCESSFUL
-          </h1>
-        </motion.div>
+          SYNC SUCCESSFUL
+        </motion.h1>
 
-        {/* ── Radar chart ── */}
+        {/* Radar chart */}
         <motion.div
           className="flex justify-center"
           initial={{ opacity: 0, scale: 0.80 }}
@@ -130,122 +112,61 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           transition={{ delay: 0.28, duration: 0.55, ease: "easeOut" }}>
           <RadarChart
             values={radarValues}
-            chartSize={158}
+            chartSize={162}
             color={color}
             animate
             delay={520}
           />
         </motion.div>
 
-        {/* Narrative text — directly below chart as spec'd */}
+        {/* Divider */}
         <motion.div
-          className="text-center px-2"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45, duration: 0.40 }}>
-          <p className="text-[13px] leading-snug"
-            style={{ color: "rgba(255,255,255,0.58)", fontFamily: "Inter, system-ui, sans-serif" }}>
-            System calibrated to your current rhythm.{" "}
-            <span className="font-semibold" style={{ color: colorAlt }}>
-              Efficiency at 100%.
-            </span>
-          </p>
-          <p className="text-[10px] font-mono mt-1.5 leading-relaxed"
-            style={{ color: "rgba(255,255,255,0.28)" }}>
-            Your current parameters are the optimal baseline for sustainable growth.
-            All protocols have been adjusted to match your sync level.
+          className="w-full h-px"
+          style={{ background: `linear-gradient(90deg, transparent, ${color}22, transparent)` }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          transition={{ delay: 0.55 }} />
+
+        {/* "Efficiency at 100%" */}
+        <motion.p
+          className="text-[22px] font-bold text-center"
+          style={{ color: "#fff", fontFamily: "Inter, system-ui, sans-serif",
+            textShadow: "0 0 20px rgba(255,255,255,0.18)" }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.62, duration: 0.40 }}>
+          Efficiency at{" "}
+          <span style={{ color: colorAlt, textShadow: `0 0 18px ${glow}` }}>100%</span>
+        </motion.p>
+
+        {/* Protocol word — glowing, large, level-coloured */}
+        <motion.div
+          className="flex flex-col items-center gap-1"
+          initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.74, duration: 0.48, ease: "easeOut" }}>
+          <motion.p
+            className="text-[42px] font-black uppercase tracking-[0.08em] text-center"
+            style={{
+              color: levelColor,
+              fontFamily: "Inter, system-ui, sans-serif",
+              textShadow: `0 0 40px ${levelColor}, 0 0 80px ${levelColor}60`,
+              animation: "protocolPulse 2.8s ease-in-out infinite",
+              ["--lc" as any]:   levelColor,
+              ["--lc60" as any]: `${levelColor}60`,
+            }}>
+            {protocolWord}
+          </motion.p>
+          <p className="text-[11px] font-mono tracking-[0.20em] uppercase"
+            style={{ color: `${levelColor}70` }}>
+            Protocol Assigned
           </p>
         </motion.div>
 
-        {/* Protocol badge */}
-        <AnimatePresence mode="wait">
-          <motion.div key={`badge-${chosenLevel}`}
-            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.24 }}
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl w-full"
-            style={{ background: `${levelColor}0d`, border: `1px solid ${levelColor}30` }}>
-            <div className="flex flex-col flex-1">
-              <span className="text-[9px] font-mono tracking-[0.20em] uppercase"
-                style={{ color: `${levelColor}80` }}>
-                Assigned Protocol
-              </span>
-              <span className="text-[14px] font-bold font-mono tracking-[0.06em]"
-                style={{ color: levelColor }}>
-                {protocolName}
-              </span>
-            </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded"
-              style={{ background: `${levelColor}18`, color: levelColor, border: `1px solid ${levelColor}25` }}>
-              {displayName}
-            </span>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Rationale */}
-        <AnimatePresence mode="wait">
-          <motion.p key={`rat-${chosenLevel}`}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
-            className="text-[11px] leading-relaxed text-center px-1"
-            style={{ color: "rgba(255,255,255,0.40)" }}>
-            {rationale}
-          </motion.p>
-        </AnimatePresence>
-
-        {/* Adjust manually toggle */}
-        <div className="w-full">
-          <button onClick={() => setAdjustOpen(o => !o)} data-testid="button-adjust-level"
-            className="flex items-center gap-1.5 mx-auto text-[11px] font-mono transition-all"
-            style={{ color: `${color}50` }}>
-            {adjustOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            {isAdjusted ? "Protocol adjusted manually" : "Adjust manually"}
-          </button>
-
-          <AnimatePresence>
-            {adjustOpen && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.26 }}
-                className="overflow-hidden mt-3">
-                <div className="grid grid-cols-4 gap-2">
-                  {LEVEL_ORDER.map(lvl => {
-                    const lc    = LEVEL_COLORS[lvl];
-                    const dn    = LEVEL_DISPLAY_NAMES[lvl];
-                    const isMe  = lvl === chosenLevel;
-                    const isRec = lvl === profile.derivedLevel;
-                    return (
-                      <button key={lvl} onClick={() => setChosenLevel(lvl)}
-                        data-testid={`button-select-level-${lvl}`}
-                        className="rounded-xl py-3 flex flex-col items-center gap-1.5 transition-all active:scale-95"
-                        style={{
-                          backgroundColor: isMe ? `${lc}1e` : "rgba(255,255,255,0.03)",
-                          border: `1.5px solid ${isMe ? lc : "rgba(255,255,255,0.07)"}`,
-                          boxShadow: isMe ? `0 0 14px ${lc}40` : "none",
-                        }}>
-                        <span className="text-[10px] font-bold leading-tight text-center"
-                          style={{ color: isMe ? lc : "rgba(255,255,255,0.35)" }}>
-                          {dn}
-                        </span>
-                        {isRec && !isMe && (
-                          <span className="text-[8px] font-mono" style={{ color: `${color}65` }}>rec</span>
-                        )}
-                        {isMe && <Check size={10} style={{ color: lc }} />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* ── CTA ── */}
+        {/* CTA */}
         <motion.button
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55, duration: 0.38 }}
+          transition={{ delay: 0.90, duration: 0.38 }}
           onClick={() => onConfirm(chosenLevel)}
           data-testid="button-begin-path"
-          className="w-full mt-1 py-[14px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] transition-all active:scale-[0.98] relative overflow-hidden"
+          className="w-full mt-2 py-[15px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] transition-all active:scale-[0.98] relative overflow-hidden"
           style={{
             background: `linear-gradient(90deg, ${color}, ${colorAlt})`,
             color: "#fff",
@@ -261,7 +182,6 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           Initialise Protocol  →
         </motion.button>
 
-        <div className="pb-4" />
       </div>
     </motion.div>
   );

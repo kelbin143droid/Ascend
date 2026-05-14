@@ -38,16 +38,16 @@ const SECTIONS = [
   {
     key:       "recoveryRate" as keyof CalibrationAnswers,
     radarKey:  "vitality"    as keyof RadarChartValues,
-    label:     "Recovery Rate",
+    label:     "Vitality Signal",
     stat:      "Vitality",
     statColor: "#34d399",
     icon:      "💚",
-    prompt:    "How does your body recover between training sessions?",
+    prompt:    "How is your typical sleep quality and daily hydration?",
     options: [
-      { label: "Depleted",    sub: "Often fatigued, slow to bounce back",         value: 15 },
-      { label: "Recovering",  sub: "Some rest helps — gradual improvement",        value: 40 },
-      { label: "Balanced",    sub: "Generally good energy and recovery",            value: 65 },
-      { label: "Peak",        sub: "Rapid recovery, consistently high stamina",     value: 90 },
+      { label: "Disrupted",     sub: "Poor sleep, rarely drink enough water",      value: 15 },
+      { label: "Light Recovery", sub: "5–6 h sleep, some water through the day",   value: 40 },
+      { label: "Solid Rest",    sub: "7 h sleep, consistently staying hydrated",    value: 65 },
+      { label: "Peak Vitality", sub: "8+ h quality sleep, fully hydrated daily",   value: 90 },
     ],
   },
   {
