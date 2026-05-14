@@ -1,22 +1,22 @@
 /**
  * calibrationEngine.ts
  * Pure functions for the System Sync calibration flow.
- * Uses 4 slider values (0–100 each) to derive a WorkoutLevel and persist
- * the calibration profile in localStorage under "ascend_calibration".
+ * Workout level is derived directly from the powerOutput (Strength) tier
+ * so that the pushup tier maps 1:1 to the training programme assigned.
  */
 
 import type { WorkoutLevel } from "./workoutPlans";
 
-// ── Answer types (slider-based) ────────────────────────────────────────────────
+// ── Answer types ───────────────────────────────────────────────────────────────
 
 export interface CalibrationAnswers {
-  /** Physical output level 0–100 (maps to Strength) */
+  /** Strength output 0–100, derived from pushup tier */
   powerOutput:     number;
-  /** Recovery efficiency 0–100 (maps to Vitality) */
+  /** Recovery efficiency 0–100 */
   recoveryRate:    number;
-  /** Mental signal clarity 0–100 (maps to Sense) */
+  /** Mental signal clarity 0–100, derived from meditation tier */
   signalStability: number;
-  /** Behavioral sync consistency 0–100 (maps to Discipline / Agility) */
+  /** Behavioural sync consistency 0–100 */
   syncRegularity:  number;
 }
 
@@ -25,28 +25,23 @@ export interface CalibrationProfile extends CalibrationAnswers {
   completedAt:  string;
 }
 
-// ── Engine ─────────────────────────────────────────────────────────────────────
+// ── Tier → WorkoutLevel mapping ────────────────────────────────────────────────
 
 /**
- * Derives a recommended WorkoutLevel from 4 slider values.
+ * Derives a WorkoutLevel from calibration answers.
+ * The workout level is driven purely by the Strength (powerOutput) tier:
+ *   < 25  → entry        (Foundation — Wall / Incline pushup)
+ *   < 50  → beginner     (Build — Knee pushup)
+ *   < 75  → intermediate (Evolve — Regular floor pushup)
+ *   ≥ 75  → advanced     (Ascend — Clap / decline / weighted)
  *
- * Average of all 4 sliders (0–100):
- *   < 25  → entry        (Foundation)
- *   < 50  → beginner     (Build)
- *   < 75  → intermediate (Evolve)
- *   ≥ 75  → advanced     (Ascend)
+ * This ensures "Regular Form" maps directly to standard pushups in the
+ * training engine, skipping wall and knee progressions.
  */
 export function deriveCalibrationLevel(answers: CalibrationAnswers): WorkoutLevel {
-  const avg = (
-    answers.powerOutput +
-    answers.recoveryRate +
-    answers.signalStability +
-    answers.syncRegularity
-  ) / 4;
-
-  if (avg < 25) return "entry";
-  if (avg < 50) return "beginner";
-  if (avg < 75) return "intermediate";
+  if (answers.powerOutput < 25) return "entry";
+  if (answers.powerOutput < 50) return "beginner";
+  if (answers.powerOutput < 75) return "intermediate";
   return "advanced";
 }
 
