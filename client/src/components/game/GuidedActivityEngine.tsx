@@ -450,6 +450,8 @@ function BreathingVisual({
   audioEnabled = true,
   shouldFinish = false,
   onComplete,
+  totalRemaining = 0,
+  totalDuration = 0,
 }: {
   active: boolean;
   color: string;
@@ -457,21 +459,26 @@ function BreathingVisual({
   audioEnabled?: boolean;
   shouldFinish?: boolean;
   onComplete?: () => void;
+  /** Total session seconds remaining — displayed as integrated countdown. */
+  totalRemaining?: number;
+  /** Total session duration in seconds — used for the progress bar. */
+  totalDuration?: number;
 }) {
   const [phase, setPhase] = useState<"inhale" | "hold" | "exhale">("inhale");
   const [scale, setScale] = useState(0.5);
+  const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(timing.inhaleSeconds);
   const cancelledRef = useRef(false);
   const shouldFinishRef = useRef(false);
   useEffect(() => { shouldFinishRef.current = shouldFinish; }, [shouldFinish]);
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   const inhaleAudioRef = useRef<HTMLAudioElement | null>(null);
-  const holdAudioRef = useRef<HTMLAudioElement | null>(null);
+  const holdAudioRef   = useRef<HTMLAudioElement | null>(null);
   const exhaleAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     inhaleAudioRef.current = new Audio("/audio/inhale.mp3");
-    holdAudioRef.current = new Audio("/audio/hold.mp3");
+    holdAudioRef.current   = new Audio("/audio/hold.mp3");
     exhaleAudioRef.current = new Audio("/audio/exhale.mp3");
     return () => {
       [inhaleAudioRef, holdAudioRef, exhaleAudioRef].forEach((r) => {
@@ -514,12 +521,10 @@ function BreathingVisual({
         g.connect(masterGain);
         osc.start();
       };
+      addTone(174, 0.55);
+      addTone(177, 0.35);
+      addTone(348, 0.12);
 
-      addTone(174, 0.55);  // Solfeggio healing base
-      addTone(177, 0.35);  // 3 Hz beat for gentle depth
-      addTone(348, 0.12);  // octave harmonic (softer)
-
-      // Slow tremolo LFO
       const lfo = ctx.createOscillator();
       lfo.type = "sine";
       lfo.frequency.value = 0.06;
@@ -543,7 +548,7 @@ function BreathingVisual({
     };
   }, [active, audioEnabled]);
 
-  // ── Breath animation loop ───────────────────────────────────────────────
+  // ── Breath animation loop — now also tracks per-phase countdown ─────────
   useEffect(() => {
     cancelledRef.current = false;
     if (!active) return;
@@ -551,34 +556,47 @@ function BreathingVisual({
     const animate = async () => {
       const frameMs = 50;
       while (!cancelledRef.current) {
-        // Check at the START of each cycle — fires the moment the last exhale ends
+        // Check at the START of each cycle so the last exhale finishes cleanly.
         if (shouldFinishRef.current) {
           cancelledRef.current = true;
           onCompleteRef.current?.();
           return;
         }
+
+        // ── INHALE ──
         setPhase("inhale");
+        setPhaseSecondsLeft(timing.inhaleSeconds);
         playBreathAudio("inhale");
         const inhaleFrames = Math.floor((timing.inhaleSeconds * 1000) / frameMs);
         for (let i = 0; i <= inhaleFrames; i++) {
           if (cancelledRef.current) return;
           setScale(0.5 + (i / inhaleFrames) * 0.5);
+          setPhaseSecondsLeft(Math.max(1, Math.ceil(timing.inhaleSeconds * (1 - i / inhaleFrames))));
           await new Promise((r) => setTimeout(r, frameMs));
         }
+
+        // ── HOLD ──
         setPhase("hold");
+        setPhaseSecondsLeft(timing.holdSeconds);
         playBreathAudio("hold");
-        const holdMs = timing.holdSeconds * 1000;
         const holdStart = Date.now();
+        const holdMs    = timing.holdSeconds * 1000;
         while (Date.now() - holdStart < holdMs) {
           if (cancelledRef.current) return;
+          const elapsed = Date.now() - holdStart;
+          setPhaseSecondsLeft(Math.max(1, Math.ceil((holdMs - elapsed) / 1000)));
           await new Promise((r) => setTimeout(r, 100));
         }
+
+        // ── EXHALE ──
         setPhase("exhale");
+        setPhaseSecondsLeft(timing.exhaleSeconds);
         playBreathAudio("exhale");
         const exhaleFrames = Math.floor((timing.exhaleSeconds * 1000) / frameMs);
         for (let i = 0; i <= exhaleFrames; i++) {
           if (cancelledRef.current) return;
           setScale(1 - (i / exhaleFrames) * 0.5);
+          setPhaseSecondsLeft(Math.max(1, Math.ceil(timing.exhaleSeconds * (1 - i / exhaleFrames))));
           await new Promise((r) => setTimeout(r, frameMs));
         }
       }
@@ -589,31 +607,143 @@ function BreathingVisual({
 
   if (!active) return null;
 
-  const size = 80 + scale * 80;
+  // Orb size: 110 px (contracted) → 170 px (expanded)
+  const orbSize  = 110 + scale * 60;
+  const maxOrbSz = 170;
+
+  // Per-phase accent colour (hold gets a softer lavender)
+  const phaseColor =
+    phase === "inhale" ? color :
+    phase === "hold"   ? "#c4b5fd" :
+    "#7dd3fc";
+
   const phaseLabel =
-    phase === "inhale" ? `Inhale ${timing.inhaleSeconds}s`
-    : phase === "hold" ? `Hold ${timing.holdSeconds}s`
-    : `Exhale ${timing.exhaleSeconds}s`;
+    phase === "inhale" ? "INHALE" :
+    phase === "hold"   ? "HOLD" :
+    "EXHALE";
+
+  // Session timer
+  const totalMins  = Math.floor(totalRemaining / 60);
+  const totalSecs  = totalRemaining % 60;
+  const progressPct = totalDuration > 0
+    ? Math.min(100, (1 - totalRemaining / totalDuration) * 100)
+    : 0;
 
   return (
-    <div className="flex flex-col items-center gap-4 my-2">
+    <div className="flex flex-col items-center gap-3 my-1 w-full">
+
+      {/* Phase label — animates between phases */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={phase}
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 5 }}
+          transition={{ duration: 0.22 }}
+          className="text-[11px] font-black tracking-[0.38em] uppercase select-none"
+          style={{ color: phaseColor, textShadow: `0 0 12px ${phaseColor}70` }}
+        >
+          {phaseLabel}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* ── Orb container ── */}
       <div
-        className="rounded-full flex items-center justify-center"
-        style={{
-          width: size, height: size,
-          backgroundColor: `${color}20`,
-          border: `2px solid ${color}50`,
-          boxShadow: `0 0 ${Math.floor(size / 3)}px ${color}25`,
-          transition: "width 50ms linear, height 50ms linear",
-        }}
+        className="relative flex items-center justify-center"
+        style={{ width: maxOrbSz + 60, height: maxOrbSz + 60 }}
       >
-        <span className="text-xs font-bold uppercase tracking-wider select-none" style={{ color }}>
-          {phase}
-        </span>
+        {/* Outer static reference ring */}
+        <div
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            width: maxOrbSz, height: maxOrbSz,
+            border: `1px dashed ${color}18`,
+          }}
+        />
+
+        {/* Expanding glow ring (inhale only) */}
+        {phase === "inhale" && (
+          <motion.div
+            className="absolute rounded-full pointer-events-none"
+            style={{ border: `1px solid ${color}22` }}
+            animate={{
+              width:   [orbSize, orbSize + 48],
+              height:  [orbSize, orbSize + 48],
+              opacity: [0.6, 0],
+            }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+          />
+        )}
+
+        {/* The breathing orb itself */}
+        <div
+          className="absolute rounded-full flex flex-col items-center justify-center select-none"
+          style={{
+            width:           orbSize,
+            height:          orbSize,
+            backgroundColor: `${phaseColor}16`,
+            border:          `2px solid ${phaseColor}55`,
+            boxShadow:       `0 0 ${Math.round(orbSize / 3)}px ${phaseColor}28, inset 0 0 ${Math.round(orbSize / 5)}px ${phaseColor}10`,
+            transition:      "width 50ms linear, height 50ms linear, background-color 0.6s ease, border-color 0.6s ease, box-shadow 0.6s ease",
+          }}
+        >
+          {/* Per-phase countdown number */}
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={`${phase}-${phaseSecondsLeft}`}
+              initial={{ opacity: 0.5, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.15 }}
+              transition={{ duration: 0.18 }}
+              className="font-bold font-mono tabular-nums leading-none"
+              style={{
+                fontSize: orbSize > 140 ? 36 : 28,
+                color:    phaseColor,
+                textShadow: `0 0 14px ${phaseColor}90`,
+              }}
+            >
+              {phaseSecondsLeft}
+            </motion.span>
+          </AnimatePresence>
+          {/* Tiny phase abbreviation below the number */}
+          <span
+            className="text-[8px] uppercase tracking-widest font-bold mt-0.5 select-none"
+            style={{ color: `${phaseColor}70` }}
+          >
+            {phase}
+          </span>
+        </div>
       </div>
-      <div className="text-xs font-medium" style={{ color: `${color}bb` }}>
-        {phaseLabel}
+
+      {/* Breath pattern label */}
+      <div
+        className="text-[10px] font-mono tracking-widest"
+        style={{ color: `${color}50` }}
+      >
+        {timing.inhaleSeconds} · {timing.holdSeconds} · {timing.exhaleSeconds}
       </div>
+
+      {/* ── Session timer + progress bar ── */}
+      {totalDuration > 0 && (
+        <div className="flex flex-col items-center gap-2 mt-1 w-52">
+          <div
+            className="text-2xl font-bold font-mono tabular-nums"
+            style={{ color, textShadow: `0 0 10px ${color}50` }}
+            data-testid="text-breath-session-timer"
+          >
+            {totalMins}:{totalSecs.toString().padStart(2, "0")}
+          </div>
+          <div
+            className="w-full h-1.5 rounded-full overflow-hidden"
+            style={{ backgroundColor: `${color}18` }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-1000 ease-linear"
+              style={{ width: `${progressPct}%`, backgroundColor: color }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1343,59 +1473,23 @@ export function GuidedActivityEngine({
                           audioEnabled={audio.enabled}
                           shouldFinish={breathShouldFinish}
                           onComplete={() => { beep.playCompleteBeep(); setBreathShouldFinish(false); advanceStep(); }}
+                          totalRemaining={timerRemaining}
+                          totalDuration={step.durationSeconds ?? 0}
                         />
-                        <div
-                          className="text-2xl font-bold font-mono tabular-nums drop-shadow"
-                          style={{ color: activity.color }}
-                        >
-                          {Math.floor(timerRemaining / 60)}:{(timerRemaining % 60).toString().padStart(2, "0")}
-                        </div>
                       </div>
-                    </div>
-                    <div
-                      className="w-full h-1 rounded-full overflow-hidden"
-                      style={{ backgroundColor: `${activity.color}20` }}
-                    >
-                      <div
-                        className="h-full rounded-full transition-all duration-1000 ease-linear"
-                        style={{
-                          width: `${step.durationSeconds ? (1 - timerRemaining / step.durationSeconds) * 100 : 0}%`,
-                          backgroundColor: activity.color,
-                        }}
-                      />
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <BreathingVisual
-                      active={true}
-                      color={activity.color}
-                      timing={step.breathTiming!}
-                      audioEnabled={audio.enabled}
-                      shouldFinish={breathShouldFinish}
-                      onComplete={() => { beep.playCompleteBeep(); setBreathShouldFinish(false); advanceStep(); }}
-                    />
-                    <div className="flex flex-col items-center gap-2">
-                      <div
-                        className="text-2xl font-bold font-mono tabular-nums"
-                        style={{ color: activity.color }}
-                      >
-                        {Math.floor(timerRemaining / 60)}:{(timerRemaining % 60).toString().padStart(2, "0")}
-                      </div>
-                      <div
-                        className="w-48 h-1.5 rounded-full overflow-hidden"
-                        style={{ backgroundColor: `${activity.color}20` }}
-                      >
-                        <div
-                          className="h-full rounded-full transition-all duration-1000 ease-linear"
-                          style={{
-                            width: `${step.durationSeconds ? (1 - timerRemaining / step.durationSeconds) * 100 : 0}%`,
-                            backgroundColor: activity.color,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </>
+                  <BreathingVisual
+                    active={true}
+                    color={activity.color}
+                    timing={step.breathTiming!}
+                    audioEnabled={audio.enabled}
+                    shouldFinish={breathShouldFinish}
+                    onComplete={() => { beep.playCompleteBeep(); setBreathShouldFinish(false); advanceStep(); }}
+                    totalRemaining={timerRemaining}
+                    totalDuration={step.durationSeconds ?? 0}
+                  />
                 )
               ) : (isRepStep && stepPhase === "running") ? (
                 <div className="flex flex-col items-center gap-5 w-full max-w-xs">
