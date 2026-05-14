@@ -143,11 +143,9 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
     description: "Compound moves and increased volume",
     color: "#f59e0b",
     exercises: [
-      { id: "int_push",    name: "Push-ups",              sets: 4, reps: "12-15", videoSrc: "/videos/pushups_loop.mp4",     voiceCue: "Push-ups." },
-      { id: "int_split",   name: "Bulgarian Split Squats", sets: 3, reps: "8-10",  videoSrc: "/videos/squats_loop.mp4", voiceCue: "Bulgarian split squats." },
-      { id: "int_dips",    name: "Dips",                  sets: 3, reps: "8-12",  isPlaceholder: true, voiceCue: "Dips." },
-      { id: "int_pike",    name: "Pike Push-ups",         sets: 3, reps: "8-12",  isPlaceholder: true, voiceCue: "Pike push-ups." },
-      { id: "int_plank",   name: "Plank Hold",            sets: 3, durationSeconds: 40, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank. 40 seconds." },
+      { id: "int_push",  name: "Push-ups", sets: 3, reps: "6-10",  videoSrc: "/videos/pushups_loop.mp4",    voiceCue: "Push-ups. Full range of motion." },
+      { id: "int_squat", name: "Squats",   sets: 3, reps: "8-12",  videoSrc: "/videos/squats_loop.mp4",     voiceCue: "Squats. Chest up, knees tracking toes." },
+      { id: "int_situp", name: "Sit-ups",  sets: 3, reps: "10-15", videoSrc: "/videos/abs_crunch_loop.mp4", voiceCue: "Sit-ups. Core engaged." },
     ],
   },
   advanced: {

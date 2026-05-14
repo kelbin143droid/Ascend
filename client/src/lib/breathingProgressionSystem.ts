@@ -51,8 +51,8 @@ export const BREATHING_PHASES: Record<BreathPhase, BreathPhaseDefinition> = {
   1: {
     label: "Beginner",
     defaultPattern: { inhaleSeconds: 4, holdSeconds: 4, exhaleSeconds: 6 },
-    baseDuration: 123,
-    maxDuration: 153,
+    baseDuration: 60,
+    maxDuration: 90,
     description: "4-4-6 rhythm. Building consistency.",
     focus: "Consistency",
     unlockCondition: { minSessions: 5, minPositivePercent: 80 },

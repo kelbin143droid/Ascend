@@ -269,16 +269,20 @@ function BreathingSession({
     let alive = true;
     const sessionStart = performance.now();
 
-    // ── Voice via Web Speech API — no audio file unlock needed ───────────────
+    // ── Voice via pre-recorded audio files ────────────────────────────────────
+    const audioMap: Record<"Inhale" | "Hold" | "Exhale", string> = {
+      Inhale: INHALE_URL,
+      Hold:   HOLD_URL,
+      Exhale: EXHALE_URL,
+    };
+    let activeAudio: HTMLAudioElement | null = null;
     const speakPhase = (p: "Inhale" | "Hold" | "Exhale") => {
       try {
-        if (!("speechSynthesis" in window)) return;
-        window.speechSynthesis.cancel();
-        const utt = new SpeechSynthesisUtterance(p);
-        utt.rate = 0.78;
-        utt.pitch = 0.88;
-        utt.volume = 1.0;
-        window.speechSynthesis.speak(utt);
+        if (activeAudio) { activeAudio.pause(); activeAudio.currentTime = 0; }
+        const a = new Audio(audioMap[p]);
+        a.volume = 1.0;
+        activeAudio = a;
+        a.play().catch(() => {});
       } catch {}
     };
 
@@ -297,7 +301,7 @@ function BreathingSession({
         if (curPhase === "Exhale" && elapsedSec >= targetSeconds) {
           alive = false;
           clearInterval(tickId);
-          try { window.speechSynthesis?.cancel(); } catch {}
+          if (activeAudio) { activeAudio.pause(); activeAudio = null; }
           onDoneRef.current();
           return;
         }
@@ -311,7 +315,7 @@ function BreathingSession({
     return () => {
       alive = false;
       clearInterval(tickId);
-      try { window.speechSynthesis?.cancel(); } catch {}
+      if (activeAudio) { activeAudio.pause(); activeAudio = null; }
     };
   }, [targetSeconds]);
 
@@ -909,11 +913,11 @@ export default function GuidedSessionPage() {
             muted
             loop
             preload="auto"
-            style={{ opacity: 0.25 }}
+            style={{ opacity: 0.72 }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 100%)" }}
+            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.28) 100%)" }}
           />
         </div>
       )}
