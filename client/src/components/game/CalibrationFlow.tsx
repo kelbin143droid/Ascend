@@ -8,8 +8,6 @@
 
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RadarChart } from "@/components/game/RadarChart";
-import type { RadarChartValues } from "@/components/game/RadarChart";
 import type { CalibrationAnswers } from "@/lib/calibrationEngine";
 
 interface Props {
@@ -22,7 +20,7 @@ interface Props {
 const SECTIONS = [
   {
     key:       "powerOutput" as keyof CalibrationAnswers,
-    radarKey:  "strength"   as keyof RadarChartValues,
+    radarKey:  "strength",
     label:     "Power Output",
     stat:      "Strength",
     statColor: "#fbbf24",
@@ -37,7 +35,7 @@ const SECTIONS = [
   },
   {
     key:       "recoveryRate" as keyof CalibrationAnswers,
-    radarKey:  "vitality"    as keyof RadarChartValues,
+    radarKey:  "vitality",
     label:     "Vitality Signal",
     stat:      "Vitality",
     statColor: "#34d399",
@@ -52,7 +50,7 @@ const SECTIONS = [
   },
   {
     key:       "signalStability" as keyof CalibrationAnswers,
-    radarKey:  "sense"           as keyof RadarChartValues,
+    radarKey:  "sense",
     label:     "Signal Stability",
     stat:      "Sense",
     statColor: "#a78bfa",
@@ -67,7 +65,7 @@ const SECTIONS = [
   },
   {
     key:       "syncRegularity" as keyof CalibrationAnswers,
-    radarKey:  "discipline"     as keyof RadarChartValues,
+    radarKey:  "discipline",
     label:     "Sync Regularity",
     stat:      "Discipline",
     statColor: "#fb923c",
@@ -81,9 +79,6 @@ const SECTIONS = [
     ],
   },
 ] as const;
-
-// Ghost baseline: all axes at 50%
-const GHOST: RadarChartValues = { strength: 50, vitality: 50, sense: 50, discipline: 50 };
 
 // Protocol display name from powerOutput tier value
 function protocolLabel(powerOutput?: number): string {
@@ -109,18 +104,9 @@ export function CalibrationFlow({ gender, onComplete }: Props) {
   // Selected tier values keyed by section key
   const [selections, setSelections] = useState<Partial<Record<keyof CalibrationAnswers, number>>>({});
   const [scanning,   setScanning]   = useState(false);
-  const [showModal,  setShowModal]  = useState(false);
 
   const selectedCount = Object.keys(selections).length;
   const allSelected   = selectedCount === SECTIONS.length;
-
-  // Live radar values — 0 for unselected axes
-  const radarValues: RadarChartValues = {
-    strength:   selections.powerOutput    ?? 0,
-    vitality:   selections.recoveryRate   ?? 0,
-    sense:      selections.signalStability ?? 0,
-    discipline: selections.syncRegularity  ?? 0,
-  };
 
   const completing = useRef(false);
 
@@ -134,17 +120,13 @@ export function CalibrationFlow({ gender, onComplete }: Props) {
     setScanning(true);
     setTimeout(() => {
       setScanning(false);
-      setShowModal(true);
+      onComplete({
+        powerOutput:     selections.powerOutput     ?? 50,
+        recoveryRate:    selections.recoveryRate     ?? 50,
+        signalStability: selections.signalStability  ?? 50,
+        syncRegularity:  selections.syncRegularity   ?? 50,
+      });
     }, 750);
-  };
-
-  const handleModalContinue = () => {
-    onComplete({
-      powerOutput:     selections.powerOutput     ?? 50,
-      recoveryRate:    selections.recoveryRate     ?? 50,
-      signalStability: selections.signalStability  ?? 50,
-      syncRegularity:  selections.syncRegularity   ?? 50,
-    });
   };
 
   const stars = useRef(
@@ -222,21 +204,6 @@ export function CalibrationFlow({ gender, onComplete }: Props) {
             style={{ color: `${color}90` }}>
             System Sync · Calibration
           </span>
-        </motion.div>
-
-        {/* Live radar chart */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.28, duration: 0.45, ease: "easeOut" }}
-        >
-          <RadarChart
-            values={radarValues}
-            ghostValues={GHOST}
-            chartSize={148}
-            color={color}
-            animate={false}
-          />
         </motion.div>
 
         {/* Status bar: N/4 calibrated · Protocol preview */}
@@ -435,125 +402,6 @@ export function CalibrationFlow({ gender, onComplete }: Props) {
         </p>
       </div>
 
-      {/* ════════════════ COMPLETION MODAL ════════════════ */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            className="fixed inset-0 z-[300] flex flex-col items-center justify-center px-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(16px)" }}>
-
-            {/* Glow burst */}
-            <motion.div className="absolute pointer-events-none"
-              style={{ width: 320, height: 320, borderRadius: "50%",
-                background: `radial-gradient(circle, ${glow} 0%, transparent 65%)`,
-                filter: "blur(40px)" }}
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1.4, opacity: 0.6 }}
-              transition={{ duration: 0.9, ease: "easeOut" }} />
-
-            <motion.div
-              className="relative flex flex-col items-center gap-5 max-w-xs w-full"
-              initial={{ scale: 0.88, opacity: 0, y: 24 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ delay: 0.12, duration: 0.45, ease: "easeOut" }}>
-
-              {/* Status label */}
-              <div className="flex items-center gap-2">
-                <motion.div className="w-2 h-2 rounded-full" style={{ background: "#4ade80" }}
-                  animate={{ boxShadow: ["0 0 6px #4ade8088", "0 0 18px #4ade8088", "0 0 6px #4ade8088"] }}
-                  transition={{ duration: 1.4, repeat: Infinity }} />
-                <span className="text-[9px] tracking-[0.32em] uppercase font-mono font-bold"
-                  style={{ color: "#4ade8090" }}>
-                  Calibration Complete
-                </span>
-              </div>
-
-              {/* SYNC SUCCESSFUL heading */}
-              <div className="text-center">
-                <h2 className="text-[28px] font-black tracking-[0.06em] uppercase"
-                  style={{ color: "#fff", textShadow: `0 0 40px ${glow}, 0 0 80px ${glow}60`,
-                    fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.08em" }}>
-                  SYNC
-                </h2>
-                <h2 className="text-[28px] font-black tracking-[0.06em] uppercase mt-[-4px]"
-                  style={{ color, textShadow: `0 0 40px ${glow}, 0 0 80px ${glow}60`,
-                    fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.08em" }}>
-                  SUCCESSFUL
-                </h2>
-              </div>
-
-              {/* Final radar snapshot */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.28, duration: 0.4 }}>
-                <RadarChart
-                  values={radarValues}
-                  ghostValues={GHOST}
-                  chartSize={140}
-                  color={color}
-                  animate={true}
-                  delay={300}
-                />
-              </motion.div>
-
-              {/* The required message */}
-              <motion.div
-                className="text-center px-2"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}>
-                <p className="text-[15px] font-semibold leading-snug"
-                  style={{ color: "#fff", fontFamily: "Inter, system-ui, sans-serif" }}>
-                  System calibrated to your current rhythm.
-                </p>
-                <p className="text-[15px] font-semibold"
-                  style={{ color, textShadow: `0 0 12px ${glow}` }}>
-                  Efficiency at 100%.
-                </p>
-              </motion.div>
-
-              {/* Protocol badge */}
-              <motion.div
-                className="px-4 py-2 rounded-full font-mono font-bold text-[11px] tracking-[0.22em]"
-                style={{ color, background: `${color}18`, border: `1px solid ${color}40`,
-                  boxShadow: `0 0 16px ${glow}40` }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.65 }}>
-                PROTOCOL: {protocolLabel(selections.powerOutput)}
-              </motion.div>
-
-              {/* Continue CTA */}
-              <motion.button
-                onClick={handleModalContinue}
-                data-testid="button-initialise-protocol"
-                whileTap={{ scale: 0.96 }}
-                className="w-full py-[14px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] relative overflow-hidden"
-                style={{
-                  background: `linear-gradient(90deg, ${color}, ${colorAlt})`,
-                  color: "#fff",
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  boxShadow: `0 0 28px ${glow}, 0 4px 16px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.20)`,
-                }}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.80 }}>
-                <div className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)",
-                    backgroundSize: "200% 100%",
-                    animation: "xpShimmer 3s linear infinite",
-                  }} />
-                Initialise Protocol  →
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
