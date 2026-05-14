@@ -753,16 +753,6 @@ export default function GuidedSessionPage() {
       return;
     }
 
-    // Post-onboarding users bypass the onboarding completion paths.
-    // All users in this app have onboardingCompleted=1 set at account creation.
-    const isPostOnboarding = localStorage.getItem("onboardingCompleted") === "1";
-    const completedOnboardingDay = ONBOARDING_SESSION_TO_DAY[sessionId];
-    if (completedOnboardingDay && !isPostOnboarding) {
-      recordCompletion(completedOnboardingDay);
-      setLocation("/");
-      return;
-    }
-
     // Write BOTH the session ID and the mapped phase1 activity ID to localStorage
     // so the dashboard's isActivityDone() sees the completion under either key.
     try {
@@ -903,24 +893,19 @@ export default function GuidedSessionPage() {
   if (sessionId === "light-movement" && player?.id) {
     const handleLightMovementComplete = async () => {
       await queryClient.refetchQueries({ queryKey: ["home", player.id] });
-      const isPostOnboarding = localStorage.getItem("onboardingCompleted") === "1";
-      if (isPostOnboarding) {
-        // Write both IDs so the dashboard tracks Agility as complete
-        try {
-          const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
-          const existing = localStorage.getItem(todayKey);
-          const ids: string[] = existing ? (JSON.parse(existing) as string[]) : [];
-          ["light-movement", "phase1_agility"].forEach(id => {
-            if (!ids.includes(id)) ids.push(id);
-          });
-          localStorage.setItem(todayKey, JSON.stringify(ids));
-          ["light-movement", "phase1_agility"].forEach(id => {
-            window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
-          });
-        } catch { /* noop */ }
-      } else {
-        recordCompletion(2);
-      }
+      // Always write both IDs so the dashboard tracks Agility as complete
+      try {
+        const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+        const existing = localStorage.getItem(todayKey);
+        const ids: string[] = existing ? (JSON.parse(existing) as string[]) : [];
+        ["light-movement", "phase1_agility"].forEach(id => {
+          if (!ids.includes(id)) ids.push(id);
+        });
+        localStorage.setItem(todayKey, JSON.stringify(ids));
+        ["light-movement", "phase1_agility"].forEach(id => {
+          window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
+        });
+      } catch { /* noop */ }
       setLocation("/");
     };
 
