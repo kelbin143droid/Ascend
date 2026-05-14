@@ -7,7 +7,7 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { apiRequest } from "@/lib/queryClient";
 import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
 import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
-import { Wind, Heart, Droplets, Brain, X } from "lucide-react";
+import { Wind, Heart, Droplets, Brain, X, Pause, Play, SkipForward } from "lucide-react";
 import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
 
@@ -25,9 +25,9 @@ interface SessionConfig {
 const SESSIONS: Record<SessionId, SessionConfig> = {
   "calm-breathing": {
     id: "calm-breathing",
-    title: "2-Minute Reset",
+    title: "1-Minute Reset",
     stat: "sense",
-    durationSeconds: 140,
+    durationSeconds: 60,
     icon: Wind,
     type: "breathing",
   },
@@ -253,21 +253,26 @@ function BreathingSession({
   accentColor,
   targetSeconds,
   onDone,
+  paused = false,
 }: {
   accentColor: string;
   targetSeconds: number;
   onDone: () => void;
+  paused?: boolean;
 }) {
   const [phase, setPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
   const onDoneRef = useRef(onDone);
   useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
 
-  useBreathingAudio(true);
-  useCalmMusic(true);
+  // Keep a ref so the interval closure can read the latest paused value
+  const pausedRef = useRef(paused);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
+
+  useBreathingAudio(!paused);
+  useCalmMusic(!paused);
 
   useEffect(() => {
     let alive = true;
-    const sessionStart = performance.now();
 
     // ── Voice via pre-recorded audio files ────────────────────────────────────
     const audioMap: Record<"Inhale" | "Hold" | "Exhale", string> = {
@@ -277,6 +282,7 @@ function BreathingSession({
     };
     let activeAudio: HTMLAudioElement | null = null;
     const speakPhase = (p: "Inhale" | "Hold" | "Exhale") => {
+      if (pausedRef.current) return;
       try {
         if (activeAudio) { activeAudio.pause(); activeAudio.currentTime = 0; }
         const a = new Audio(audioMap[p]);
@@ -286,17 +292,32 @@ function BreathingSession({
       } catch {}
     };
 
-    // ── Phase cycling — drives both the visual label and voice cues ──────────
+    // ── Delta-based phase cycling — pauses cleanly ───────────────────────────
     let curPhase: "Inhale" | "Hold" | "Exhale" = "Inhale";
-    let phaseStart = performance.now();
+    let phaseElapsedMs = 0;
+    let sessionElapsedMs = 0;
+    let lastTick = performance.now();
     setPhase("Inhale");
-    // Speak first cue immediately
     speakPhase("Inhale");
 
     const tickId = setInterval(() => {
       if (!alive) return;
-      if (performance.now() - phaseStart >= VOICE_DURATIONS[curPhase]) {
-        const elapsedSec = (performance.now() - sessionStart) / 1000;
+      const now = performance.now();
+
+      if (pausedRef.current) {
+        // Keep resetting lastTick while paused so the first resumed tick
+        // has a small delta (≈100ms) instead of the full paused duration.
+        lastTick = now;
+        return;
+      }
+
+      const delta = now - lastTick;
+      lastTick = now;
+      phaseElapsedMs  += delta;
+      sessionElapsedMs += delta;
+
+      if (phaseElapsedMs >= VOICE_DURATIONS[curPhase]) {
+        const elapsedSec = sessionElapsedMs / 1000;
         // After an Exhale completes and we've met the target duration, end cleanly
         if (curPhase === "Exhale" && elapsedSec >= targetSeconds) {
           alive = false;
@@ -306,7 +327,7 @@ function BreathingSession({
           return;
         }
         curPhase = VOICE_NEXT[curPhase];
-        phaseStart = performance.now();
+        phaseElapsedMs = 0;
         setPhase(curPhase);
         speakPhase(curPhase);
       }
@@ -641,13 +662,18 @@ export default function GuidedSessionPage() {
   );
   const [countdown, setCountdown] = useState(5);
   const [elapsed, setElapsed] = useState(0);
+  const [paused, setPaused] = useState(false);
   const [showDayClose, setShowDayClose] = useState(false);
   const [showDay5Expansion, setShowDay5Expansion] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const intervalRef             = useRef<ReturnType<typeof setInterval> | null>(null);
   const completeTimeoutRef      = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const pausedRef               = useRef(false);
   // Prevents duplicate sessionStorage writes if callbacks fire more than once
   const hasRecordedCompletion   = useRef(false);
+
+  // Keep ref in sync so the interval closure always reads the live value
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   // Unlock HTMLAudioElement playback immediately on page mount for breathing sessions.
   // The browser requires at least one .play() that traces back to a user gesture.
@@ -803,6 +829,7 @@ export default function GuidedSessionPage() {
     if (state !== "active" || session.type === "instant") return;
 
     intervalRef.current = setInterval(() => {
+      if (pausedRef.current) return;
       setElapsed(prev => {
         const next = prev + 1;
         if (next >= session.durationSeconds) {
@@ -995,6 +1022,7 @@ export default function GuidedSessionPage() {
             accentColor={accentColor}
             targetSeconds={session.durationSeconds}
             onDone={handleComplete}
+            paused={paused}
           />
         )}
         {state === "active" && session.type === "prompts" && (
@@ -1068,8 +1096,8 @@ export default function GuidedSessionPage() {
       </div>
 
       {state === "active" && session.type !== "instant" && (
-        <div className="px-4 pb-6 flex flex-col items-center gap-3">
-          {sessionId === "quick-reflection" && (
+        <div className="px-4 pb-8 flex flex-col items-center gap-3">
+          {sessionId === "quick-reflection" && !paused && (
             <button
               data-testid="button-complete-reflection"
               onClick={handleComplete}
@@ -1083,8 +1111,41 @@ export default function GuidedSessionPage() {
               Complete Reflection
             </button>
           )}
-          <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.25)" }}>
-            {Math.ceil((session.durationSeconds - elapsed) / 60)} min remaining
+
+          {/* ── Pause / Skip controls ── */}
+          <div className="flex gap-3 w-full max-w-[260px]">
+            <button
+              data-testid="button-pause-session"
+              onClick={() => setPaused(p => !p)}
+              className="flex-1 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
+              style={{
+                backgroundColor: paused ? `${accentColor}18` : "rgba(255,255,255,0.06)",
+                border: paused ? `1px solid ${accentColor}45` : "1px solid rgba(255,255,255,0.10)",
+                color: paused ? accentColor : "rgba(255,255,255,0.55)",
+              }}
+            >
+              {paused ? <Play size={14} /> : <Pause size={14} />}
+              {paused ? "Resume" : "Pause"}
+            </button>
+            <button
+              data-testid="button-skip-session"
+              onClick={() => { setPaused(false); handleComplete(); }}
+              className="flex-1 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                color: "rgba(255,255,255,0.40)",
+              }}
+            >
+              <SkipForward size={14} />
+              Skip
+            </button>
+          </div>
+
+          <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.22)" }}>
+            {paused
+              ? "Session paused"
+              : `${Math.max(1, Math.ceil((session.durationSeconds - elapsed) / 60))} min remaining`}
           </p>
         </div>
       )}
