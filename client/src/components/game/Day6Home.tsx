@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
@@ -538,6 +538,76 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             <p className="text-[10px] mt-1 leading-snug" style={{ color: "rgba(175,190,215,0.92)" }}>{systemHint}</p>
           )}
         </motion.div>
+
+        {/* ── RITUAL QUEUE STRIP ───────────────────────────────────────── */}
+        {activities.length > 0 && (() => {
+          const QUEUE_DEFS = [
+            { id: "phase1_meditation", label: "Sense",    dc: DASH_CARDS[0] },
+            { id: "phase1_agility",    label: "Agility",  dc: DASH_CARDS[3] },
+            { id: "phase1_strength",   label: "Strength", dc: DASH_CARDS[2] },
+          ] as const;
+          const queueItems = QUEUE_DEFS.filter(q => activities.some(a => a.id === q.id));
+          if (queueItems.length < 2) return null;
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: 0.09 }}
+              className="flex items-center px-1"
+              data-testid="ritual-queue-strip"
+            >
+              {queueItems.map((q, idx) => {
+                const { dc } = q;
+                const done     = isActivityDone(q.id);
+                const isActive = q.id === currentAid && !allDone;
+                const nodeColor = done ? "#22c55e" : isActive ? dc.color : colors.textMuted;
+                const isLast   = idx === queueItems.length - 1;
+                return (
+                  <React.Fragment key={q.id}>
+                    <div className="flex flex-col items-center gap-[5px]">
+                      <motion.div
+                        className="w-9 h-9 rounded-full flex items-center justify-center relative"
+                        style={{
+                          background: done
+                            ? "rgba(34,197,94,0.14)"
+                            : isActive ? `${dc.color}16` : `${colors.textMuted}0a`,
+                          border: `1.5px solid ${nodeColor}${done ? "55" : isActive ? "55" : "20"}`,
+                          boxShadow: isActive ? `0 0 14px ${dc.color}38` : "none",
+                        }}
+                        animate={isActive ? {
+                          boxShadow: [`0 0 6px ${dc.color}22`, `0 0 18px ${dc.color}50`, `0 0 6px ${dc.color}22`],
+                        } : {}}
+                        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        {done
+                          ? <CheckCircle2 size={15} style={{ color: "#22c55e", filter: "drop-shadow(0 0 4px #22c55e)" }} />
+                          : <dc.icon size={14} style={{ color: nodeColor, opacity: isActive ? 1 : 0.38 }} />
+                        }
+                        {isActive && (
+                          <div className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full"
+                            style={{ backgroundColor: dc.color, boxShadow: `0 0 6px ${dc.color}` }} />
+                        )}
+                      </motion.div>
+                      <span
+                        className="text-[8px] font-semibold tracking-wide leading-none"
+                        style={{ color: nodeColor, opacity: done ? 0.90 : isActive ? 1 : 0.35 }}
+                      >
+                        {q.label}
+                      </span>
+                    </div>
+                    {!isLast && (
+                      <div
+                        className="flex-1 mx-2 h-px"
+                        style={{
+                          background: `linear-gradient(90deg, ${done ? "#22c55e88" : `${nodeColor}40`}, ${colors.textMuted}18)`,
+                        }}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </motion.div>
+          );
+        })()}
 
         {/* ── ALL DONE ──────────────────────────────────────────────────── */}
         <AnimatePresence>

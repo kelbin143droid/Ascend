@@ -25,6 +25,7 @@ interface BreathingFeedbackModalProps {
   playerId: string;
   colors: ThemeColors;
   onComplete: (bonusXp: number) => void;
+  nextActivityLabel?: string;
 }
 
 type Screen = "questions" | "results";
@@ -47,7 +48,7 @@ const WANDER_OPTIONS = [
   { value: "often" as const,     label: "Often",     emoji: "🌊", desc: "Mind wandered a lot" },
 ];
 
-export function BreathingFeedbackModal({ playerId, colors, onComplete }: BreathingFeedbackModalProps) {
+export function BreathingFeedbackModal({ playerId, colors, onComplete, nextActivityLabel }: BreathingFeedbackModalProps) {
   const queryClient = useQueryClient();
   const [screen, setScreen] = useState<Screen>("questions");
   const [difficulty, setDifficulty] = useState<BreathingSessionFeedback["difficulty"] | null>(null);
@@ -344,7 +345,7 @@ export function BreathingFeedbackModal({ playerId, colors, onComplete }: Breathi
           className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
           style={{ backgroundColor: primary, color: "#fff" }}
         >
-          Continue
+          {nextActivityLabel ? `Continue to ${nextActivityLabel}` : "Continue"}
           <ChevronRight size={16} />
         </motion.button>
       </div>

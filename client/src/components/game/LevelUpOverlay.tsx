@@ -1,16 +1,33 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/context/GameContext";
 import { LevelUpAnimation, getMotivationalPhrase } from "./LevelUpAnimation";
 import { applyLevelUpStats, initLevelBaseline, getMaxHP, getMaxMana } from "@/lib/statsSystem";
 
+function checkRitualComplete(): boolean {
+  try {
+    const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+    const ids = new Set<string>(JSON.parse(localStorage.getItem(todayKey) || "[]"));
+    const senseDone    = ids.has("phase1_meditation") || ids.has("calm-breathing");
+    const agilityDone  = ids.has("phase1_agility")    || ids.has("light-movement");
+    const strengthDone = ids.has("phase1_strength");
+    return senseDone && agilityDone && strengthDone;
+  } catch {
+    return false;
+  }
+}
+
 export function LevelUpOverlay() {
   const { player } = useGame();
+  const [, navigate] = useLocation();
   const [pendingLevelUp, setPendingLevelUp] = useState<{
     level: number;
     phrase: string;
     maxHp: number;
     maxMana: number;
   } | null>(null);
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false);
   const previousLevelRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -37,17 +54,94 @@ export function LevelUpOverlay() {
 
   const handleComplete = () => {
     setPendingLevelUp(null);
+    if (checkRitualComplete()) {
+      setShowProfilePrompt(true);
+    }
   };
 
-  if (!pendingLevelUp) return null;
-
   return (
-    <LevelUpAnimation
-      newLevel={pendingLevelUp.level}
-      motivationalPhrase={pendingLevelUp.phrase}
-      maxHp={pendingLevelUp.maxHp}
-      maxMana={pendingLevelUp.maxMana}
-      onComplete={handleComplete}
-    />
+    <>
+      {pendingLevelUp && (
+        <LevelUpAnimation
+          newLevel={pendingLevelUp.level}
+          motivationalPhrase={pendingLevelUp.phrase}
+          maxHp={pendingLevelUp.maxHp}
+          maxMana={pendingLevelUp.maxMana}
+          onComplete={handleComplete}
+        />
+      )}
+
+      <AnimatePresence>
+        {showProfilePrompt && (
+          <motion.div
+            key="profile-prompt"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-end justify-center pb-10 px-5"
+            style={{ backgroundColor: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }}
+            data-testid="post-levelup-prompt"
+          >
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 24 }}
+              className="w-full max-w-xs rounded-3xl overflow-hidden"
+              style={{
+                background: "linear-gradient(145deg, rgba(8,10,28,0.98) 0%, rgba(4,6,20,0.98) 100%)",
+                border: "1px solid rgba(139,92,246,0.35)",
+                boxShadow: "0 0 60px rgba(139,92,246,0.20), 0 24px 48px rgba(0,0,0,0.70)",
+              }}
+            >
+              <div className="px-6 py-7 flex flex-col items-center gap-5 text-center">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{
+                    background: "radial-gradient(circle, rgba(139,92,246,0.25) 0%, rgba(139,92,246,0.05) 100%)",
+                    border: "1.5px solid rgba(139,92,246,0.50)",
+                    boxShadow: "0 0 24px rgba(139,92,246,0.30)",
+                  }}
+                >
+                  <span style={{ fontSize: 26 }}>⚔️</span>
+                </div>
+
+                <div>
+                  <p className="text-base font-bold mb-1" style={{ color: "#e2e8f0" }}>
+                    Ritual Complete
+                  </p>
+                  <p className="text-xs leading-relaxed" style={{ color: "rgba(160,175,200,0.80)" }}>
+                    You completed today's full protocol and leveled up. Ready to see your character?
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2 w-full">
+                  <button
+                    data-testid="button-view-character"
+                    onClick={() => { setShowProfilePrompt(false); navigate("/profile"); }}
+                    className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-95"
+                    style={{
+                      background: "linear-gradient(90deg, #7c3aed, #8b5cf6)",
+                      color: "#fff",
+                      boxShadow: "0 4px 20px rgba(139,92,246,0.40)",
+                    }}
+                  >
+                    View Character →
+                  </button>
+                  <button
+                    data-testid="button-stay-home"
+                    onClick={() => setShowProfilePrompt(false)}
+                    className="w-full py-2.5 rounded-xl text-xs transition-all active:scale-95"
+                    style={{ color: "rgba(160,175,200,0.65)" }}
+                  >
+                    Stay here
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

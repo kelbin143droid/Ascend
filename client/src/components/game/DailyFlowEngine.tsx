@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -58,6 +58,7 @@ export function DailyFlowEngine({
   const [bonusXpAwarded, setBonusXpAwarded] = useState(false);
   const [showBreathingFeedback, setShowBreathingFeedback] = useState(false);
   const [pendingAdvanceIdx, setPendingAdvanceIdx] = useState<number | null>(null);
+  const autoStartNextRef = useRef(false);
 
   const currentActivity = activities[currentActivityIdx];
   const allCompleted = completedIds.size === activities.length;
@@ -126,7 +127,12 @@ export function DailyFlowEngine({
     setTimeout(() => {
       setCurrentActivityIdx(nextIdx);
       setShowTransition(false);
-      setRunningActivity(false);
+      if (autoStartNextRef.current) {
+        autoStartNextRef.current = false;
+        setRunningActivity(true);
+      } else {
+        setRunningActivity(false);
+      }
     }, 1200);
   }, [activities.length, queryClient, bonusMutation]);
 
@@ -221,6 +227,9 @@ export function DailyFlowEngine({
 
   // ── Breathing progression feedback (shown right after meditation) ─────────
   if (showBreathingFeedback) {
+    const meditationIdx = activities.findIndex(a => a.id === "phase1_meditation");
+    const nextAfterMeditation = meditationIdx >= 0 ? activities[meditationIdx + 1] : undefined;
+    const nextLabel = nextAfterMeditation?.activityName;
     return (
       <BreathingFeedbackModal
         playerId={playerId}
@@ -230,7 +239,11 @@ export function DailyFlowEngine({
           textMuted: colors.textMuted,
           primary: colors.primary,
         }}
-        onComplete={handleBreathingFeedbackComplete}
+        nextActivityLabel={nextLabel}
+        onComplete={(xp) => {
+          autoStartNextRef.current = true;
+          handleBreathingFeedbackComplete(xp);
+        }}
       />
     );
   }

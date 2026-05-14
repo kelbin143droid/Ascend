@@ -59,9 +59,9 @@ export function processSession(params: CompleteSessionParams): SessionResult {
   const fatigueMultiplier = getFatigueMultiplier(sessionCount);
   
   const STAT_BASE_XP: Record<string, number> = {
-    strength: 15,
-    sense: 5,
-    agility: 5,
+    strength: 45,
+    sense: 25,
+    agility: 25,
     vitality: 5,
   };
   
