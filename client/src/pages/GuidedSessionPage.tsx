@@ -10,6 +10,7 @@ import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
 import { Wind, Heart, Droplets, Brain, X, Pause, Play, SkipForward } from "lucide-react";
 import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
+import { BreathingFeedbackModal } from "@/components/game/BreathingFeedbackModal";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow";
 
@@ -663,6 +664,7 @@ export default function GuidedSessionPage() {
   const [countdown, setCountdown] = useState(5);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [showBreathingFeedback, setShowBreathingFeedback] = useState(false);
   const [showDayClose, setShowDayClose] = useState(false);
   const [showDay5Expansion, setShowDay5Expansion] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -729,6 +731,12 @@ export default function GuidedSessionPage() {
     localStorage.setItem(`ascend_ob_day${day}_ts`, String(Date.now()));
   };
 
+  // Maps standalone session IDs → their phase1 activity IDs used on the dashboard
+  const SESSION_TO_PHASE_ID: Record<string, string> = {
+    "calm-breathing": "phase1_meditation",
+    "light-movement": "phase1_agility",
+  };
+
   /* Advance out of "completing" — only called on confirmed server success.
      Note: onSuccess already awaited refetchQueries, so cache is fresh here. */
   const advanceFromCompleting = useCallback(() => {
@@ -745,34 +753,40 @@ export default function GuidedSessionPage() {
       return;
     }
 
+    // Post-onboarding users bypass the onboarding completion paths.
+    // All users in this app have onboardingCompleted=1 set at account creation.
+    const isPostOnboarding = localStorage.getItem("onboardingCompleted") === "1";
     const completedOnboardingDay = ONBOARDING_SESSION_TO_DAY[sessionId];
-    if (completedOnboardingDay) {
+    if (completedOnboardingDay && !isPostOnboarding) {
       recordCompletion(completedOnboardingDay);
       setLocation("/");
       return;
     }
 
-    // Record per-activity completion for the guided ritual home screen
+    // Write BOTH the session ID and the mapped phase1 activity ID to localStorage
+    // so the dashboard's isActivityDone() sees the completion under either key.
     try {
       const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
       const existing = localStorage.getItem(todayKey);
       const ids: string[] = existing ? (JSON.parse(existing) as string[]) : [];
-      if (!ids.includes(sessionId)) {
-        ids.push(sessionId);
-        localStorage.setItem(todayKey, JSON.stringify(ids));
-      }
-      window.dispatchEvent(
-        new CustomEvent("ascend:activity-completed", { detail: { activityId: sessionId } })
-      );
+      const idsToWrite = [sessionId, SESSION_TO_PHASE_ID[sessionId]].filter(Boolean) as string[];
+      idsToWrite.forEach(id => { if (!ids.includes(id)) ids.push(id); });
+      localStorage.setItem(todayKey, JSON.stringify(ids));
+      // Dispatch one event per ID so useSessionProgress picks up both
+      idsToWrite.forEach(id => {
+        window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
+      });
     } catch { /* noop */ }
 
-    // Non-onboarding sessions: standard behavior
-    const isFirstCompletionToday = !homeData?.hasCompletedHabitToday;
-    if (isFirstCompletionToday) {
-      setShowDayClose(true);
-    } else {
-      setState("done");
+    // For calm-breathing: show the BreathingFeedbackModal before navigating.
+    // The modal's Continue/Return buttons drive the final navigation.
+    if (sessionId === "calm-breathing") {
+      setShowBreathingFeedback(true);
+      return;
     }
+
+    // All other post-onboarding sessions: go straight to done
+    setState("done");
   }, [homeData, sessionId, setLocation]);
 
   const completeMutation = useMutation({
@@ -889,7 +903,24 @@ export default function GuidedSessionPage() {
   if (sessionId === "light-movement" && player?.id) {
     const handleLightMovementComplete = async () => {
       await queryClient.refetchQueries({ queryKey: ["home", player.id] });
-      recordCompletion(2);
+      const isPostOnboarding = localStorage.getItem("onboardingCompleted") === "1";
+      if (isPostOnboarding) {
+        // Write both IDs so the dashboard tracks Agility as complete
+        try {
+          const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+          const existing = localStorage.getItem(todayKey);
+          const ids: string[] = existing ? (JSON.parse(existing) as string[]) : [];
+          ["light-movement", "phase1_agility"].forEach(id => {
+            if (!ids.includes(id)) ids.push(id);
+          });
+          localStorage.setItem(todayKey, JSON.stringify(ids));
+          ["light-movement", "phase1_agility"].forEach(id => {
+            window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
+          });
+        } catch { /* noop */ }
+      } else {
+        recordCompletion(2);
+      }
       setLocation("/");
     };
 
@@ -915,6 +946,31 @@ export default function GuidedSessionPage() {
         playerId={player.id}
         onComplete={handleCardioComplete}
         onCancel={() => setLocation("/")}
+      />
+    );
+  }
+
+  // Post-onboarding calm-breathing: show BreathingFeedbackModal before navigating away.
+  // localStorage is already written and events dispatched before this renders.
+  if (showBreathingFeedback && player?.id) {
+    return (
+      <BreathingFeedbackModal
+        playerId={player.id}
+        colors={{
+          background: backgroundTheme.colors.background,
+          text:       backgroundTheme.colors.text,
+          textMuted:  backgroundTheme.colors.textMuted,
+          primary:    backgroundTheme.colors.primary,
+        }}
+        nextActivityLabel="Light Movement"
+        onComplete={() => {
+          setShowBreathingFeedback(false);
+          setLocation("/guided-session/light-movement");
+        }}
+        onReturnHome={() => {
+          setShowBreathingFeedback(false);
+          setLocation("/");
+        }}
       />
     );
   }

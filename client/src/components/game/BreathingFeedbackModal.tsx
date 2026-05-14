@@ -26,6 +26,7 @@ interface BreathingFeedbackModalProps {
   colors: ThemeColors;
   onComplete: (bonusXp: number) => void;
   nextActivityLabel?: string;
+  onReturnHome?: () => void;
 }
 
 type Screen = "questions" | "results";
@@ -48,7 +49,7 @@ const WANDER_OPTIONS = [
   { value: "often" as const,     label: "Often",     emoji: "🌊", desc: "Mind wandered a lot" },
 ];
 
-export function BreathingFeedbackModal({ playerId, colors, onComplete, nextActivityLabel }: BreathingFeedbackModalProps) {
+export function BreathingFeedbackModal({ playerId, colors, onComplete, nextActivityLabel, onReturnHome }: BreathingFeedbackModalProps) {
   const queryClient = useQueryClient();
   const [screen, setScreen] = useState<Screen>("questions");
   const [difficulty, setDifficulty] = useState<BreathingSessionFeedback["difficulty"] | null>(null);
@@ -348,6 +349,20 @@ export function BreathingFeedbackModal({ playerId, colors, onComplete, nextActiv
           {nextActivityLabel ? `Continue to ${nextActivityLabel}` : "Continue"}
           <ChevronRight size={16} />
         </motion.button>
+
+        {onReturnHome && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            data-testid="button-breathing-return-home"
+            onClick={onReturnHome}
+            className="w-full py-2.5 rounded-xl text-xs text-center transition-all active:scale-95"
+            style={{ color: colors.textMuted }}
+          >
+            Return to System Hub
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
