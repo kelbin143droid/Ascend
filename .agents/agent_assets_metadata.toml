@@ -42,3 +42,9 @@ id = "ZTbyLnzkXcTbbyyaOa-gY"
 uri = "file://exports/ascend-os-videos-part3.zip"
 type = "unspecified"
 title = "Videos Part 3 of 3 (75 MB)"
+
+[[outputs]]
+id = "BVDKlFE7GwDAWDoo6b0cU"
+uri = "file://ascend_os_source.zip"
+type = "unspecified"
+title = "Ascend OS — Source Code"
