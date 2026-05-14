@@ -29,19 +29,28 @@ export interface CalibrationProfile extends CalibrationAnswers {
 
 /**
  * Derives a WorkoutLevel from calibration answers.
- * The workout level is driven purely by the Strength (powerOutput) tier:
- *   < 25  → entry        (Foundation — Wall / Incline pushup)
- *   < 50  → beginner     (Build — Knee pushup)
- *   < 75  → intermediate (Evolve — Regular floor pushup)
- *   ≥ 75  → advanced     (Ascend — Clap / decline / weighted)
  *
- * This ensures "Regular Form" maps directly to standard pushups in the
- * training engine, skipping wall and knee progressions.
+ * Uses the average of all four stats so that strength, recovery (sleep/hydration),
+ * mindfulness, and consistency are all considered — a user with strong pushups
+ * but poor sleep and inconsistent habits is placed at an appropriate level
+ * rather than being over-assigned based on strength alone.
+ *
+ * Thresholds (average score 0–100):
+ *   < 25  → entry        (Foundation)
+ *   < 50  → beginner     (Build)
+ *   < 75  → intermediate (Evolve)
+ *   ≥ 75  → advanced     (Ascend)
  */
 export function deriveCalibrationLevel(answers: CalibrationAnswers): WorkoutLevel {
-  if (answers.powerOutput < 25) return "entry";
-  if (answers.powerOutput < 50) return "beginner";
-  if (answers.powerOutput < 75) return "intermediate";
+  const avg = (
+    answers.powerOutput +
+    answers.recoveryRate +
+    answers.signalStability +
+    answers.syncRegularity
+  ) / 4;
+  if (avg < 25) return "entry";
+  if (avg < 50) return "beginner";
+  if (avg < 75) return "intermediate";
   return "advanced";
 }
 
