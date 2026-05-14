@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, CheckCircle2 } from "lucide-react";
+import { X, Play, Pause, SkipForward, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const COLOR = "#22c55e";
@@ -31,7 +31,7 @@ const EXERCISES: Exercise[] = [
     id: "shoulder_backward",
     name: "Backwards Shoulder Roll",
     instruction: "Roll your shoulders backwards in smooth circles. Keep your neck relaxed and breathe steadily.",
-    video: "/videos/knee_pushups_loop.mp4",
+    video: "/videos/shoulder-roll-backward.mp4",
     duration: 20,
     loop: true,
   },
@@ -170,13 +170,14 @@ interface LightMovementEngineProps {
   playerId: string;
   onComplete: (xpEarned: number) => void;
   onCancel: () => void;
+  nextLabel?: string;
   /** When true, skip internal complete-guided-session call (parent handles XP) */
   noApiCall?: boolean;
 }
 
 type Phase = "intro" | "running" | "rest" | "bow" | "done";
 
-export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall = false }: LightMovementEngineProps) {
+export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel, noApiCall = false }: LightMovementEngineProps) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
   const queryClient = useQueryClient();
@@ -185,10 +186,11 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
   const [phase, setPhase] = useState<Phase>("intro");
   const [countdown, setCountdown] = useState(0);
   const [xpClaimed, setXpClaimed] = useState(false);
-  const [started, setStarted] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [bowEnded, setBowEnded] = useState(false);
   const bowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const pausedRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bowVideoRef = useRef<HTMLVideoElement | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -216,7 +218,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     },
   });
 
-  // Use refs so callbacks can reference each other without circular deps
   const exerciseIdxRef = useRef(exerciseIdx);
   exerciseIdxRef.current = exerciseIdx;
   const phaseRef = useRef(phase);
@@ -235,6 +236,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
       setCountdown(seconds);
       let remaining = seconds;
       intervalRef.current = setInterval(() => {
+        if (pausedRef.current) return;
         remaining -= 1;
         if (remaining <= 3 && remaining > 0) beepTick();
         if (remaining <= 0) {
@@ -248,7 +250,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     [clearTimer, beepTick]
   );
 
-  // Stored in ref so goToNextExercise can call it without circular dep
   const startRestRef = useRef<() => void>(() => {});
 
   const goToNextExercise = useCallback(() => {
@@ -257,7 +258,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
       beepDone();
       setPhase("bow");
     } else {
-      // Auto-start next exercise — no "Begin" button after the first one
       setExerciseIdx(next);
       setPhase("running");
       const nextEx = EXERCISES[next];
@@ -273,32 +273,52 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     startCountdown(REST_SECONDS, goToNextExercise);
   }, [beepDone, startCountdown, goToNextExercise]);
 
-  // Keep ref in sync
   startRestRef.current = startRest;
 
-  // "Begin" button handler — only used for the very first exercise
   const beginExercise = useCallback(() => {
-    setStarted(true);
+    setPaused(false);
+    pausedRef.current = false;
     setPhase("running");
     setCountdown(exercise.duration);
     startCountdown(exercise.duration, startRest);
   }, [exercise.duration, startCountdown, startRest]);
 
+  const togglePause = useCallback(() => {
+    setPaused(p => {
+      pausedRef.current = !p;
+      return !p;
+    });
+  }, []);
+
+  const handleSkip = useCallback(() => {
+    clearTimer();
+    setPaused(false);
+    pausedRef.current = false;
+    if (phaseRef.current === "rest") {
+      goToNextExercise();
+    } else {
+      if (exerciseIdxRef.current === EXERCISES.length - 1) {
+        beepDone();
+        setPhase("bow");
+      } else {
+        startRest();
+      }
+    }
+  }, [clearTimer, beepDone, goToNextExercise, startRest]);
+
   useEffect(() => {
     return () => clearTimer();
   }, [clearTimer]);
 
-  // Simple ref — just stores the element, no logic here
   const exerciseVideoRef = useCallback((el: HTMLVideoElement | null) => {
     videoRef.current = el;
   }, []);
 
-  // Whenever the exercise index changes AND we're running, restart from frame 0
+  // When exercise or phase changes: restart/play/pause the video
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (phase === "running") {
-      el.pause();
+    if (phase === "running" || phase === "intro") {
       el.currentTime = 0;
       el.play().catch(() => {});
     } else {
@@ -306,13 +326,21 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     }
   }, [exerciseIdx, phase]);
 
-  // Simple ref setter for bow video — no logic here
+  // When paused state changes: play or pause the video accordingly
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (paused) {
+      el.pause();
+    } else if (phase === "running" || phase === "intro") {
+      el.play().catch(() => {});
+    }
+  }, [paused, phase]);
+
   const bowVideoCallback = useCallback((el: HTMLVideoElement | null) => {
     bowVideoRef.current = el;
   }, []);
 
-  // When bow phase starts: play the video and show the card only after it fully ends
-  // + a comfortable pause so the user can absorb the final moment
   useEffect(() => {
     if (phase !== "bow") return;
     setBowEnded(false);
@@ -322,22 +350,17 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
     let minTimePassed = false;
 
     const tryReveal = () => {
-      if (videoEnded && minTimePassed) {
-        setBowEnded(true);
-      }
+      if (videoEnded && minTimePassed) setBowEnded(true);
     };
 
-    // Minimum 3 seconds in bow phase regardless of video length
     const minTimer = setTimeout(() => {
       minTimePassed = true;
       tryReveal();
     }, 3000);
 
-    // Try to play and listen for ended
     const tryPlay = () => {
       const el = bowVideoRef.current;
       if (!el) {
-        // Hard cap if element never mounts
         bowTimerRef.current = setTimeout(() => setBowEnded(true), 8000);
         return;
       }
@@ -345,19 +368,12 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
       el.currentTime = 0;
       el.play().catch(() => {});
 
-      const onEnded = () => {
-        videoEnded = true;
-        tryReveal();
-      };
+      const onEnded = () => { videoEnded = true; tryReveal(); };
       el.addEventListener("ended", onEnded, { once: true });
 
-      // Hard fallback based on actual video duration + extra buffer
       const startFallback = () => {
         const dur = isFinite(el.duration) && el.duration > 0 ? el.duration : 5;
-        bowTimerRef.current = setTimeout(() => {
-          videoEnded = true;
-          tryReveal();
-        }, (dur + 2) * 1000);
+        bowTimerRef.current = setTimeout(() => { videoEnded = true; tryReveal(); }, (dur + 2) * 1000);
       };
 
       if (isFinite(el.duration) && el.duration > 0) {
@@ -368,7 +384,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
       }
     };
 
-    // Give AnimatePresence a frame to mount the element before we grab it
     const mountTimer = setTimeout(tryPlay, 50);
 
     return () => {
@@ -376,15 +391,12 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
       clearTimeout(mountTimer);
       if (bowTimerRef.current) clearTimeout(bowTimerRef.current);
     };
-  }, [phase]); // eslint-disable-line
+  }, [phase]);
 
   const handleClaim = useCallback(() => {
-    // Close immediately so the user sees the day card without any delay
     onCompleteRef.current(XP_REWARD);
-    // Record XP in the background (don't block the UI on it)
     if (!noApiCall && !xpClaimed) {
       setXpClaimed(true);
-      // Persist today's completion so the home screen can reflect it
       localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
       claimMutation.mutate();
     }
@@ -428,7 +440,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
         </button>
       </div>
 
-      {/* Hidden preload: load the next exercise video while current plays */}
+      {/* Preload next two exercise videos while current plays */}
       {phase === "running" && exerciseIdx + 1 < EXERCISES.length && (
         <video
           key={`preload-${exerciseIdx + 1}`}
@@ -472,7 +484,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
               loop={exercise.loop}
               preload="auto"
             />
-            {/* dark gradient overlay */}
             <div
               className="absolute inset-0"
               style={{
@@ -531,9 +542,29 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
         )}
       </AnimatePresence>
 
+      {/* Paused overlay */}
+      <AnimatePresence>
+        {paused && phase === "running" && (
+          <motion.div
+            key="paused-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-10 flex items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.45)" }}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Pause size={40} className="text-white/60" />
+              <span className="text-white/50 text-sm tracking-wider uppercase">Paused</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Bottom content */}
       <div className="absolute bottom-0 left-0 right-0 z-20 px-5 pb-10">
         <AnimatePresence mode="wait">
+
           {/* INTRO */}
           {phase === "intro" && (
             <motion.div
@@ -579,19 +610,78 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="flex items-end justify-between"
+              className="flex flex-col gap-4"
             >
-              <div>
-                <div className="text-white/50 text-xs uppercase tracking-widest mb-1">
-                  {exerciseIdx + 1} / {EXERCISES.length}
+              {/* Exercise label + countdown */}
+              <div className="flex items-end justify-between">
+                <div>
+                  <div className="text-white/50 text-xs uppercase tracking-widest mb-1">
+                    {exerciseIdx + 1} / {EXERCISES.length}
+                  </div>
+                  <div className="text-white text-lg font-bold">{exercise.name}</div>
                 </div>
-                <div className="text-white text-lg font-bold">{exercise.name}</div>
+                <CircularCountdown total={exercise.duration} remaining={countdown} isRest={false} />
               </div>
-              <CircularCountdown total={exercise.duration} remaining={countdown} isRest={false} />
+
+              {/* Pause / Skip controls */}
+              <div className="flex gap-3">
+                <button
+                  data-testid="button-pause-light-movement"
+                  onClick={togglePause}
+                  className="flex-1 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
+                  style={{
+                    backgroundColor: paused ? `${COLOR}18` : "rgba(255,255,255,0.08)",
+                    border: paused ? `1px solid ${COLOR}45` : "1px solid rgba(255,255,255,0.12)",
+                    color: paused ? COLOR : "rgba(255,255,255,0.65)",
+                  }}
+                >
+                  {paused ? <Play size={14} /> : <Pause size={14} />}
+                  {paused ? "Resume" : "Pause"}
+                </button>
+                <button
+                  data-testid="button-skip-light-movement"
+                  onClick={handleSkip}
+                  className="flex-1 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
+                  style={{
+                    backgroundColor: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "rgba(255,255,255,0.40)",
+                  }}
+                >
+                  <SkipForward size={14} />
+                  Skip
+                </button>
+              </div>
             </motion.div>
           )}
 
-          {/* BOW / COMPLETE — only appears after bow video finishes */}
+          {/* REST — also shows skip button */}
+          {phase === "rest" && (
+            <motion.div
+              key="rest-controls"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="flex justify-center"
+            >
+              <button
+                data-testid="button-skip-rest"
+                onClick={handleSkip}
+                className="px-8 py-2.5 rounded-2xl text-sm font-medium flex items-center gap-2 transition-all active:scale-95"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "rgba(255,255,255,0.40)",
+                }}
+              >
+                <SkipForward size={13} />
+                Skip Rest
+              </button>
+            </motion.div>
+          )}
+
+          {/* BOW / COMPLETE — appears after bow video finishes */}
           {phase === "bow" && bowEnded && (
             <motion.div
               key="bow-complete"
@@ -613,10 +703,11 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, noApiCall 
                 onClick={handleClaim}
                 data-testid="button-claim-light-movement-xp"
               >
-                Continue
+                {nextLabel ? `Continue to ${nextLabel}` : "Continue"}
               </button>
             </motion.div>
           )}
+
         </AnimatePresence>
       </div>
     </motion.div>

@@ -935,6 +935,7 @@ export default function GuidedSessionPage() {
         playerId={player.id}
         onComplete={handleLightMovementComplete}
         onCancel={() => setLocation("/")}
+        nextLabel="Physical Circuit"
       />
     );
   }
