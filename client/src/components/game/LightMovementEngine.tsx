@@ -4,6 +4,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Pause, SkipForward, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { addXP, completeTask } from "@/lib/workoutProgressStore";
 
 const COLOR = "#22c55e";
 const REST_SECONDS = 7;
@@ -213,6 +214,8 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
       return res.json();
     },
     onSuccess: () => {
+      addXP(15, "agility");
+      completeTask("agility");
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
     },

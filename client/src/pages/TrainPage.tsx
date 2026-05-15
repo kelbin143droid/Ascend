@@ -285,6 +285,20 @@ function WorkoutFeedbackModal({
             {step === 3 ? "See My Score" : "Next →"}
           </button>
         </div>
+        <button
+          onClick={() => {
+            if (difficulty && recovery && form) {
+              onSubmit(difficulty, recovery, form);
+            } else {
+              onSubmit(difficulty ?? "same", recovery ?? "normal", form ?? "yes");
+            }
+          }}
+          data-testid="button-skip-feedback-modal"
+          className="w-full mt-2 py-2 text-xs text-center transition-all active:scale-[0.98]"
+          style={{ color: "#475569" }}
+        >
+          Skip feedback
+        </button>
       </motion.div>
     </motion.div>
   );
@@ -455,7 +469,7 @@ function RecommendationCard({
             className="w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
             style={{ backgroundColor: "#1e293b", color: "#94a3b8" }}
           >
-            Got it
+            Continue to Next Session
           </button>
         </div>
       </motion.div>
@@ -660,8 +674,11 @@ export default function TrainPage() {
 
   // ── Called by GuidedActivityEngine when all steps complete
   const handleBuilderComplete = () => {
-    setBuilderActivity(null);
-    setShowFeedbackModal(true); // intercept — ask for difficulty before recording
+    // Show the feedback modal first so it mounts before the engine unmounts.
+    // Delaying the null-out prevents a race condition where pendingWorkoutRef
+    // is read inside the modal before the engine has fully cleaned up.
+    setShowFeedbackModal(true);
+    setTimeout(() => setBuilderActivity(null), 100);
   };
 
   // ── Called when the user completes all 3 feedback questions

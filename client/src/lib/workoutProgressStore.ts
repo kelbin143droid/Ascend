@@ -196,3 +196,64 @@ export function shouldSuggestLevelUp(level: WorkoutLevel): boolean {
   const avg = sessions.reduce((s, r) => s + r.performanceScore, 0) / sessions.length;
   return avg >= 80 && !sessions.slice(-2).every((s) => s.userDifficulty === "hard");
 }
+
+// ── Daily XP / task tracking (local, resets at midnight) ─────────────────────
+// Tracks XP earned per stat category and which tasks were completed today.
+// Used to power the XP breakdown display (Sense 15 + Agility 15 + Vitality 10
+// + Strength 40 + System Synthesis Bonus 20 = 100 XP).
+
+const KEY_DAILY_XP = "ascend_daily_xp_v1";
+
+interface DailyXPState {
+  date: string;
+  categories: Record<string, number>;
+  completedTasks: string[];
+  total: number;
+}
+
+function getTodayDate(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function loadDailyXP(): DailyXPState {
+  try {
+    const raw = localStorage.getItem(KEY_DAILY_XP);
+    if (raw) {
+      const parsed = JSON.parse(raw) as DailyXPState;
+      if (parsed.date === getTodayDate()) return parsed;
+    }
+  } catch {}
+  return { date: getTodayDate(), categories: {}, completedTasks: [], total: 0 };
+}
+
+function saveDailyXP(state: DailyXPState): void {
+  try { localStorage.setItem(KEY_DAILY_XP, JSON.stringify(state)); } catch {}
+}
+
+export function addXP(amount: number, category: string = "general"): void {
+  const state = loadDailyXP();
+  state.categories[category] = (state.categories[category] ?? 0) + amount;
+  state.total += amount;
+  saveDailyXP(state);
+}
+
+export function completeTask(taskId: string): void {
+  const state = loadDailyXP();
+  if (!state.completedTasks.includes(taskId)) {
+    state.completedTasks.push(taskId);
+  }
+  saveDailyXP(state);
+}
+
+export function getDailyXPBreakdown(): { category: string; xp: number }[] {
+  const state = loadDailyXP();
+  return Object.entries(state.categories).map(([category, xp]) => ({ category, xp }));
+}
+
+export function getDailyTotalXP(): number {
+  return loadDailyXP().total;
+}
+
+export function getDailyCompletedTasks(): string[] {
+  return loadDailyXP().completedTasks;
+}

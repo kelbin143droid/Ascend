@@ -18,6 +18,7 @@ import {
   caloriesForTime,
 } from "@/lib/workoutLogStore";
 import { readEnergySettings } from "@/lib/energySettingsStore";
+import { addXP, completeTask } from "@/lib/workoutProgressStore";
 
 /**
  * Map a guided-session step id to its canonical exercise name used by
@@ -1015,6 +1016,10 @@ export function GuidedActivityEngine({
       setXpEarned(earned);
       setAntiGrindMultiplier(data?.antiGrindMultiplier ?? 1.0);
       setDailyCapReached(data?.dailyCapReached ?? false);
+      if (earned > 0) {
+        addXP(earned, activity.stat);
+        completeTask(activity.id);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home"] });
       queryClient.invalidateQueries({ queryKey: ["training-scaling"] });

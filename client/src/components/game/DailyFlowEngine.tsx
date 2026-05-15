@@ -9,7 +9,7 @@ import type { ActivityDefinition } from "@/lib/activityEngine";
 import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Dumbbell, ChevronRight } from "lucide-react";
 import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
-const FLOW_BONUS_XP = 5;
+const FLOW_BONUS_XP = 20;
 
 type FeedbackValue = "easy" | "same" | "challenging" | null;
 
@@ -420,7 +420,7 @@ export function DailyFlowEngine({
           >
             <Zap size={16} style={{ color: colors.primary }} />
             <span className="text-sm font-bold" style={{ color: colors.primary }}>
-              +{FLOW_BONUS_XP} Bonus XP
+              +{FLOW_BONUS_XP} XP — System Synthesis Bonus
             </span>
           </motion.div>
         )}
