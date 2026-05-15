@@ -358,6 +358,7 @@ export async function registerRoutes(
       const DAILY_FLOW_SESSION_XP: Record<string, number> = {
         phase1_meditation: 15,
         phase1_agility:    15,
+        "light-movement":  15,
         phase1_vitality:   10,
         phase1_strength:   40,
       };

@@ -124,7 +124,7 @@ export function getXpForSession(
   feedback: BreathingSessionFeedback,
   isStreakDay: boolean
 ): { base: number; streakBonus: number; perfectBonus: number; total: number } {
-  const base = 10 + (profile.phase - 1) * 3;
+  const base = 15 + (profile.phase - 1) * 3;
   const streakBonus = isStreakDay ? 5 : 0;
   const perfectBonus = isPerfectSession(feedback) ? 8 : 0;
   return { base, streakBonus, perfectBonus, total: base + streakBonus + perfectBonus };

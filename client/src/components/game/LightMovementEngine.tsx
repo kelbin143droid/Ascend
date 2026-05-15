@@ -189,6 +189,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
   const [xpClaimed, setXpClaimed] = useState(false);
   const [paused, setPaused] = useState(false);
   const [bowEnded, setBowEnded] = useState(false);
+  const [earnedXp, setEarnedXp] = useState<number>(15);
   const bowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pausedRef = useRef(false);
@@ -213,11 +214,13 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
       });
       return res.json();
     },
-    onSuccess: () => {
-      addXP(15, "agility");
+    onSuccess: (data: any) => {
+      const xp = data?.xpEarned ?? 15;
+      setEarnedXp(xp);
+      addXP(xp, "agility");
       completeTask("agility");
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-      queryClient.invalidateQueries({ queryKey: ["home"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+      queryClient.invalidateQueries({ queryKey: ["home", playerId] });
     },
   });
 
@@ -702,6 +705,12 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
               </div>
               <div className="text-white/90 text-sm font-medium">
                 All 8 exercises done. Your body thanks you.
+              </div>
+              <div
+                className="text-center font-bold text-2xl tracking-wide"
+                style={{ color: COLOR }}
+              >
+                +{earnedXp} XP
               </div>
               <button
                 className="w-full py-4 rounded-2xl font-bold text-base transition-all active:scale-95"

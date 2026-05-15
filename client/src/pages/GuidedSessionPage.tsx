@@ -927,7 +927,8 @@ export default function GuidedSessionPage() {
           window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
         });
       } catch { /* noop */ }
-      setLocation("/");
+      // Navigate home with autostart flag so Physical Circuit launches immediately
+      setLocation("/?autostart=strength");
     };
 
     return (

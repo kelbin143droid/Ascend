@@ -121,6 +121,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [avatarIcon,    setAvatarState]   = useState(() => getAvatarIcon());
   const [flowActive,       setFlowActive]       = useState(false);
   const [singleActivityId, setSingleActivityId] = useState<string | null>(null);
+  // Auto-start strength when navigated from agility completion (?autostart=strength)
+  const [autoStartPending, setAutoStartPending] = useState(() =>
+    typeof window !== "undefined" && window.location.search.includes("autostart=strength")
+  );
 
   const { completedIds, markComplete } = useSessionProgress();
 
@@ -202,21 +206,31 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     window.addEventListener("ascend:sleep-check", h);
     return () => window.removeEventListener("ascend:sleep-check", h);
   }, []);
+  // Auto-start strength circuit when landing from agility completion
+  useEffect(() => {
+    if (!autoStartPending || activities.length === 0) return;
+    window.history.replaceState(null, "", "/");
+    setAutoStartPending(false);
+    if (!isActivityDone("phase1_strength")) {
+      setSingleActivityId("phase1_strength");
+      setFlowActive(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartPending, activities.length]);
   const handleFlowDone = useCallback((ids: string[], _b: boolean) => {
+    // Close the flow engine immediately so the home content is visible right away
+    // (avoids a blank/loading flash while queries refetch in the background).
+    setFlowActive(false);
+    setSingleActivityId(null);
     if (ids.length > 0) {
       markFlowCompleted(ids);
       if (ids.includes("phase1_meditation")) recordBreathingSession(true);
       localStorage.setItem("ascend_first_mission_done", "1");
       ids.forEach(id => markComplete(id));
     }
-    // Force an immediate refetch so XP bars and stats update as soon as the
-    // home screen becomes visible (don't rely solely on background invalidation).
-    queryClient.refetchQueries({ queryKey: ["/api/player", player.id] });
-    queryClient.refetchQueries({ queryKey: ["home", player.id] });
-    setTimeout(() => {
-      setFlowActive(false);
-      setSingleActivityId(null);
-    }, 300);
+    // Refetch in background — home content is already visible with stale data.
+    queryClient.invalidateQueries({ queryKey: ["/api/player", player.id] });
+    queryClient.invalidateQueries({ queryKey: ["home", player.id] });
   }, [markComplete, queryClient, player.id]);
 
   // Featured card tap — navigate to the correct standalone session,
