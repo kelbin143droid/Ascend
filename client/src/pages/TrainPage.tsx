@@ -835,8 +835,9 @@ export default function TrainPage() {
 
   const handleActivityComplete = (activityId: string) => {
     setCompletedToday((prev) => new Set(prev).add(activityId));
-    setActiveActivity(null);
     queryClient.invalidateQueries({ queryKey: ["training-scaling", player?.id] });
+    // Defer state cleanup so the engine's exit animation finishes cleanly.
+    setTimeout(() => setActiveActivity(null), 200);
   };
 
   const handleFlowComplete = (completedIds: string[], _bonus: boolean) => {
@@ -845,9 +846,10 @@ export default function TrainPage() {
       completedIds.forEach((id) => next.add(id));
       return next;
     });
-    setFlowActive(false);
     queryClient.invalidateQueries({ queryKey: ["training-scaling", player?.id] });
     queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+    // Defer unmount so DailyFlowEngine can complete its cleanup / exit animation.
+    setTimeout(() => setFlowActive(false), 200);
   };
 
   const allComplete = completedToday.size === activities.length;

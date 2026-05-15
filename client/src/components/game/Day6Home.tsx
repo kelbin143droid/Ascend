@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
@@ -114,6 +115,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const mutedCol = isNeonEmp ? fae.ink + "88" : colors.textMuted;
 
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
   const [showCustomize, setShowCustomize] = useState(false);
   const [showAvatar,    setShowAvatar]    = useState(false);
   const [avatarIcon,    setAvatarState]   = useState(() => getAvatarIcon());
@@ -207,11 +209,15 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       localStorage.setItem("ascend_first_mission_done", "1");
       ids.forEach(id => markComplete(id));
     }
+    // Force an immediate refetch so XP bars and stats update as soon as the
+    // home screen becomes visible (don't rely solely on background invalidation).
+    queryClient.refetchQueries({ queryKey: ["/api/player", player.id] });
+    queryClient.refetchQueries({ queryKey: ["home", player.id] });
     setTimeout(() => {
       setFlowActive(false);
       setSingleActivityId(null);
-    }, 150);
-  }, [markComplete]);
+    }, 300);
+  }, [markComplete, queryClient, player.id]);
 
   // Featured card tap — navigate to the correct standalone session,
   // or start an isolated single-activity flow for strength (no standalone page).

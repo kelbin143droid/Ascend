@@ -642,7 +642,7 @@ function BreathingVisual({
           exit={{ opacity: 0, y: 5 }}
           transition={{ duration: 0.22 }}
           className="text-[11px] font-black tracking-[0.38em] uppercase select-none"
-          style={{ color: phaseColor, textShadow: `0 0 12px ${phaseColor}70` }}
+          style={{ color: phaseColor, textShadow: `0 0 10px ${phaseColor}48` }}
         >
           {phaseLabel}
         </motion.div>
@@ -666,11 +666,11 @@ function BreathingVisual({
         {phase === "inhale" && (
           <motion.div
             className="absolute rounded-full pointer-events-none"
-            style={{ border: `1px solid ${color}22` }}
+            style={{ border: `1px solid ${color}18` }}
             animate={{
               width:   [orbSize, orbSize + 48],
               height:  [orbSize, orbSize + 48],
-              opacity: [0.6, 0],
+              opacity: [0.28, 0],
             }}
             transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
           />
@@ -684,7 +684,7 @@ function BreathingVisual({
             height:          orbSize,
             backgroundColor: `${phaseColor}16`,
             border:          `2px solid ${phaseColor}55`,
-            boxShadow:       `0 0 ${Math.round(orbSize / 3)}px ${phaseColor}28, inset 0 0 ${Math.round(orbSize / 5)}px ${phaseColor}10`,
+            boxShadow:       `0 0 ${Math.round(orbSize / 4)}px ${phaseColor}16, inset 0 0 ${Math.round(orbSize / 6)}px ${phaseColor}07`,
             transition:      "width 50ms linear, height 50ms linear, background-color 0.6s ease, border-color 0.6s ease, box-shadow 0.6s ease",
           }}
         >
@@ -700,7 +700,7 @@ function BreathingVisual({
               style={{
                 fontSize: orbSize > 140 ? 36 : 28,
                 color:    phaseColor,
-                textShadow: `0 0 14px ${phaseColor}90`,
+                textShadow: `0 0 10px ${phaseColor}55`,
               }}
             >
               {phaseSecondsLeft}
@@ -1020,8 +1020,8 @@ export function GuidedActivityEngine({
         addXP(earned, activity.stat);
         completeTask(activity.id);
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-      queryClient.invalidateQueries({ queryKey: ["home"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+      queryClient.invalidateQueries({ queryKey: ["home", playerId] });
       queryClient.invalidateQueries({ queryKey: ["training-scaling"] });
       apiRequest("POST", `/api/player/${playerId}/record-activity`, {
         activityId: activity.id,
@@ -1712,9 +1712,9 @@ export function GuidedActivityEngine({
                     <button
                       className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs transition-all active:scale-95"
                       style={{
-                        backgroundColor: isPaused ? `${activity.color}20` : `${colors.textMuted}10`,
-                        color: isPaused ? activity.color : colors.textMuted,
-                        border: `1px solid ${isPaused ? activity.color + "40" : colors.textMuted + "20"}`,
+                        backgroundColor: isPaused ? `${activity.color}20` : `${colors.textMuted}18`,
+                        color: isPaused ? activity.color : colors.text,
+                        border: `1px solid ${isPaused ? activity.color + "40" : colors.textMuted + "35"}`,
                       }}
                       onClick={handlePause}
                       data-testid="button-pause-step"
@@ -1727,9 +1727,9 @@ export function GuidedActivityEngine({
                     <button
                       className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs transition-all active:scale-95"
                       style={{
-                        backgroundColor: `${colors.textMuted}10`,
-                        color: colors.textMuted,
-                        border: `1px solid ${colors.textMuted}20`,
+                        backgroundColor: isBreathStep ? `${colors.textMuted}22` : `${colors.textMuted}18`,
+                        color: colors.text,
+                        border: `1px solid ${colors.textMuted}35`,
                       }}
                       onClick={handleSkip}
                       data-testid="button-skip-step"
@@ -1746,9 +1746,9 @@ export function GuidedActivityEngine({
                       style={{
                         backgroundColor: music.isPlaying
                           ? `${activity.color}20`
-                          : `${colors.textMuted}10`,
-                        color: music.isPlaying ? activity.color : colors.textMuted,
-                        border: `1px solid ${music.isPlaying ? activity.color + "50" : colors.textMuted + "20"}`,
+                          : isBreathStep ? `${colors.textMuted}22` : `${colors.textMuted}18`,
+                        color: music.isPlaying ? activity.color : colors.text,
+                        border: `1px solid ${music.isPlaying ? activity.color + "50" : colors.textMuted + "35"}`,
                       }}
                       onClick={() => (music.isPlaying ? pauseMusic() : playMusic())}
                       data-testid="button-music-inline"

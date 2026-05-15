@@ -78,8 +78,8 @@ export function DailyFlowEngine({
     },
     onSuccess: () => {
       setBonusXpAwarded(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
-      queryClient.invalidateQueries({ queryKey: ["home"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
+      queryClient.invalidateQueries({ queryKey: ["home", playerId] });
     },
   });
 
@@ -120,6 +120,9 @@ export function DailyFlowEngine({
     if (nextIdx >= activities.length) {
       const allDone = newCompletedSize === activities.length;
       if (allDone) bonusMutation.mutate();
+      // Stop rendering GuidedActivityEngine BEFORE setting flowFinished so React
+      // can cleanly unmount the engine without a render-state conflict.
+      setRunningActivity(false);
       setFlowFinished(true);
       return;
     }
@@ -212,7 +215,11 @@ export function DailyFlowEngine({
     setShowFeedback(false);
   }, [feedback, strengthCompleted, feedbackMutation]);
 
+  const hasFinishedRef = useRef(false);
   const handleFlowFinish = useCallback(() => {
+    // Guard against double-invocation (auto-dismiss timer + "Return Home" tap).
+    if (hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
     clearFlow();
     onComplete(Array.from(completedIds), bonusXpAwarded);
   }, [completedIds, bonusXpAwarded, onComplete]);
