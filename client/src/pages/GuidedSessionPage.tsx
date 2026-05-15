@@ -368,26 +368,26 @@ function BreathingSession({
         style={{
           transform: `scale(${scale})`,
           transition: `transform ${transitionDuration} ease-in-out`,
-          background: `radial-gradient(circle, ${accentColor}30 0%, ${accentColor}10 60%, transparent 100%)`,
-          border: `2px solid ${accentColor}40`,
+          background: `radial-gradient(circle, ${accentColor}60 0%, ${accentColor}28 60%, transparent 100%)`,
+          border: `2px solid ${accentColor}aa`,
           boxShadow: phase === "Hold"
-            ? `0 0 40px ${accentColor}30`
-            : `0 0 20px ${accentColor}15`,
+            ? `0 0 40px ${accentColor}55, 0 0 16px ${accentColor}30`
+            : `0 0 28px ${accentColor}40, 0 0 10px ${accentColor}22`,
         }}
       />
       <div className="flex flex-col items-center gap-1">
         <p
           data-testid="breathing-phase-label"
           className="text-xl font-display font-medium tracking-wider"
-          style={{ color: `${accentColor}cc` }}
+          style={{ color: `${accentColor}ff` }}
         >
           {phase}
         </p>
-        <p className="text-xs" style={{ color: `${accentColor}55` }}>
+        <p className="text-xs" style={{ color: `${accentColor}cc` }}>
           {phaseHint}
         </p>
       </div>
-      <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.25)" }}>
+      <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>
         Voice guided · Ambient audio
       </p>
     </div>
@@ -1003,11 +1003,11 @@ export default function GuidedSessionPage() {
             muted
             loop
             preload="auto"
-            style={{ opacity: 0.72 }}
+            style={{ opacity: 0.18 }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.28) 100%)" }}
+            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.40) 50%, rgba(0,0,0,0.65) 100%)" }}
           />
         </div>
       )}
@@ -1190,9 +1190,9 @@ export default function GuidedSessionPage() {
               onClick={() => setPaused(p => !p)}
               className="flex-1 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
               style={{
-                backgroundColor: paused ? `${accentColor}18` : "rgba(255,255,255,0.06)",
-                border: paused ? `1px solid ${accentColor}45` : "1px solid rgba(255,255,255,0.10)",
-                color: paused ? accentColor : "rgba(255,255,255,0.55)",
+                backgroundColor: paused ? `${accentColor}30` : "rgba(255,255,255,0.18)",
+                border: paused ? `1px solid ${accentColor}80` : "1px solid rgba(255,255,255,0.35)",
+                color: paused ? accentColor : "rgba(255,255,255,0.90)",
               }}
             >
               {paused ? <Play size={14} /> : <Pause size={14} />}
@@ -1203,9 +1203,9 @@ export default function GuidedSessionPage() {
               onClick={() => { setPaused(false); handleComplete(); }}
               className="flex-1 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
               style={{
-                backgroundColor: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                color: "rgba(255,255,255,0.40)",
+                backgroundColor: "rgba(255,255,255,0.14)",
+                border: "1px solid rgba(255,255,255,0.28)",
+                color: "rgba(255,255,255,0.78)",
               }}
             >
               <SkipForward size={14} />
@@ -1213,7 +1213,7 @@ export default function GuidedSessionPage() {
             </button>
           </div>
 
-          <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.22)" }}>
+          <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.50)" }}>
             {paused
               ? "Session paused"
               : `${Math.max(1, Math.ceil((session.durationSeconds - elapsed) / 60))} min remaining`}
