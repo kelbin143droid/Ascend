@@ -90,9 +90,9 @@ export function getXPForActivity(durationMinutes: number): number {
 
 // Fixed base XP per training category (Phase 1 balanced system)
 const CATEGORY_BASE_XP: Record<string, number> = {
-  meditation: 10,  // Focus / Calm Breathing
-  strength:   15,  // Strength Circuit
-  agility:    10,  // Mobility Flow
+  meditation: 15,  // Focus / Calm Breathing
+  strength:   40,  // Strength Circuit
+  agility:    15,  // Mobility Flow
   vitality:   10,  // Hydration + Sleep + Nutrition
 };
 

@@ -353,6 +353,18 @@ export async function registerRoutes(
       const rawXP = Math.round(baseXP * tierMultiplier * antiGrindMultiplier);
       let guidedXP = Math.min(rawXP, remainingCap);
 
+      // Daily flow sessions always award exact fixed XP — no tier multiplier, no
+      // anti-grind reduction, and no daily cap interference.
+      const DAILY_FLOW_SESSION_XP: Record<string, number> = {
+        phase1_meditation: 15,
+        phase1_agility:    15,
+        phase1_vitality:   10,
+        phase1_strength:   40,
+      };
+      if (DAILY_FLOW_SESSION_XP[parsed.data.sessionId] !== undefined) {
+        guidedXP = DAILY_FLOW_SESSION_XP[parsed.data.sessionId];
+      }
+
       // Onboarding sessions skip stat XP and award a fixed amount on first completion.
       // quick-reflection is Day 3's paired second session — it's in onboarding but awards 0 XP
       // (hydration-check already gives Day 3's 5 XP) and does not increment streak.
