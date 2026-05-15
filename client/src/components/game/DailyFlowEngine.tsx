@@ -224,13 +224,8 @@ export function DailyFlowEngine({
     onComplete(Array.from(completedIds), bonusXpAwarded);
   }, [completedIds, bonusXpAwarded, onComplete]);
 
-  // Auto-dismiss completion screen 2.5s after it becomes visible.
-  // Runs when flowFinished=true and the feedback modal is closed (or never shown).
-  useEffect(() => {
-    if (!flowFinished || showFeedback) return;
-    const t = setTimeout(handleFlowFinish, 2500);
-    return () => clearTimeout(t);
-  }, [flowFinished, showFeedback]);
+  // No auto-dismiss — user must tap "Return Home" to ensure they see the
+  // completion screen and any level-up animation that fires on top of it.
 
   // ── Breathing progression feedback (shown right after meditation) ─────────
   if (showBreathingFeedback) {
@@ -259,7 +254,7 @@ export function DailyFlowEngine({
   if (showFeedback) {
     return (
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={{ opacity: 1 }}
         animate={{ opacity: 1 }}
         className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
         style={{ backgroundColor: colors.background }}
@@ -344,7 +339,7 @@ export function DailyFlowEngine({
   if (flowFinished) {
     return (
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={{ opacity: 1 }}
         animate={{ opacity: 1 }}
         className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
         style={{ backgroundColor: colors.background }}

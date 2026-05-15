@@ -15,6 +15,7 @@ import {
 import { useLocation } from "wouter";
 import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
+import { LevelUpOverlay } from "./LevelUpOverlay";
 import { SystemLayout } from "./SystemLayout";
 import { type CategoryTiers } from "@/lib/activityEngine";
 import { getWorkoutLevel } from "@/lib/workoutProgressStore";
@@ -279,6 +280,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <SystemLayout>
+      {/* Level-up animation — always mounted so it can fire over any screen */}
+      <LevelUpOverlay />
       <CustomizePanel open={showCustomize} onClose={() => setShowCustomize(false)} />
       <AnimatePresence>
         {flowActive && (
