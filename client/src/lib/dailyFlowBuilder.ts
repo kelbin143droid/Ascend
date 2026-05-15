@@ -12,8 +12,8 @@
  *   → NO strength circuit at all
  *
  * Build (beginner)
- *   → [Calm Breathing, Agility Flow, Starter Strength — 1 round]
- *   → wall push-ups → assisted squats → glute bridges → plank hold
+ *   → [Calm Breathing, Agility Flow, Physical Circuit — 1 round]
+ *   → Push-ups → Sit-ups → Squats → Plank hold (regular floor push-ups, no wall/incline)
  *   → Short, guided, tier-scaled reps. Matches session card promise exactly.
  *
  * Evolve (intermediate)
@@ -47,8 +47,8 @@ export interface DailyFlowBuildOptions {
 /**
  * Builds a short, 1-round Starter Strength activity for the Build path.
  *
- * Exercises match the session card promise exactly:
- *   Wall push-ups → Assisted squats → Glute bridges → Plank hold
+ * Exercises: Push-ups → Sit-ups → Squats → Plank hold
+ * (regular floor push-ups, no wall/incline variations)
  *
  * Single round with 15 s rests, tier-scaled reps (8–16 / 10–18).
  * No second round, no multi-set structure.
@@ -56,16 +56,16 @@ export interface DailyFlowBuildOptions {
 function buildStarterStrengthActivity(tier: number): ActivityDefinition {
   const xpMultiplier = TIER_XP_MULTIPLIERS[tier] ?? 1.0;
 
-  const wallPushReps = 8  + Math.min(tier - 1, 4) * 2;   // 8 → 16
+  const pushReps     = 8  + Math.min(tier - 1, 4) * 2;   // 8 → 16
+  const situpReps    = 10 + Math.min(tier - 1, 4) * 2;   // 10 → 18
   const squatReps    = 10 + Math.min(tier - 1, 4) * 2;   // 10 → 18
-  const gluteReps    = 10 + Math.min(tier - 1, 4) * 2;   // 10 → 18
-  const plankSeconds = 15 + Math.min(tier - 1, 4) * 5;   // 15 → 35 s
+  const plankSeconds = 20 + Math.min(tier - 1, 4) * 5;   // 20 → 40 s
   const restSeconds  = 15;
   const SECS_PER_REP = 3;
 
   const duration =
     10 +
-    (wallPushReps + squatReps + gluteReps) * SECS_PER_REP +
+    (pushReps + situpReps + squatReps) * SECS_PER_REP +
     3 * restSeconds +
     plankSeconds +
     5;
@@ -74,21 +74,21 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
     {
       id: "starter_intro",
       type: "instruction",
-      label: "Get Ready — Starter Strength",
+      label: "Get Ready — Physical Circuit",
       instruction:
-        "One round · Wall push-ups → Squats → Glute bridges → Plank. Take it at your own pace.",
+        "One round · Push-ups → Sit-ups → Squats → Plank. Full form, your pace.",
       voiceText:
-        "Get ready. One round. Wall push-ups, squats, glute bridges, then a plank hold.",
+        "Get ready. One round. Push-ups, sit-ups, squats, then a plank hold.",
     },
     {
-      id: "wall_pushups",
+      id: "pushups",
       type: "rep",
-      label: "Wall Push-ups",
-      instruction: `${wallPushReps} wall push-ups. Hands shoulder-width apart, lean in, push back.`,
-      repCount: wallPushReps,
+      label: "Push-ups",
+      instruction: `${pushReps} push-ups. Full range of motion — chest near the floor, arms fully extended.`,
+      repCount: pushReps,
       repLabel: "reps",
-      voiceText: `Wall push-ups. ${wallPushReps} reps.`,
-      videoSrc: "/videos/wall_pushups_loop.mp4",
+      voiceText: `Push-ups. ${pushReps} reps. Full range.`,
+      videoSrc: "/videos/pushups_loop.mp4",
     },
     {
       id: "rest_1",
@@ -99,14 +99,14 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
       voiceText: "Rest. 15 seconds.",
     },
     {
-      id: "asst_squats",
+      id: "situps",
       type: "rep",
-      label: "Assisted Squats",
-      instruction: `${squatReps} squats. Hold a chair or wall if needed. Chest up.`,
-      repCount: squatReps,
+      label: "Sit-ups",
+      instruction: `${situpReps} sit-ups. Core tight. Controlled on the way down.`,
+      repCount: situpReps,
       repLabel: "reps",
-      voiceText: `Assisted squats. ${squatReps} reps. Chest up.`,
-      videoSrc: "/videos/squats_loop.mp4",
+      voiceText: `Sit-ups. ${situpReps} reps. Core tight.`,
+      videoSrc: "/videos/abs_crunch_loop.mp4",
     },
     {
       id: "rest_2",
@@ -117,14 +117,14 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
       voiceText: "Rest. 15 seconds.",
     },
     {
-      id: "glute_bridges",
+      id: "squats",
       type: "rep",
-      label: "Glute Bridges",
-      instruction: `${gluteReps} glute bridges. Lie on your back, feet flat, push hips up.`,
-      repCount: gluteReps,
+      label: "Squats",
+      instruction: `${squatReps} squats. Chest up, knees tracking over toes, drive through your heels.`,
+      repCount: squatReps,
       repLabel: "reps",
-      voiceText: `Glute bridges. ${gluteReps} reps.`,
-      videoSrc: "/videos/glute_bridges_loop.mp4",
+      voiceText: `Squats. ${squatReps} reps. Chest up.`,
+      videoSrc: "/videos/squats_loop.mp4",
     },
     {
       id: "rest_3",
@@ -138,7 +138,7 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
       id: "plank_hold",
       type: "timer",
       label: "Plank Hold",
-      instruction: `Hold a plank for ${plankSeconds} seconds. Straight line from head to heels.`,
+      instruction: `Hold a plank for ${plankSeconds} seconds. Straight line from head to heels. Breathe.`,
       durationSeconds: plankSeconds,
       voiceText: `Plank hold. ${plankSeconds} seconds.`,
       videoSrc: "/videos/plank_hold_loop.mp4",
@@ -147,9 +147,9 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
     {
       id: "starter_done",
       type: "completion",
-      label: "Starter Strength Complete",
+      label: "Physical Circuit Complete",
       instruction: "Well done. One round of strength work done.",
-      voiceText: "Starter strength complete. Great work.",
+      voiceText: "Physical circuit complete. Great work.",
     },
   ];
 

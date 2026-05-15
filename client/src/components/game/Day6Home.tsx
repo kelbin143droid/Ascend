@@ -207,8 +207,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       localStorage.setItem("ascend_first_mission_done", "1");
       ids.forEach(id => markComplete(id));
     }
-    setFlowActive(false);
-    setSingleActivityId(null);
+    setTimeout(() => {
+      setFlowActive(false);
+      setSingleActivityId(null);
+    }, 150);
   }, [markComplete]);
 
   // Featured card tap — navigate to the correct standalone session,

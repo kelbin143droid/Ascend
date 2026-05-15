@@ -130,11 +130,10 @@ export const WORKOUT_PLANS: Record<WorkoutLevel, WorkoutPlan> = {
     description: "Core moves with guided animation",
     color: "#3b82f6",
     exercises: [
-      { id: "beg_push",   name: "Push-ups",       sets: 3, reps: "8-12",  videoSrc: "/videos/pushups_loop.mp4",     voiceCue: "Push-ups." },
-      { id: "beg_situp",  name: "Sit-ups",         sets: 3, reps: "10-15", videoSrc: "/videos/abs_crunch_loop.mp4",  voiceCue: "Sit-ups. Core tight." },
-      { id: "beg_plank",  name: "Plank Hold",      sets: 3, durationSeconds: 25, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank. 25 seconds." },
-      { id: "beg_squat",  name: "Squats",          sets: 3, reps: "12-15", videoSrc: "/videos/squats_loop.mp4", voiceCue: "Squats." },
-      { id: "beg_glute",  name: "Glute Bridges",   sets: 3, reps: "12-15", videoSrc: "/videos/glute_bridges_loop.mp4", voiceCue: "Glute bridges." },
+      { id: "beg_push",   name: "Push-ups",   sets: 3, reps: "8-12",  videoSrc: "/videos/pushups_loop.mp4",        voiceCue: "Push-ups. Full range of motion." },
+      { id: "beg_situp",  name: "Sit-ups",    sets: 3, reps: "10-15", videoSrc: "/videos/abs_crunch_loop.mp4",     voiceCue: "Sit-ups. Core tight." },
+      { id: "beg_plank",  name: "Plank Hold", sets: 3, durationSeconds: 25, videoSrc: "/videos/plank_hold_loop.mp4", voiceCue: "Plank. 25 seconds." },
+      { id: "beg_squat",  name: "Squats",     sets: 3, reps: "12-15", videoSrc: "/videos/squats_loop.mp4",         voiceCue: "Squats. Chest up." },
     ],
   },
   intermediate: {
@@ -297,7 +296,17 @@ export function buildWorkoutActivity(
   level: WorkoutLevel,
   cardio: CardioConfig,
 ): ActivityDefinition {
-  const plan = WORKOUT_PLANS[level];
+  const rawPlan = WORKOUT_PLANS[level];
+  // Safety guard: for Build and above, filter out any wall/incline pushup exercises
+  // that might have been introduced by stale data or future plan edits.
+  const plan = level !== "entry"
+    ? {
+        ...rawPlan,
+        exercises: rawPlan.exercises.filter(
+          (ex) => ex.id !== "wall_push" && ex.id !== "incline_push",
+        ),
+      }
+    : rawPlan;
   const allSteps: ActivityStep[] = [];
 
   // ── Warm-up (always first)

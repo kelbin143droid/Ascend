@@ -394,11 +394,14 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
   }, [phase]);
 
   const handleClaim = useCallback(() => {
-    onCompleteRef.current(XP_REWARD);
     if (!noApiCall && !xpClaimed) {
       setXpClaimed(true);
       localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
-      claimMutation.mutate();
+      claimMutation.mutate(undefined, {
+        onSettled: () => onCompleteRef.current(XP_REWARD),
+      });
+    } else {
+      onCompleteRef.current(XP_REWARD);
     }
   }, [noApiCall, xpClaimed, claimMutation]);
 
