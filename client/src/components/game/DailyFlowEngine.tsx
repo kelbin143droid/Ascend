@@ -250,107 +250,15 @@ export function DailyFlowEngine({
     );
   }
 
-  // ── End-of-flow feedback modal (strength only) ────────────────────────────
-  if (showFeedback) {
-    return (
-      <motion.div
-        initial={{ opacity: 1 }}
-        animate={{ opacity: 1 }}
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
-        style={{ backgroundColor: colors.background }}
-        data-testid="flow-feedback-modal"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="w-full max-w-xs"
-        >
-          <div className="text-center mb-6">
-            <div className="text-xl font-bold mb-1" style={{ color: colors.text }}>
-              How did it go?
-            </div>
-            <div className="text-xs" style={{ color: colors.textMuted }}>
-              Your answer adjusts tomorrow's difficulty.
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-5">
-            {strengthCompleted && (
-              <div>
-                <div
-                  className="flex items-center gap-2 mb-2.5 text-sm font-semibold"
-                  style={{ color: colors.text }}
-                >
-                  <Dumbbell size={15} style={{ color: "#ef4444" }} />
-                  Physical Circuit
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {FEEDBACK_OPTIONS.map((opt) => {
-                    const selected = feedback.strength === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        data-testid={`feedback-strength-${opt.value}`}
-                        onClick={() => setFeedback((f) => ({ ...f, strength: opt.value }))}
-                        className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all active:scale-95"
-                        style={{
-                          backgroundColor: selected
-                            ? `#ef444420`
-                            : `${colors.textMuted}10`,
-                          border: `1.5px solid ${selected ? "#ef4444" : `${colors.textMuted}20`}`,
-                          color: selected ? "#ef4444" : colors.textMuted,
-                        }}
-                      >
-                        <span className="text-base leading-none">{opt.emoji}</span>
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            data-testid="button-submit-feedback"
-            onClick={handleFeedbackSubmit}
-            className="w-full mt-7 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
-            style={{ backgroundColor: colors.primary, color: "#fff" }}
-          >
-            Save & Continue
-            <ChevronRight size={16} />
-          </button>
-
-          <button
-            data-testid="button-skip-feedback"
-            onClick={() => setShowFeedback(false)}
-            className="w-full mt-2 py-2 text-xs text-center"
-            style={{ color: colors.textMuted }}
-          >
-            Skip
-          </button>
-        </motion.div>
-      </motion.div>
-    );
-  }
-
-  // ── Flow completion screen ────────────────────────────────────────────────
+  // ── Flow completion screen (with feedback as bottom-sheet overlay) ──────────
   if (flowFinished) {
     return (
-      <motion.div
-        initial={{ opacity: 1 }}
-        animate={{ opacity: 1 }}
+      <div
         className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
         style={{ backgroundColor: colors.background }}
         data-testid="daily-flow-complete"
       >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 200 }}
-          className="mb-6"
-        >
+        <div className="mb-6">
           <div
             className="w-24 h-24 rounded-full flex items-center justify-center"
             style={{
@@ -361,21 +269,16 @@ export function DailyFlowEngine({
           >
             <Sparkles size={44} style={{ color: colors.primary }} />
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center mb-6"
-        >
+        <div className="text-center mb-6">
           <div className="text-xl font-bold mb-2" style={{ color: colors.text }}>
             Daily flow complete.
           </div>
           <div className="text-sm" style={{ color: colors.textMuted }}>
             Your rhythm is strengthening.
           </div>
-        </motion.div>
+        </div>
 
         <div className="flex flex-col items-center gap-3 mb-6 w-full max-w-xs">
           {activities.map((act) => {
@@ -410,10 +313,7 @@ export function DailyFlowEngine({
         </div>
 
         {allCompleted && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
+          <div
             className="flex items-center gap-2 mb-6 px-4 py-2 rounded-lg"
             style={{
               backgroundColor: `${colors.primary}15`,
@@ -424,7 +324,7 @@ export function DailyFlowEngine({
             <span className="text-sm font-bold" style={{ color: colors.primary }}>
               +{FLOW_BONUS_XP} XP — System Synthesis Bonus
             </span>
-          </motion.div>
+          </div>
         )}
 
         <button
@@ -435,7 +335,86 @@ export function DailyFlowEngine({
         >
           Return Home
         </button>
-      </motion.div>
+
+        {/* ── Difficulty feedback — slides up from bottom as a sheet ── */}
+        <AnimatePresence>
+          {showFeedback && (
+            <motion.div
+              key="feedback-sheet"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="absolute inset-x-0 bottom-0 rounded-t-2xl px-6 pt-5 pb-8"
+              style={{ backgroundColor: colors.surface, borderTop: `1px solid ${colors.surfaceBorder}` }}
+              data-testid="flow-feedback-modal"
+            >
+              <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ backgroundColor: colors.textMuted + "40" }} />
+
+              <div className="text-center mb-5">
+                <div className="text-base font-bold mb-1" style={{ color: colors.text }}>
+                  How did it go?
+                </div>
+                <div className="text-xs" style={{ color: colors.textMuted }}>
+                  Your answer adjusts tomorrow's difficulty.
+                </div>
+              </div>
+
+              {strengthCompleted && (
+                <div className="mb-5">
+                  <div
+                    className="flex items-center gap-2 mb-2.5 text-sm font-semibold"
+                    style={{ color: colors.text }}
+                  >
+                    <Dumbbell size={15} style={{ color: "#ef4444" }} />
+                    Physical Circuit
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {FEEDBACK_OPTIONS.map((opt) => {
+                      const selected = feedback.strength === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          data-testid={`feedback-strength-${opt.value}`}
+                          onClick={() => setFeedback((f) => ({ ...f, strength: opt.value }))}
+                          className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all active:scale-95"
+                          style={{
+                            backgroundColor: selected ? `#ef444420` : `${colors.textMuted}10`,
+                            border: `1.5px solid ${selected ? "#ef4444" : `${colors.textMuted}20`}`,
+                            color: selected ? "#ef4444" : colors.textMuted,
+                          }}
+                        >
+                          <span className="text-base leading-none">{opt.emoji}</span>
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <button
+                data-testid="button-submit-feedback"
+                onClick={handleFeedbackSubmit}
+                className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                style={{ backgroundColor: colors.primary, color: "#fff" }}
+              >
+                Save & Continue
+                <ChevronRight size={16} />
+              </button>
+
+              <button
+                data-testid="button-skip-feedback"
+                onClick={() => setShowFeedback(false)}
+                className="w-full mt-2 py-2 text-xs text-center"
+                style={{ color: colors.textMuted }}
+              >
+                Skip
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     );
   }
 
