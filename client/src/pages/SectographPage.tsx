@@ -3323,7 +3323,7 @@ export default function SectographPage() {
       {/* ── VITALITY · COMPLETION OVERLAY ───────────────────────────── */}
       {isVitalityMode && vitalityStep === 3 && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-start overflow-y-auto px-6 pt-14 pb-36"
           style={{ background: "rgba(5,5,20,0.96)" }}
           data-testid="vitality-complete-overlay"
         >

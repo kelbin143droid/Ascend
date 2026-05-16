@@ -37,7 +37,21 @@ export function LevelUpOverlay() {
 
     if (previousLevelRef.current === null) {
       previousLevelRef.current = currentLevel;
-      initLevelBaseline(currentLevel);
+
+      // Detect a level-up that happened while the user was away (e.g. completing
+      // the vitality session and navigating back home).  Compare the current level
+      // against the last level whose stats were actually applied to localStorage.
+      // If they differ the overlay was never shown for the gained level(s).
+      const lastApplied = parseInt(localStorage.getItem("ascend_stats_level_applied") || "0", 10) || 0;
+      if (currentLevel > lastApplied) {
+        const result = applyLevelUpStats(currentLevel);
+        const maxHp = result?.maxHp ?? getMaxHP(currentLevel);
+        const maxMana = result?.maxMana ?? getMaxMana(currentLevel);
+        const phrase = getMotivationalPhrase(currentLevel);
+        setPendingLevelUp({ level: currentLevel, phrase, maxHp, maxMana });
+      } else {
+        initLevelBaseline(currentLevel);
+      }
       return;
     }
 

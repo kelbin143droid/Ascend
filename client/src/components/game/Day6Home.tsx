@@ -195,10 +195,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const hasStreak = streak >= 3;
 
   // System card
+  const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
+  const vitalityPending = seqAllDone && !vitalityDone;
   const currentDashLabel = DASH_CARDS.find(d => d.activityId === currentAid)?.label ?? null;
   const systemMission = allDone ? "All missions complete."
+    : vitalityPending ? "Complete your Vitality session."
     : currentDashLabel ? `Begin with ${currentDashLabel}.` : pathRec.headline;
   const systemHint = allDone ? "Rest well. You showed up today."
+    : vitalityPending ? "Schedule your sleep & Daily Quest to finish today."
     : currentAid ? (SYSTEM_HINTS[currentAid] ?? "") : "";
 
   // Effects & handlers
@@ -238,6 +242,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   // Featured card tap — navigate to the correct standalone session,
   // or start an isolated single-activity flow for strength (no standalone page).
   const handleFeaturedTap = () => {
+    if (featuredCard?.id === "vitality") {
+      navigate("/sectograph?vitality=1");
+      return;
+    }
     const aid = featuredCard?.activityId;
     if (!aid) return;
     const sessionSlug = ACTIVITY_TO_SESSION[aid];
@@ -250,8 +258,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
   const handleAvatarPick = (icon: string) => { saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false); };
 
-  // Featured vs supporting
-  const featuredCard = DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
+  // Featured vs supporting — vitality becomes featured when seq is done but vitality pending
+  const vitalityCard = DASH_CARDS.find(d => d.id === "vitality")!;
+  const featuredCard = vitalityPending
+    ? vitalityCard
+    : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
   const supportCards = DASH_CARDS.filter(d => d !== featuredCard);
 
   // Correct session routes per activity (GuidedSessionPage only knows these IDs)
