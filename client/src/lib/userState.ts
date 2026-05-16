@@ -96,3 +96,26 @@ export function clearDayFiveTutorial(): void {
   localStorage.removeItem(DAY5_SLEEP_KEY);
   localStorage.removeItem(DAY5_FLOW_KEY);
 }
+
+const VITALITY_SLEEP_KEY = "ascend_vitality_sleep_date";
+const VITALITY_QUEST_KEY = "ascend_vitality_quest_date";
+
+function todayStr(): string {
+  return new Date().toDateString();
+}
+
+export function isVitalitySleepScheduledToday(): boolean {
+  return localStorage.getItem(VITALITY_SLEEP_KEY) === todayStr();
+}
+
+export function isVitalityQuestScheduledToday(): boolean {
+  return localStorage.getItem(VITALITY_QUEST_KEY) === todayStr();
+}
+
+export function markVitalitySleepScheduled(): void {
+  localStorage.setItem(VITALITY_SLEEP_KEY, todayStr());
+}
+
+export function markVitalityQuestScheduled(): void {
+  localStorage.setItem(VITALITY_QUEST_KEY, todayStr());
+}

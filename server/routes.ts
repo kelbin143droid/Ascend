@@ -359,7 +359,7 @@ export async function registerRoutes(
         phase1_meditation: 15,
         phase1_agility:    15,
         "light-movement":  15,
-        phase1_vitality:   10,
+        phase1_vitality:   20,
         phase1_strength:   40,
       };
       if (DAILY_FLOW_SESSION_XP[parsed.data.sessionId] !== undefined) {

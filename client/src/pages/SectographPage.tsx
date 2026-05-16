@@ -83,6 +83,10 @@ import {
   isDayFiveFlowScheduled,
   markDayFiveSleepScheduled,
   markDayFiveFlowScheduled,
+  isVitalitySleepScheduledToday,
+  isVitalityQuestScheduledToday,
+  markVitalitySleepScheduled,
+  markVitalityQuestScheduled,
 } from "@/lib/userState";
 import {
   loadTemplates,
@@ -292,8 +296,15 @@ export default function SectographPage() {
     () => new URLSearchParams(window.location.search).get("day5") === "1",
     []
   );
+  const isVitalityMode = useMemo(
+    () => new URLSearchParams(window.location.search).get("vitality") === "1",
+    []
+  );
   const [day5SleepDone, setDay5SleepDone] = useState(() => isDayFiveSleepScheduled());
   const [day5FlowDone, setDay5FlowDone] = useState(() => isDayFiveFlowScheduled());
+  const [vitalitySleepDone, setVitalitySleepDone] = useState(() => isVitalitySleepScheduledToday());
+  const [vitalityQuestDone, setVitalityQuestDone] = useState(() => isVitalityQuestScheduledToday());
+  const [vitalityXpAwarded, setVitalityXpAwarded] = useState(false);
   const [day5IntroSeen, setDay5IntroSeen] = useState(
     () => localStorage.getItem("ascend_day5_sectograph_intro_seen") === "true"
   );
@@ -304,6 +315,38 @@ export default function SectographPage() {
     if (day5IntroSeen) return 1;
     return 0;
   }, [isDay5Mode, day5SleepDone, day5FlowDone, day5IntroSeen]);
+
+  const vitalityStep = useMemo(() => {
+    if (!isVitalityMode) return -1;
+    if (vitalitySleepDone && vitalityQuestDone) return 3;
+    if (vitalitySleepDone) return 2;
+    return 1;
+  }, [isVitalityMode, vitalitySleepDone, vitalityQuestDone]);
+
+  const vitalityXpMutation = useMutation({
+    mutationFn: async () => {
+      if (!player?.id) return;
+      const res = await apiRequest("POST", `/api/player/${player.id}/complete-guided-session`, {
+        sessionId: "phase1_vitality",
+        stat: "vitality",
+        durationMinutes: 5,
+        category: "vitality",
+        xpMultiplier: 1.0,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
+      queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
+    },
+  });
+
+  useEffect(() => {
+    if (isVitalityMode && vitalityStep === 3 && !vitalityXpAwarded && !vitalityXpMutation.isPending && !vitalityXpMutation.isSuccess) {
+      setVitalityXpAwarded(true);
+      vitalityXpMutation.mutate();
+    }
+  }, [isVitalityMode, vitalityStep, vitalityXpAwarded]);
 
   // Weekly planning state
   const { roles } = useRoles();
@@ -704,6 +747,17 @@ export default function SectographPage() {
       return;
     }
 
+    if (isVitalityMode) {
+      if (isSleepBlock && !vitalitySleepDone) {
+        markVitalitySleepScheduled();
+        setVitalitySleepDone(true);
+      } else if (isDailyFlowBlock && vitalitySleepDone && !vitalityQuestDone) {
+        markVitalityQuestScheduled();
+        setVitalityQuestDone(true);
+      }
+      return;
+    }
+
     // Tutorial progression: Sleep (step 1) → Daily Flow (step 2) → Done
     if (!tutorialDone) {
       if (isSleepBlock && tutorialStep <= 1) {
@@ -1026,7 +1080,7 @@ export default function SectographPage() {
               >
                 <Zap size={14} style={{ color: day5FlowDone ? "#22c55e" : "#a855f7" }} />
                 <p className="text-xs font-medium flex-1" style={{ color: day5FlowDone ? "#22c55e" : "rgba(245,245,255,0.8)" }}>
-                  Daily Flow Session
+                  Daily Quest Session
                 </p>
                 {day5FlowDone
                   ? <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
@@ -1043,7 +1097,84 @@ export default function SectographPage() {
             >
               {!day5SleepDone
                 ? "Tap + in the clock center → choose Sleep to get started"
-                : "Sleep scheduled. Now add your Daily Flow time window"}
+                : "Sleep scheduled. Now add your Daily Quest time window"}
+            </p>
+          </div>
+        )}
+
+        {/* ── Vitality mode guide ────────────────────────────────────────── */}
+        {isVitalityMode && vitalityStep >= 1 && vitalityStep < 3 && (
+          <div
+            className="w-full rounded-2xl p-4 space-y-3"
+            style={{
+              background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(251,191,36,0.05))",
+              border: "1px solid rgba(245,158,11,0.25)",
+            }}
+            data-testid="vitality-sectograph-guide"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(245,158,11,0.15)" }}
+              >
+                <Heart size={12} style={{ color: "#f59e0b" }} />
+              </div>
+              <span
+                className="text-[9px] uppercase tracking-widest font-bold"
+                style={{ color: "rgba(245,158,11,0.8)" }}
+              >
+                Vitality · Recovery Setup
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{
+                  background: vitalitySleepDone ? "rgba(34,197,94,0.06)" : "rgba(59,130,246,0.06)",
+                  border: vitalitySleepDone ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(59,130,246,0.2)",
+                }}
+                data-testid="vitality-sleep-status"
+              >
+                <Moon size={14} style={{ color: vitalitySleepDone ? "#22c55e" : "#3b82f6" }} />
+                <p className="text-xs font-medium flex-1" style={{ color: vitalitySleepDone ? "#22c55e" : "rgba(245,245,255,0.8)" }}>
+                  Sleep Schedule
+                </p>
+                {vitalitySleepDone
+                  ? <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+                  : <span className="text-[10px]" style={{ color: "rgba(59,130,246,0.7)" }}>Add it ↑</span>
+                }
+              </div>
+
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{
+                  background: vitalityQuestDone ? "rgba(34,197,94,0.06)" : vitalitySleepDone ? "rgba(245,158,11,0.06)" : "rgba(255,255,255,0.02)",
+                  border: vitalityQuestDone ? "1px solid rgba(34,197,94,0.2)" : vitalitySleepDone ? "1px solid rgba(245,158,11,0.2)" : "1px solid rgba(255,255,255,0.06)",
+                  opacity: vitalitySleepDone ? 1 : 0.45,
+                }}
+                data-testid="vitality-quest-status"
+              >
+                <Zap size={14} style={{ color: vitalityQuestDone ? "#22c55e" : "#f59e0b" }} />
+                <p className="text-xs font-medium flex-1" style={{ color: vitalityQuestDone ? "#22c55e" : "rgba(245,245,255,0.8)" }}>
+                  Daily Quest
+                </p>
+                {vitalityQuestDone
+                  ? <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+                  : vitalitySleepDone
+                  ? <span className="text-[10px]" style={{ color: "rgba(245,158,11,0.7)" }}>Add it ↑</span>
+                  : <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>After sleep</span>
+                }
+              </div>
+            </div>
+
+            <p
+              className="text-[10px] text-center leading-relaxed"
+              style={{ color: "rgba(245,245,255,0.35)" }}
+            >
+              {!vitalitySleepDone
+                ? "Tap + in the clock center → choose Sleep to set your bedtime"
+                : "Sleep locked in. Now schedule tomorrow's Daily Quest window"}
             </p>
           </div>
         )}
@@ -1136,10 +1267,10 @@ export default function SectographPage() {
             <div className="flex-1">
               <p className="text-xs uppercase tracking-wider font-bold mb-0.5" style={{ color: "rgba(168,85,247,0.8)" }}>Coach · Step 2 of 2</p>
               <p className="text-base font-medium leading-snug" style={{ color: colors.text }}>
-                Now add your <span style={{ color: "#a855f7", fontWeight: 700 }}>Daily Flow</span> window
+                Now add your <span style={{ color: "#a855f7", fontWeight: 700 }}>Daily Quest</span> window
               </p>
               <p className="text-sm mt-1.5 leading-relaxed" style={{ color: colors.textMuted }}>
-                Tap <strong style={{ color: colors.primary }}>+</strong> again, choose <strong>Daily Flow</strong>, and pick a time for your daily training session.
+                Tap <strong style={{ color: colors.primary }}>+</strong> again, choose <strong>Daily Quest</strong>, and pick a time for your daily training session.
               </p>
             </div>
             <Zap size={16} style={{ color: "#a855f7", marginTop: 2 }} />
@@ -2462,9 +2593,12 @@ export default function SectographPage() {
               {BLOCK_PRESETS.map((preset) => {
                 const Icon = preset.icon;
                 const isHighlighted =
-                  isDay5Mode &&
-                  ((day5Step === 1 && preset.id === "sleep") ||
-                   (day5Step === 2 && preset.id === "daily-flow"));
+                  (isDay5Mode &&
+                    ((day5Step === 1 && preset.id === "sleep") ||
+                     (day5Step === 2 && preset.id === "daily-flow"))) ||
+                  (isVitalityMode &&
+                    ((vitalityStep === 1 && preset.id === "sleep") ||
+                     (vitalityStep === 2 && preset.id === "daily-flow")));
                 // Brighter hue for the icon foreground (boost saturation/lightness via overlay).
                 const vivid = preset.color;
                 return (
@@ -3055,7 +3189,7 @@ export default function SectographPage() {
                   <Zap size={14} style={{ color: "#c084fc" }} />
                 </div>
                 <p className="text-xs font-medium" style={{ color: "rgba(245,245,255,0.8)" }}>
-                  Schedule your Daily Flow session
+                  Schedule your Daily Quest session
                 </p>
               </div>
             </div>
@@ -3144,7 +3278,7 @@ export default function SectographPage() {
                 style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
               >
                 <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
-                <p className="text-xs font-medium" style={{ color: "#22c55e" }}>Daily Flow — scheduled</p>
+                <p className="text-xs font-medium" style={{ color: "#22c55e" }}>Daily Quest — scheduled</p>
               </div>
             </div>
 
@@ -3160,6 +3294,98 @@ export default function SectographPage() {
             >
               <CheckCircle2 size={16} />
               Return to Complete Day 5
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── VITALITY · COMPLETION OVERLAY ───────────────────────────── */}
+      {isVitalityMode && vitalityStep === 3 && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+          style={{ background: "rgba(5,5,20,0.96)" }}
+          data-testid="vitality-complete-overlay"
+        >
+          <style>{`
+            @keyframes vtCompleteFade { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+            @keyframes vtCheckBounce { 0%,100% { transform:scale(1); } 40% { transform:scale(1.3); } 70% { transform:scale(0.95); } }
+            @keyframes vtGlowPulse { 0%,100% { box-shadow: 0 0 40px rgba(245,158,11,0.3); } 50% { box-shadow: 0 0 70px rgba(245,158,11,0.5); } }
+          `}</style>
+          <div
+            style={{ animation: "vtCompleteFade 0.5s cubic-bezier(0.34,1.56,0.64,1) both" }}
+            className="flex flex-col items-center text-center gap-6 w-full max-w-xs"
+          >
+            <div
+              className="w-24 h-24 rounded-full flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, rgba(245,158,11,0.18), rgba(251,191,36,0.12))",
+                border: "2px solid rgba(245,158,11,0.4)",
+                animation: "vtGlowPulse 2.5s ease-in-out infinite",
+              }}
+            >
+              <Heart
+                size={44}
+                style={{ color: "#f59e0b", animation: "vtCheckBounce 0.6s 0.2s ease both" }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold"
+                style={{ color: "rgba(245,158,11,0.7)" }}
+              >
+                Vitality · Recovery Mapped
+              </p>
+              <h2
+                className="text-3xl font-bold leading-tight"
+                style={{ color: "#f5f5ff", fontFamily: "'Orbitron', sans-serif" }}
+              >
+                Tomorrow<br />Prepared
+              </h2>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: "rgba(245,245,255,0.55)" }}
+              >
+                Sleep and training are anchored. Your system is ready for tomorrow.
+              </p>
+            </div>
+
+            <div className="w-full space-y-2">
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
+              >
+                <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+                <p className="text-xs font-medium" style={{ color: "#22c55e" }}>Sleep window — scheduled</p>
+              </div>
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
+              >
+                <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+                <p className="text-xs font-medium" style={{ color: "#22c55e" }}>Daily Quest — scheduled</p>
+              </div>
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}
+              >
+                <Zap size={14} style={{ color: "#f59e0b" }} />
+                <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+20 XP — Vitality awarded</p>
+              </div>
+            </div>
+
+            <button
+              data-testid="button-vitality-complete-return"
+              onClick={() => navigate("/")}
+              className="w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] flex items-center justify-center gap-2 mt-2"
+              style={{
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                color: "#fff",
+                boxShadow: "0 4px 24px rgba(245,158,11,0.4)",
+              }}
+            >
+              <Zap size={16} />
+              Return Home
             </button>
           </div>
         </div>

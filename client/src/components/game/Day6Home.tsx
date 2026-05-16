@@ -261,7 +261,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   // Resolve the click action for a supporting card
   const resolveAction = (dc: (typeof DASH_CARDS)[number]): () => void => {
-    if (dc.id === "vitality") return () => navigate("/sectograph");
+    if (dc.id === "vitality") return () => navigate("/sectograph?vitality=1");
     const sessionRoute = ACTIVITY_SESSION[dc.activityId];
     if (sessionRoute) return () => navigate(sessionRoute);
     // Strength: no standalone session — run isolated single-activity flow if pending

@@ -445,7 +445,7 @@ export function DailyFlowEngine({
       >
         <div>
           <div className="text-sm font-bold" style={{ color: colors.text }}>
-            Daily Training Flow
+            Daily Quest
           </div>
           <div className="text-xs" style={{ color: colors.textMuted }}>
             Step {currentActivityIdx + 1} of {activities.length}
