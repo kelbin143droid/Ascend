@@ -840,7 +840,7 @@ export default function TrainPage() {
     setTimeout(() => setActiveActivity(null), 200);
   };
 
-  const handleFlowComplete = (completedIds: string[], _bonus: boolean) => {
+  const handleFlowComplete = (completedIds: string[]) => {
     setCompletedToday((prev) => {
       const next = new Set(prev);
       completedIds.forEach((id) => next.add(id));

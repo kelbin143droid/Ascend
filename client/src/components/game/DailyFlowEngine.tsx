@@ -9,8 +9,6 @@ import type { ActivityDefinition } from "@/lib/activityEngine";
 import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Dumbbell, ChevronRight } from "lucide-react";
 import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
-const FLOW_BONUS_XP = 20;
-
 type FeedbackValue = "easy" | "same" | "challenging" | null;
 
 interface FeedbackState {
@@ -20,7 +18,7 @@ interface FeedbackState {
 interface DailyFlowEngineProps {
   activities: ActivityDefinition[];
   playerId: string;
-  onComplete: (completedIds: string[], bonusAwarded: boolean) => void;
+  onComplete: (completedIds: string[]) => void;
   onCancel: () => void;
   isOnboardingComplete?: boolean;
 }
@@ -55,7 +53,6 @@ export function DailyFlowEngine({
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>({ strength: null });
   const [runningActivity, setRunningActivity] = useState(false);
-  const [bonusXpAwarded, setBonusXpAwarded] = useState(false);
   const [showBreathingFeedback, setShowBreathingFeedback] = useState(false);
   const [pendingAdvanceIdx, setPendingAdvanceIdx] = useState<number | null>(null);
   const autoStartNextRef = useRef(false);
@@ -66,22 +63,6 @@ export function DailyFlowEngine({
   const didComplete = (id: string) => completedIds.has(id);
   const strengthCompleted = didComplete("phase1_strength");
   const hasFeedbackQuestions = strengthCompleted;
-
-  const bonusMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest(
-        "POST",
-        `/api/player/${playerId}/daily-flow-bonus`,
-        { bonusXP: FLOW_BONUS_XP }
-      );
-      return res.json();
-    },
-    onSuccess: () => {
-      setBonusXpAwarded(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
-      queryClient.invalidateQueries({ queryKey: ["home", playerId] });
-    },
-  });
 
   const feedbackMutation = useMutation({
     mutationFn: async (fb: { strength?: string }) => {
@@ -101,9 +82,6 @@ export function DailyFlowEngine({
     const nextIdx = currentActivityIdx + 1;
     if (nextIdx >= activities.length) {
       setFlowFinished(true);
-      if (completedIds.size + 1 === activities.length && !skippedIds.size) {
-        bonusMutation.mutate();
-      }
       return;
     }
     setShowTransition(true);
@@ -112,14 +90,12 @@ export function DailyFlowEngine({
       setShowTransition(false);
       setRunningActivity(false);
     }, 1200);
-  }, [currentActivityIdx, activities.length, completedIds, skippedIds, bonusMutation]);
+  }, [currentActivityIdx, activities.length]);
 
-  const doAdvance = useCallback((fromIdx: number, newCompletedSize: number) => {
+  const doAdvance = useCallback((fromIdx: number, _newCompletedSize: number) => {
     queryClient.invalidateQueries({ queryKey: ["training-scaling"] });
     const nextIdx = fromIdx + 1;
     if (nextIdx >= activities.length) {
-      const allDone = newCompletedSize === activities.length;
-      if (allDone) bonusMutation.mutate();
       // Stop rendering GuidedActivityEngine BEFORE setting flowFinished so React
       // can cleanly unmount the engine without a render-state conflict.
       setRunningActivity(false);
@@ -137,7 +113,7 @@ export function DailyFlowEngine({
         setRunningActivity(false);
       }
     }, 1200);
-  }, [activities.length, queryClient, bonusMutation]);
+  }, [activities.length, queryClient]);
 
   const handleActivityComplete = useCallback((_xpEarned: number) => {
     const actId = activities[currentActivityIdx].id;
@@ -221,8 +197,8 @@ export function DailyFlowEngine({
     if (hasFinishedRef.current) return;
     hasFinishedRef.current = true;
     clearFlow();
-    onComplete(Array.from(completedIds), bonusXpAwarded);
-  }, [completedIds, bonusXpAwarded, onComplete]);
+    onComplete(Array.from(completedIds));
+  }, [completedIds, onComplete]);
 
   // No auto-dismiss — user must tap "Return Home" to ensure they see the
   // completion screen and any level-up animation that fires on top of it.
@@ -322,7 +298,7 @@ export function DailyFlowEngine({
           >
             <Zap size={16} style={{ color: colors.primary }} />
             <span className="text-sm font-bold" style={{ color: colors.primary }}>
-              +{FLOW_BONUS_XP} XP — System Synthesis Bonus
+              Complete your Vitality session to finish the Daily Quest
             </span>
           </div>
         )}

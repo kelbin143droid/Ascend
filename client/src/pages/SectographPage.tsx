@@ -323,6 +323,23 @@ export default function SectographPage() {
     return 1;
   }, [isVitalityMode, vitalitySleepDone, vitalityQuestDone]);
 
+  const [flowBonusAwarded, setFlowBonusAwarded] = useState(false);
+
+  const flowBonusMutation = useMutation({
+    mutationFn: async () => {
+      if (!player?.id) return;
+      const res = await apiRequest("POST", `/api/player/${player.id}/daily-flow-bonus`, {
+        bonusXP: 20,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setFlowBonusAwarded(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
+      queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
+    },
+  });
+
   const vitalityXpMutation = useMutation({
     mutationFn: async () => {
       if (!player?.id) return;
@@ -338,6 +355,10 @@ export default function SectographPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
       queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
+      // Award the System Synthesis Bonus after the base vitality XP
+      if (!flowBonusAwarded) {
+        flowBonusMutation.mutate();
+      }
     },
   });
 
@@ -3371,6 +3392,13 @@ export default function SectographPage() {
               >
                 <Zap size={14} style={{ color: "#f59e0b" }} />
                 <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+20 XP — Vitality awarded</p>
+              </div>
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl"
+                style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}
+              >
+                <Zap size={14} style={{ color: "#f59e0b" }} />
+                <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+20 XP — System Synthesis Bonus</p>
               </div>
             </div>
 

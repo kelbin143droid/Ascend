@@ -23,7 +23,7 @@ import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
 import { getPathAwareRecommendation } from "@/lib/dailyRecommendationEngine";
 import { recordSleepCheck, recordBreathingSession, initLevelBaseline } from "@/lib/statsSystem";
-import { markFlowCompleted } from "@/lib/userState";
+import { markFlowCompleted, isVitalityQuestScheduledToday } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
 import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 import { useSessionProgress } from "@/hooks/useSessionProgress";
@@ -172,7 +172,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   const pendingSeq = seqCards.filter(c => !isActivityDone(c.id));
   const doneSeq    = seqCards.filter(c =>  isActivityDone(c.id));
-  const allDone    = pendingSeq.length === 0 && seqCards.length > 0;
+  const vitalityDone = isVitalityQuestScheduledToday();
+  const allDone    = pendingSeq.length === 0 && seqCards.length > 0 && vitalityDone;
   const currentAid = pendingSeq[0]?.id ?? null;
   const todayIds   = new Set(activities.map(a => a.id));
 
@@ -218,7 +219,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartPending, activities.length]);
-  const handleFlowDone = useCallback((ids: string[], _b: boolean) => {
+  const handleFlowDone = useCallback((ids: string[]) => {
     // Close the flow engine immediately so the home content is visible right away
     // (avoids a blank/loading flash while queries refetch in the background).
     setFlowActive(false);
@@ -570,8 +571,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             { id: "phase1_meditation", label: "Sense",    dc: DASH_CARDS[0] },
             { id: "phase1_agility",    label: "Agility",  dc: DASH_CARDS[3] },
             { id: "phase1_strength",   label: "Strength", dc: DASH_CARDS[2] },
+            { id: "vitality",          label: "Vitality", dc: DASH_CARDS[1] },
           ] as const;
-          const queueItems = QUEUE_DEFS.filter(q => activities.some(a => a.id === q.id));
+          const queueItems = QUEUE_DEFS.filter(q =>
+            q.id === "vitality" ? true : activities.some(a => a.id === q.id)
+          );
           if (queueItems.length < 2) return null;
           return (
             <motion.div
@@ -582,8 +586,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             >
               {queueItems.map((q, idx) => {
                 const { dc } = q;
-                const done     = isActivityDone(q.id);
-                const isActive = q.id === currentAid && !allDone;
+                const done     = q.id === "vitality" ? vitalityDone : isActivityDone(q.id);
+                const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
+                const isActive = q.id === "vitality"
+                  ? (seqAllDone && !vitalityDone)
+                  : (q.id === currentAid && !allDone);
                 const nodeColor = done ? "#22c55e" : isActive ? dc.color : colors.textMuted;
                 const isLast   = idx === queueItems.length - 1;
                 return (
