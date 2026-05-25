@@ -305,6 +305,8 @@ export default function SectographPage() {
   const [vitalitySleepDone, setVitalitySleepDone] = useState(() => isVitalitySleepScheduledToday());
   const [vitalityQuestDone, setVitalityQuestDone] = useState(() => isVitalityQuestScheduledToday());
   const [vitalityXpAwarded, setVitalityXpAwarded] = useState(false);
+  const [vitalityIntroSeen, setVitalityIntroSeen] = useState(() => localStorage.getItem("ascend_vitality_intro_seen") === "1");
+  const [showVitalitySleepPresets, setShowVitalitySleepPresets] = useState(false);
   const [day5IntroSeen, setDay5IntroSeen] = useState(
     () => localStorage.getItem("ascend_day5_sectograph_intro_seen") === "true"
   );
@@ -519,6 +521,12 @@ export default function SectographPage() {
   });
 
   const handlePresetClick = (preset: typeof BLOCK_PRESETS[0]) => {
+    // In vitality mode, intercept Sleep selection to show quick presets instead of full editor
+    if (isVitalityMode && preset.id === "sleep" && !vitalitySleepDone) {
+      setShowAddBlock(false);
+      setShowVitalitySleepPresets(true);
+      return;
+    }
     const existing = (player?.schedule ?? []).find((b: any) => b.id === preset.id);
     if (existing) {
       setEditingBlock({
@@ -1123,80 +1131,44 @@ export default function SectographPage() {
           </div>
         )}
 
-        {/* ── Vitality mode guide ────────────────────────────────────────── */}
-        {isVitalityMode && vitalityStep >= 1 && vitalityStep < 3 && (
+        {/* ── Vitality mode: floating coach tooltip ──────────────────────── */}
+        {isVitalityMode && vitalityIntroSeen && vitalityStep >= 1 && vitalityStep < 3 && (
           <div
-            className="w-full rounded-2xl p-4 space-y-3"
+            className="w-full rounded-2xl px-4 py-3 flex items-start gap-3"
             style={{
-              background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(251,191,36,0.05))",
-              border: "1px solid rgba(245,158,11,0.25)",
+              background: vitalitySleepDone
+                ? "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(251,191,36,0.06))"
+                : "linear-gradient(135deg, rgba(59,130,246,0.10), rgba(99,102,241,0.06))",
+              border: vitalitySleepDone
+                ? "1px solid rgba(245,158,11,0.30)"
+                : "1px solid rgba(59,130,246,0.30)",
             }}
-            data-testid="vitality-sectograph-guide"
+            data-testid="vitality-coach-tooltip"
           >
-            <div className="flex items-center gap-2 mb-1">
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(245,158,11,0.15)" }}
-              >
-                <Heart size={12} style={{ color: "#f59e0b" }} />
-              </div>
-              <span
-                className="text-[9px] uppercase tracking-widest font-bold"
-                style={{ color: "rgba(245,158,11,0.8)" }}
-              >
-                Vitality · Recovery Setup
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div
-                className="flex items-center gap-3 p-3 rounded-xl"
-                style={{
-                  background: vitalitySleepDone ? "rgba(34,197,94,0.06)" : "rgba(59,130,246,0.06)",
-                  border: vitalitySleepDone ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(59,130,246,0.2)",
-                }}
-                data-testid="vitality-sleep-status"
-              >
-                <Moon size={14} style={{ color: vitalitySleepDone ? "#22c55e" : "#3b82f6" }} />
-                <p className="text-xs font-medium flex-1" style={{ color: vitalitySleepDone ? "#22c55e" : "rgba(245,245,255,0.8)" }}>
-                  Sleep Schedule
-                </p>
-                {vitalitySleepDone
-                  ? <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
-                  : <span className="text-[10px]" style={{ color: "rgba(59,130,246,0.7)" }}>Add it ↑</span>
-                }
-              </div>
-
-              <div
-                className="flex items-center gap-3 p-3 rounded-xl"
-                style={{
-                  background: vitalityQuestDone ? "rgba(34,197,94,0.06)" : vitalitySleepDone ? "rgba(245,158,11,0.06)" : "rgba(255,255,255,0.02)",
-                  border: vitalityQuestDone ? "1px solid rgba(34,197,94,0.2)" : vitalitySleepDone ? "1px solid rgba(245,158,11,0.2)" : "1px solid rgba(255,255,255,0.06)",
-                  opacity: vitalitySleepDone ? 1 : 0.45,
-                }}
-                data-testid="vitality-quest-status"
-              >
-                <Zap size={14} style={{ color: vitalityQuestDone ? "#22c55e" : "#f59e0b" }} />
-                <p className="text-xs font-medium flex-1" style={{ color: vitalityQuestDone ? "#22c55e" : "rgba(245,245,255,0.8)" }}>
-                  Daily Quest
-                </p>
-                {vitalityQuestDone
-                  ? <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
-                  : vitalitySleepDone
-                  ? <span className="text-[10px]" style={{ color: "rgba(245,158,11,0.7)" }}>Add it ↑</span>
-                  : <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>After sleep</span>
-                }
-              </div>
-            </div>
-
-            <p
-              className="text-[10px] text-center leading-relaxed"
-              style={{ color: "rgba(245,245,255,0.35)" }}
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+              style={{
+                background: vitalitySleepDone ? "rgba(245,158,11,0.15)" : "rgba(59,130,246,0.15)",
+              }}
             >
-              {!vitalitySleepDone
-                ? "Tap + in the clock center → choose Sleep to set your bedtime"
-                : "Sleep locked in. Now schedule tomorrow's Daily Quest window"}
-            </p>
+              {vitalitySleepDone
+                ? <Zap size={13} style={{ color: "#f59e0b" }} />
+                : <Moon size={13} style={{ color: "#60a5fa" }} />
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold mb-0.5"
+                style={{ color: vitalitySleepDone ? "rgba(245,158,11,0.7)" : "rgba(96,165,250,0.7)" }}
+              >
+                System
+              </p>
+              <p className="text-sm font-medium leading-snug" style={{ color: "rgba(245,245,255,0.92)" }}>
+                {vitalitySleepDone
+                  ? "Tap + to schedule your Daily Quest window."
+                  : "Tap + to create your Sleep block."}
+              </p>
+            </div>
           </div>
         )}
 
@@ -1395,7 +1367,7 @@ export default function SectographPage() {
                 focusBlock={null}
                 rhythmWindows={rhythmWindows}
                 suggestedPlacements={placementSuggestions}
-                highlightCenter={day5Step === 1}
+                highlightCenter={day5Step === 1 || (isVitalityMode && vitalityIntroSeen && vitalityStep < 3)}
                 currentBlockId={currentBlock?.id ?? null}
                 onCenterClick={() => {
                   if (!isDay5Mode && !tutorialDone && tutorialStep === 0) {
@@ -2592,6 +2564,107 @@ export default function SectographPage() {
             </div>
           </DialogContent>
         </Dialog>
+        {/* ── VITALITY — Sleep time presets ────────────────────── */}
+        <Dialog open={showVitalitySleepPresets} onOpenChange={setShowVitalitySleepPresets}>
+          <DialogContent
+            className="max-w-sm"
+            style={{
+              backgroundColor: colors.surface,
+              border: "1px solid rgba(59,130,246,0.4)",
+              boxShadow: "0 0 32px rgba(59,130,246,0.20), 0 8px 24px rgba(0,0,0,0.4)",
+            }}
+          >
+            <style>{`
+              @keyframes vtSleepFade { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+            `}</style>
+            <DialogHeader>
+              <div className="flex items-center gap-2 mb-1">
+                <Moon size={16} style={{ color: "#60a5fa" }} />
+                <DialogTitle className="text-base font-bold tracking-wide" style={{ color: "#60a5fa" }}>
+                  Choose Sleep Window
+                </DialogTitle>
+              </div>
+            </DialogHeader>
+            <p className="text-xs mb-4" style={{ color: colors.textMuted }}>
+              Pick a schedule that fits your routine.
+            </p>
+            <div className="flex flex-col gap-2" style={{ animation: "vtSleepFade 0.35s ease both" }}>
+              {[
+                { label: "10 PM – 6 AM", sub: "8 hrs · Early riser", startH: 22, startM: 0, endH: 6, endM: 0 },
+                { label: "11 PM – 7 AM", sub: "8 hrs · Standard", startH: 23, startM: 0, endH: 7, endM: 0 },
+              ].map((opt) => (
+                <button
+                  key={opt.label}
+                  data-testid={`sleep-preset-${opt.startH}`}
+                  onClick={() => {
+                    setShowVitalitySleepPresets(false);
+                    const id = `sleep_${Date.now()}`;
+                    setEditingBlock({
+                      id,
+                      name: "Sleep",
+                      startHour: opt.startH,
+                      startMinute: opt.startM,
+                      endHour: opt.endH,
+                      endMinute: opt.endM,
+                      color: "#3b82f6",
+                      isNew: true,
+                    } as any);
+                  }}
+                  className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all active:scale-[0.98]"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(59,130,246,0.10), rgba(99,102,241,0.06))",
+                    border: "1px solid rgba(59,130,246,0.28)",
+                  }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(59,130,246,0.18)" }}
+                  >
+                    <Moon size={16} style={{ color: "#60a5fa" }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "rgba(245,245,255,0.95)" }}>{opt.label}</p>
+                    <p className="text-[11px]" style={{ color: colors.textMuted }}>{opt.sub}</p>
+                  </div>
+                </button>
+              ))}
+              <button
+                data-testid="sleep-preset-custom"
+                onClick={() => {
+                  setShowVitalitySleepPresets(false);
+                  const id = `sleep_${Date.now()}`;
+                  setEditingBlock({
+                    id,
+                    name: "Sleep",
+                    startHour: 23,
+                    startMinute: 0,
+                    endHour: 7,
+                    endMinute: 0,
+                    color: "#3b82f6",
+                    isNew: true,
+                  } as any);
+                }}
+                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all active:scale-[0.98]"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                }}
+              >
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
+                >
+                  <span style={{ color: "rgba(245,245,255,0.5)", fontSize: 18, fontWeight: 700 }}>+</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "rgba(245,245,255,0.7)" }}>Custom</p>
+                  <p className="text-[11px]" style={{ color: colors.textMuted }}>Set your own times</p>
+                </div>
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* ── ADD BLOCK — preset picker ─────────────────────────── */}
         <Dialog open={showAddBlock} onOpenChange={setShowAddBlock}>
           <DialogContent
@@ -3144,6 +3217,87 @@ export default function SectographPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* ── VITALITY · INTRO OVERLAY ─────────────────────────────── */}
+      {isVitalityMode && !vitalityIntroSeen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+          style={{ background: "rgba(5,5,20,0.97)" }}
+          data-testid="vitality-intro-overlay"
+        >
+          <style>{`
+            @keyframes vtIntroFade { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+            @keyframes vtIntroPulse { 0%,100% { opacity:0.65; transform:scale(1); } 50% { opacity:1; transform:scale(1.10); } }
+          `}</style>
+          <div style={{ animation: "vtIntroFade 0.55s ease both" }} className="flex flex-col items-center text-center gap-5 w-full max-w-xs">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, rgba(59,130,246,0.20), rgba(99,102,241,0.15))",
+                border: "1.5px solid rgba(59,130,246,0.45)",
+                boxShadow: "0 0 36px rgba(59,130,246,0.28)",
+                animation: "vtIntroPulse 2.8s ease-in-out infinite",
+              }}
+            >
+              <Heart size={30} style={{ color: "#60a5fa" }} />
+            </div>
+
+            <div className="space-y-1.5">
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold"
+                style={{ color: "rgba(96,165,250,0.65)" }}
+              >
+                System
+              </p>
+              <p
+                className="text-xl font-bold leading-snug"
+                style={{ color: "#f5f5ff", fontFamily: "'Orbitron', sans-serif" }}
+              >
+                Map Your Day
+              </p>
+              <p className="text-sm leading-relaxed mt-1" style={{ color: "rgba(245,245,255,0.55)" }}>
+                Your Sectograph maps your day into missions and recovery blocks.
+              </p>
+            </div>
+
+            <div className="w-full space-y-2 mt-1">
+              {[
+                { icon: Moon, color: "#60a5fa", bg: "rgba(59,130,246,0.10)", border: "rgba(59,130,246,0.22)", text: "Sleep restores Vitality" },
+                { icon: Zap,  color: "#a78bfa", bg: "rgba(99,102,241,0.10)", border: "rgba(99,102,241,0.22)", text: "Tasks shape your growth" },
+                { icon: Heart,color: "#34d399", bg: "rgba(52,211,153,0.08)", border: "rgba(52,211,153,0.20)", text: "Start by adding Sleep" },
+              ].map(({ icon: Icon, color, bg, border, text }) => (
+                <div
+                  key={text}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left"
+                  style={{ background: bg, border: `1px solid ${border}` }}
+                >
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}20` }}>
+                    <Icon size={12} style={{ color }} />
+                  </div>
+                  <p className="text-xs font-medium" style={{ color: "rgba(245,245,255,0.80)" }}>{text}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              data-testid="button-vitality-intro-begin"
+              onClick={() => {
+                localStorage.setItem("ascend_vitality_intro_seen", "1");
+                setVitalityIntroSeen(true);
+              }}
+              className="w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] flex items-center justify-center gap-2 mt-1"
+              style={{
+                background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+                color: "#fff",
+                boxShadow: "0 4px 24px rgba(59,130,246,0.38)",
+              }}
+            >
+              <Zap size={15} />
+              Begin Setup
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── DAY 5 · STEP 0: FULLSCREEN INTRO OVERLAY ─────────────── */}
       {isDay5Mode && day5Step === 0 && (
