@@ -131,13 +131,13 @@ const SEGMENT_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const BLOCK_PRESETS = [
-  { id: "sleep", name: "Sleep", icon: Moon, color: "#3b4d6b", defaultStart: { h: 22, m: 0 }, defaultEnd: { h: 6, m: 0 } },
-  { id: "work", name: "Work", icon: Briefcase, color: "#4a6fa5", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 17, m: 0 } },
-  { id: "study", name: "Study", icon: Book, color: "#5a8a72", defaultStart: { h: 18, m: 0 }, defaultEnd: { h: 20, m: 0 } },
-  { id: "daily-flow", name: "Daily Flow", icon: Zap, color: "#a855f7", defaultStart: { h: 7, m: 0 }, defaultEnd: { h: 8, m: 0 } },
-  { id: "meal", name: "Meal", icon: Coffee, color: "#7d9d6a", defaultStart: { h: 12, m: 0 }, defaultEnd: { h: 13, m: 0 } },
-  { id: "leisure", name: "Leisure", icon: Gamepad2, color: "#8b7aa3", defaultStart: { h: 20, m: 0 }, defaultEnd: { h: 22, m: 0 } },
-  { id: "custom", name: "Custom", icon: Palette, color: "#6b7280", defaultStart: { h: 9, m: 0 }, defaultEnd: { h: 10, m: 0 } },
+  { id: "sleep",      name: "Sleep",       icon: Moon,      color: "#3b4d6b", defaultStart: { h: 22, m: 0 }, defaultEnd: { h: 6,  m: 0 } },
+  { id: "daily-flow", name: "Daily Quest", icon: Zap,       color: "#a855f7", defaultStart: { h: 7,  m: 0 }, defaultEnd: { h: 8,  m: 0 } },
+  { id: "work",       name: "Work",        icon: Briefcase, color: "#4a6fa5", defaultStart: { h: 9,  m: 0 }, defaultEnd: { h: 17, m: 0 } },
+  { id: "study",      name: "Study",       icon: Book,      color: "#5a8a72", defaultStart: { h: 18, m: 0 }, defaultEnd: { h: 20, m: 0 } },
+  { id: "meal",       name: "Meal",        icon: Coffee,    color: "#7d9d6a", defaultStart: { h: 12, m: 0 }, defaultEnd: { h: 13, m: 0 } },
+  { id: "leisure",    name: "Leisure",     icon: Gamepad2,  color: "#8b7aa3", defaultStart: { h: 20, m: 0 }, defaultEnd: { h: 22, m: 0 } },
+  { id: "custom",     name: "Custom",      icon: Palette,   color: "#6b7280", defaultStart: { h: 9,  m: 0 }, defaultEnd: { h: 10, m: 0 } },
 ];
 
 // Icon options for Custom blocks (key → component lookup).
@@ -780,9 +780,17 @@ export default function SectographPage() {
       if (isSleepBlock && !vitalitySleepDone) {
         markVitalitySleepScheduled();
         setVitalitySleepDone(true);
+        setTimeout(() => toast({
+          title: "⚡ Recovery synchronized",
+          description: "Sleep block locked in. Vitality restoring.",
+        }), 400);
       } else if (isDailyFlowBlock && vitalitySleepDone && !vitalityQuestDone) {
         markVitalityQuestScheduled();
         setVitalityQuestDone(true);
+        setTimeout(() => toast({
+          title: "🟡 Growth path initialized",
+          description: "Daily Quest scheduled. XP inbound.",
+        }), 400);
       }
       return;
     }
@@ -1173,7 +1181,7 @@ export default function SectographPage() {
         )}
 
         {/* ── COACH TUTORIAL — step 0 fullscreen intro ─────────────── */}
-        {!isDay5Mode && !tutorialDone && tutorialStep === 0 && (
+        {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 0 && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center px-4"
             style={{ backgroundColor: "rgba(0,0,0,0.90)" }}
@@ -1225,7 +1233,7 @@ export default function SectographPage() {
 
         {activeTab === "sectograph" && <>
         {/* ── COACH CARD — step 1 (add Sleep block) ────────────────── */}
-        {!isDay5Mode && !tutorialDone && tutorialStep === 1 && (
+        {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 1 && (
           <div
             className="w-full rounded-xl p-4 flex items-start gap-3"
             style={{ backgroundColor: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.25)" }}
@@ -1247,8 +1255,8 @@ export default function SectographPage() {
           </div>
         )}
 
-        {/* ── COACH CARD — step 2 (add Daily Flow block) ───────────── */}
-        {!isDay5Mode && !tutorialDone && tutorialStep === 2 && (
+        {/* ── COACH CARD — step 2 (add Daily Quest block) ──────────── */}
+        {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 2 && (
           <div
             className="w-full rounded-xl p-4 flex items-start gap-3"
             style={{ backgroundColor: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)" }}
@@ -2680,10 +2688,7 @@ export default function SectographPage() {
                 ADD TIME BLOCK
               </DialogTitle>
             </DialogHeader>
-            <p className="text-[11px] mb-4" style={{ color: colors.text, opacity: 0.7 }}>
-              Choose a block type to add to your timeline
-            </p>
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 gap-3 mt-1">
               {BLOCK_PRESETS.map((preset) => {
                 const Icon = preset.icon;
                 const isHighlighted =
@@ -2693,47 +2698,50 @@ export default function SectographPage() {
                   (isVitalityMode &&
                     ((vitalityStep === 1 && preset.id === "sleep") ||
                      (vitalityStep === 2 && preset.id === "daily-flow")));
-                // Brighter hue for the icon foreground (boost saturation/lightness via overlay).
                 const vivid = preset.color;
                 return (
                   <button
                     key={preset.id}
                     data-testid={`preset-${preset.id}`}
                     onClick={() => handlePresetClick(preset)}
-                    className="relative flex flex-col items-center gap-1.5 px-1 py-3 rounded-xl transition-all active:scale-95 hover:scale-[1.04]"
+                    className="relative flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all active:scale-[0.97]"
                     style={{
                       background: isHighlighted
-                        ? `linear-gradient(160deg, ${vivid}55, ${vivid}22)`
-                        : `linear-gradient(160deg, ${vivid}38, ${vivid}10)`,
-                      border: isHighlighted ? `2px solid ${vivid}` : `1px solid ${vivid}66`,
+                        ? `linear-gradient(135deg, ${vivid}40, ${vivid}18)`
+                        : `linear-gradient(135deg, ${vivid}28, ${vivid}0a)`,
+                      border: isHighlighted ? `2px solid ${vivid}` : `1px solid ${vivid}55`,
                       boxShadow: isHighlighted
-                        ? `0 0 16px ${vivid}90, 0 0 4px ${vivid}40 inset`
-                        : `0 0 10px ${vivid}33, 0 1px 0 rgba(255,255,255,0.04) inset`,
-                      transform: isHighlighted ? "scale(1.06)" : "scale(1)",
+                        ? `0 0 20px ${vivid}70, 0 0 6px ${vivid}30 inset`
+                        : `0 0 8px ${vivid}22`,
                     }}
                   >
                     <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                       style={{
-                        background: `radial-gradient(circle at 35% 30%, ${vivid}aa, ${vivid}55)`,
-                        boxShadow: `0 0 8px ${vivid}80`,
+                        background: `radial-gradient(circle at 35% 30%, ${vivid}cc, ${vivid}66)`,
+                        boxShadow: `0 0 10px ${vivid}99`,
                       }}
                     >
-                      <Icon size={18} style={{ color: "#ffffff", filter: `drop-shadow(0 0 4px ${vivid})` }} />
+                      <Icon size={20} style={{ color: "#ffffff", filter: `drop-shadow(0 0 5px ${vivid})` }} />
                     </div>
-                    <span
-                      className="text-[10px] font-bold text-center leading-tight tracking-wide"
-                      style={{ color: "#ffffff", textShadow: `0 0 6px ${vivid}` }}
-                    >
-                      {preset.name}
-                    </span>
-                    {isHighlighted && (
-                      <span
-                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-bold leading-none px-1.5 py-0.5 rounded-full"
-                        style={{ backgroundColor: vivid, color: "#0b1020" }}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-sm font-bold leading-tight"
+                        style={{ color: "#ffffff", textShadow: `0 0 8px ${vivid}` }}
                       >
-                        TAP
-                      </span>
+                        {preset.name}
+                      </p>
+                      {isHighlighted && (
+                        <p className="text-[10px] mt-0.5 font-medium" style={{ color: `${vivid}cc` }}>
+                          Recommended first
+                        </p>
+                      )}
+                    </div>
+                    {isHighlighted && (
+                      <div
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: vivid, boxShadow: `0 0 6px ${vivid}` }}
+                      />
                     )}
                   </button>
                 );
