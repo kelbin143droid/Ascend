@@ -172,7 +172,19 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   const pendingSeq = seqCards.filter(c => !isActivityDone(c.id));
   const doneSeq    = seqCards.filter(c =>  isActivityDone(c.id));
-  const vitalityDone = isVitalityQuestScheduledToday();
+  // Reactive vitality-done: re-checks localStorage whenever the sectograph
+  // dispatches "ascend:vitality-done" after the user finishes setup.
+  const [vitalityDone, setVitalityDone] = useState(() => isVitalityQuestScheduledToday());
+  useEffect(() => {
+    const refresh = () => setVitalityDone(isVitalityQuestScheduledToday());
+    window.addEventListener("ascend:vitality-done", refresh);
+    // Also refresh on page focus so navigating back always shows the latest state.
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener("ascend:vitality-done", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
   const allDone    = pendingSeq.length === 0 && seqCards.length > 0 && vitalityDone;
   const currentAid = pendingSeq[0]?.id ?? null;
   const todayIds   = new Set(activities.map(a => a.id));

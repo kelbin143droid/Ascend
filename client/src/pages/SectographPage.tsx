@@ -307,6 +307,9 @@ export default function SectographPage() {
   const [vitalityXpAwarded, setVitalityXpAwarded] = useState(false);
   const [vitalityIntroSeen, setVitalityIntroSeen] = useState(() => localStorage.getItem("ascend_vitality_intro_seen") === "1");
   const [showVitalitySleepPresets, setShowVitalitySleepPresets] = useState(false);
+  const [vitalityOverlayDismissed, setVitalityOverlayDismissed] = useState(
+    () => localStorage.getItem("ascend_vitality_overlay_dismissed") === new Date().toDateString()
+  );
   const [day5IntroSeen, setDay5IntroSeen] = useState(
     () => localStorage.getItem("ascend_day5_sectograph_intro_seen") === "true"
   );
@@ -787,6 +790,8 @@ export default function SectographPage() {
       } else if (isDailyFlowBlock && vitalitySleepDone && !vitalityQuestDone) {
         markVitalityQuestScheduled();
         setVitalityQuestDone(true);
+        // Notify Day6Home so it re-reads vitalityDone from localStorage.
+        window.dispatchEvent(new CustomEvent("ascend:vitality-done"));
         setTimeout(() => toast({
           title: "🟡 Growth path initialized",
           description: "Daily Quest scheduled. XP inbound.",
@@ -3483,7 +3488,7 @@ export default function SectographPage() {
       )}
 
       {/* ── VITALITY · COMPLETION OVERLAY ───────────────────────────── */}
-      {isVitalityMode && vitalityStep === 3 && (
+      {isVitalityMode && vitalityStep === 3 && !vitalityOverlayDismissed && (
         <div
           className="fixed inset-0 z-50 flex flex-col items-center justify-start overflow-y-auto px-6 pt-14 pb-36"
           style={{ background: "rgba(5,5,20,0.96)" }}
@@ -3566,7 +3571,11 @@ export default function SectographPage() {
 
             <button
               data-testid="button-vitality-complete-return"
-              onClick={() => navigate("/")}
+              onClick={() => {
+                localStorage.setItem("ascend_vitality_overlay_dismissed", new Date().toDateString());
+                setVitalityOverlayDismissed(true);
+                navigate("/");
+              }}
               className="w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] flex items-center justify-center gap-2 mt-2"
               style={{
                 background: "linear-gradient(135deg, #f59e0b, #d97706)",
