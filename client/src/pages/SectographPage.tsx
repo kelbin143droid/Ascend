@@ -368,11 +368,18 @@ export default function SectographPage() {
   });
 
   useEffect(() => {
-    if (isVitalityMode && vitalityStep === 3 && !vitalityXpAwarded && !vitalityXpMutation.isPending && !vitalityXpMutation.isSuccess) {
+    if (
+      isVitalityMode &&
+      vitalityStep === 3 &&
+      !vitalityXpAwarded &&
+      !vitalityXpMutation.isPending &&
+      !vitalityXpMutation.isSuccess &&
+      player?.id  // only fire when player is loaded — prevents silent no-op
+    ) {
       setVitalityXpAwarded(true);
       vitalityXpMutation.mutate();
     }
-  }, [isVitalityMode, vitalityStep, vitalityXpAwarded]);
+  }, [isVitalityMode, vitalityStep, vitalityXpAwarded, player?.id]);
 
   // Weekly planning state
   const { roles } = useRoles();

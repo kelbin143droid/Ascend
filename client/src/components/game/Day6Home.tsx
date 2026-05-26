@@ -851,7 +851,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           data-testid="stat-grid"
         >
           {(allDone ? [...DASH_CARDS] : supportCards).map((dc, idx) => {
-            const isDone  = dc.activityId !== "" && isActivityDone(dc.activityId);
+            // Vitality has no activityId (it's driven by sectograph setup),
+            // so we use the reactive vitalityDone flag for its "done" state.
+            const isDone  = dc.id === "vitality"
+              ? vitalityDone
+              : (dc.activityId !== "" && isActivityDone(dc.activityId));
             const inFlow  = dc.activityId !== "" && todayIds.has(dc.activityId);
             const action  = resolveAction(dc);
 
