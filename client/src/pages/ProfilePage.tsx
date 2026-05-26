@@ -392,13 +392,23 @@ export default function ProfilePage() {
 
       <div className="min-h-screen pb-28" data-testid="profile-page">
 
+        {/* Fixed full-page dark RPG background — covers entire page including below-fold while scrolling */}
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            zIndex: 15,
+            background: "radial-gradient(ellipse 90% 55% at 50% 35%, #1a2540 0%, #0c1220 50%, #060a12 100%)",
+          }}
+        />
+
         {/* ════════════════════════════════════════════════
             RPG GAME SCREEN
             ════════════════════════════════════════════════ */}
         <div
           className="relative overflow-hidden"
           style={{
-            background: "radial-gradient(ellipse 90% 65% at 50% 42%, #1a2540 0%, #0c1220 45%, #060a12 100%)",
+            zIndex: 16,
+            background: "transparent",
             minHeight: 430,
           }}
         >
@@ -497,7 +507,7 @@ export default function ProfilePage() {
             {/* LEFT — Archetype selector */}
             <div
               className="flex flex-col items-center justify-center gap-2 py-4 shrink-0"
-              style={{ width: 60, borderRight: `1px solid ${archetypeData.color}15` }}
+              style={{ width: 70, borderRight: `1px solid ${archetypeData.color}15` }}
             >
               {ARCHETYPES.map((a) => {
                 const isSelected = a.id === archetype;
@@ -509,21 +519,21 @@ export default function ProfilePage() {
                     whileTap={{ scale: 0.92 }}
                     className="relative flex flex-col items-center justify-center rounded-xl transition-colors duration-300"
                     style={{
-                      width: 46,
-                      height: 58,
+                      width: 58,
+                      height: 62,
                       background: isSelected ? `${a.color}22` : "rgba(255,255,255,0.03)",
                       border: `1.5px solid ${isSelected ? a.color : "rgba(255,255,255,0.07)"}`,
                       boxShadow: isSelected ? `0 0 14px ${a.color}40, inset 0 0 10px ${a.color}12` : "none",
                     }}
                   >
-                    <div className="w-8 h-10 flex items-end justify-center overflow-hidden">
+                    <div className="w-9 h-10 flex items-end justify-center overflow-hidden">
                       <ArchetypeAvatar id={a.id} color={a.color} accent={a.accent} />
                     </div>
                     <span
-                      className="text-[7px] font-mono font-bold uppercase tracking-tight leading-none mt-0.5"
+                      className="text-[7px] font-mono font-bold uppercase tracking-tight leading-none mt-1"
                       style={{ color: isSelected ? a.color : "rgba(255,255,255,0.3)" }}
                     >
-                      {a.name.slice(0, 3)}
+                      {a.name}
                     </span>
                   </motion.button>
                 );
@@ -661,7 +671,7 @@ export default function ProfilePage() {
         {/* ════════════════════════════════════════════════
             BELOW-FOLD — Phase, Radar, History, Settings
             ════════════════════════════════════════════════ */}
-        <div className="px-4 pt-5 pb-4 space-y-5">
+        <div className="relative px-4 pt-5 pb-4 space-y-5" style={{ zIndex: 16 }}>
 
           {/* Phase & Growth */}
           <div
