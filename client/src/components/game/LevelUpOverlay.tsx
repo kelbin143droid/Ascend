@@ -132,7 +132,7 @@ export function LevelUpOverlay() {
                 <div className="flex flex-col gap-2 w-full">
                   <button
                     data-testid="button-view-character"
-                    onClick={() => { setShowProfilePrompt(false); navigate("/profile"); }}
+                    onClick={() => { setShowProfilePrompt(false); navigate("/game3d"); }}
                     className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-95"
                     style={{
                       background: "linear-gradient(90deg, #7c3aed, #8b5cf6)",
