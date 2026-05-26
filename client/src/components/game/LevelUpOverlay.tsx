@@ -125,7 +125,7 @@ export function LevelUpOverlay() {
                     Ritual Complete
                   </p>
                   <p className="text-xs leading-relaxed" style={{ color: "rgba(160,175,200,0.80)" }}>
-                    You completed today's full protocol and leveled up. Ready to see your character?
+                    You completed today's full protocol and leveled up. Time to choose your avatar.
                   </p>
                 </div>
 
@@ -140,7 +140,7 @@ export function LevelUpOverlay() {
                       boxShadow: "0 4px 20px rgba(139,92,246,0.40)",
                     }}
                   >
-                    View Character →
+                    Choose Avatar →
                   </button>
                   <button
                     data-testid="button-stay-home"
