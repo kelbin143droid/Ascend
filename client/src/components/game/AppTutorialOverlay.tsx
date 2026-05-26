@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, Play } from "lucide-react";
 
@@ -8,6 +9,7 @@ const CTA_TESTID   = "mission-card-current";
 interface CtaRect { top: number; left: number; width: number; height: number; }
 
 export function AppTutorialOverlay() {
+  const [location] = useLocation();
   const [visible, setVisible] = useState(
     () => localStorage.getItem(TUTORIAL_KEY) !== "1"
   );
@@ -40,7 +42,8 @@ export function AppTutorialOverlay() {
     setVisible(false);
   };
 
-  if (!visible) return null;
+  // Only show on the home screen — never on Sectograph, onboarding, or other pages
+  if (!visible || location !== "/") return null;
 
   return (
     <div
