@@ -340,8 +340,13 @@ export default function SectographPage() {
     },
     onSuccess: () => {
       setFlowBonusAwarded(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
+      toast({
+        title: "🔥 +20 System Synthesis Bonus",
+        description: "Bonus XP rewarded for completing your full setup.",
+        duration: 3500,
+      });
     },
   });
 
@@ -358,8 +363,13 @@ export default function SectographPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
       queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
+      toast({
+        title: "⚡ +20 XP — Vitality Protocol Complete",
+        description: "Recovery scheduled. Vitality stat advancing.",
+        duration: 3500,
+      });
       // Award the System Synthesis Bonus after the base vitality XP
       if (!flowBonusAwarded) {
         flowBonusMutation.mutate();
@@ -393,6 +403,13 @@ export default function SectographPage() {
       setGoalInputs(roles.map(role => ({ roleId: role.id, title: "", quadrant: "Q2" as Quadrant })));
     }
   }, [roles, goalInputs.length]);
+
+  // Scroll to top when entering vitality mode so the SYSTEM instructions are immediately visible
+  useEffect(() => {
+    if (isVitalityMode) {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [isVitalityMode]);
 
   const rolesWithGoals = useMemo(() => new Set(weeklyGoals.map(g => g.roleId)), [weeklyGoals]);
   const allRolesHaveGoals = roles.length > 0 && roles.every(r => rolesWithGoals.has(r.id));
@@ -1151,42 +1168,55 @@ export default function SectographPage() {
           </div>
         )}
 
-        {/* ── Vitality mode: floating coach tooltip ──────────────────────── */}
+        {/* ── Vitality mode: SYSTEM instruction card ─────────────────────── */}
         {isVitalityMode && vitalityIntroSeen && vitalityStep >= 1 && vitalityStep < 3 && (
           <div
-            className="w-full rounded-2xl px-4 py-3 flex items-start gap-3"
+            className="w-full rounded-2xl px-5 py-4 flex items-start gap-4"
             style={{
               background: vitalitySleepDone
-                ? "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(251,191,36,0.06))"
-                : "linear-gradient(135deg, rgba(59,130,246,0.10), rgba(99,102,241,0.06))",
+                ? "linear-gradient(135deg, rgba(245,158,11,0.14) 0%, rgba(251,191,36,0.08) 100%)"
+                : "linear-gradient(135deg, rgba(59,130,246,0.14) 0%, rgba(99,102,241,0.08) 100%)",
               border: vitalitySleepDone
-                ? "1px solid rgba(245,158,11,0.30)"
-                : "1px solid rgba(59,130,246,0.30)",
+                ? "1.5px solid rgba(245,158,11,0.55)"
+                : "1.5px solid rgba(59,130,246,0.55)",
+              boxShadow: vitalitySleepDone
+                ? "0 0 18px rgba(245,158,11,0.18), inset 0 1px 0 rgba(245,158,11,0.10)"
+                : "0 0 18px rgba(59,130,246,0.18), inset 0 1px 0 rgba(59,130,246,0.10)",
             }}
             data-testid="vitality-coach-tooltip"
           >
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5"
               style={{
-                background: vitalitySleepDone ? "rgba(245,158,11,0.15)" : "rgba(59,130,246,0.15)",
+                background: vitalitySleepDone
+                  ? "linear-gradient(135deg, rgba(245,158,11,0.28), rgba(251,191,36,0.14))"
+                  : "linear-gradient(135deg, rgba(59,130,246,0.28), rgba(99,102,241,0.14))",
+                border: vitalitySleepDone
+                  ? "1px solid rgba(245,158,11,0.40)"
+                  : "1px solid rgba(59,130,246,0.40)",
               }}
             >
               {vitalitySleepDone
-                ? <Zap size={13} style={{ color: "#f59e0b" }} />
-                : <Moon size={13} style={{ color: "#60a5fa" }} />
+                ? <Zap size={16} style={{ color: "#f59e0b" }} />
+                : <Moon size={16} style={{ color: "#60a5fa" }} />
               }
             </div>
             <div className="flex-1 min-w-0">
               <p
-                className="text-[9px] uppercase tracking-widest font-bold mb-0.5"
-                style={{ color: vitalitySleepDone ? "rgba(245,158,11,0.7)" : "rgba(96,165,250,0.7)" }}
+                className="text-[10px] uppercase tracking-widest font-bold mb-1"
+                style={{ color: vitalitySleepDone ? "rgba(245,158,11,0.85)" : "rgba(96,165,250,0.85)" }}
               >
-                System
+                ⚡ System Directive
               </p>
-              <p className="text-sm font-medium leading-snug" style={{ color: "rgba(245,245,255,0.92)" }}>
+              <p className="text-base font-semibold leading-snug" style={{ color: "rgba(245,245,255,0.97)" }}>
                 {vitalitySleepDone
                   ? "Tap + to schedule your Daily Quest window."
                   : "Tap + to create your Sleep block."}
+              </p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: vitalitySleepDone ? "rgba(245,158,11,0.65)" : "rgba(96,165,250,0.65)" }}>
+                {vitalitySleepDone
+                  ? "Step 2 of 2 — last step before XP is awarded"
+                  : "Step 1 of 2 — tap the + button in the clock center"}
               </p>
             </div>
           </div>
