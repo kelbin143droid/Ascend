@@ -205,6 +205,20 @@ export default function HabitsPage() {
       setCompletionResult(data);
       setShowBurst(true);
       setTimeout(() => setShowBurst(false), 1200);
+      const stat = data?.habit?.stat;
+      const xp   = data?.bonusXP ?? 10;
+      const statLabels: Record<string, string> = { strength: 'STR', agility: 'AGI', vitality: 'VIT', sense: 'SEN' };
+      if (stat) {
+        window.dispatchEvent(new CustomEvent('ascend:system-msg', {
+          detail: {
+            id: `habit-${Date.now()}`,
+            type: 'stat_gain',
+            title: `${statLabels[stat] ?? stat.toUpperCase()} INCREASED`,
+            subtitle: `+${xp} XP · HABIT COMPLETE`,
+            icon: '⬆',
+          },
+        }));
+      }
     },
   });
 

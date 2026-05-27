@@ -47,6 +47,7 @@ import SleepSettingsPage from "@/pages/SleepSettingsPage";
 import NotificationSettingsPage from "@/pages/NotificationSettingsPage";
 import FlowApp from "@/pages/FlowApp";
 import { VoiceAlertEngine } from "@/components/game/VoiceAlertEngine";
+import { SystemMessageEngine } from "@/components/game/SystemMessageEngine";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
 import { IntroWrapper } from "@/components/game/IntroWrapper";
@@ -215,6 +216,7 @@ function App() {
                 <Toaster />
                 <NativeBootstrap />
                 <VoiceAlertEngine />
+                <SystemMessageEngine />
               </IntroWrapper>
             </PlanningProviders>
           </LanguageStageProvider>
