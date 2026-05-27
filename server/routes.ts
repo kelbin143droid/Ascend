@@ -114,6 +114,31 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/player-stats", async (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || (req.headers["x-user-id"] as string);
+      if (!userId) {
+        return res.status(400).json({ error: "userId is required (query param or x-user-id header)" });
+      }
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      const stats = player.stats as Record<string, number> ?? {};
+      return res.json({
+        level:           player.level           ?? 1,
+        availablePoints: player.statPoints       ?? 0,
+        str:             stats.strength          ?? 0,
+        vit:             stats.vitality          ?? 0,
+        agi:             stats.agility           ?? 0,
+        sen:             stats.sense             ?? 0,
+      });
+    } catch (error) {
+      console.error("[GET /api/player-stats] error:", error);
+      res.status(500).json({ error: "Failed to fetch player stats" });
+    }
+  });
+
   app.post("/api/player", async (req, res) => {
     try {
       const parsed = insertPlayerSchema.safeParse(req.body);
