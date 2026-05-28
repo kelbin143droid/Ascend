@@ -139,6 +139,33 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/save-progress", async (req, res) => {
+    try {
+      const schema = z.object({
+        userId:       z.string().min(1),
+        goldEarned:   z.number().int().min(0),
+        currentStage: z.number().int().min(1),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const { userId, goldEarned, currentStage } = parsed.data;
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+      }
+      await storage.updatePlayer(userId, {
+        gold:  (player.gold ?? 0) + goldEarned,
+        phase: Math.max(player.phase ?? 1, currentStage),
+      });
+      return res.json({ success: true, message: "Progress saved." });
+    } catch (error) {
+      console.error("[POST /api/save-progress] error:", error);
+      res.status(500).json({ error: "Failed to save progress" });
+    }
+  });
+
   app.post("/api/player", async (req, res) => {
     try {
       const parsed = insertPlayerSchema.safeParse(req.body);
