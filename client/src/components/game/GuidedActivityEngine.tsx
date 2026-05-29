@@ -947,6 +947,16 @@ export function GuidedActivityEngine({
   // Refs that always hold the latest Set values so mutation closures never go stale.
   const stepsCompletedRef = useRef<Set<number>>(new Set(savedSession?.stepsCompleted ?? []));
   const stepsSkippedRef = useRef<Set<number>>(new Set(savedSession?.stepsSkipped ?? []));
+  // Fallback XP for daily-flow sessions when the server save fails and the
+  // user taps "Continue anyway" — keeps local XP consistent with server logic.
+  const DAILY_FLOW_FALLBACK_XP: Record<string, number> = {
+    phase1_meditation: 15,
+    phase1_agility:    15,
+    "light-movement":  15,
+    phase1_vitality:   20,
+    phase1_strength:   40,
+  };
+
   const [xpEarned, setXpEarned] = useState<number | null>(null);
   const [antiGrindMultiplier, setAntiGrindMultiplier] = useState<number>(1.0);
   const [dailyCapReached, setDailyCapReached] = useState(false);
@@ -995,6 +1005,7 @@ export function GuidedActivityEngine({
   }, [currentStepIdx, stepPhase, timerRemaining, stepsCompleted, stepsSkipped, isCompletionStep, activity.id]);
 
   const completeMutation = useMutation({
+    retry: 1,
     mutationFn: async () => {
       const durationMinutes = Math.max(1, Math.ceil(activity.duration / 60));
       const res = await apiRequest(
@@ -1393,7 +1404,20 @@ export function GuidedActivityEngine({
               activity={activity}
               colors={colors}
               xpEarned={xpEarned}
-              onFinish={() => onComplete(xpEarned ?? 0)}
+              onFinish={() => {
+                // If the server save failed, apply local XP so the user
+                // doesn't lose progress when they tap "Continue anyway".
+                if (completeMutation.isError && xpEarned === null) {
+                  const fallback = DAILY_FLOW_FALLBACK_XP[activity.id] ?? 0;
+                  if (fallback > 0) {
+                    addXP(fallback, activity.stat);
+                    completeTask(activity.id);
+                    onComplete(fallback);
+                    return;
+                  }
+                }
+                onComplete(xpEarned ?? 0);
+              }}
               onRetry={() => completeMutation.mutate()}
               isPending={completeMutation.isPending}
               isError={completeMutation.isError}

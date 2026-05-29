@@ -493,6 +493,7 @@ export async function registerRoutes(
         dailyCapReached: remainingCap === 0,
       });
     } catch (error) {
+      console.error("[complete-guided-session] Error for player", req.params.id, "session", req.body?.sessionId, ":", error);
       res.status(500).json({ error: "Failed to complete guided session" });
     }
   });
