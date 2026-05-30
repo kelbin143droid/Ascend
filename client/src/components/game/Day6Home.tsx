@@ -274,7 +274,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const featuredCard = vitalityPending
     ? vitalityCard
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
-  const supportCards = DASH_CARDS.filter(d => d !== featuredCard);
+  const supportCards = DASH_CARDS.filter(d =>
+    d !== featuredCard && (d.id === "vitality" || todayIds.has(d.activityId))
+  );
 
   // Correct session routes per activity (GuidedSessionPage only knows these IDs)
   const ACTIVITY_SESSION: Record<string, string> = {

@@ -11,6 +11,8 @@ import { Wind, Heart, Droplets, Brain, X, Pause, Play, SkipForward } from "lucid
 import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
 import { BreathingFeedbackModal } from "@/components/game/BreathingFeedbackModal";
+import { getWorkoutLevel } from "@/lib/workoutProgressStore";
+import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow";
 
@@ -912,6 +914,7 @@ export default function GuidedSessionPage() {
 
   // Light Movement uses the video-guided engine instead of the generic session page
   if (sessionId === "light-movement" && player?.id) {
+    const pathCfg = getPathFlowConfig(getWorkoutLevel());
     const handleLightMovementComplete = async () => {
       await queryClient.refetchQueries({ queryKey: ["home", player.id] });
       // Always write both IDs so the dashboard tracks Agility as complete
@@ -927,8 +930,13 @@ export default function GuidedSessionPage() {
           window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
         });
       } catch { /* noop */ }
-      // Navigate home with autostart flag so Physical Circuit launches immediately
-      setLocation("/?autostart=strength");
+      if (pathCfg.includesStrength) {
+        // Build/Evolve/Ascend continue directly into their strength circuit.
+        setLocation("/?autostart=strength");
+      } else {
+        // Foundation skips strength; returning home makes Vitality the next step.
+        setLocation("/");
+      }
     };
 
     return (
@@ -936,7 +944,7 @@ export default function GuidedSessionPage() {
         playerId={player.id}
         onComplete={handleLightMovementComplete}
         onCancel={() => setLocation("/")}
-        nextLabel="Physical Circuit"
+        nextLabel={pathCfg.includesStrength ? "Physical Circuit" : "Vitality"}
       />
     );
   }
