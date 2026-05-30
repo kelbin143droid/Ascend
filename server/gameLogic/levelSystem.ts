@@ -1,4 +1,6 @@
-const BASE_XP = 100;
+import { PHASE1_XP, XP_PER_LEVEL } from "@shared/gameProgression";
+
+const BASE_XP = XP_PER_LEVEL;
 const GROWTH = 0;
 
 export function getXPForNextLevel(level: number): number {
@@ -90,10 +92,10 @@ export function getXPForActivity(durationMinutes: number): number {
 
 // Fixed base XP per training category (Phase 1 balanced system)
 const CATEGORY_BASE_XP: Record<string, number> = {
-  meditation: 15,  // Focus / Calm Breathing
-  strength:   40,  // Strength Circuit
-  agility:    15,  // Mobility Flow
-  vitality:   10,  // Hydration + Sleep + Nutrition
+  meditation: PHASE1_XP.sense,     // Focus / Calm Breathing
+  strength:   PHASE1_XP.strength,  // Strength Circuit
+  agility:    PHASE1_XP.agility,   // Mobility Flow
+  vitality:   PHASE1_XP.vitality,  // Hydration + Sleep + Nutrition
 };
 
 export function getBaseXPForCategory(category: string): number {

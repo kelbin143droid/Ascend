@@ -35,6 +35,7 @@ import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPU
 import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, type TaskStatType } from "./gameLogic/xpProgressionSystem";
 import { getStatFromLevel as getStatLevel, getRankFromLevel, getXPForNextLevel as calculateXPRequired, getTotalXPForLevel } from "./gameLogic/levelSystem";
 import { getFlowState, updateFlowAfterCompletion } from "./gameLogic/flowEngine";
+import { PHASE1_DAILY_TARGET_XP, PHASE1_XP, STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -66,7 +67,14 @@ interface PlayerWithDerived extends Player {
 }
 
 function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithDerived {
-  const displayStats = getDisplayStats(player.stats);
+  const bonusStats = player.bonusStats || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+  const totalStats = {
+    strength: player.stats.strength + (bonusStats.strength ?? 0),
+    agility: player.stats.agility + (bonusStats.agility ?? 0),
+    sense: player.stats.sense + (bonusStats.sense ?? 0),
+    vitality: player.stats.vitality + (bonusStats.vitality ?? 0),
+  };
+  const displayStats = getDisplayStats(totalStats);
   
   const today = getTodayDateString();
   const fatigue = player.fatigue || { date: "", sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 } };
@@ -86,7 +94,7 @@ function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithD
   return {
     ...player,
     rank,
-    derived: calculateDerivedStats(player.stats),
+    derived: calculateDerivedStats(totalStats),
     displayStats,
     fatigueInfo,
     phaseStatCap: PHASE_STAT_CAPS[player.phase] || 30,
@@ -233,12 +241,16 @@ export async function registerRoutes(
       if (player.onboardingCompleted === 1) {
         return res.json(attachDerivedStats(player, "Already completed"));
       }
-      // Mark onboarding complete — preserve all XP earned naturally during the 5-day onboarding
-      // Player stays at Level 1 with their earned XP (e.g. 25 XP from 5 days × 5 XP)
+      const xpDeficit = Math.max(0, PHASE1_DAILY_TARGET_XP - (player.totalExp ?? 0));
+      let completedPlayer = player;
+      if (xpDeficit > 0) {
+        completedPlayer = (await storage.gainExp(req.params.id, xpDeficit)) ?? player;
+      }
+
       const final = await storage.updatePlayer(req.params.id, {
         onboardingCompleted: 1,
       });
-      res.json(attachDerivedStats(final ?? player, "Onboarding complete. The system is yours now."));
+      res.json(attachDerivedStats(final ?? completedPlayer, "Onboarding complete. Level 2 unlocked."));
     } catch (error) {
       res.status(500).json({ error: "Failed to complete onboarding level-up" });
     }
@@ -248,15 +260,16 @@ export async function registerRoutes(
     try {
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
-      // Force player back to Level 1 with 25 XP (5 days × 5 XP = the correct onboarding total)
-      const ONBOARDING_CORRECT_XP = 25;
+      // Force player to the current onboarding target for QA/dev recovery.
+      const ONBOARDING_CORRECT_XP = PHASE1_DAILY_TARGET_XP;
       const updated = await storage.updatePlayer(req.params.id, {
-        level: 1,
-        exp: ONBOARDING_CORRECT_XP,
+        level: 2,
+        exp: 0,
         maxExp: 100,
         totalExp: ONBOARDING_CORRECT_XP,
+        statPoints: Math.max(player.statPoints ?? 0, STAT_POINTS_PER_LEVEL),
       });
-      res.json({ success: true, level: 1, exp: ONBOARDING_CORRECT_XP, totalExp: ONBOARDING_CORRECT_XP });
+      res.json({ success: true, level: 2, exp: 0, totalExp: ONBOARDING_CORRECT_XP });
     } catch (err) {
       res.status(500).json({ error: "Failed to fix XP" });
     }
@@ -408,11 +421,11 @@ export async function registerRoutes(
       // Daily flow sessions always award exact fixed XP — no tier multiplier, no
       // anti-grind reduction, and no daily cap interference.
       const DAILY_FLOW_SESSION_XP: Record<string, number> = {
-        phase1_meditation: 15,
-        phase1_agility:    15,
-        "light-movement":  15,
-        phase1_vitality:   20,
-        phase1_strength:   40,
+        phase1_meditation: PHASE1_XP.sense,
+        phase1_agility:    PHASE1_XP.agility,
+        "light-movement":  PHASE1_XP.agility,
+        phase1_vitality:   PHASE1_XP.vitality,
+        phase1_strength:   PHASE1_XP.strength,
       };
       if (DAILY_FLOW_SESSION_XP[parsed.data.sessionId] !== undefined) {
         guidedXP = DAILY_FLOW_SESSION_XP[parsed.data.sessionId];

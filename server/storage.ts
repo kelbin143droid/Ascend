@@ -18,6 +18,7 @@ import { db } from "./db";
 import { eq, and, gte, like, desc, sql } from "drizzle-orm";
 import { processSession, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
 import { updateStamina } from "./gameLogic/xpProgressionSystem";
+import { STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
 
 export interface CompleteSessionInput {
   stat: StatName;
@@ -163,7 +164,7 @@ export class DatabaseStorage implements IStorage {
       updates.mp = updates.maxMp;
       updates.rank = getRankFromLevel(newLevel);
       const levelsGained = newLevel - oldLevel;
-      updates.statPoints = (player.statPoints ?? 0) + levelsGained * 5;
+      updates.statPoints = (player.statPoints ?? 0) + levelsGained * STAT_POINTS_PER_LEVEL;
     }
 
     return this.updatePlayer(id, updates);

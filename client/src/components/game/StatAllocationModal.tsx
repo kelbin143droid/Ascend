@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useGame } from "@/context/GameContext";
 import { useTheme } from "@/context/ThemeContext";
 import { STAT_COLORS, STAT_ABBREV, STAT_DESCRIPTIONS, STAT_EMOJIS, ALL_STATS } from "@/lib/habitStatMap";
+import { STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
 import type { StatName } from "@shared/schema";
 
 interface StatAllocationModalProps {
@@ -39,9 +40,11 @@ export function StatAllocationModal({ open, onClose }: StatAllocationModalProps)
       return results[results.length - 1];
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["player"] });
+      if (data && player?.id) {
+        queryClient.setQueryData(["/api/player", player.id], data);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
       queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
-      if (data) queryClient.setQueryData(["player"], data);
       setPending({ strength: 0, agility: 0, sense: 0, vitality: 0 });
       setConfirming(false);
       onClose();
@@ -113,7 +116,7 @@ export function StatAllocationModal({ open, onClose }: StatAllocationModalProps)
             >
               <p className="text-sm mb-1" style={{ color: colors.text }}>No points to allocate</p>
               <p className="text-xs" style={{ color: colors.textMuted }}>
-                Earn 5 stat points each time you level up. Keep completing habits!
+                Earn {STAT_POINTS_PER_LEVEL} stat points each time you level up. Keep completing habits!
               </p>
             </div>
           ) : (

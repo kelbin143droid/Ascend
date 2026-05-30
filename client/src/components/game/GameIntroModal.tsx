@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { X, ChevronRight, Sword, Zap, Droplets, Shield, Star, Gamepad2, ArrowLeft, Heart, TrendingUp } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { markGameUnlocked } from "@/lib/progressionService";
+import { STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
 
 interface GameIntroModalProps {
   open: boolean;
@@ -417,7 +418,7 @@ export function GameIntroModal({ open, onClose, playerName }: GameIntroModalProp
               </h2>
 
               <p className="text-sm leading-relaxed mb-4" style={{ color: colors.textMuted }}>
-                Each level grants <span style={{ color: "#a855f7", fontWeight: 700 }}>5 stat points</span>. You choose where they go. Build the character that matches your real-life priorities.
+                Each level grants <span style={{ color: "#a855f7", fontWeight: 700 }}>{STAT_POINTS_PER_LEVEL} stat points</span>. You choose where they go. Build the character that matches your real-life priorities.
               </p>
 
               <div className="grid grid-cols-2 gap-2">

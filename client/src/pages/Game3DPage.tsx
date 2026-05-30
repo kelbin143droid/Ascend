@@ -332,12 +332,21 @@ function ClassLockModal({ archetype, mode, playerGold, onConfirm, onCancel }: {
   const starter = STARTER_EQUIPMENT[archetype.id];
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center pb-6 px-4"
-      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
+      className="fixed inset-0 z-[10000] flex items-center justify-center px-4 py-6"
+      style={{
+        background: 'rgba(0,0,0,0.75)',
+        backdropFilter: 'blur(8px)',
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+      }}>
       <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 240, damping: 24 }}
-        className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(8,14,28,0.98)', border: `1px solid ${archetype.color}50`, boxShadow: `0 0 40px ${archetype.color}20` }}>
+        className="w-full max-w-sm rounded-2xl overflow-y-auto"
+        style={{
+          maxHeight: 'calc(100dvh - 3rem)',
+          background: 'rgba(8,14,28,0.98)',
+          border: `1px solid ${archetype.color}50`,
+          boxShadow: `0 0 40px ${archetype.color}20`,
+        }}>
 
         {/* Header */}
         <div className="px-5 pt-5 pb-3 flex items-center gap-3"
@@ -817,7 +826,7 @@ export default function Game3DPage() {
     if (starter.accessory) startEquipped.accessory = starter.accessory;
     setArchetype(newClass);
     try { localStorage.setItem(ARCHETYPE_KEY, newClass); } catch { /* noop */ }
-    setRpgState(s => ({ ...s, classLocked: true, lockedClass: newClass, equipped: { ...startEquipped, ...s.equipped } }));
+    setRpgState(s => ({ ...s, classLocked: true, lockedClass: newClass, equipped: { ...s.equipped, ...startEquipped } }));
     dispatchSystemMessage({ type: 'rank_up', title: `CLASS LOCKED: ${newClass.toUpperCase()}`, subtitle: `Starter equipment equipped. Your journey begins.`, icon: '⚔', color: ARCHETYPES.find(a=>a.id===newClass)?.color });
     setLockModal(null);
     setPendingArchetype(null);
@@ -888,7 +897,9 @@ export default function Game3DPage() {
       return res.json();
     },
     onSuccess: (_data, { stat }) => {
-      refetchPlayer(); queryClient.invalidateQueries({ queryKey: ['/api/player'] });
+      if (player?.id) queryClient.setQueryData(['/api/player', player.id], _data);
+      refetchPlayer();
+      queryClient.invalidateQueries({ queryKey: ['home', player?.id] });
       setAllocatingFor(null);
       const s = STAT_META.find(m => m.key === stat);
       if (s) dispatchSystemMessage({ type: 'stat_gain', title: `${s.label} INCREASED`, subtitle: `${s.label} +1`, color: s.color });
@@ -1191,6 +1202,7 @@ export default function Game3DPage() {
                         </div>
                       </div>
                       <motion.button data-testid={`button-allocate-${s.label.toLowerCase()}`}
+                        aria-label={`Allocate one point to ${s.label}`}
                         disabled={!canAdd||allocateMutation.isPending}
                         onClick={() => { if(!canAdd)return; setAllocatingFor(s.key); allocateMutation.mutate({stat:s.key}); }}
                         whileTap={canAdd?{scale:0.85}:{}}

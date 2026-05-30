@@ -7,7 +7,7 @@
   },
   "progression": {
     "xpPerLevel": 100,
-    "statPointsPerLevel": 5,
+    "statPointsPerLevel": 4,
     "maxLevel": 100,
     "ranks": [
       { "rank": "E", "minLevel": 1, "maxLevel": 4, "color": "#6b7280" },

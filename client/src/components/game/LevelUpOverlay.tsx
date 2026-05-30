@@ -4,6 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/context/GameContext";
 import { LevelUpAnimation, getMotivationalPhrase } from "./LevelUpAnimation";
 import { applyLevelUpStats, initLevelBaseline, getMaxHP, getMaxMana } from "@/lib/statsSystem";
+import { isVitalityQuestScheduledToday, isVitalitySleepScheduledToday } from "@/lib/userState";
+import { STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
+
+const FUTURE_GAME_HANDOFF_KEY = "ascend_future_game_handoff_seen";
 
 function checkRitualComplete(): boolean {
   try {
@@ -12,7 +16,10 @@ function checkRitualComplete(): boolean {
     const senseDone    = ids.has("phase1_meditation") || ids.has("calm-breathing");
     const agilityDone  = ids.has("phase1_agility")    || ids.has("light-movement");
     const strengthDone = ids.has("phase1_strength");
-    return senseDone && agilityDone && strengthDone;
+    const vitalityDone =
+      ids.has("phase1_vitality") ||
+      (isVitalitySleepScheduledToday() && isVitalityQuestScheduledToday());
+    return senseDone && agilityDone && strengthDone && vitalityDone;
   } catch {
     return false;
   }
@@ -29,13 +36,15 @@ export function LevelUpOverlay() {
   } | null>(null);
   const [showProfilePrompt, setShowProfilePrompt] = useState(false);
   const previousLevelRef = useRef<number | null>(null);
+  const previousPlayerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!player) return;
 
     const currentLevel = player.level;
 
-    if (previousLevelRef.current === null) {
+    if (previousPlayerIdRef.current !== player.id || previousLevelRef.current === null) {
+      previousPlayerIdRef.current = player.id;
       previousLevelRef.current = currentLevel;
 
       // Detect a level-up that happened while the user was away (e.g. completing
@@ -64,11 +73,11 @@ export function LevelUpOverlay() {
     }
 
     previousLevelRef.current = currentLevel;
-  }, [player?.level]);
+  }, [player?.id, player?.level]);
 
   const handleComplete = () => {
     setPendingLevelUp(null);
-    if (checkRitualComplete()) {
+    if (checkRitualComplete() && localStorage.getItem(FUTURE_GAME_HANDOFF_KEY) !== "1") {
       setShowProfilePrompt(true);
     }
   };
@@ -125,14 +134,14 @@ export function LevelUpOverlay() {
                     Ritual Complete
                   </p>
                   <p className="text-xs leading-relaxed" style={{ color: "rgba(160,175,200,0.80)" }}>
-                    You completed today's full protocol and leveled up. Time to choose your avatar.
+                    You completed today's full protocol, reached Level {player?.level ?? 2}, and earned {player?.statPoints ?? STAT_POINTS_PER_LEVEL} stat points. Choose your avatar and assign your build.
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-2 w-full">
                   <button
                     data-testid="button-view-character"
-                    onClick={() => { setShowProfilePrompt(false); navigate("/game3d"); }}
+                    onClick={() => { localStorage.setItem(FUTURE_GAME_HANDOFF_KEY, "1"); setShowProfilePrompt(false); navigate("/game3d"); }}
                     className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-95"
                     style={{
                       background: "linear-gradient(90deg, #7c3aed, #8b5cf6)",
@@ -144,7 +153,7 @@ export function LevelUpOverlay() {
                   </button>
                   <button
                     data-testid="button-stay-home"
-                    onClick={() => setShowProfilePrompt(false)}
+                    onClick={() => { localStorage.setItem(FUTURE_GAME_HANDOFF_KEY, "1"); setShowProfilePrompt(false); }}
                     className="w-full py-2.5 rounded-xl text-xs transition-all active:scale-95"
                     style={{ color: "rgba(160,175,200,0.65)" }}
                   >

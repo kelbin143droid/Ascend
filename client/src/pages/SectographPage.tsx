@@ -94,6 +94,8 @@ import {
   deleteTemplate,
   type BlockTemplate,
 } from "@/lib/customBlockTemplateStore";
+import { addXP, completeTask } from "@/lib/workoutProgressStore";
+import { PHASE1_XP } from "@shared/gameProgression";
 
 type ViewTab = "sectograph" | "calendar" | "plan";
 
@@ -334,16 +336,17 @@ export default function SectographPage() {
     mutationFn: async () => {
       if (!player?.id) return;
       const res = await apiRequest("POST", `/api/player/${player.id}/daily-flow-bonus`, {
-        bonusXP: 20,
+        bonusXP: PHASE1_XP.synthesisBonus,
       });
       return res.json();
     },
     onSuccess: () => {
       setFlowBonusAwarded(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+      addXP(PHASE1_XP.synthesisBonus, "system");
+      queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
       queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
       toast({
-        title: "🔥 +20 System Synthesis Bonus",
+        title: `🔥 +${PHASE1_XP.synthesisBonus} System Synthesis Bonus`,
         description: "Bonus XP rewarded for completing your full setup.",
         duration: 3500,
       });
@@ -363,10 +366,20 @@ export default function SectographPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+      addXP(PHASE1_XP.vitality, "vitality");
+      completeTask("phase1_vitality");
+      try {
+        const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+        const existing = localStorage.getItem(todayKey);
+        const ids: string[] = existing ? (JSON.parse(existing) as string[]) : [];
+        if (!ids.includes("phase1_vitality")) ids.push("phase1_vitality");
+        localStorage.setItem(todayKey, JSON.stringify(ids));
+      } catch { /* noop */ }
+      window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: "phase1_vitality" } }));
+      queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
       queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
       toast({
-        title: "⚡ +20 XP — Vitality Protocol Complete",
+        title: `⚡ +${PHASE1_XP.vitality} XP — Vitality Protocol Complete`,
         description: "Recovery scheduled. Vitality stat advancing.",
         duration: 3500,
       });
@@ -3595,14 +3608,14 @@ export default function SectographPage() {
                 style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}
               >
                 <Zap size={14} style={{ color: "#f59e0b" }} />
-                <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+20 XP — Vitality awarded</p>
+                <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+{PHASE1_XP.vitality} XP — Vitality awarded</p>
               </div>
               <div
                 className="flex items-center gap-3 p-3 rounded-xl"
                 style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}
               >
                 <Zap size={14} style={{ color: "#f59e0b" }} />
-                <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+20 XP — System Synthesis Bonus</p>
+                <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+{PHASE1_XP.synthesisBonus} XP — System Synthesis Bonus</p>
               </div>
             </div>
 

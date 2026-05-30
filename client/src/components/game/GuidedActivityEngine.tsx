@@ -19,6 +19,7 @@ import {
 } from "@/lib/workoutLogStore";
 import { readEnergySettings } from "@/lib/energySettingsStore";
 import { addXP, completeTask } from "@/lib/workoutProgressStore";
+import { PHASE1_XP } from "@shared/gameProgression";
 
 /**
  * Map a guided-session step id to its canonical exercise name used by
@@ -950,11 +951,11 @@ export function GuidedActivityEngine({
   // Fallback XP for daily-flow sessions when the server save fails and the
   // user taps "Continue anyway" — keeps local XP consistent with server logic.
   const DAILY_FLOW_FALLBACK_XP: Record<string, number> = {
-    phase1_meditation: 15,
-    phase1_agility:    15,
-    "light-movement":  15,
-    phase1_vitality:   20,
-    phase1_strength:   40,
+    phase1_meditation: PHASE1_XP.sense,
+    phase1_agility:    PHASE1_XP.agility,
+    "light-movement":  PHASE1_XP.agility,
+    phase1_vitality:   PHASE1_XP.vitality,
+    phase1_strength:   PHASE1_XP.strength,
   };
 
   const [xpEarned, setXpEarned] = useState<number | null>(null);

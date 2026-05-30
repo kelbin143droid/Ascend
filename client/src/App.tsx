@@ -50,6 +50,7 @@ import { VoiceAlertEngine } from "@/components/game/VoiceAlertEngine";
 import { SystemMessageEngine } from "@/components/game/SystemMessageEngine";
 import NotFound from "@/pages/not-found";
 import { PhaseUnlockOverlay } from "@/components/game/PhaseUnlockOverlay";
+import { LevelUpOverlay } from "@/components/game/LevelUpOverlay";
 import { IntroWrapper } from "@/components/game/IntroWrapper";
 
 function PlanningProviders({ children }: { children: React.ReactNode }) {
@@ -213,6 +214,7 @@ function App() {
                   </Suspense>
                 </PlanningGate>
                 <PhaseUnlockOverlay />
+                <LevelUpOverlay />
                 <Toaster />
                 <NativeBootstrap />
                 <VoiceAlertEngine />
