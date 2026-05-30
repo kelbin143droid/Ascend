@@ -77,3 +77,8 @@ integrations = ["javascript_database:1.0.0"]
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 180000
+
+[userenv]
+
+[userenv.shared]
+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 = "GitHub "
