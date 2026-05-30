@@ -6,7 +6,8 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { GuidedActivityEngine } from "@/components/game/GuidedActivityEngine";
 import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
-import { buildPhase1Activities, type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
+import { type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
+import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
 import {
   getWorkoutLevel,
   setWorkoutLevel,
@@ -808,20 +809,7 @@ export default function TrainPage() {
   };
 
   const dayNumber = homeData?.onboardingDay ?? 1;
-  const activities = (() => {
-    const raw = buildPhase1Activities(dayNumber, tiers);
-    const cardioPrefs = getCardioPrefs();
-    return raw.map(a => {
-      if (a.id === "phase1_strength") {
-        const levelActivity = buildWorkoutActivity(workoutLevel, {
-          intensity: cardioPrefs.intensity,
-          position: cardioPrefs.position,
-        });
-        return { ...levelActivity, id: "phase1_strength" };
-      }
-      return a;
-    });
-  })();
+  const activities = buildDailyFlowActivities(workoutLevel, { dayNumber, tiers });
   const totalTime = activities.reduce((sum, a) => sum + a.duration, 0);
   const totalMins = Math.ceil(totalTime / 60);
 

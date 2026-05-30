@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Pause, SkipForward, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { addXP, completeTask } from "@/lib/workoutProgressStore";
+import { PHASE1_XP } from "@shared/gameProgression";
 
 const COLOR = "#22c55e";
 const REST_SECONDS = 7;
-const XP_REWARD = 40;
+const XP_REWARD = PHASE1_XP.agility;
 
 interface Exercise {
   id: string;
@@ -191,6 +192,8 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
   const [bowEnded, setBowEnded] = useState(false);
   const [earnedXp, setEarnedXp] = useState<number>(15);
   const bowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completeFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasCompletedRef = useRef(false);
 
   const pausedRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -203,6 +206,16 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
 
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+
+  const finishCompletion = useCallback((xp: number) => {
+    if (hasCompletedRef.current) return;
+    hasCompletedRef.current = true;
+    if (completeFallbackRef.current) {
+      clearTimeout(completeFallbackRef.current);
+      completeFallbackRef.current = null;
+    }
+    onCompleteRef.current(xp);
+  }, []);
 
   const claimMutation = useMutation({
     mutationFn: async () => {
@@ -316,6 +329,12 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
     return () => clearTimer();
   }, [clearTimer]);
 
+  useEffect(() => {
+    return () => {
+      if (completeFallbackRef.current) clearTimeout(completeFallbackRef.current);
+    };
+  }, []);
+
   const exerciseVideoRef = useCallback((el: HTMLVideoElement | null) => {
     videoRef.current = el;
   }, []);
@@ -403,13 +422,15 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
     if (!noApiCall && !xpClaimed) {
       setXpClaimed(true);
       localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
+      completeTask("phase1_agility");
+      completeFallbackRef.current = setTimeout(() => finishCompletion(XP_REWARD), 4000);
       claimMutation.mutate(undefined, {
-        onSettled: () => onCompleteRef.current(XP_REWARD),
+        onSettled: () => finishCompletion(XP_REWARD),
       });
     } else {
-      onCompleteRef.current(XP_REWARD);
+      finishCompletion(XP_REWARD);
     }
-  }, [noApiCall, xpClaimed, claimMutation]);
+  }, [noApiCall, xpClaimed, claimMutation, finishCompletion]);
 
   return (
     <motion.div
