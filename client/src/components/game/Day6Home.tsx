@@ -173,6 +173,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     phase1_meditation: "calm-breathing",
     phase1_agility:    "light-movement",
   };
+  const activitySessionRoute = (activityId: string): string | null => {
+    const sessionSlug = ACTIVITY_TO_SESSION[activityId];
+    return sessionSlug ? `/guided-session/${sessionSlug}` : null;
+  };
 
   const metaById = Object.fromEntries(pathCfg.sessionCards.map(c => [c.id, c]));
   const seqCards = activities.map(a => metaById[a.id] ?? null).filter(Boolean) as NonNullable<typeof metaById[string]>[];
@@ -307,9 +311,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     }
     const aid = featuredCard?.activityId;
     if (!aid) return;
-    const sessionSlug = ACTIVITY_TO_SESSION[aid];
-    if (sessionSlug) {
-      navigate(`/guided-session/${sessionSlug}`);
+    const sessionRoute = activitySessionRoute(aid);
+    if (sessionRoute) {
+      navigate(sessionRoute);
     } else {
       setSingleActivityId(aid);
       setFlowActive(true);
@@ -326,16 +330,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     d !== featuredCard && (d.id === "vitality" || todayIds.has(d.activityId))
   );
 
-  // Correct session routes per activity (GuidedSessionPage only knows these IDs)
-  const ACTIVITY_SESSION: Record<string, string> = {
-    phase1_meditation: "/guided-session/calm-breathing",
-    phase1_agility:    "/guided-session/light-movement",
-  };
-
   // Resolve the click action for a supporting card
   const resolveAction = (dc: (typeof DASH_CARDS)[number]): () => void => {
     if (dc.id === "vitality") return () => navigate("/sectograph?vitality=1");
-    const sessionRoute = ACTIVITY_SESSION[dc.activityId];
+    const sessionRoute = activitySessionRoute(dc.activityId);
     if (sessionRoute) return () => navigate(sessionRoute);
     // Strength: no standalone session — run isolated single-activity flow if pending
     if (dc.activityId === "phase1_strength") {
@@ -904,6 +902,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               ? vitalityDone
               : (dc.activityId !== "" && isActivityDone(dc.activityId));
             const inFlow  = dc.activityId !== "" && todayIds.has(dc.activityId);
+            const isLocked = !isDone;
             const action  = resolveAction(dc);
 
             const sl     = playerData?.statLevels?.[dc.statKey];
@@ -934,19 +933,20 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               <motion.button
                 key={dc.id}
                 type="button"
-                onClick={action}
+                disabled={isLocked}
+                onClick={isLocked ? undefined : action}
                 initial={{ opacity: 0, y: 8, boxShadow: restShadow }}
                 animate={{
-                  opacity: (!inFlow && dc.activityId !== "") ? 0.72 : 1,
+                  opacity: isLocked ? 0.58 : (!inFlow && dc.activityId !== "") ? 0.72 : 1,
                   y: 0,
                   boxShadow: restShadow,
                 }}
-                whileHover={{ scale: 1.034, y: -1, boxShadow: hoverShadow,
+                whileHover={isLocked ? {} : { scale: 1.034, y: -1, boxShadow: hoverShadow,
                   transition: { duration: 0.18, ease: "easeOut" } }}
-                whileTap={{ scale: 0.955, y: 0, boxShadow: tapShadow,
+                whileTap={isLocked ? {} : { scale: 0.955, y: 0, boxShadow: tapShadow,
                   transition: { duration: 0.1, ease: "easeIn" } }}
                 transition={{ duration: 0.28, delay: 0.22 + idx * 0.06 }}
-                className="rounded-2xl flex flex-col w-full text-left"
+                className="rounded-2xl flex flex-col w-full text-left disabled:cursor-default"
                 style={{
                   background: isDone
                     ? `linear-gradient(145deg, rgba(4,20,8,0.96) 0%, rgba(4,14,6,0.92) 100%)`
@@ -956,6 +956,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   padding: "12px 10px",
                   gap: "7px",
                   boxShadow: `inset 0 1px 0 ${accentColor}10`,
+                  cursor: isLocked ? "default" : "pointer",
                 }}
                 data-testid={`mission-card-${dc.id}`}
               >
@@ -1020,7 +1021,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     {statusLabel}
                   </span>
                   <span className="text-[11px] leading-none"
-                    style={{ color: accentColor, opacity: 0.40 }}>›</span>
+                    style={{ color: accentColor, opacity: isLocked ? 0.22 : 0.40 }}>
+                    {isLocked ? "•" : "›"}
+                  </span>
                 </div>
               </motion.button>
             );
