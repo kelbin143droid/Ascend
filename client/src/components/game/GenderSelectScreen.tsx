@@ -397,7 +397,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.7 }}
           >
-            ASCEND OS · INITIALIZATION
+            ASCEND OS · STYLE SYNC
           </motion.p>
           <motion.h1
             style={{
@@ -416,7 +416,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ delay: 0.52, duration: 0.78, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            CHOOSE YOUR PATH
+            CHOOSE YOUR STYLE
           </motion.h1>
           <motion.p
             style={{
@@ -428,7 +428,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.78, duration: 0.65 }}
           >
-            Your system theme adapts to you
+            Pick the visual system you want to start with
           </motion.p>
         </div>
 
@@ -485,7 +485,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
                       : "0 0 48px rgba(217,70,239,0.55), 0 4px 28px rgba(217,70,239,0.35), 0 8px 32px rgba(0,0,0,0.4)",
                 }}
               >
-                INITIALIZE SYSTEM
+                APPLY SYSTEM STYLE
                 <ArrowRight size={16} />
               </motion.button>
             ) : (
@@ -501,7 +501,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
                   color: "rgba(255,255,255,0.36)",
                 }}
               >
-                TAP A CARD TO CHOOSE YOUR PATH
+                TAP A CARD TO CHOOSE YOUR STYLE
               </motion.p>
             )}
           </AnimatePresence>
