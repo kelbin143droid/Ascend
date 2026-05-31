@@ -36,11 +36,18 @@ export interface CalibrationProfile extends CalibrationAnswers {
  * rather than being over-assigned based on strength alone.
  *
  * Thresholds (average score 0–100):
- *   < 25  → entry        (Foundation)
+ *   ≤ 25  → entry        (Foundation)
  *   < 50  → beginner     (Build)
  *   < 75  → intermediate (Evolve)
  *   ≥ 75  → advanced     (Ascend)
  */
+export function deriveCalibrationLevelFromScore(avg: number): WorkoutLevel {
+  if (avg <= 25) return "entry";
+  if (avg < 50) return "beginner";
+  if (avg < 75) return "intermediate";
+  return "advanced";
+}
+
 export function deriveCalibrationLevel(answers: CalibrationAnswers): WorkoutLevel {
   const avg = (
     answers.powerOutput +
@@ -48,10 +55,7 @@ export function deriveCalibrationLevel(answers: CalibrationAnswers): WorkoutLeve
     answers.signalStability +
     answers.syncRegularity
   ) / 4;
-  if (avg < 25) return "entry";
-  if (avg < 50) return "beginner";
-  if (avg < 75) return "intermediate";
-  return "advanced";
+  return deriveCalibrationLevelFromScore(avg);
 }
 
 // ── Storage ────────────────────────────────────────────────────────────────────

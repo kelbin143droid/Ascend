@@ -24,6 +24,47 @@ interface IntroWrapperProps {
 const FIRST_RESET_DURATION_SECONDS = 30;
 const FIRST_RESET_XP = 10;
 const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
+const INHALE_AUDIO_URL = "/audio/inhale.mp3";
+const HOLD_AUDIO_URL = "/audio/hold.mp3";
+const EXHALE_AUDIO_URL = "/audio/exhale.mp3";
+
+type FirstResetBreathPhase = "inhale" | "hold" | "exhale";
+
+const FIRST_RESET_BREATHING = {
+  inhale: 4,
+  hold: 2,
+  exhale: 4,
+} as const;
+const FIRST_RESET_CYCLE_SECONDS =
+  FIRST_RESET_BREATHING.inhale +
+  FIRST_RESET_BREATHING.hold +
+  FIRST_RESET_BREATHING.exhale;
+
+function getFirstResetBreathState(elapsedSeconds: number) {
+  const cycleSecond = elapsedSeconds % FIRST_RESET_CYCLE_SECONDS;
+  if (cycleSecond < FIRST_RESET_BREATHING.inhale) {
+    const progress = cycleSecond / FIRST_RESET_BREATHING.inhale;
+    return {
+      phase: "inhale" as FirstResetBreathPhase,
+      secondsLeft: FIRST_RESET_BREATHING.inhale - cycleSecond,
+      scale: 0.74 + progress * 0.26,
+    };
+  }
+  if (cycleSecond < FIRST_RESET_BREATHING.inhale + FIRST_RESET_BREATHING.hold) {
+    return {
+      phase: "hold" as FirstResetBreathPhase,
+      secondsLeft: FIRST_RESET_BREATHING.inhale + FIRST_RESET_BREATHING.hold - cycleSecond,
+      scale: 1,
+    };
+  }
+  const exhaleElapsed = cycleSecond - FIRST_RESET_BREATHING.inhale - FIRST_RESET_BREATHING.hold;
+  const progress = exhaleElapsed / FIRST_RESET_BREATHING.exhale;
+  return {
+    phase: "exhale" as FirstResetBreathPhase,
+    secondsLeft: FIRST_RESET_BREATHING.exhale - exhaleElapsed,
+    scale: 1 - progress * 0.26,
+  };
+}
 
 type IntroStep = "loading" | "intro" | "info" | "first-reset" | "gender" | "welcome" | "calibration" | "recommendation" | "complete";
 
@@ -36,9 +77,26 @@ function FirstResetScreen({
 }) {
   const [phase, setPhase] = useState<"ready" | "active" | "reward">("ready");
   const [remaining, setRemaining] = useState(FIRST_RESET_DURATION_SECONDS);
+  const audioRefs = useRef<Record<FirstResetBreathPhase, HTMLAudioElement | null>>({
+    inhale: null,
+    hold: null,
+    exhale: null,
+  });
+  const lastAudioPhase = useRef<FirstResetBreathPhase | null>(null);
   const elapsed = FIRST_RESET_DURATION_SECONDS - remaining;
   const progress = phase === "reward" ? 100 : Math.min(100, Math.max(0, (elapsed / FIRST_RESET_DURATION_SECONDS) * 100));
-  const breathCue = Math.floor(remaining / 5) % 2 === 0 ? "Breathe in" : "Breathe out";
+  const breathState = getFirstResetBreathState(elapsed);
+  const breathLabel = breathState.phase === "inhale" ? "Inhale" : breathState.phase === "hold" ? "Hold" : "Exhale";
+  const breathInstruction = breathState.phase === "inhale"
+    ? "Draw air in slowly"
+    : breathState.phase === "hold"
+    ? "Stay soft and steady"
+    : "Release the breath";
+  const phaseColor = breathState.phase === "inhale"
+    ? "#67e8f9"
+    : breathState.phase === "hold"
+    ? "#c4b5fd"
+    : "#93c5fd";
 
   useEffect(() => {
     if (phase !== "active") return;
@@ -54,7 +112,45 @@ function FirstResetScreen({
     return () => window.clearTimeout(timer);
   }, [phase, remaining]);
 
+  useEffect(() => {
+    audioRefs.current = {
+      inhale: new Audio(INHALE_AUDIO_URL),
+      hold: new Audio(HOLD_AUDIO_URL),
+      exhale: new Audio(EXHALE_AUDIO_URL),
+    };
+    Object.values(audioRefs.current).forEach((audio) => {
+      if (!audio) return;
+      audio.preload = "auto";
+      audio.volume = 0.92;
+    });
+
+    return () => {
+      Object.values(audioRefs.current).forEach((audio) => {
+        if (!audio) return;
+        audio.pause();
+        audio.src = "";
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "active") return;
+    if (remaining <= 0) return;
+    if (lastAudioPhase.current === breathState.phase) return;
+    lastAudioPhase.current = breathState.phase;
+
+    try {
+      Object.values(audioRefs.current).forEach((audio) => {
+        if (!audio) return;
+        audio.pause();
+        audio.currentTime = 0;
+      });
+      audioRefs.current[breathState.phase]?.play().catch(() => {});
+    } catch {}
+  }, [phase, remaining, breathState.phase]);
+
   const startReset = () => {
+    lastAudioPhase.current = null;
     setRemaining(FIRST_RESET_DURATION_SECONDS);
     setPhase("active");
   };
@@ -122,25 +218,75 @@ function FirstResetScreen({
             <h1 className="mb-3 text-3xl font-black uppercase tracking-[0.03em] text-white">
               30-Second Reset
             </h1>
-            <p className="mx-auto mb-7 max-w-[320px] text-sm leading-6 text-white/55">
-              Start with one small win. Settle your breath, then we will personalize the system.
+            <p className="mx-auto mb-5 max-w-[320px] text-sm leading-6 text-white/55">
+              Follow the pulse and the guided voice. One small reset before the system personalizes around you.
             </p>
 
-            <div className="mb-7 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <div className="mb-4 flex items-end justify-center gap-2">
-                <span className="text-6xl font-black tabular-nums text-white">{remaining}</span>
-                <span className="pb-2 text-xs font-bold uppercase tracking-[0.2em] text-white/35">sec</span>
+            <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.36)]">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div className="text-left">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-white/35">Breath Guide</p>
+                  <p className="mt-1 text-sm font-bold text-white">{phase === "active" ? breathInstruction : "Guided voice ready"}</p>
+                </div>
+                <div className="rounded-full border border-cyan-200/20 bg-cyan-200/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-100">
+                  Voice On
+                </div>
               </div>
-              <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/10">
+
+              <div className="relative mx-auto mb-5 flex h-[232px] w-[232px] items-center justify-center">
+                <div className="absolute h-[210px] w-[210px] rounded-full border border-dashed border-cyan-200/15" />
+                <motion.div
+                  className="absolute rounded-full border border-cyan-200/20"
+                  animate={{
+                    width: phase === "active" && breathState.phase === "inhale" ? [180, 230] : 180,
+                    height: phase === "active" && breathState.phase === "inhale" ? [180, 230] : 180,
+                    opacity: phase === "active" && breathState.phase === "inhale" ? [0.35, 0] : 0.16,
+                  }}
+                  transition={{ duration: 1.7, repeat: phase === "active" && breathState.phase === "inhale" ? Infinity : 0, ease: "easeOut" }}
+                />
+                <motion.div
+                  className="absolute rounded-full"
+                  animate={{ scale: phase === "active" ? breathState.scale : 0.78 }}
+                  transition={{ duration: 0.75, ease: [0.22, 0.61, 0.36, 1] }}
+                  style={{
+                    width: 170,
+                    height: 170,
+                    background: `radial-gradient(circle at 50% 35%, ${phaseColor}38 0%, ${phaseColor}13 48%, rgba(2,7,17,0.30) 100%)`,
+                    border: `2px solid ${phaseColor}55`,
+                    boxShadow: `0 0 54px ${phaseColor}1f, inset 0 0 36px ${phaseColor}12`,
+                  }}
+                />
+                <div className="relative z-10 flex flex-col items-center">
+                  <motion.span
+                    key={phase === "active" ? breathState.phase : "ready"}
+                    initial={{ opacity: 0, y: 7 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="text-[11px] font-black uppercase tracking-[0.34em]"
+                    style={{ color: phase === "active" ? phaseColor : "rgba(255,255,255,0.45)", textShadow: `0 0 14px ${phaseColor}44` }}
+                  >
+                    {phase === "active" ? breathLabel : "Ready"}
+                  </motion.span>
+                  <span className="mt-3 text-5xl font-black tabular-nums text-white">
+                    {phase === "active" ? breathState.secondsLeft : remaining}
+                  </span>
+                  <span className="mt-2 text-[9px] font-bold uppercase tracking-[0.22em] text-white/35">
+                    {phase === "active" ? "phase" : "seconds"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-3 flex items-center justify-center gap-2">
+                <span className="text-2xl font-black tabular-nums text-white">{remaining}</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">sec remaining</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
                 <motion.div
                   className="h-full rounded-full bg-cyan-200"
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.35, ease: "easeOut" }}
                 />
               </div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-100/70">
-                {phase === "active" ? breathCue : "Ready when you are"}
-              </p>
             </div>
 
             <button

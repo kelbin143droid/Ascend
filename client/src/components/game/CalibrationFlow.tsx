@@ -8,7 +8,8 @@
 
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { CalibrationAnswers } from "@/lib/calibrationEngine";
+import { deriveCalibrationLevelFromScore, type CalibrationAnswers } from "@/lib/calibrationEngine";
+import type { WorkoutLevel } from "@/lib/workoutPlans";
 
 interface Props {
   gender: "male" | "female";
@@ -80,13 +81,19 @@ const SECTIONS = [
   },
 ] as const;
 
-// Protocol display name from powerOutput tier value
-function protocolLabel(powerOutput?: number): string {
-  if (powerOutput === undefined) return "—";
-  if (powerOutput < 25) return "FOUNDATION";
-  if (powerOutput < 50) return "BUILD";
-  if (powerOutput < 75) return "EVOLVE";
-  return "ASCEND";
+const PROTOCOL_LABELS: Record<WorkoutLevel, string> = {
+  entry: "FOUNDATION",
+  beginner: "BUILD",
+  intermediate: "EVOLVE",
+  advanced: "ASCEND",
+};
+
+// Protocol display name from the same average-score logic used for the final result.
+function protocolLabel(selections: Partial<Record<keyof CalibrationAnswers, number>>): string {
+  const values = Object.values(selections).filter((v): v is number => typeof v === "number");
+  if (values.length === 0) return "—";
+  const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+  return PROTOCOL_LABELS[deriveCalibrationLevelFromScore(avg)];
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -229,7 +236,7 @@ export function CalibrationFlow({ gender, onComplete }: Props) {
           </div>
 
           <AnimatePresence mode="wait">
-            <motion.div key={protocolLabel(selections.powerOutput)}
+            <motion.div key={protocolLabel(selections)}
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
@@ -239,10 +246,10 @@ export function CalibrationFlow({ gender, onComplete }: Props) {
                 color,
                 background: `${color}14`,
                 border: `1px solid ${color}30`,
-                opacity: selections.powerOutput !== undefined ? 1 : 0.35,
+                opacity: selectedCount > 0 ? 1 : 0.35,
               }}>
-              {protocolLabel(selections.powerOutput)}
-            </motion.div>
+                {protocolLabel(selections)}
+              </motion.div>
           </AnimatePresence>
         </motion.div>
 
