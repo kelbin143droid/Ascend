@@ -119,8 +119,8 @@ export function AppTutorialOverlay() {
                 className="text-sm leading-relaxed mb-8"
                 style={{ color: "rgba(255,255,255,0.40)" }}
               >
-                Tap your first mission card to start. Three short activities —
-                guided from start to finish. Everything unlocks from there.
+                Tap your first mission card to start. Your first quest is guided
+                from start to finish. Everything unlocks from there.
               </p>
 
               {/* Single CTA — no alternative */}
@@ -272,7 +272,7 @@ export function AppTutorialOverlay() {
                         </div>
 
                         <p className="text-[11px] leading-relaxed mb-3.5" style={{ color: "rgba(255,255,255,0.42)" }}>
-                          Tap the highlighted card to begin. Each mission unlocks the next — Breath · Movement · Strength, guided step by step.
+                          Tap the highlighted card to begin. Each mission unlocks the next — Breathe · Move · Train · Recover.
                         </p>
 
                         <motion.button

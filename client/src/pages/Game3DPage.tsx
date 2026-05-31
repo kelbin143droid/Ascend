@@ -804,16 +804,18 @@ export default function Game3DPage() {
   const [pendingArchetype, setPendingArchetype] = useState<ArchetypeId | null>(null);
 
   const handleArchetypeClick = (id: ArchetypeId) => {
-    if (id === archetype) return;
     if (!rpgState.classLocked) {
-      // Not yet locked → show first-lock modal
+      // First lock should work even when the preselected class is tapped.
       setPendingArchetype(id);
       setLockModal({ archId: id, mode: 'first_lock' });
-    } else {
-      // Already locked → show change cost modal
-      setPendingArchetype(id);
-      setLockModal({ archId: id, mode: 'change_cost' });
+      return;
     }
+
+    if (id === archetype) return;
+
+    // Already locked → show change cost modal.
+    setPendingArchetype(id);
+    setLockModal({ archId: id, mode: 'change_cost' });
   };
 
   const confirmClassChange = () => {

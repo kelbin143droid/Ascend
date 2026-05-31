@@ -26,6 +26,7 @@ import { markFlowCompleted, isVitalityQuestScheduledToday } from "@/lib/userStat
 import { computeXPState } from "@/lib/xpSystem";
 import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 import { useSessionProgress } from "@/hooks/useSessionProgress";
+import { PHASE1_XP } from "@shared/gameProgression";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -85,9 +86,15 @@ const DASH_CARDS = [
 
 // System card hint lines
 const SYSTEM_HINTS: Record<string, string> = {
-  phase1_meditation: "Mental recovery recommended today.",
-  phase1_agility:    "Movement flow supports your rhythm.",
-  phase1_strength:   "Strength training on the schedule.",
+  phase1_meditation: `Earn +${PHASE1_XP.sense} XP. Calm first, then movement unlocks.`,
+  phase1_agility:    `Earn +${PHASE1_XP.agility} XP. Complete this to unlock Physical Circuit.`,
+  phase1_strength:   `Earn +${PHASE1_XP.strength} XP. One short circuit before Vitality.`,
+};
+
+const ACTIVITY_XP: Record<string, number> = {
+  phase1_meditation: PHASE1_XP.sense,
+  phase1_agility: PHASE1_XP.agility,
+  phase1_strength: PHASE1_XP.strength,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,11 +217,31 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
   const vitalityPending = seqAllDone && !vitalityDone;
   const currentDashLabel = DASH_CARDS.find(d => d.activityId === currentAid)?.label ?? null;
+  const totalMissionCount = seqCards.length + 1;
+  const completedMissionCount = doneSeq.length + (vitalityDone ? 1 : 0);
+  const activeMissionNumber = Math.min(totalMissionCount, completedMissionCount + 1);
+  const missionStepLabel = `${allDone ? totalMissionCount : activeMissionNumber}/${totalMissionCount}`;
+  const questProgressPct = totalMissionCount > 0
+    ? Math.min(100, (completedMissionCount / totalMissionCount) * 100)
+    : 0;
+  const currentReward = vitalityPending
+    ? PHASE1_XP.vitality + PHASE1_XP.synthesisBonus
+    : currentAid ? ACTIVITY_XP[currentAid] ?? 0 : 0;
+  const rewardLabel = vitalityPending
+    ? `+${PHASE1_XP.vitality} XP + ${PHASE1_XP.synthesisBonus} bonus`
+    : currentReward > 0 ? `+${currentReward} XP` : "";
+  const compactRewardLabel = currentReward > 0 ? `+${currentReward} XP` : rewardLabel;
+  const nextUnlockLabel = vitalityPending
+    ? "Level 2 and avatar setup next"
+    : currentAid === "phase1_meditation" ? "Movement unlocks next"
+    : currentAid === "phase1_agility" ? "Physical Circuit unlocks next"
+    : currentAid === "phase1_strength" ? "Vitality setup unlocks next"
+    : "";
   const systemMission = allDone ? "All missions complete."
     : vitalityPending ? "Complete your Vitality session."
     : currentDashLabel ? `Begin with ${currentDashLabel}.` : pathRec.headline;
   const systemHint = allDone ? "Rest well. You showed up today."
-    : vitalityPending ? "Schedule your sleep & Daily Quest to finish today."
+    : vitalityPending ? `Final step: schedule sleep and Daily Quest to earn ${rewardLabel}.`
     : currentAid ? (SYSTEM_HINTS[currentAid] ?? "") : "";
 
   // Effects & handlers
@@ -361,19 +388,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           0%   { background-position: -200% center; }
           100% { background-position:  200% center; }
         }
-        @keyframes ambientFloat {
-          0%, 100% { transform: translateY(0px); opacity: 0.45; }
-          50%       { transform: translateY(-7px); opacity: 0.75; }
-        }
-        @keyframes iconGlowPulse {
-          0%, 100% { filter: drop-shadow(0 0 3px var(--ig-color)); }
-          50%       { filter: drop-shadow(0 0 8px var(--ig-color)); }
-        }
-        @keyframes blobDrift {
-          0%, 100% { transform: translate(0,0) scale(1); }
-          33%       { transform: translate(6px, -10px) scale(1.06); }
-          66%       { transform: translate(-4px, 5px)  scale(0.96); }
-        }
         @keyframes buttonSweep {
           0%, 60%    { transform: translateX(-160%); opacity: 0; }
           65%        { opacity: 1; }
@@ -383,32 +397,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       `}</style>
 
       <div className="flex flex-col gap-5 py-3 px-1 max-w-md mx-auto w-full relative" data-testid="day6-home">
-
-        {/* ── ATMOSPHERIC BLOOM ORBS (immersive bg lighting) ──────────── */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-          <div style={{
-            position: "absolute", top: "5%", left: "-25%",
-            width: 260, height: 260, borderRadius: "50%",
-            background: `radial-gradient(circle, ${primary}14 0%, transparent 68%)`,
-            filter: "blur(50px)",
-            animation: "blobDrift 12s ease-in-out infinite",
-          }} />
-          <div style={{
-            position: "absolute", top: "45%", right: "-20%",
-            width: 200, height: 200, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(129,140,248,0.12) 0%, transparent 65%)",
-            filter: "blur(44px)",
-            animation: "blobDrift 15s ease-in-out 3s infinite",
-          }} />
-          <div style={{
-            position: "absolute", bottom: "15%", left: "10%",
-            width: 180, height: 180, borderRadius: "50%",
-            background: `radial-gradient(circle, ${primary}0c 0%, transparent 70%)`,
-            filter: "blur(40px)",
-            animation: "blobDrift 18s ease-in-out 6s infinite",
-          }} />
-        </div>
-
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
         {/* ── SYSTEM TITLE HEADER ───────────────────────────────────────── */}
@@ -592,6 +580,27 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           <p className="text-[8px] font-bold tracking-[0.28em] mb-[5px]" style={{ color: primary, textShadow: `0 0 8px ${primary}80` }}>
             SYSTEM
           </p>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <span className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: mutedCol }}>
+              Daily Quest
+            </span>
+            <span className="text-[10px] font-mono tabular-nums" style={{ color: primary }}>
+              {completedMissionCount}/{totalMissionCount}
+            </span>
+          </div>
+          <div
+            className="h-[5px] rounded-full overflow-hidden mb-3"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+            aria-hidden="true"
+          >
+            <motion.div
+              className="h-full rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${questProgressPct}%` }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              style={{ background: primary, boxShadow: `0 0 10px ${primary}66` }}
+            />
+          </div>
           <p className="text-[13px] font-semibold leading-snug tracking-tight" style={{ color: textCol }}
             data-testid="path-recommendation-text">
             {systemMission}
@@ -706,6 +715,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {!allDone && featuredCard && (() => {
           const dc    = featuredCard;
           const dur   = actDurMap[dc.activityId] ?? 2;
+          const ctaText = vitalityPending
+            ? `Finish setup · ${compactRewardLabel}`
+            : currentAid === "phase1_strength"
+              ? `Start circuit · ${compactRewardLabel}`
+              : `Begin mission · ${compactRewardLabel}`;
           const barPct = dc.barType === "mp" ? mpPct : dc.barType === "hp" ? hpPct
             : (() => { const sl = playerData?.statLevels?.[dc.statKey]; return sl ? Math.min(100, (sl.currentXP / sl.xpForNext) * 100) : 0; })();
 
@@ -768,21 +782,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       animation: "ringSwellC 6s ease-in-out 1.4s infinite",
                     }} />
                   </div>
-                  {/* Ambient particle dots */}
-                  {[
-                    { top: "22%", left: "78%", s: 2,   delay: "0s"   },
-                    { top: "68%", left: "85%", s: 1.5, delay: "1.3s" },
-                    { top: "42%", left: "90%", s: 1.2, delay: "0.6s" },
-                    { top: "82%", left: "72%", s: 2,   delay: "2.1s" },
-                  ].map((p, i) => (
-                    <div key={i} className="absolute rounded-full pointer-events-none" style={{
-                      top: p.top, left: p.left,
-                      width: p.s, height: p.s,
-                      background: dc.color,
-                      boxShadow: `0 0 6px ${dc.color}, 0 0 2px ${dc.color}`,
-                      animation: `ambientFloat ${3.5 + i * 0.9}s ease-in-out ${p.delay} infinite`,
-                    }} />
-                  ))}
                   {/* Header */}
                   <div className="relative flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -814,8 +813,36 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       className="text-[7px] font-bold tracking-[0.20em] px-2 py-[3px] rounded-full shrink-0 uppercase"
                       style={{ background: `${dc.color}14`, color: dc.color, border: `1px solid ${dc.color}28` }}
                     >
-                      Active
+                      Step {missionStepLabel}
                     </span>
+                  </div>
+
+                  <div
+                    className="relative grid grid-cols-2 gap-2"
+                    style={{ color: mutedCol }}
+                  >
+                    <div
+                      className="rounded-xl px-3 py-2"
+                      style={{ background: `${dc.color}0d`, border: `1px solid ${dc.color}18` }}
+                    >
+                      <p className="text-[7px] font-bold uppercase tracking-[0.20em]" style={{ color: `${dc.color}cc` }}>
+                        Reward
+                      </p>
+                      <p className="text-[11px] font-bold leading-tight mt-1" style={{ color: textCol }}>
+                        {rewardLabel}
+                      </p>
+                    </div>
+                    <div
+                      className="rounded-xl px-3 py-2"
+                      style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.07)" }}
+                    >
+                      <p className="text-[7px] font-bold uppercase tracking-[0.20em]" style={{ color: "rgba(172,186,208,0.70)" }}>
+                        Next
+                      </p>
+                      <p className="text-[10px] font-semibold leading-tight mt-1" style={{ color: "rgba(225,232,245,0.88)" }}>
+                        {nextUnlockLabel || `${dur} min guided`}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Bar */}
@@ -848,7 +875,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                         animation: "buttonSweep 6s ease-in-out 1.5s infinite",
                         willChange: "transform, opacity",
                       }} />
-                    Begin · {dur} min <ArrowRight size={13} />
+                    {ctaText} <ArrowRight size={13} />
                   </div>
                 </motion.button>
               </motion.div>
@@ -884,9 +911,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               : dc.sub;
 
             const accentColor = isDone ? "#22c55e" : dc.color;
-            const accentGlow  = isDone ? "rgba(34,197,94,0.45)" : dc.glow;
-            const cardBg      = isDone ? "rgba(4,16,8,0.92)" : "rgba(6,8,20,0.90)";
             const borderCol   = isDone ? "rgba(34,197,94,0.22)" : `${dc.color}20`;
+            const statusLabel = isDone ? "Done" : dc.id === "vitality" ? "Final" : inFlow ? "Queued" : "Open";
 
             const restShadow   = `0 2px 14px rgba(0,0,0,0.42), 0 0 0 1px ${accentColor}0a`;
             const hoverShadow  = `0 6px 24px rgba(0,0,0,0.55), 0 0 18px ${accentColor}20`;
@@ -978,8 +1004,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   </p>
                 </div>
 
-                {/* Arrow hint */}
-                <div className="flex justify-end">
+                {/* Status hint */}
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-[7px] font-bold uppercase tracking-[0.16em]"
+                    style={{ color: accentColor, opacity: isDone ? 0.9 : 0.48 }}
+                  >
+                    {statusLabel}
+                  </span>
                   <span className="text-[11px] leading-none"
                     style={{ color: accentColor, opacity: 0.40 }}>›</span>
                 </div>
