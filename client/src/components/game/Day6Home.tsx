@@ -232,7 +232,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     : currentReward > 0 ? `+${currentReward} XP` : "";
   const compactRewardLabel = currentReward > 0 ? `+${currentReward} XP` : rewardLabel;
   const nextUnlockLabel = vitalityPending
-    ? "Level 2 and avatar setup next"
+    ? (lvl >= 2 ? "Avatar setup next" : "Level 2 and avatar setup next")
     : currentAid === "phase1_meditation" ? "Movement unlocks next"
     : currentAid === "phase1_agility" ? "Physical Circuit unlocks next"
     : currentAid === "phase1_strength" ? "Vitality setup unlocks next"
