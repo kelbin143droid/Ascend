@@ -7,7 +7,7 @@ import { GameProvider, useGame } from "@/context/GameContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { LanguageStageProvider } from "@/context/LanguageStageContext";
 import { RolesProvider } from "@/context/RolesContext";
-import { WeeklyGoalsProvider, useWeeklyGoals } from "@/context/WeeklyGoalsContext";
+import { WeeklyGoalsProvider } from "@/context/WeeklyGoalsContext";
 import { TasksProvider } from "@/context/TasksContext";
 import {
   initNotifications,
@@ -66,24 +66,32 @@ function PlanningProviders({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PlanningGate({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+function PlanningRoute({ children }: { children: React.ReactNode }) {
+  return <PlanningProviders>{children}</PlanningProviders>;
 }
 
 function Router() {
   return (
     <Switch>
-      <Route path="/weekly-planning" component={WeeklyPlanningPage} />
+      <Route path="/weekly-planning">
+        <PlanningRoute><WeeklyPlanningPage /></PlanningRoute>
+      </Route>
       <Route path="/trials" component={TrialsPage} />
       <Route path="/calendar" component={CalendarPage} />
-      <Route path="/sectograph" component={SectographPage} />
+      <Route path="/sectograph">
+        <PlanningRoute><SectographPage /></PlanningRoute>
+      </Route>
       <Route path="/nutrition" component={NutritionPage} />
       <Route path="/" component={HomePage} />
-      <Route path="/schedule" component={StatusPage} />
+      <Route path="/schedule">
+        <PlanningRoute><StatusPage /></PlanningRoute>
+      </Route>
       <Route path="/train" component={TrainPage} />
       <Route path="/coach" component={CoachPage} />
       <Route path="/arena" component={DungeonPage} />
-      <Route path="/library" component={LibraryPage} />
+      <Route path="/library">
+        <PlanningRoute><LibraryPage /></PlanningRoute>
+      </Route>
       <Route path="/inventory" component={InventoryPage} />
       <Route path="/game3d" component={Game3DPage} />
       <Route path="/housing" component={HousingPage} />
@@ -203,13 +211,10 @@ function App() {
       <ThemeProvider>
         <GameProvider>
           <LanguageStageProvider>
-            <PlanningProviders>
               <IntroWrapper>
-                <PlanningGate>
-                  <Suspense fallback={<PageFallback />}>
-                    <Router />
-                  </Suspense>
-                </PlanningGate>
+                <Suspense fallback={<PageFallback />}>
+                  <Router />
+                </Suspense>
                 <PhaseUnlockOverlay />
                 <LevelUpOverlay />
                 <Toaster />
@@ -217,7 +222,6 @@ function App() {
                 <VoiceAlertEngine />
                 <SystemMessageEngine />
               </IntroWrapper>
-            </PlanningProviders>
           </LanguageStageProvider>
         </GameProvider>
       </ThemeProvider>
