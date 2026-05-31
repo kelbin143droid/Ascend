@@ -13,6 +13,7 @@ import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
 import { BreathingFeedbackModal } from "@/components/game/BreathingFeedbackModal";
 import { getWorkoutLevel } from "@/lib/workoutProgressStore";
 import { getPathFlowConfig } from "@/lib/pathFlowConfig";
+import { PHASE1_XP } from "@shared/gameProgression";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow";
 
@@ -106,6 +107,11 @@ const STAT_COLORS: Record<string, string> = {
 const SESSION_TO_PHASE_ID: Record<string, string> = {
   "calm-breathing": "phase1_meditation",
   "light-movement": "phase1_agility",
+};
+
+const SESSION_XP_REWARD: Record<string, number | undefined> = {
+  "calm-breathing": PHASE1_XP.sense,
+  "light-movement": PHASE1_XP.agility,
 };
 
 function createPadOscillator(
@@ -884,9 +890,13 @@ export default function GuidedSessionPage() {
         const idsToWrite = [sessionId, SESSION_TO_PHASE_ID[sessionId]].filter(Boolean) as string[];
         idsToWrite.forEach(id => { if (!ids.includes(id)) ids.push(id); });
         localStorage.setItem(todayKey, JSON.stringify(ids));
-        idsToWrite.forEach(id => {
-          window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
-        });
+        window.dispatchEvent(new CustomEvent("ascend:activity-completed", {
+          detail: {
+            activityId: SESSION_TO_PHASE_ID[sessionId] ?? sessionId,
+            activityIds: idsToWrite,
+            xp: SESSION_XP_REWARD[sessionId],
+          },
+        }));
       } catch { /* noop */ }
     }
 
@@ -915,7 +925,7 @@ export default function GuidedSessionPage() {
   // Light Movement uses the video-guided engine instead of the generic session page
   if (sessionId === "light-movement" && player?.id) {
     const pathCfg = getPathFlowConfig(getWorkoutLevel());
-    const handleLightMovementComplete = async () => {
+    const handleLightMovementComplete = async (xpEarned = PHASE1_XP.agility) => {
       await queryClient.refetchQueries({ queryKey: ["home", player.id] });
       // Always write both IDs so the dashboard tracks Agility as complete
       try {
@@ -926,9 +936,13 @@ export default function GuidedSessionPage() {
           if (!ids.includes(id)) ids.push(id);
         });
         localStorage.setItem(todayKey, JSON.stringify(ids));
-        ["light-movement", "phase1_agility"].forEach(id => {
-          window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: id } }));
-        });
+        window.dispatchEvent(new CustomEvent("ascend:activity-completed", {
+          detail: {
+            activityId: "phase1_agility",
+            activityIds: ["light-movement", "phase1_agility"],
+            xp: xpEarned,
+          },
+        }));
       } catch { /* noop */ }
       if (pathCfg.includesStrength) {
         // Build/Evolve/Ascend continue directly into their strength circuit.

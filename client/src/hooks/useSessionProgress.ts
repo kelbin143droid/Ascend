@@ -57,8 +57,15 @@ export function useSessionProgress() {
       if (document.visibilityState === "visible") refresh();
     };
     const onComplete = (e: Event) => {
-      const detail = (e as CustomEvent<{ activityId: string }>).detail;
-      if (detail?.activityId) markComplete(detail.activityId);
+      const detail = (e as CustomEvent<{ activityId?: string; activityIds?: string[] }>).detail;
+      const ids = detail?.activityIds?.length ? detail.activityIds : detail?.activityId ? [detail.activityId] : [];
+      if (!ids.length) return;
+      setCompletedIds(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.add(id));
+        writeIds(next);
+        return next;
+      });
     };
     const onReset = () => {
       try { localStorage.removeItem(todayKey()); } catch { /* noop */ }
