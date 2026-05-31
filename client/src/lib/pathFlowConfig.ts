@@ -59,7 +59,7 @@ export interface PathFlowConfig {
 
 export const PATH_FLOW_CONFIGS: Record<WorkoutLevel, PathFlowConfig> = {
   /**
-   * Foundation — rebuild consistency. Low friction, zero gym circuit.
+   * Foundation — rebuild consistency. Low friction, short physical circuit.
    * maxFlowVariant: light (never sent into a full or push day)
    */
   entry: {
@@ -68,7 +68,7 @@ export const PATH_FLOW_CONFIGS: Record<WorkoutLevel, PathFlowConfig> = {
     tagline: "Low friction · early wins · consistency first",
     primaryColor: "#22c55e",
     maxFlowVariant: "light",
-    includesStrength: false,
+    includesStrength: true,
     sessionCards: [
       {
         id: "phase1_meditation",
@@ -81,20 +81,18 @@ export const PATH_FLOW_CONFIGS: Record<WorkoutLevel, PathFlowConfig> = {
       {
         id: "phase1_agility",
         label: "Light Movement",
-        sublabel: "Gentle stretches only · no gym circuit · 3 min",
+        sublabel: "Gentle stretches · 3 min",
         icon: "Wind",
         color: "#22c55e",
         stat: "Agility",
       },
       {
-        id: "habit_check",
-        label: "Daily Habit Check",
-        sublabel: "Log one small win or avoided trigger",
-        icon: "Sparkles",
-        color: "#a855f7",
-        stat: "Habits",
-        route: "/habits",
-        isQuickLink: true,
+        id: "phase1_strength",
+        label: "Foundation Circuit",
+        sublabel: "Wall push-ups · assisted squats · glute bridges · plank · 1 round",
+        icon: "Dumbbell",
+        color: "#22c55e",
+        stat: "Strength",
       },
     ],
   },

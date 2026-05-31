@@ -6,6 +6,8 @@ import { LevelUpAnimation, getMotivationalPhrase } from "./LevelUpAnimation";
 import { applyLevelUpStats, initLevelBaseline, getMaxHP, getMaxMana } from "@/lib/statsSystem";
 import { isVitalityQuestScheduledToday, isVitalitySleepScheduledToday } from "@/lib/userState";
 import { STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
+import { getWorkoutLevel } from "@/lib/workoutProgressStore";
+import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 
 const FUTURE_GAME_HANDOFF_KEY = "ascend_future_game_handoff_seen";
 
@@ -13,9 +15,10 @@ function checkRitualComplete(): boolean {
   try {
     const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
     const ids = new Set<string>(JSON.parse(localStorage.getItem(todayKey) || "[]"));
+    const pathCfg = getPathFlowConfig(getWorkoutLevel());
     const senseDone    = ids.has("phase1_meditation") || ids.has("calm-breathing");
     const agilityDone  = ids.has("phase1_agility")    || ids.has("light-movement");
-    const strengthDone = ids.has("phase1_strength");
+    const strengthDone = !pathCfg.includesStrength || ids.has("phase1_strength");
     const vitalityDone =
       ids.has("phase1_vitality") ||
       (isVitalitySleepScheduledToday() && isVitalityQuestScheduledToday());

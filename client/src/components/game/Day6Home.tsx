@@ -125,6 +125,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [autoStartPending, setAutoStartPending] = useState(() =>
     typeof window !== "undefined" && window.location.search.includes("autostart=strength")
   );
+  const onboardingCompleteRequestedRef = useRef(false);
 
   const { completedIds, markComplete } = useSessionProgress();
 
@@ -234,6 +235,19 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartPending, activities.length]);
+
+  useEffect(() => {
+    if (!allDone || homeData.isOnboardingComplete || onboardingCompleteRequestedRef.current) return;
+    onboardingCompleteRequestedRef.current = true;
+    fetch(`/api/player/${player.id}/onboarding-complete`, { method: "POST" })
+      .then(() => Promise.allSettled([
+        queryClient.refetchQueries({ queryKey: ["/api/player", player.id] }),
+        queryClient.refetchQueries({ queryKey: ["home", player.id] }),
+      ]))
+      .catch(() => {
+        onboardingCompleteRequestedRef.current = false;
+      });
+  }, [allDone, homeData.isOnboardingComplete, player.id, queryClient]);
   const handleFlowDone = useCallback((ids: string[]) => {
     // Close the flow engine immediately so the home content is visible right away
     // (avoids a blank/loading flash while queries refetch in the background).
@@ -849,7 +863,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           className={`grid gap-3 ${allDone ? "grid-cols-2" : "grid-cols-3"}`}
           data-testid="stat-grid"
         >
-          {(allDone ? [...DASH_CARDS] : supportCards).map((dc, idx) => {
+          {supportCards.map((dc, idx) => {
             // Vitality has no activityId (it's driven by sectograph setup),
             // so we use the reactive vitalityDone flag for its "done" state.
             const isDone  = dc.id === "vitality"

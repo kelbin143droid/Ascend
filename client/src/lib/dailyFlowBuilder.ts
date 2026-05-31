@@ -35,13 +35,132 @@ import {
   type ActivityStep,
 } from "./activityEngine";
 import { type WorkoutLevel } from "./workoutPlans";
-import { getPathFlowConfig } from "./pathFlowConfig";
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export interface DailyFlowBuildOptions {
   dayNumber: number;
   tiers?: CategoryTiers;
+}
+
+/**
+ * Builds the Foundation path circuit.
+ *
+ * This is intentionally tiny: one confidence-building round after Agility,
+ * not the full Workout Builder routine.
+ */
+function buildFoundationStrengthActivity(tier: number): ActivityDefinition {
+  const xpMultiplier = TIER_XP_MULTIPLIERS[tier] ?? 1.0;
+  const pushReps = 6 + Math.min(tier - 1, 4) * 2;
+  const squatReps = 8 + Math.min(tier - 1, 4) * 2;
+  const bridgeReps = 8 + Math.min(tier - 1, 4) * 2;
+  const plankSeconds = 15 + Math.min(tier - 1, 4) * 5;
+  const restSeconds = 12;
+  const SECS_PER_REP = 3;
+
+  const duration =
+    10 +
+    (pushReps + squatReps + bridgeReps) * SECS_PER_REP +
+    3 * restSeconds +
+    plankSeconds +
+    5;
+
+  const steps: ActivityStep[] = [
+    {
+      id: "foundation_intro",
+      type: "instruction",
+      label: "Get Ready — Foundation Circuit",
+      instruction:
+        "One short round · Wall push-ups → assisted squats → glute bridges → plank. Smooth form, no rush.",
+      voiceText:
+        "Get ready. One short foundation circuit. Wall push-ups, assisted squats, glute bridges, then plank.",
+    },
+    {
+      id: "wall_pushups",
+      type: "rep",
+      label: "Wall Push-ups",
+      instruction: `${pushReps} wall push-ups. Keep your body straight and move with control.`,
+      repCount: pushReps,
+      repLabel: "reps",
+      voiceText: `Wall push-ups. ${pushReps} reps.`,
+      videoSrc: "/videos/wall_pushups_loop.mp4",
+    },
+    {
+      id: "foundation_rest_1",
+      type: "timer",
+      label: "Rest",
+      instruction: "Rest 12 seconds. Reset your breath.",
+      durationSeconds: restSeconds,
+      voiceText: "Rest. 12 seconds.",
+    },
+    {
+      id: "assisted_squats",
+      type: "rep",
+      label: "Assisted Squats",
+      instruction: `${squatReps} assisted squats. Use a chair or wall if needed. Chest up.`,
+      repCount: squatReps,
+      repLabel: "reps",
+      voiceText: `Assisted squats. ${squatReps} reps.`,
+      videoSrc: "/videos/squats_loop.mp4",
+    },
+    {
+      id: "foundation_rest_2",
+      type: "timer",
+      label: "Rest",
+      instruction: "Rest 12 seconds.",
+      durationSeconds: restSeconds,
+      voiceText: "Rest. 12 seconds.",
+    },
+    {
+      id: "glute_bridges",
+      type: "rep",
+      label: "Glute Bridges",
+      instruction: `${bridgeReps} glute bridges. Squeeze at the top, lower with control.`,
+      repCount: bridgeReps,
+      repLabel: "reps",
+      voiceText: `Glute bridges. ${bridgeReps} reps.`,
+      videoSrc: "/videos/glute_bridges_loop.mp4",
+    },
+    {
+      id: "foundation_rest_3",
+      type: "timer",
+      label: "Rest",
+      instruction: "Rest 12 seconds. Last hold coming.",
+      durationSeconds: restSeconds,
+      voiceText: "Rest. 12 seconds.",
+    },
+    {
+      id: "foundation_plank",
+      type: "timer",
+      label: "Plank Hold",
+      instruction: `Hold a plank for ${plankSeconds} seconds. Knees down is fine. Breathe steadily.`,
+      durationSeconds: plankSeconds,
+      voiceText: `Plank hold. ${plankSeconds} seconds.`,
+      videoSrc: "/videos/plank_hold_loop.mp4",
+      loop: false,
+    },
+    {
+      id: "foundation_done",
+      type: "completion",
+      label: "Physical Circuit Complete",
+      instruction: "Foundation circuit complete. You showed up.",
+      voiceText: "Physical circuit complete. Great work.",
+    },
+  ];
+
+  return {
+    id: "phase1_strength",
+    activityName: "Foundation Circuit",
+    category: "strength",
+    stat: "strength",
+    duration,
+    xpReward: 0,
+    color: CATEGORY_COLORS.strength,
+    tier,
+    xpMultiplier,
+    autoflow: true,
+    steps,
+  };
 }
 
 /**
@@ -179,20 +298,16 @@ export function buildDailyFlowActivities(
   workoutLevel: WorkoutLevel,
   options: DailyFlowBuildOptions,
 ): ActivityDefinition[] {
-  const config = getPathFlowConfig(workoutLevel);
-
   // ── Foundation / entry ──────────────────────────────────────────────────────
-  // No strength.  Agility relabeled "Light Movement" so voice guidance and UI
-  // use the lower-friction framing consistently.
-  if (!config.includesStrength) {
+  // Short physical circuit after Agility, tuned much lighter than Build.
+  if (workoutLevel === "entry") {
+    const strengthTier = options.tiers?.strength ?? 1;
     const base = buildPhase1Activities(options.dayNumber, options.tiers);
-    return base
-      .filter(a => a.id !== "phase1_strength")
-      .map(a =>
-        a.id === "phase1_agility"
-          ? { ...a, activityName: "Light Movement" }
-          : a
-      );
+    return base.map((a): ActivityDefinition => {
+      if (a.id === "phase1_agility") return { ...a, activityName: "Light Movement" };
+      if (a.id === "phase1_strength") return buildFoundationStrengthActivity(strengthTier);
+      return a;
+    });
   }
 
   // ── Build / beginner ────────────────────────────────────────────────────────
