@@ -44,7 +44,6 @@ const WakeFlowPage = React.lazy(() => import("@/pages/WakeFlowPage"));
 const NightFlowPage = React.lazy(() => import("@/pages/NightFlowPage"));
 const SleepSettingsPage = React.lazy(() => import("@/pages/SleepSettingsPage"));
 const NotificationSettingsPage = React.lazy(() => import("@/pages/NotificationSettingsPage"));
-const FlowApp = React.lazy(() => import("@/pages/FlowApp"));
 import { VoiceAlertEngine } from "@/components/game/VoiceAlertEngine";
 import { SystemMessageEngine } from "@/components/game/SystemMessageEngine";
 const NotFound = React.lazy(() => import("@/pages/not-found"));
@@ -99,7 +98,6 @@ function Router() {
       <Route path="/guided-session/:sessionId">
         {(params: { sessionId?: string }) => <GuidedSessionPage key={params?.sessionId ?? "session"} />}
       </Route>
-      <Route path="/flow" component={FlowApp} />
       <Route component={NotFound} />
     </Switch>
   );

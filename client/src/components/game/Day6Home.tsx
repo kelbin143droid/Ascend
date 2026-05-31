@@ -84,6 +84,13 @@ const DASH_CARDS = [
   },
 ] as const;
 
+const MISSION_CARD_ORDER = [
+  DASH_CARDS[0], // Calm
+  DASH_CARDS[3], // Agility
+  DASH_CARDS[2], // Strength
+  DASH_CARDS[1], // Vitality
+] as const;
+
 // System card hint lines
 const SYSTEM_HINTS: Record<string, string> = {
   phase1_meditation: `Earn +${PHASE1_XP.sense} XP. Calm first, then movement unlocks.`,
@@ -315,7 +322,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const featuredCard = vitalityPending
     ? vitalityCard
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
-  const supportCards = DASH_CARDS.filter(d =>
+  const supportCards = MISSION_CARD_ORDER.filter(d =>
     d !== featuredCard && (d.id === "vitality" || todayIds.has(d.activityId))
   );
 
