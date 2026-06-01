@@ -22,8 +22,9 @@ interface IntroWrapperProps {
 }
 
 const FIRST_RESET_DURATION_SECONDS = 30;
-const FIRST_RESET_XP = 10;
+const FIRST_RESET_XP = 15;
 const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
+const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
 const INHALE_AUDIO_URL = "/audio/inhale.mp3";
 const HOLD_AUDIO_URL = "/audio/hold.mp3";
 const EXHALE_AUDIO_URL = "/audio/exhale.mp3";
@@ -75,6 +76,30 @@ function getFirstResetBreathState(elapsedSeconds: number) {
 }
 
 type IntroStep = "loading" | "intro" | "info" | "first-reset" | "gender" | "welcome" | "calibration" | "recommendation" | "complete";
+
+function todayCompletedIdsKey(): string {
+  return `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+}
+
+function markFirstResetMissionComplete(): void {
+  try {
+    const key = todayCompletedIdsKey();
+    const raw = localStorage.getItem(key);
+    const ids: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+    ["calm-breathing", "phase1_meditation"].forEach((id) => {
+      if (!ids.includes(id)) ids.push(id);
+    });
+    localStorage.setItem(key, JSON.stringify(ids));
+    localStorage.setItem(FIRST_RESET_COMPLETED_DATE_KEY, new Date().toISOString().split("T")[0]);
+    window.dispatchEvent(new CustomEvent("ascend:activity-completed", {
+      detail: {
+        activityId: "phase1_meditation",
+        activityIds: ["calm-breathing", "phase1_meditation"],
+        xp: FIRST_RESET_XP,
+      },
+    }));
+  } catch { /* noop */ }
+}
 
 function FirstResetScreen({
   firstName,
@@ -801,6 +826,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
 
   const handleFirstResetComplete = () => {
     const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
+    markFirstResetMissionComplete();
     if (!firstResetDone && !firstResetAwarded.current) {
       firstResetAwarded.current = true;
       localStorage.setItem(FIRST_RESET_STORAGE_KEY, "true");

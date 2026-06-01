@@ -29,9 +29,9 @@ interface SessionConfig {
 const SESSIONS: Record<SessionId, SessionConfig> = {
   "calm-breathing": {
     id: "calm-breathing",
-    title: "1-Minute Reset",
+    title: "30-Second Reset",
     stat: "sense",
-    durationSeconds: 60,
+    durationSeconds: 30,
     icon: Wind,
     type: "breathing",
   },
@@ -83,11 +83,11 @@ const EXHALE_URL = "/audio/exhale.mp3";
 
 const BREATHING_PHASES = [
   { label: "Inhale", duration: 4000 },
-  { label: "Hold", duration: 4000 },
-  { label: "Exhale", duration: 6000 },
+  { label: "Hold", duration: 2000 },
+  { label: "Exhale", duration: 4000 },
 ];
 
-const CYCLE_MS = BREATHING_PHASES.reduce((s, p) => s + p.duration, 0); // 14000ms
+const CYCLE_MS = BREATHING_PHASES.reduce((s, p) => s + p.duration, 0); // 10000ms
 
 const MOVEMENT_PROMPTS = [
   { text: "Roll your shoulders slowly, forward and back.", at: 0 },
@@ -191,8 +191,8 @@ function useBreathingAudio(active: boolean) {
 // ─── Voice clip phase durations & order ──────────────────────────────────────
 const VOICE_DURATIONS: Record<"Inhale" | "Hold" | "Exhale", number> = {
   Inhale: 4000,
-  Hold:   4000,
-  Exhale: 6000,
+  Hold:   2000,
+  Exhale: 4000,
 };
 const VOICE_NEXT: Record<"Inhale" | "Hold" | "Exhale", "Inhale" | "Hold" | "Exhale"> = {
   Inhale: "Hold",

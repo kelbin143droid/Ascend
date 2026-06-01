@@ -113,6 +113,12 @@ export interface CategoryTiers {
   vitality: number;
 }
 
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds} seconds`;
+  const minutes = Math.round(seconds / 60);
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
+
 export function buildPhase1Activities(
   _dayNumber: number,
   tiers?: CategoryTiers,
@@ -135,6 +141,7 @@ export function buildPhase1Activities(
   const breathPattern = breathProfile.pattern;
   const breathingPhaseNum = breathProfile.phase;
   const breathPhaseDef = BREATHING_PHASES[breathingPhaseNum];
+  const meditationDurationLabel = formatDuration(meditationDuration);
 
   // ── Warm-up cardio (time-based)
   const cardioLabel = "Jumping Jacks";
@@ -188,8 +195,8 @@ export function buildPhase1Activities(
           id: "calm_intro",
           type: "instruction",
           label: "Get Ready",
-          instruction: `Find a comfortable position. Close your eyes or soften your gaze. We'll breathe together for ${Math.round(meditationDuration / 60)} minutes.\n\n${breathPhaseDef.label} phase · ${breathPattern.inhaleSeconds}-${breathPattern.holdSeconds}-${breathPattern.exhaleSeconds} rhythm.`,
-          voiceText: `Find a comfortable position. Close your eyes. We'll breathe together for ${Math.round(meditationDuration / 60)} minutes.`,
+          instruction: `Find a comfortable position. Close your eyes or soften your gaze. We'll breathe together for ${meditationDurationLabel}.\n\n${breathPhaseDef.label} phase · ${breathPattern.inhaleSeconds}-${breathPattern.holdSeconds}-${breathPattern.exhaleSeconds} rhythm.`,
+          voiceText: `Find a comfortable position. Close your eyes. We'll breathe together for ${meditationDurationLabel}.`,
         },
         {
           id: "calm_breathing",

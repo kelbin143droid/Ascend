@@ -50,10 +50,10 @@ export interface BreathPhaseDefinition {
 export const BREATHING_PHASES: Record<BreathPhase, BreathPhaseDefinition> = {
   1: {
     label: "Beginner",
-    defaultPattern: { inhaleSeconds: 4, holdSeconds: 4, exhaleSeconds: 6 },
-    baseDuration: 60,
+    defaultPattern: { inhaleSeconds: 4, holdSeconds: 2, exhaleSeconds: 4 },
+    baseDuration: 30,
     maxDuration: 90,
-    description: "4-4-6 rhythm. Building consistency.",
+    description: "4-2-4 rhythm. Building consistency.",
     focus: "Consistency",
     unlockCondition: { minSessions: 5, minPositivePercent: 80 },
   },

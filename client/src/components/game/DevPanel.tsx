@@ -73,6 +73,7 @@ export function DevPanel() {
       if (res.ok) {
         const data = await res.json();
         localStorage.removeItem("ascend_light_movement_completed");
+        localStorage.removeItem("ascend_first_reset_completed_date");
         window.dispatchEvent(new CustomEvent("ascend:sessions-reset"));
         setLastResult(`Today reset — ${data.removed} session(s) cleared`);
         queryClient.invalidateQueries();
