@@ -485,7 +485,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
                       : "0 0 48px rgba(217,70,239,0.55), 0 4px 28px rgba(217,70,239,0.35), 0 8px 32px rgba(0,0,0,0.4)",
                 }}
               >
-                APPLY SYSTEM STYLE
+                {selected === "male" ? "APPLY MALE STYLE" : "APPLY FEMALE STYLE"}
                 <ArrowRight size={16} />
               </motion.button>
             ) : (

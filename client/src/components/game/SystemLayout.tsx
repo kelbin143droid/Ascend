@@ -185,7 +185,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
       <div
         className="fixed inset-0 z-10 pointer-events-none"
-        style={{ display: (isIronSovereign || isPixelForest || (isNeonEmpress && animatedBg)) ? "none" : undefined }}
+        style={{ display: (usingThemeImage || hasCustomBg) ? "none" : undefined }}
       >
         <div
           className="absolute inset-2 rounded-lg"

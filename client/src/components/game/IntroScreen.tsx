@@ -2,24 +2,6 @@ import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap } from "lucide-react";
 
-function useTypewriter(text: string, charDelay = 38, startDelay = 2000) {
-  const [displayed, setDisplayed] = React.useState("");
-  React.useEffect(() => {
-    let i = 0;
-    let interval: ReturnType<typeof setInterval>;
-    const timeout = setTimeout(() => {
-      interval = setInterval(() => {
-        i++;
-        setDisplayed(text.slice(0, i));
-        if (i >= text.length) clearInterval(interval);
-      }, charDelay);
-    }, startDelay);
-    return () => { clearTimeout(timeout); clearInterval(interval); };
-  }, [text, charDelay, startDelay]);
-  return displayed;
-}
-
-const TAGLINE = "Potential detected. Initializing awakening sequence...";
 const TITLE_LETTERS = "ASCEND".split("");
 
 interface IntroScreenProps {
@@ -29,7 +11,6 @@ interface IntroScreenProps {
 export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
   const [isActivating, setIsActivating] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const tagline = useTypewriter(TAGLINE, 38, 2600);
 
   const particles = useRef(
     Array.from({ length: 38 }, (_, i) => ({
@@ -462,30 +443,6 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }}
             transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
           />
-
-          {/* ── TYPEWRITER TAGLINE ── */}
-          <motion.div
-            className="mb-10 min-h-[36px] text-center px-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2.6, duration: 0.7 }}
-          >
-            <p
-              className="text-xs font-mono leading-relaxed tracking-wider"
-              style={{ color: "rgba(148,163,184,0.62)" }}
-            >
-              {tagline}
-              {tagline.length < TAGLINE.length && (
-                <motion.span
-                  style={{ color: "rgba(6,182,212,0.90)", marginLeft: 1 }}
-                  animate={{ opacity: [1, 0, 1] }}
-                  transition={{ duration: 0.65, repeat: Infinity }}
-                >
-                  ▋
-                </motion.span>
-              )}
-            </p>
-          </motion.div>
 
           {/* ── AWAKEN SYSTEM BUTTON ── */}
           <motion.button

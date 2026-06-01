@@ -127,6 +127,16 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const primary  = isIronSov ? hudCyan  : isNeonEmp ? fae.peachStrong : colors.primary;
   const textCol  = isNeonEmp ? fae.ink  : colors.text;
   const mutedCol = isNeonEmp ? fae.ink + "88" : colors.textMuted;
+  const panelBg = isNeonEmp
+    ? "linear-gradient(145deg, rgba(11,13,34,0.88) 0%, rgba(7,8,25,0.93) 68%, rgba(21,15,42,0.88) 100%)"
+    : "linear-gradient(145deg, rgba(6,8,24,0.92) 0%, rgba(8,10,28,0.86) 100%)";
+  const panelBorder = isNeonEmp ? `${primary}48` : `${primary}24`;
+  const panelShadow = isNeonEmp
+    ? `0 0 0 1px rgba(255,255,255,0.08), 0 18px 48px rgba(20,16,45,0.42), 0 0 28px ${primary}20, inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -1px 0 rgba(0,0,0,0.45)`
+    : `0 0 0 1px ${primary}0c, 0 2px 20px ${primary}16, 0 10px 34px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.35)`;
+  const glossOpacity = isNeonEmp ? 0.72 : 0.46;
+  const cardTextCol = isNeonEmp ? "rgba(248,250,255,0.96)" : textCol;
+  const cardMutedCol = isNeonEmp ? "rgba(218,226,244,0.74)" : mutedCol;
 
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -399,6 +409,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           82%        { transform: translateX(160%); opacity: 0.7; }
           88%, 100%  { transform: translateX(160%); opacity: 0; }
         }
+        @keyframes cardGlossDrift {
+          0%, 42%    { transform: translateX(-150%) rotate(14deg); opacity: 0; }
+          52%        { opacity: 0.52; }
+          72%        { transform: translateX(165%) rotate(14deg); opacity: 0; }
+          100%       { transform: translateX(165%) rotate(14deg); opacity: 0; }
+        }
       `}</style>
 
       <div className="flex flex-col gap-5 py-3 px-1 max-w-md mx-auto w-full relative" data-testid="day6-home">
@@ -435,17 +451,28 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         <motion.div
           initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.30, delay: 0.04 }}
-          className="rounded-2xl"
+          className="rounded-2xl relative overflow-hidden"
           style={{
-            background: `linear-gradient(135deg, rgba(6,8,24,0.90) 0%, rgba(8,10,28,0.82) 100%)`,
-            border: `1px solid ${primary}20`,
-            backdropFilter: "blur(18px)",
-            boxShadow: `0 0 0 1px ${primary}08, 0 2px 20px ${primary}14, 0 8px 32px rgba(0,0,0,0.50), inset 0 1px 0 ${primary}18, inset 0 -1px 0 rgba(0,0,0,0.30)`,
+            background: panelBg,
+            border: `1px solid ${panelBorder}`,
+            backdropFilter: "blur(22px) saturate(1.18)",
+            boxShadow: panelShadow,
             padding: "14px 16px",
           }}
           data-testid="daily-status-section"
         >
-          <div className="flex items-center gap-3">
+          <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
+            style={{
+              background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.055) 42%, transparent 100%)",
+              opacity: glossOpacity,
+            }} />
+          <div className="absolute -top-12 -left-28 h-28 w-72 pointer-events-none"
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)",
+              filter: "blur(10px)",
+              animation: "cardGlossDrift 9s ease-in-out infinite",
+            }} />
+          <div className="relative z-10 flex items-center gap-3">
             {/* Avatar */}
             <button onClick={() => setShowAvatar(true)} data-testid="button-avatar"
               className="relative shrink-0 transition-transform duration-150 active:scale-90">
@@ -483,7 +510,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               <div className="flex items-baseline justify-between mb-[7px]">
                 <div className="flex items-baseline gap-[5px]">
                   <span className="text-[9px] font-bold tracking-[0.22em] uppercase leading-none"
-                    style={{ color: mutedCol, opacity: 0.7 }}>LEVEL</span>
+                    style={{ color: cardMutedCol, opacity: 0.78 }}>LEVEL</span>
                   <span className="text-[22px] font-bold leading-none tabular-nums"
                     style={{ color: primary, lineHeight: 1, textShadow: `0 0 12px ${primary}60` }}
                     data-testid="stat-level">
@@ -501,7 +528,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 </div>
                 <span className="text-[11px] font-mono tabular-nums leading-none font-semibold">
                   <span style={{ color: primary, textShadow: `0 0 8px ${primary}60` }}>XP {xp.exp}</span>
-                  <span style={{ color: "rgba(160,175,200,0.70)" }}> / {xp.maxExp}</span>
+                  <span style={{ color: "rgba(205,216,238,0.70)" }}> / {xp.maxExp}</span>
                 </span>
               </div>
 
@@ -566,13 +593,25 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           transition={{ duration: 0.3, delay: 0.06 }}
           className="rounded-2xl px-4 py-3 relative overflow-hidden"
           style={{
-            background: `linear-gradient(135deg, rgba(5,7,20,0.94) 0%, rgba(8,5,22,0.90) 100%)`,
+            background: panelBg,
+            border: `1px solid ${panelBorder}`,
             borderLeft: `3px solid ${primary}`,
-            boxShadow: `0 0 30px ${primary}14, 0 0 60px ${primary}07, 0 4px 24px rgba(0,0,0,0.50), inset 0 1px 0 ${primary}10`,
-            backdropFilter: "blur(18px)",
+            boxShadow: panelShadow,
+            backdropFilter: "blur(22px) saturate(1.18)",
           }}
           data-testid="system-message"
         >
+          <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
+            style={{
+              background: "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.045) 44%, transparent 100%)",
+              opacity: glossOpacity,
+            }} />
+          <div className="absolute -top-14 -left-32 h-28 w-80 pointer-events-none"
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent)",
+              filter: "blur(12px)",
+              animation: "cardGlossDrift 10s ease-in-out 0.8s infinite",
+            }} />
           {/* Background icon decoration */}
           {DASH_CARDS.find(d => d.activityId === currentAid) && (() => {
             const Icon = DASH_CARDS.find(d => d.activityId === currentAid)!.icon;
@@ -582,11 +621,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               </div>
             );
           })()}
-          <p className="text-[8px] font-bold tracking-[0.28em] mb-[5px]" style={{ color: primary, textShadow: `0 0 8px ${primary}80` }}>
+          <p className="relative z-10 text-[8px] font-bold tracking-[0.28em] mb-[5px]" style={{ color: primary, textShadow: `0 0 8px ${primary}80` }}>
             SYSTEM
           </p>
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <span className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: mutedCol }}>
+          <div className="relative z-10 flex items-center justify-between gap-3 mb-2">
+            <span className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: cardMutedCol }}>
               Daily Quest
             </span>
             <span className="text-[10px] font-mono tabular-nums" style={{ color: primary }}>
@@ -594,7 +633,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </span>
           </div>
           <div
-            className="h-[5px] rounded-full overflow-hidden mb-3"
+            className="relative z-10 h-[5px] rounded-full overflow-hidden mb-3"
             style={{ background: "rgba(255,255,255,0.06)" }}
             aria-hidden="true"
           >
@@ -606,12 +645,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               style={{ background: primary, boxShadow: `0 0 10px ${primary}66` }}
             />
           </div>
-          <p className="text-[13px] font-semibold leading-snug tracking-tight" style={{ color: textCol }}
+          <p className="relative z-10 text-[13px] font-semibold leading-snug tracking-tight" style={{ color: isNeonEmp ? "rgba(245,247,255,0.95)" : textCol }}
             data-testid="path-recommendation-text">
             {systemMission}
           </p>
           {systemHint && (
-            <p className="text-[10px] mt-1 leading-snug" style={{ color: "rgba(175,190,215,0.92)" }}>{systemHint}</p>
+            <p className="relative z-10 text-[10px] mt-1 leading-snug" style={{ color: "rgba(220,228,244,0.86)" }}>{systemHint}</p>
           )}
         </motion.div>
 
@@ -752,14 +791,26 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   whileTap={{ scale: 0.982, transition: { duration: 0.12 } }}
                   className={`${CARD_BASE} gap-3 relative overflow-hidden`}
                   style={{
-                    background: `linear-gradient(140deg, rgba(6,7,22,0.98) 0%, rgba(10,6,28,0.97) 60%, rgba(6,8,24,0.98) 100%)`,
-                    border: `1.5px solid ${dc.color}45`,
-                    backdropFilter: "blur(16px)",
+                    background: isNeonEmp
+                      ? `linear-gradient(145deg, rgba(11,13,36,0.90) 0%, rgba(7,8,26,0.96) 58%, rgba(20,13,46,0.91) 100%)`
+                      : `linear-gradient(140deg, rgba(6,7,22,0.98) 0%, rgba(10,6,28,0.97) 60%, rgba(6,8,24,0.98) 100%)`,
+                    border: `1.5px solid ${dc.color}${isNeonEmp ? "66" : "45"}`,
+                    backdropFilter: "blur(22px) saturate(1.2)",
                     padding: "16px 18px",
-                    boxShadow: `inset 0 1px 0 ${dc.color}18, inset 0 -1px 0 rgba(0,0,0,0.40)`,
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -1px 0 rgba(0,0,0,0.45)`,
                   }}
                   data-testid="mission-card-current"
                 >
+                  <div className="absolute inset-x-0 top-0 h-[46%] rounded-t-2xl pointer-events-none" style={{
+                    background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.055) 48%, transparent 100%)",
+                    opacity: isNeonEmp ? 0.78 : 0.50,
+                  }} />
+                  <div className="absolute -top-12 -left-28 h-28 w-80 pointer-events-none"
+                    style={{
+                      background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)",
+                      filter: "blur(12px)",
+                      animation: "cardGlossDrift 8.5s ease-in-out 1.2s infinite",
+                    }} />
                   {/* Radial bloom centre glow */}
                   <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{
                     background: `radial-gradient(ellipse at 72% 50%, ${dc.color}14 0%, transparent 60%)`,
@@ -808,10 +859,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                         <dc.icon size={20} style={{ color: dc.color, filter: `drop-shadow(0 0 4px ${dc.color})` }} />
                       </motion.div>
                       <div>
-                        <p className="text-[16px] font-bold leading-none tracking-tight" style={{ color: textCol }}>
+                        <p className="text-[16px] font-bold leading-none tracking-tight" style={{ color: cardTextCol }}>
                           {dc.label}
                         </p>
-                        <p className="text-[10px] mt-[3px] leading-none" style={{ color: mutedCol }}>{dc.sub}</p>
+                        <p className="text-[10px] mt-[3px] leading-none" style={{ color: cardMutedCol }}>{dc.sub}</p>
                       </div>
                     </div>
                     <span
@@ -824,7 +875,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
                   <div
                     className="relative grid grid-cols-2 gap-2"
-                    style={{ color: mutedCol }}
+                    style={{ color: cardMutedCol }}
                   >
                     <div
                       className="rounded-xl px-3 py-2"
@@ -833,7 +884,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       <p className="text-[7px] font-bold uppercase tracking-[0.20em]" style={{ color: `${dc.color}cc` }}>
                         Reward
                       </p>
-                      <p className="text-[11px] font-bold leading-tight mt-1" style={{ color: textCol }}>
+                      <p className="text-[11px] font-bold leading-tight mt-1" style={{ color: cardTextCol }}>
                         {rewardLabel}
                       </p>
                     </div>
@@ -844,7 +895,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       <p className="text-[7px] font-bold uppercase tracking-[0.20em]" style={{ color: "rgba(172,186,208,0.70)" }}>
                         Next
                       </p>
-                      <p className="text-[10px] font-semibold leading-tight mt-1" style={{ color: "rgba(225,232,245,0.88)" }}>
+                      <p className="text-[10px] font-semibold leading-tight mt-1" style={{ color: "rgba(236,242,255,0.90)" }}>
                         {nextUnlockLabel || `${dur} min guided`}
                       </p>
                     </div>
@@ -853,8 +904,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   {/* Bar */}
                   <div className="relative">
                     <div className="flex justify-between mb-1">
-                      <span className="text-[8px] tracking-wide" style={{ color: mutedCol }}>{dc.barLabel}</span>
-                      <span className="text-[8px] font-mono tabular-nums" style={{ color: mutedCol }}>{Math.round(barPct)}%</span>
+                      <span className="text-[8px] tracking-wide" style={{ color: cardMutedCol }}>{dc.barLabel}</span>
+                      <span className="text-[8px] font-mono tabular-nums" style={{ color: cardMutedCol }}>{Math.round(barPct)}%</span>
                     </div>
                     <div className="w-full h-[5px] rounded-full overflow-hidden" style={{ background: `${dc.color}12` }}>
                       <motion.div className="h-full rounded-full"
@@ -946,20 +997,33 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 whileTap={isLocked ? {} : { scale: 0.955, y: 0, boxShadow: tapShadow,
                   transition: { duration: 0.1, ease: "easeIn" } }}
                 transition={{ duration: 0.28, delay: 0.22 + idx * 0.06 }}
-                className="rounded-2xl flex flex-col w-full text-left disabled:cursor-default"
+                className="rounded-2xl relative overflow-hidden flex flex-col w-full text-left disabled:cursor-default"
                 style={{
                   background: isDone
                     ? `linear-gradient(145deg, rgba(4,20,8,0.96) 0%, rgba(4,14,6,0.92) 100%)`
-                    : `linear-gradient(145deg, ${dc.color}0a 0%, rgba(5,6,20,0.94) 40%, rgba(3,4,16,0.96) 100%)`,
-                  border: `1px solid ${borderCol}`,
-                  backdropFilter: "blur(12px)",
+                    : isNeonEmp
+                      ? `linear-gradient(145deg, ${dc.color}12 0%, rgba(8,9,28,0.88) 42%, rgba(4,5,18,0.94) 100%)`
+                      : `linear-gradient(145deg, ${dc.color}0a 0%, rgba(5,6,20,0.94) 40%, rgba(3,4,16,0.96) 100%)`,
+                  border: `1px solid ${isNeonEmp && !isDone ? `${dc.color}36` : borderCol}`,
+                  backdropFilter: "blur(18px) saturate(1.16)",
                   padding: "12px 10px",
                   gap: "7px",
-                  boxShadow: `inset 0 1px 0 ${accentColor}10`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.38)`,
                   cursor: isLocked ? "default" : "pointer",
                 }}
                 data-testid={`mission-card-${dc.id}`}
               >
+                <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
+                  style={{
+                    background: "linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.035) 48%, transparent)",
+                    opacity: isNeonEmp ? 0.66 : 0.38,
+                  }} />
+                <div className="absolute -top-10 -left-24 h-24 w-56 pointer-events-none"
+                  style={{
+                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)",
+                    filter: "blur(10px)",
+                    animation: `cardGlossDrift ${9 + idx}s ease-in-out ${idx * 0.45}s infinite`,
+                  }} />
                 {/* Top row: icon+level (left) · circular ring (right) */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-1">
@@ -999,15 +1063,15 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 {/* Title + sublabel + desc */}
                 <div>
                   <p className="text-[11px] font-bold leading-tight tracking-tight"
-                    style={{ color: isDone ? "#22c55e" : textCol }}>
+                    style={{ color: isDone ? "#22c55e" : cardTextCol }}>
                     {dc.label}
                   </p>
                   <p className="text-[8px] leading-snug mt-[2px]"
-                    style={{ color: "rgba(172,186,208,0.95)" }}>
+                    style={{ color: cardMutedCol }}>
                     {sublabel}
                   </p>
                   <p className="text-[7px] leading-snug mt-[1px]"
-                    style={{ color: "rgba(140,155,180,0.65)" }}>
+                    style={{ color: isNeonEmp ? "rgba(205,216,238,0.54)" : "rgba(140,155,180,0.65)" }}>
                     {dc.desc}
                   </p>
                 </div>

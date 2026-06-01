@@ -167,17 +167,6 @@ function FirstResetScreen({
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
-      <motion.div
-        className="absolute h-72 w-72 rounded-full border border-cyan-300/20"
-        animate={{ scale: phase === "active" ? [0.86, 1.08, 0.86] : [0.95, 1.02, 0.95], opacity: [0.3, 0.7, 0.3] }}
-        transition={{ duration: phase === "active" ? 5 : 4, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute h-48 w-48 rounded-full border border-fuchsia-300/15"
-        animate={{ scale: phase === "active" ? [1.05, 0.85, 1.05] : [1, 1.08, 1], opacity: [0.18, 0.52, 0.18] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-      />
-
       <div className="relative z-10 w-full max-w-[390px] text-center">
         <motion.div
           className="mx-auto mb-7 flex h-20 w-20 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/10"
