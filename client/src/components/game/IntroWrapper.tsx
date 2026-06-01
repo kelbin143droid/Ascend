@@ -84,6 +84,7 @@ function FirstResetScreen({
     exhale: null,
   });
   const backgroundVideoRef = useRef<HTMLVideoElement | null>(null);
+  const ambientAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastAudioPhase = useRef<FirstResetBreathPhase | null>(null);
   const elapsed = FIRST_RESET_DURATION_SECONDS - remaining;
   const progress = phase === "reward" ? 100 : Math.min(100, Math.max(0, (elapsed / FIRST_RESET_DURATION_SECONDS) * 100));
@@ -125,6 +126,10 @@ function FirstResetScreen({
       audio.preload = "auto";
       audio.volume = 0.92;
     });
+    ambientAudioRef.current = new Audio(FIRST_RESET_BACKGROUND_VIDEO_URL);
+    ambientAudioRef.current.preload = "auto";
+    ambientAudioRef.current.loop = true;
+    ambientAudioRef.current.volume = 0.32;
 
     return () => {
       Object.values(audioRefs.current).forEach((audio) => {
@@ -132,6 +137,10 @@ function FirstResetScreen({
         audio.pause();
         audio.src = "";
       });
+      if (ambientAudioRef.current) {
+        ambientAudioRef.current.pause();
+        ambientAudioRef.current.src = "";
+      }
     };
   }, []);
 
@@ -155,12 +164,14 @@ function FirstResetScreen({
     lastAudioPhase.current = null;
     const backgroundVideo = backgroundVideoRef.current;
     if (backgroundVideo) {
-      backgroundVideo.volume = 0.18;
-      backgroundVideo.muted = false;
       backgroundVideo.play().catch(() => {
-        backgroundVideo.muted = true;
         backgroundVideo.play().catch(() => {});
       });
+    }
+    if (ambientAudioRef.current) {
+      ambientAudioRef.current.currentTime = 0;
+      ambientAudioRef.current.volume = 0.32;
+      ambientAudioRef.current.play().catch(() => {});
     }
     setRemaining(FIRST_RESET_DURATION_SECONDS);
     setPhase("active");
@@ -168,9 +179,14 @@ function FirstResetScreen({
 
   useEffect(() => {
     const backgroundVideo = backgroundVideoRef.current;
-    if (!backgroundVideo) return;
     if (phase !== "active") {
-      backgroundVideo.muted = true;
+      ambientAudioRef.current?.pause();
+      if (ambientAudioRef.current) {
+        ambientAudioRef.current.currentTime = 0;
+      }
+      if (backgroundVideo) {
+        backgroundVideo.muted = true;
+      }
     }
   }, [phase]);
   const isActive = phase === "active";
@@ -244,14 +260,14 @@ function FirstResetScreen({
             <h1 className="mb-4 text-[38px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[44px]">
               30-Second Reset
             </h1>
-            <p className="mx-auto mb-6 max-w-[350px] text-[17px] font-bold leading-6 text-cyan-200 drop-shadow-[0_0_12px_rgba(103,232,249,0.32)]">
+            <p className="mx-auto mb-6 max-w-[350px] text-[17px] font-bold leading-6 text-yellow-200 drop-shadow-[0_0_12px_rgba(250,204,21,0.26)]">
               Press Start, then breathe with the pulse until the timer ends.
             </p>
 
-            <div className="relative mb-6 min-h-[280px] overflow-hidden rounded-[30px] border border-white/12 bg-slate-200/[0.045] px-4 py-5 shadow-[0_20px_64px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.10)] backdrop-blur-md">
-              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/26 to-transparent" />
+            <div className="relative mb-6 min-h-[280px] overflow-hidden rounded-[30px] border border-white/10 bg-slate-200/[0.025] px-4 py-5 shadow-[0_18px_54px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-sm">
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
 
-              <div className="absolute right-4 top-4 z-20 rounded-full border border-white/12 bg-slate-200/[0.055] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
+              <div className="absolute right-4 top-4 z-20 rounded-full border border-white/10 bg-slate-200/[0.035] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
                 Voice On
               </div>
 
@@ -261,14 +277,14 @@ function FirstResetScreen({
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="relative mt-11 text-center text-[20px] font-black leading-tight text-white"
+                  className="relative mt-10 text-center text-[20px] font-black leading-tight text-white"
                 >
                   {breathInstruction}
                 </motion.p>
               )}
 
-              <div className={`relative mx-auto flex w-full max-w-[290px] items-center justify-center ${isActive ? "mb-4 mt-3 h-[238px]" : "mt-8 h-[220px]"}`}>
-                <svg className="absolute h-[226px] w-[226px] overflow-visible" viewBox="0 0 250 250" aria-hidden="true">
+              <div className={`relative mx-auto flex w-full max-w-[290px] items-center justify-center ${isActive ? "mb-1 mt-0 h-[168px]" : "mt-8 h-[220px]"}`}>
+                <svg className={`absolute overflow-visible ${isActive ? "h-[188px] w-[188px]" : "h-[226px] w-[226px]"}`} viewBox="0 0 250 250" aria-hidden="true">
                   <defs>
                     <linearGradient id="first-reset-ring" x1="0" y1="0" x2="1" y2="1">
                       <stop offset="0%" stopColor="#cffafe" />
@@ -309,8 +325,8 @@ function FirstResetScreen({
                 <motion.div
                   className="absolute rounded-full border border-cyan-100/30"
                   animate={{
-                    width: isActive && breathState.phase === "inhale" ? [142, 194] : 142,
-                    height: isActive && breathState.phase === "inhale" ? [142, 194] : 142,
+                    width: isActive && breathState.phase === "inhale" ? [122, 166] : isActive ? 122 : 142,
+                    height: isActive && breathState.phase === "inhale" ? [122, 166] : isActive ? 122 : 142,
                     opacity: isActive && breathState.phase === "inhale" ? [0.42, 0] : 0.18,
                   }}
                   transition={{ duration: 1.9, repeat: isActive && breathState.phase === "inhale" ? Infinity : 0, ease: "easeOut" }}
@@ -320,8 +336,8 @@ function FirstResetScreen({
                   animate={{ scale: isActive ? breathState.scale : 0.82 }}
                   transition={{ duration: 0.75, ease: [0.22, 0.61, 0.36, 1] }}
                   style={{
-                    width: 148,
-                    height: 148,
+                    width: isActive ? 126 : 148,
+                    height: isActive ? 126 : 148,
                     background: `radial-gradient(circle at 50% 28%, rgba(255,255,255,0.24) 0%, ${phaseColor}38 28%, ${phaseColor}16 56%, rgba(2,7,17,0.44) 100%)`,
                     border: `2px solid ${phaseColor}55`,
                     boxShadow: `0 0 62px ${phaseColor}2b, inset 0 0 38px ${phaseColor}19, inset 0 1px 22px rgba(255,255,255,0.14)`,
@@ -333,15 +349,15 @@ function FirstResetScreen({
                     initial={{ opacity: 0, y: 7 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25 }}
-                    className="text-[16px] font-black uppercase tracking-[0.32em]"
+                    className={`${isActive ? "text-[14px]" : "text-[16px]"} font-black uppercase tracking-[0.32em]`}
                     style={{ color: isActive ? phaseColor : "rgba(255,255,255,0.54)", textShadow: `0 0 14px ${phaseColor}44` }}
                   >
                     {isActive ? breathLabel : "Ready"}
                   </motion.span>
-                  <span className="mt-2 text-[64px] font-black leading-none tabular-nums text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)]">
+                  <span className={`${isActive ? "mt-1 text-[54px]" : "mt-2 text-[64px]"} font-black leading-none tabular-nums text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)]`}>
                     {isActive ? breathState.secondsLeft : remaining}
                   </span>
-                  <span className="mt-3 text-[12px] font-black uppercase tracking-[0.28em] text-white/36">
+                  <span className={`${isActive ? "mt-2 text-[10px]" : "mt-3 text-[12px]"} font-black uppercase tracking-[0.28em] text-white/36`}>
                     {isActive ? "phase" : "seconds"}
                   </span>
                 </div>
@@ -370,16 +386,16 @@ function FirstResetScreen({
             <button
               onClick={startReset}
               disabled={isActive}
-              className="group relative flex min-h-[68px] w-full items-center justify-center overflow-hidden rounded-[34px] border-2 border-cyan-100/52 bg-slate-200/[0.052] px-5 py-4 text-[12px] font-black uppercase tracking-[0.28em] text-white shadow-[0_0_28px_rgba(186,243,255,0.18),inset_0_0_14px_rgba(186,243,255,0.05)] backdrop-blur-md transition hover:border-cyan-100/70 hover:bg-slate-200/[0.08] hover:shadow-[0_0_40px_rgba(186,243,255,0.25),inset_0_0_18px_rgba(186,243,255,0.075)] disabled:cursor-default"
+              className="group relative flex min-h-[68px] w-full items-center justify-center overflow-hidden rounded-[34px] border-2 border-cyan-100/44 bg-slate-200/[0.035] px-5 py-4 text-[12px] font-black uppercase tracking-[0.28em] text-white shadow-[0_0_24px_rgba(186,243,255,0.15),inset_0_0_12px_rgba(186,243,255,0.04)] backdrop-blur-sm transition hover:border-cyan-100/62 hover:bg-slate-200/[0.06] hover:shadow-[0_0_34px_rgba(186,243,255,0.22),inset_0_0_16px_rgba(186,243,255,0.06)] disabled:cursor-default"
             >
-              <span className="pointer-events-none absolute inset-[7px] rounded-[26px] border border-cyan-100/26" />
-              <span className="pointer-events-none absolute inset-x-4 top-3 h-5 rounded-full bg-gradient-to-b from-white/13 to-transparent blur-[1px]" />
-              <span className="pointer-events-none absolute -left-12 top-0 h-full w-32 rotate-[-18deg] bg-gradient-to-r from-transparent via-white/8 to-transparent transition group-hover:translate-x-8" />
-              <span className="pointer-events-none absolute inset-x-14 top-1/2 h-10 -translate-y-1/2 rounded-full bg-cyan-100/8 blur-xl" />
-              <span className="pointer-events-none absolute left-8 right-8 top-[7px] h-px bg-gradient-to-r from-transparent via-white/42 to-transparent" />
-              <span className="pointer-events-none absolute left-8 right-8 bottom-[7px] h-px bg-gradient-to-r from-transparent via-cyan-100/38 to-transparent" />
-              <span className="pointer-events-none absolute -left-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/8 blur-xl transition group-hover:bg-cyan-100/12" />
-              <span className="pointer-events-none absolute -right-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/8 blur-xl transition group-hover:bg-cyan-100/12" />
+              <span className="pointer-events-none absolute inset-[7px] rounded-[26px] border border-cyan-100/20" />
+              <span className="pointer-events-none absolute inset-x-4 top-3 h-5 rounded-full bg-gradient-to-b from-white/8 to-transparent blur-[1px]" />
+              <span className="pointer-events-none absolute -left-12 top-0 h-full w-32 rotate-[-18deg] bg-gradient-to-r from-transparent via-white/5 to-transparent transition group-hover:translate-x-8" />
+              <span className="pointer-events-none absolute inset-x-14 top-1/2 h-10 -translate-y-1/2 rounded-full bg-cyan-100/6 blur-xl" />
+              <span className="pointer-events-none absolute left-8 right-8 top-[7px] h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+              <span className="pointer-events-none absolute left-8 right-8 bottom-[7px] h-px bg-gradient-to-r from-transparent via-cyan-100/30 to-transparent" />
+              <span className="pointer-events-none absolute -left-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/6 blur-xl transition group-hover:bg-cyan-100/9" />
+              <span className="pointer-events-none absolute -right-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/6 blur-xl transition group-hover:bg-cyan-100/9" />
               <span className="relative z-10 flex items-center justify-center gap-3 drop-shadow-[0_0_10px_rgba(186,243,255,0.36)]">
                 {isActive ? "Reset In Progress" : "Start Reset"}
                 <ArrowRight className="transition group-hover:translate-x-0.5" size={18} />
