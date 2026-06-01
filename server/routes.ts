@@ -421,22 +421,27 @@ export async function registerRoutes(
       // Daily flow sessions always award exact fixed XP — no tier multiplier, no
       // anti-grind reduction, and no daily cap interference.
       const DAILY_FLOW_SESSION_XP: Record<string, number> = {
+        "calm-breathing":  PHASE1_XP.sense,
         phase1_meditation: PHASE1_XP.sense,
         phase1_agility:    PHASE1_XP.agility,
         "light-movement":  PHASE1_XP.agility,
         phase1_vitality:   PHASE1_XP.vitality,
         phase1_strength:   PHASE1_XP.strength,
       };
-      if (DAILY_FLOW_SESSION_XP[parsed.data.sessionId] !== undefined) {
+      const isDailyFlowSession = DAILY_FLOW_SESSION_XP[parsed.data.sessionId] !== undefined;
+      if (isDailyFlowSession) {
         guidedXP = DAILY_FLOW_SESSION_XP[parsed.data.sessionId];
       }
+      const playerXP = parsed.data.sessionId === "phase1_vitality"
+        ? guidedXP + PHASE1_XP.synthesisBonus
+        : guidedXP;
 
       // Onboarding sessions skip stat XP and award a fixed amount on first completion.
       // quick-reflection is Day 3's paired second session — it's in onboarding but awards 0 XP
       // (hydration-check already gives Day 3's 5 XP) and does not increment streak.
       const ONBOARDING_SESSION_IDS = new Set(["calm-breathing", "light-movement", "hydration-check", "quick-reflection", "focus-block", "plan-tomorrow"]);
       const ONBOARDING_CHAINED_IDS = new Set(["quick-reflection"]); // paired sessions: no XP, no streak
-      const isOnboardingSession = ONBOARDING_SESSION_IDS.has(parsed.data.sessionId);
+      const isOnboardingSession = ONBOARDING_SESSION_IDS.has(parsed.data.sessionId) && !isDailyFlowSession;
       let isFirstOnboardingCompletion = false;
       if (isOnboardingSession) {
         const allPlayerCompletions = await storage.getHabitCompletions(req.params.id);
@@ -452,7 +457,7 @@ export async function registerRoutes(
         habitId: sessionHabitId,
         userId: req.params.id,
         durationMinutes: parsed.data.durationMinutes,
-        xpEarned: guidedXP,
+        xpEarned: playerXP,
       });
 
       const stabilityData = player.stability || {
@@ -494,11 +499,13 @@ export async function registerRoutes(
       }
       await storage.updatePlayer(req.params.id, playerUpdates);
 
-      const updatedPlayer = await storage.gainExp(req.params.id, guidedXP);
+      const updatedPlayer = await storage.gainExp(req.params.id, playerXP);
 
       res.json({
         success: true,
-        xpEarned: guidedXP,
+        xpEarned: playerXP,
+        statXpEarned: guidedXP,
+        bonusXP: playerXP - guidedXP,
         stabilityScore: newScore,
         trainingScaling: updatedScaling,
         tierMultiplier,

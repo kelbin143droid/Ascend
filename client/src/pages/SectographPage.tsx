@@ -332,27 +332,6 @@ export default function SectographPage() {
 
   const [flowBonusAwarded, setFlowBonusAwarded] = useState(false);
 
-  const flowBonusMutation = useMutation({
-    mutationFn: async () => {
-      if (!player?.id) return;
-      const res = await apiRequest("POST", `/api/player/${player.id}/daily-flow-bonus`, {
-        bonusXP: PHASE1_XP.synthesisBonus,
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      setFlowBonusAwarded(true);
-      addXP(PHASE1_XP.synthesisBonus, "system");
-      queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
-      queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
-      toast({
-        title: `🔥 +${PHASE1_XP.synthesisBonus} System Synthesis Bonus`,
-        description: "Bonus XP rewarded for completing your full setup.",
-        duration: 3500,
-      });
-    },
-  });
-
   const vitalityXpMutation = useMutation({
     mutationFn: async () => {
       if (!player?.id) return;
@@ -365,8 +344,14 @@ export default function SectographPage() {
       });
       return res.json();
     },
-    onSuccess: () => {
-      addXP(PHASE1_XP.vitality, "vitality");
+    onSuccess: (data: { statXpEarned?: number; bonusXP?: number } | undefined) => {
+      const vitalityXP = data?.statXpEarned ?? PHASE1_XP.vitality;
+      const bonusXP = data?.bonusXP ?? PHASE1_XP.synthesisBonus;
+      addXP(vitalityXP, "vitality");
+      if (bonusXP > 0 && !flowBonusAwarded) {
+        addXP(bonusXP, "system");
+        setFlowBonusAwarded(true);
+      }
       completeTask("phase1_vitality");
       try {
         const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
@@ -383,9 +368,12 @@ export default function SectographPage() {
         description: "Recovery scheduled. Vitality stat advancing.",
         duration: 3500,
       });
-      // Award the System Synthesis Bonus after the base vitality XP
-      if (!flowBonusAwarded) {
-        flowBonusMutation.mutate();
+      if (bonusXP > 0) {
+        toast({
+          title: `🔥 +${bonusXP} System Completion Bonus`,
+          description: "Full onboarding sequence complete.",
+          duration: 3500,
+        });
       }
     },
   });
