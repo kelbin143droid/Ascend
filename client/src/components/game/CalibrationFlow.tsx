@@ -1,13 +1,14 @@
 /**
  * CalibrationFlow.tsx
- * "System Sync" calibration — single scrolling screen.
- * Live radar chart at the top (with ghost baseline) updates instantly
- * as the user picks tier buttons. Completion triggers a modal overlay
- * before handing off to onComplete.
+ * Lightweight System Sync questionnaire.
+ * One focused question at a time keeps onboarding fast while still creating
+ * a broad starting profile for the adaptive daily systems.
  */
 
-import { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Activity, ArrowLeft, ArrowRight, Brain, Check, Moon, Repeat2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { deriveCalibrationLevelFromScore, type CalibrationAnswers } from "@/lib/calibrationEngine";
 import type { WorkoutLevel } from "@/lib/workoutPlans";
 
@@ -16,70 +17,80 @@ interface Props {
   onComplete: (answers: CalibrationAnswers) => void;
 }
 
-// ── Section / tier data ────────────────────────────────────────────────────────
+type CalibrationOption = {
+  label: string;
+  sub: string;
+  value: number;
+};
 
-const SECTIONS = [
+type CalibrationSection = {
+  key: keyof CalibrationAnswers;
+  label: string;
+  stat: string;
+  statColor: string;
+  Icon: LucideIcon;
+  prompt: string;
+  options: CalibrationOption[];
+};
+
+const SECTIONS: CalibrationSection[] = [
   {
-    key:       "powerOutput" as keyof CalibrationAnswers,
-    radarKey:  "strength",
-    label:     "Power Output",
-    stat:      "Strength",
+    key: "powerOutput",
+    label: "Power Output",
+    stat: "Strength",
     statColor: "#fbbf24",
-    icon:      "⚡",
-    prompt:    "Select your highest consistent pushup form:",
+    Icon: Activity,
+    prompt: "How would you describe your current physical activity?",
     options: [
-      { label: "Wall / Incline", sub: "Pushup against a wall or elevated surface", value: 15 },
-      { label: "Knee Pushup",    sub: "Full range of motion, knees on ground",      value: 35 },
-      { label: "Regular Form",   sub: "Standard floor pushup with good form",        value: 65 },
-      { label: "Advanced",       sub: "Clap, decline, or weighted pushups",          value: 90 },
+      { label: "Very Low", sub: "Mostly inactive right now", value: 15 },
+      { label: "Light", sub: "Some walking or light movement", value: 40 },
+      { label: "Moderate", sub: "Exercise a few days per week", value: 65 },
+      { label: "Strong", sub: "Training feels normal for me", value: 90 },
     ],
   },
   {
-    key:       "recoveryRate" as keyof CalibrationAnswers,
-    radarKey:  "vitality",
-    label:     "Vitality Signal",
-    stat:      "Vitality",
+    key: "recoveryRate",
+    label: "Vitality Signal",
+    stat: "Sleep",
     statColor: "#34d399",
-    icon:      "💚",
-    prompt:    "How is your typical sleep quality and daily hydration?",
+    Icon: Moon,
+    prompt: "How has your sleep been lately?",
     options: [
-      { label: "Disrupted",     sub: "Poor sleep, rarely drink enough water",      value: 15 },
-      { label: "Light Recovery", sub: "5–6 h sleep, some water through the day",   value: 40 },
-      { label: "Solid Rest",    sub: "7 h sleep, consistently staying hydrated",    value: 65 },
-      { label: "Peak Vitality", sub: "8+ h quality sleep, fully hydrated daily",   value: 90 },
+      { label: "Rough", sub: "I wake up tired most days", value: 15 },
+      { label: "Light", sub: "Some rest, but inconsistent", value: 40 },
+      { label: "Decent", sub: "Usually enough to function", value: 65 },
+      { label: "Strong", sub: "I wake up recovered often", value: 90 },
     ],
   },
   {
-    key:       "signalStability" as keyof CalibrationAnswers,
-    radarKey:  "sense",
-    label:     "Signal Stability",
-    stat:      "Sense",
+    key: "signalStability",
+    label: "Signal Stability",
+    stat: "Sense",
     statColor: "#a78bfa",
-    icon:      "🧠",
-    prompt:    "Current daily meditation or mindfulness practice:",
+    Icon: Brain,
+    prompt: "How familiar are you with meditation or breathwork?",
     options: [
-      { label: "None / Rarely", sub: "No regular practice",                         value: 10 },
-      { label: "5 – 15 min",    sub: "Light, occasional sessions",                  value: 35 },
-      { label: "15 – 30 min",   sub: "Regular focused practice",                    value: 65 },
-      { label: "30 + min",      sub: "Deep, consistent daily sessions",              value: 90 },
+      { label: "New", sub: "I am just starting", value: 10 },
+      { label: "Tried It", sub: "A few short sessions before", value: 35 },
+      { label: "Familiar", sub: "I can settle in sometimes", value: 65 },
+      { label: "Very Familiar", sub: "It is part of my routine", value: 90 },
     ],
   },
   {
-    key:       "syncRegularity" as keyof CalibrationAnswers,
-    radarKey:  "discipline",
-    label:     "Sync Regularity",
-    stat:      "Discipline",
+    key: "syncRegularity",
+    label: "Sync Regularity",
+    stat: "Discipline",
     statColor: "#fb923c",
-    icon:      "🔄",
-    prompt:    "How consistent are your daily routines and habits?",
+    Icon: Repeat2,
+    prompt: "How consistent are your daily routines right now?",
     options: [
-      { label: "Irregular",    sub: "Routines rarely stick",                       value: 10 },
-      { label: "Intermittent", sub: "On-and-off consistency",                       value: 35 },
-      { label: "Consistent",   sub: "Most days I show up",                          value: 65 },
-      { label: "Locked In",    sub: "Strong systems and high follow-through",        value: 90 },
+      { label: "Not Consistent", sub: "My days feel scattered", value: 10 },
+      { label: "On And Off", sub: "I restart often", value: 35 },
+      { label: "Mostly Consistent", sub: "Most days I show up", value: 65 },
+      { label: "Very Consistent", sub: "I follow through reliably", value: 90 },
     ],
   },
-] as const;
+];
 
 const PROTOCOL_LABELS: Record<WorkoutLevel, string> = {
   entry: "FOUNDATION",
@@ -88,327 +99,256 @@ const PROTOCOL_LABELS: Record<WorkoutLevel, string> = {
   advanced: "ASCEND",
 };
 
-// Protocol display name from the same average-score logic used for the final result.
 function protocolLabel(selections: Partial<Record<keyof CalibrationAnswers, number>>): string {
   const values = Object.values(selections).filter((v): v is number => typeof v === "number");
-  if (values.length === 0) return "—";
+  if (values.length === 0) return "PENDING";
   const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
   return PROTOCOL_LABELS[deriveCalibrationLevelFromScore(avg)];
 }
 
-// ── Component ──────────────────────────────────────────────────────────────────
-
 export function CalibrationFlow({ gender, onComplete }: Props) {
-  const isFemale   = gender === "female";
+  const isFemale = gender === "female";
+  const color = isFemale ? "#d946ef" : "#22d3ee";
+  const colorAlt = isFemale ? "#a78bfa" : "#67e8f9";
+  const glow = isFemale ? "rgba(217,70,239,0.34)" : "rgba(34,211,238,0.34)";
+  const panelGlow = isFemale ? "rgba(167,139,250,0.22)" : "rgba(103,232,249,0.22)";
   const bgGradient = isFemale
-    ? "linear-gradient(145deg, #04000e 0%, #080018 50%, #05000f 100%)"
-    : "linear-gradient(145deg, #020810 0%, #03101e 50%, #020810 100%)";
+    ? "radial-gradient(circle at 18% 8%, rgba(217,70,239,0.18), transparent 30%), linear-gradient(145deg, #05000d 0%, #080218 48%, #02030b 100%)"
+    : "radial-gradient(circle at 18% 8%, rgba(34,211,238,0.16), transparent 30%), linear-gradient(145deg, #020812 0%, #031520 48%, #02040b 100%)";
 
-  const color    = "#0ea5e9";
-  const colorAlt = "#38bdf8";
-  const glow     = "rgba(14,165,233,0.40)";
-
-  // Selected tier values keyed by section key
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [selections, setSelections] = useState<Partial<Record<keyof CalibrationAnswers, number>>>({});
-  const [scanning,   setScanning]   = useState(false);
-
-  const selectedCount = Object.keys(selections).length;
-  const allSelected   = selectedCount === SECTIONS.length;
-
+  const [scanning, setScanning] = useState(false);
   const completing = useRef(false);
 
-  const handleSelect = (key: keyof CalibrationAnswers, value: number) => {
-    setSelections(prev => ({ ...prev, [key]: value }));
+  const section = SECTIONS[currentIndex];
+  const selected = selections[section.key];
+  const selectedCount = Object.values(selections).filter((value) => typeof value === "number").length;
+  const isLast = currentIndex === SECTIONS.length - 1;
+  const allSelected = selectedCount === SECTIONS.length;
+  const Icon = section.Icon;
+
+  const handleSelect = (value: number) => {
+    setSelections((prev) => ({ ...prev, [section.key]: value }));
   };
 
-  const handleComplete = () => {
-    if (completing.current || scanning || !allSelected) return;
+  const handleNext = () => {
+    if (typeof selected !== "number" || scanning) return;
+    if (!isLast) {
+      setCurrentIndex((value) => Math.min(SECTIONS.length - 1, value + 1));
+      return;
+    }
+
+    const answers = {
+      ...selections,
+      [section.key]: selected,
+    };
+    if (completing.current || !allSelected && Object.values(answers).filter((value) => typeof value === "number").length < SECTIONS.length) return;
     completing.current = true;
     setScanning(true);
-    setTimeout(() => {
+    window.setTimeout(() => {
       setScanning(false);
       onComplete({
-        powerOutput:     selections.powerOutput     ?? 50,
-        recoveryRate:    selections.recoveryRate     ?? 50,
-        signalStability: selections.signalStability  ?? 50,
-        syncRegularity:  selections.syncRegularity   ?? 50,
+        powerOutput: answers.powerOutput ?? 50,
+        recoveryRate: answers.recoveryRate ?? 50,
+        signalStability: answers.signalStability ?? 50,
+        syncRegularity: answers.syncRegularity ?? 50,
       });
-    }, 750);
+    }, 720);
   };
 
-  const stars = useRef(
-    Array.from({ length: 28 }, (_, i) => ({
-      id: i, x: Math.random() * 100, y: Math.random() * 100,
-      size: 0.7 + Math.random() * 1.6, duration: 2.5 + Math.random() * 4,
-      delay: Math.random() * 3, opacity: 0.15 + Math.random() * 0.42,
-    }))
-  ).current;
+  const handleBack = () => {
+    if (currentIndex === 0 || scanning) return;
+    setCurrentIndex((value) => Math.max(0, value - 1));
+  };
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden"
-      style={{ background: bgGradient }}
+      className="fixed inset-0 z-[100] flex flex-col overflow-hidden px-4 py-6 text-white"
+      style={{ background: bgGradient, fontFamily: "Inter, system-ui, sans-serif" }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.55 }}
+      transition={{ duration: 0.45 }}
     >
       <style>{`
-        @keyframes xpShimmer {
-          0%   { background-position: -200% center; }
-          100% { background-position:  200% center; }
-        }
-        @keyframes pulseGlow {
-          0%, 100% { opacity: 0.6; }
-          50%       { opacity: 1; }
+        @keyframes syncShimmer {
+          0% { transform: translateX(-130%) rotate(-18deg); }
+          100% { transform: translateX(230%) rotate(-18deg); }
         }
       `}</style>
 
-      {/* ── Ambient stars ── */}
-      {stars.map(s => (
-        <motion.div key={s.id} className="absolute rounded-full pointer-events-none"
-          style={{ width: s.size, height: s.size, left: `${s.x}%`, top: `${s.y}%`, background: color }}
-          animate={{ opacity: [s.opacity * 0.3, s.opacity, s.opacity * 0.2] }}
-          transition={{ duration: s.duration, repeat: Infinity, delay: s.delay, ease: "easeInOut" }} />
-      ))}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.18]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(125,211,252,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(125,211,252,0.14) 1px, transparent 1px)",
+          backgroundSize: "72px 72px",
+        }}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/55 to-transparent" />
+      <div className="pointer-events-none absolute -left-24 top-20 h-72 w-72 rounded-full bg-cyan-300/12 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-28 h-72 w-72 rounded-full bg-violet-400/10 blur-3xl" />
 
-      {/* ── Ambient orbs ── */}
-      <motion.div className="absolute pointer-events-none"
-        style={{ top: "12%", left: "-14%", width: 340, height: 340, borderRadius: "50%",
-          background: `radial-gradient(circle, rgba(56,189,248,0.18) 0%, transparent 70%)`,
-          filter: "blur(55px)" }}
-        animate={{ scale: [1, 1.12, 1], opacity: [0.4, 0.72, 0.4] }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }} />
-      <motion.div className="absolute pointer-events-none"
-        style={{ bottom: "8%", right: "-12%", width: 300, height: 300, borderRadius: "50%",
-          background: `radial-gradient(circle, ${glow} 0%, transparent 70%)`,
-          filter: "blur(60px)" }}
-        animate={{ scale: [1, 1.18, 1], opacity: [0.28, 0.58, 0.28] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.5 }} />
-
-      {/* ── Scanning line ── */}
       <AnimatePresence>
         {scanning && (
-          <motion.div className="fixed left-0 right-0 z-[200] pointer-events-none"
-            style={{ height: 2,
-              background: `linear-gradient(90deg, transparent 0%, ${color}50 8%, ${color} 50%, ${color}50 92%, transparent 100%)`,
-              boxShadow: `0 0 20px ${glow}, 0 0 50px ${glow}60` }}
+          <motion.div
+            className="fixed left-0 right-0 z-[200] h-0.5 pointer-events-none"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
+              boxShadow: `0 0 28px ${glow}`,
+            }}
             initial={{ top: -4 }}
             animate={{ top: "100vh" }}
-            transition={{ duration: 0.74, ease: "linear" }} />
+            transition={{ duration: 0.72, ease: "linear" }}
+          />
         )}
       </AnimatePresence>
 
-      {/* ════════════════ STICKY HEADER WITH CHART ════════════════ */}
-      <div className="relative z-10 flex-shrink-0 flex flex-col items-center pt-10 pb-3 px-4">
-
-        {/* Top label */}
-        <motion.div className="flex items-center gap-2 mb-3"
-          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.18 }}>
-          <motion.div className="w-1.5 h-1.5 rounded-full" style={{ background: color }}
-            animate={{ opacity: [1, 0.15, 1] }} transition={{ duration: 1.1, repeat: Infinity }} />
-          <span className="text-[9px] tracking-[0.32em] uppercase font-mono font-bold"
-            style={{ color: `${color}90` }}>
-            System Sync · Calibration
-          </span>
-        </motion.div>
-
-        {/* Status bar: N/4 calibrated · Protocol preview */}
-        <motion.div className="flex items-center gap-3 mt-1"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }}>
-
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-            {SECTIONS.map((_, i) => (
-              <motion.div key={i}
-                className="rounded-full transition-all duration-300"
-                style={{
-                  width:           i < selectedCount ? 14 : 6,
-                  height:          6,
-                  backgroundColor: i < selectedCount ? `${color}cc` : `${color}22`,
-                  border:          `1px solid ${i < selectedCount ? color : `${color}28`}`,
-                  boxShadow:       i < selectedCount ? `0 0 6px ${glow}` : "none",
-                }} />
-            ))}
-            <span className="text-[9px] font-mono ml-1" style={{ color: "rgba(255,255,255,0.35)" }}>
-              {selectedCount}/4
-            </span>
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-[430px] flex-col">
+        <header className="flex-shrink-0 pt-1 text-center">
+          <div className="mb-5 flex items-center justify-center gap-3">
+            <span className="h-2 w-2 rounded-full" style={{ background: color, boxShadow: `0 0 16px ${glow}` }} />
+            <p className="text-[11px] font-black uppercase tracking-[0.34em] text-cyan-100/70">
+              System Sync · Calibration
+            </p>
           </div>
 
+          <div className="mx-auto mb-5 flex w-fit items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full border border-cyan-100/24 bg-cyan-100/12 px-4 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-md">
+              {SECTIONS.map((item, index) => {
+                const answered = typeof selections[item.key] === "number";
+                const active = index === currentIndex;
+                return (
+                  <span
+                    key={item.key}
+                    className="h-2.5 w-2.5 rounded-full transition-all"
+                    style={{
+                      background: answered ? "#facc15" : active ? color : "rgba(255,255,255,0.22)",
+                      boxShadow: answered || active ? `0 0 14px ${answered ? "rgba(250,204,21,0.55)" : glow}` : "none",
+                      width: active ? 18 : 10,
+                    }}
+                  />
+                );
+              })}
+              <span className="ml-1 text-[18px] font-black tabular-nums text-white">{selectedCount}/4</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={currentIndex === 0 || scanning}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-cyan-100/24 bg-white/[0.03] text-cyan-100/80 transition disabled:opacity-35"
+              aria-label="Previous question"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          </div>
+        </header>
+
+        <main className="relative z-10 min-h-0 flex-1 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <AnimatePresence mode="wait">
-            <motion.div key={protocolLabel(selections)}
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.18 }}
-              className="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.20em]"
-              style={{
-                color,
-                background: `${color}14`,
-                border: `1px solid ${color}30`,
-                opacity: selectedCount > 0 ? 1 : 0.35,
-              }}>
-                {protocolLabel(selections)}
-              </motion.div>
-          </AnimatePresence>
-        </motion.div>
+            <motion.section
+              key={section.key}
+              className="relative overflow-hidden rounded-[28px] border border-cyan-100/22 bg-slate-200/[0.045] px-5 py-6 shadow-[0_26px_90px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-md"
+              initial={{ opacity: 0, x: 22 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -18 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/45 to-transparent" />
+              <div className="pointer-events-none absolute inset-y-10 left-0 w-px bg-gradient-to-b from-transparent via-cyan-100/32 to-transparent" />
+              <div className="pointer-events-none absolute inset-y-10 right-0 w-px bg-gradient-to-b from-transparent via-cyan-100/18 to-transparent" />
 
-        {/* Divider */}
-        <div className="w-full max-w-sm h-px mt-3"
-          style={{ background: `linear-gradient(90deg, transparent, ${color}25, transparent)` }} />
-      </div>
-
-      {/* ════════════════ SCROLLABLE SECTIONS ════════════════ */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-4">
-        <div className="max-w-sm mx-auto flex flex-col gap-5 pt-2">
-          {SECTIONS.map((section, si) => {
-            const selected = selections[section.key];
-            return (
-              <motion.div key={section.key}
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.32 + si * 0.08, ease: "easeOut" }}>
-
-                {/* Section header */}
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-[3px] h-4 rounded-full" style={{ background: section.statColor }} />
-                    <span className="text-[11px] font-mono font-bold tracking-[0.18em] uppercase"
-                      style={{ color: section.statColor }}>
+              <div className="mb-6 flex items-center gap-3">
+                <Icon className="shrink-0 text-cyan-100" size={30} strokeWidth={2.4} />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <h2 className="text-[30px] font-black uppercase leading-none tracking-[0.02em] text-white">
                       {section.label}
-                    </span>
-                    <span className="text-[9px] font-mono" style={{ color: `${section.statColor}55` }}>
-                      · {section.stat}
-                    </span>
+                    </h2>
+                    <span className="text-[22px] font-bold text-white/80">· {section.stat}</span>
                   </div>
-                  <AnimatePresence mode="wait">
-                    {selected !== undefined && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.7 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.7 }}
-                        transition={{ duration: 0.16 }}
-                        className="text-[9px] font-mono px-2 py-0.5 rounded-full"
-                        style={{ color, background: `${color}18`, border: `1px solid ${color}30` }}>
-                        {selected}%
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div className="mt-2 h-1 w-44 rounded-full" style={{ background: `linear-gradient(90deg, ${section.statColor}, ${colorAlt}, transparent)` }} />
                 </div>
+              </div>
 
-                <p className="text-[11px] mb-2.5" style={{ color: "rgba(255,255,255,0.40)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                  {section.prompt}
-                </p>
+              <p className="mb-7 text-[24px] font-semibold italic leading-tight text-white/82">
+                {section.prompt}
+              </p>
 
-                {/* 2×2 option grid */}
-                <div className="grid grid-cols-2 gap-2">
-                  {section.options.map((opt) => {
-                    const isSelected = selected === opt.value;
-                    return (
-                      <motion.button
-                        key={opt.label}
-                        onClick={() => handleSelect(section.key, opt.value)}
-                        data-testid={`option-${section.key}-${opt.value}`}
-                        whileTap={{ scale: 0.96 }}
-                        className="relative flex flex-col gap-0.5 text-left p-3 rounded-xl overflow-hidden transition-all duration-200"
+              <div className="grid grid-cols-2 gap-4">
+                {section.options.map((option) => {
+                  const isSelected = selected === option.value;
+                  return (
+                    <motion.button
+                      key={option.label}
+                      type="button"
+                      onClick={() => handleSelect(option.value)}
+                      data-testid={`option-${section.key}-${option.value}`}
+                      whileTap={{ scale: 0.97 }}
+                      className="relative min-h-[178px] overflow-hidden rounded-[22px] p-4 text-left transition"
+                      style={{
+                        background: isSelected ? "rgba(250,204,21,0.10)" : "rgba(255,255,255,0.045)",
+                        border: `1.5px solid ${isSelected ? "rgba(250,204,21,0.88)" : "rgba(125,211,252,0.46)"}`,
+                        boxShadow: isSelected
+                          ? "0 0 28px rgba(250,204,21,0.24), inset 0 1px 0 rgba(255,255,255,0.14)"
+                          : `0 0 18px ${panelGlow}, inset 0 1px 0 rgba(255,255,255,0.10)`,
+                      }}
+                    >
+                      <span className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+                      <span
+                        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border"
                         style={{
-                          background:   isSelected ? `${color}18` : "rgba(255,255,255,0.03)",
-                          border:       `1px solid ${isSelected ? color : "rgba(255,255,255,0.08)"}`,
-                          boxShadow:    isSelected ? `0 0 18px ${glow}55, inset 0 1px 0 ${color}22` : "none",
-                        }}>
+                          borderColor: isSelected ? "rgba(250,204,21,0.92)" : "rgba(125,211,252,0.58)",
+                          background: isSelected ? "rgba(250,204,21,0.88)" : "rgba(2,8,18,0.42)",
+                          boxShadow: isSelected ? "0 0 22px rgba(250,204,21,0.46)" : `0 0 16px ${glow}`,
+                        }}
+                      >
+                        {isSelected ? <Check size={19} className="text-slate-950" strokeWidth={3} /> : null}
+                      </span>
 
-                        {/* Selected glow overlay */}
-                        {isSelected && (
-                          <motion.div
-                            className="absolute inset-0 pointer-events-none"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            style={{
-                              background: `radial-gradient(ellipse at top left, ${color}14 0%, transparent 70%)`,
-                            }} />
-                        )}
+                      <span className="relative block pr-10 text-[25px] font-black leading-tight text-white">
+                        {option.label}
+                      </span>
+                      <span className="relative mt-4 block text-[18px] font-semibold leading-snug text-white/72">
+                        {option.sub}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.section>
+          </AnimatePresence>
+        </main>
 
-                        {/* Selected check dot */}
-                        <div className="flex items-start justify-between">
-                          <span className="relative text-[12px] font-semibold leading-tight"
-                            style={{
-                              color: isSelected ? "#fff" : "rgba(255,255,255,0.60)",
-                              fontFamily: "Inter, system-ui, sans-serif",
-                              textShadow: isSelected ? `0 0 12px ${glow}` : "none",
-                            }}>
-                            {opt.label}
-                          </span>
-                          <motion.div
-                            className="w-3.5 h-3.5 rounded-full flex-shrink-0 mt-0.5 ml-1 flex items-center justify-center"
-                            animate={{
-                              backgroundColor: isSelected ? color : "transparent",
-                              borderColor:     isSelected ? color : "rgba(255,255,255,0.18)",
-                              boxShadow:       isSelected ? `0 0 8px ${glow}` : "none",
-                            }}
-                            style={{ border: "1px solid rgba(255,255,255,0.18)" }}>
-                            {isSelected && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="w-1.5 h-1.5 rounded-full bg-white" />
-                            )}
-                          </motion.div>
-                        </div>
-
-                        <span className="relative text-[9px] leading-tight mt-0.5"
-                          style={{ color: isSelected ? `${color}cc` : "rgba(255,255,255,0.28)",
-                            fontFamily: "Inter, system-ui, sans-serif" }}>
-                          {opt.sub}
-                        </span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+        <footer className="relative z-10 flex-shrink-0 pb-2 pt-3">
+          <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.22em] text-white/34">
+            <span>{protocolLabel(selections)}</span>
+            <span>Question {currentIndex + 1} / {SECTIONS.length}</span>
+          </div>
+          <motion.button
+            type="button"
+            onClick={handleNext}
+            disabled={typeof selected !== "number" || scanning}
+            data-testid="button-complete-sync"
+            whileTap={{ scale: 0.98 }}
+            className="group relative flex min-h-[62px] w-full items-center justify-center overflow-hidden rounded-[31px] border border-cyan-100/45 px-5 py-4 text-[12px] font-black uppercase tracking-[0.24em] text-white transition disabled:cursor-default disabled:opacity-45"
+            style={{
+              background: typeof selected === "number"
+                ? `linear-gradient(90deg, ${color}26, rgba(250,204,21,0.18))`
+                : "rgba(255,255,255,0.045)",
+              boxShadow: typeof selected === "number"
+                ? `0 0 34px ${glow}, inset 0 1px 0 rgba(255,255,255,0.16)`
+                : "inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
+          >
+            <span className="pointer-events-none absolute inset-[7px] rounded-[24px] border border-cyan-100/18" />
+            <span className="pointer-events-none absolute -left-24 top-0 h-full w-32 bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-[syncShimmer_1.1s_ease-out]" />
+            <span className="relative z-10 flex items-center gap-3">
+              {isLast ? "Complete Sync" : "Continue"}
+              <ArrowRight size={18} />
+            </span>
+          </motion.button>
+        </footer>
       </div>
-
-      {/* ════════════════ FIXED BOTTOM CTA ════════════════ */}
-      <div className="relative z-10 flex-shrink-0 px-4 pb-8 pt-3 max-w-sm mx-auto w-full">
-        <div className="w-full h-px mb-3"
-          style={{ background: `linear-gradient(90deg, transparent, ${color}20, transparent)` }} />
-
-        <motion.button
-          onClick={handleComplete}
-          disabled={!allSelected || scanning}
-          data-testid="button-complete-sync"
-          whileTap={{ scale: 0.97 }}
-          className="w-full py-[15px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] relative overflow-hidden transition-all duration-300"
-          style={{
-            background:  allSelected
-              ? `linear-gradient(90deg, ${color}, ${colorAlt})`
-              : "rgba(255,255,255,0.06)",
-            color:       allSelected ? "#fff" : "rgba(255,255,255,0.25)",
-            border:      `1px solid ${allSelected ? "transparent" : "rgba(255,255,255,0.10)"}`,
-            boxShadow:   allSelected
-              ? `0 0 28px ${glow}, 0 4px 16px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.20)`
-              : "none",
-            fontFamily:  "Inter, system-ui, sans-serif",
-          }}>
-          {allSelected && (
-            <div className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%)",
-                backgroundSize: "200% 100%",
-                animation: "xpShimmer 3s linear infinite",
-              }} />
-          )}
-          {allSelected ? "Complete Sync  →" : `Select all 4 to continue  (${selectedCount}/4)`}
-        </motion.button>
-
-        <p className="text-center text-[10px] font-mono mt-2"
-          style={{ color: "rgba(255,255,255,0.18)" }}>
-          {allSelected ? "All systems calibrated — ready to initialise" : "Ghost polygon shows average baseline"}
-        </p>
-      </div>
-
     </motion.div>
   );
 }
