@@ -30,6 +30,13 @@ const EXHALE_AUDIO_URL = "/audio/exhale.mp3";
 const FIRST_RESET_BACKGROUND_VIDEO_URL = "/first-reset-neural-bg-animated.mp4";
 
 type FirstResetBreathPhase = "inhale" | "hold" | "exhale";
+type FirstResetAmbientPad = {
+  context: AudioContext;
+  output: GainNode;
+  oscillators: OscillatorNode[];
+  lfos: OscillatorNode[];
+  lfoGains: GainNode[];
+};
 
 const FIRST_RESET_BREATHING = {
   inhale: 4,
@@ -84,7 +91,7 @@ function FirstResetScreen({
     exhale: null,
   });
   const backgroundVideoRef = useRef<HTMLVideoElement | null>(null);
-  const ambientAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ambientPadRef = useRef<FirstResetAmbientPad | null>(null);
   const lastAudioPhase = useRef<FirstResetBreathPhase | null>(null);
   const elapsed = FIRST_RESET_DURATION_SECONDS - remaining;
   const progress = phase === "reward" ? 100 : Math.min(100, Math.max(0, (elapsed / FIRST_RESET_DURATION_SECONDS) * 100));
@@ -100,6 +107,79 @@ function FirstResetScreen({
     : breathState.phase === "hold"
     ? "#c4b5fd"
     : "#93c5fd";
+
+  const stopAmbientPad = () => {
+    const pad = ambientPadRef.current;
+    if (!pad) return;
+    const now = pad.context.currentTime;
+    pad.output.gain.cancelScheduledValues(now);
+    pad.output.gain.setTargetAtTime(0, now, 0.18);
+    window.setTimeout(() => {
+      pad.oscillators.forEach((oscillator) => {
+        try {
+          oscillator.stop();
+        } catch {}
+      });
+      pad.lfos.forEach((lfo) => {
+        try {
+          lfo.stop();
+        } catch {}
+      });
+      pad.context.close().catch(() => {});
+    }, 450);
+    ambientPadRef.current = null;
+  };
+
+  const startAmbientPad = () => {
+    if (ambientPadRef.current) return;
+    const AudioContextConstructor =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextConstructor) return;
+
+    const context = new AudioContextConstructor();
+    const output = context.createGain();
+    const filter = context.createBiquadFilter();
+    const frequencies = [174, 220, 261.63];
+    const oscillators: OscillatorNode[] = [];
+    const lfos: OscillatorNode[] = [];
+    const lfoGains: GainNode[] = [];
+    const now = context.currentTime;
+
+    output.gain.setValueAtTime(0, now);
+    output.gain.linearRampToValueAtTime(0.045, now + 1.8);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(900, now);
+    filter.Q.setValueAtTime(0.65, now);
+    filter.connect(output);
+    output.connect(context.destination);
+
+    frequencies.forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const voiceGain = context.createGain();
+      const lfo = context.createOscillator();
+      const lfoGain = context.createGain();
+
+      oscillator.type = index === 1 ? "triangle" : "sine";
+      oscillator.frequency.setValueAtTime(frequency, now);
+      oscillator.detune.setValueAtTime(index === 0 ? -7 : index === 1 ? 4 : 9, now);
+      voiceGain.gain.setValueAtTime(index === 1 ? 0.24 : 0.18, now);
+      lfo.frequency.setValueAtTime(0.035 + index * 0.018, now);
+      lfoGain.gain.setValueAtTime(0.055, now);
+
+      lfo.connect(lfoGain);
+      lfoGain.connect(voiceGain.gain);
+      oscillator.connect(voiceGain);
+      voiceGain.connect(filter);
+      oscillator.start(now);
+      lfo.start(now);
+      oscillators.push(oscillator);
+      lfos.push(lfo);
+      lfoGains.push(lfoGain);
+    });
+
+    ambientPadRef.current = { context, output, oscillators, lfos, lfoGains };
+  };
 
   useEffect(() => {
     if (phase !== "active") return;
@@ -126,10 +206,6 @@ function FirstResetScreen({
       audio.preload = "auto";
       audio.volume = 0.92;
     });
-    ambientAudioRef.current = new Audio(FIRST_RESET_BACKGROUND_VIDEO_URL);
-    ambientAudioRef.current.preload = "auto";
-    ambientAudioRef.current.loop = true;
-    ambientAudioRef.current.volume = 0.32;
 
     return () => {
       Object.values(audioRefs.current).forEach((audio) => {
@@ -137,10 +213,7 @@ function FirstResetScreen({
         audio.pause();
         audio.src = "";
       });
-      if (ambientAudioRef.current) {
-        ambientAudioRef.current.pause();
-        ambientAudioRef.current.src = "";
-      }
+      stopAmbientPad();
     };
   }, []);
 
@@ -168,11 +241,7 @@ function FirstResetScreen({
         backgroundVideo.play().catch(() => {});
       });
     }
-    if (ambientAudioRef.current) {
-      ambientAudioRef.current.currentTime = 0;
-      ambientAudioRef.current.volume = 0.32;
-      ambientAudioRef.current.play().catch(() => {});
-    }
+    startAmbientPad();
     setRemaining(FIRST_RESET_DURATION_SECONDS);
     setPhase("active");
   };
@@ -180,10 +249,7 @@ function FirstResetScreen({
   useEffect(() => {
     const backgroundVideo = backgroundVideoRef.current;
     if (phase !== "active") {
-      ambientAudioRef.current?.pause();
-      if (ambientAudioRef.current) {
-        ambientAudioRef.current.currentTime = 0;
-      }
+      stopAmbientPad();
       if (backgroundVideo) {
         backgroundVideo.muted = true;
       }
