@@ -228,12 +228,16 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
       return res.json();
     },
     onSuccess: (data: any) => {
-      const xp = data?.xpEarned ?? 15;
+      const xp = data?.xpEarned ?? XP_REWARD;
       setEarnedXp(xp);
       addXP(xp, "agility");
       completeTask("agility");
       queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
       queryClient.invalidateQueries({ queryKey: ["home", playerId] });
+      finishCompletion(xp);
+    },
+    onError: () => {
+      finishCompletion(XP_REWARD);
     },
   });
 
@@ -423,10 +427,8 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
       setXpClaimed(true);
       localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
       completeTask("phase1_agility");
-      completeFallbackRef.current = setTimeout(() => finishCompletion(XP_REWARD), 4000);
-      claimMutation.mutate(undefined, {
-        onSettled: () => finishCompletion(XP_REWARD),
-      });
+      completeFallbackRef.current = setTimeout(() => finishCompletion(XP_REWARD), 9000);
+      claimMutation.mutate();
     } else {
       finishCompletion(XP_REWARD);
     }
