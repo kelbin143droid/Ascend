@@ -154,41 +154,52 @@ function FirstResetScreen({
     setRemaining(FIRST_RESET_DURATION_SECONDS);
     setPhase("active");
   };
+  const isActive = phase === "active";
+  const ringRadius = 104;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringDashOffset = ringCircumference - (progress / 100) * ringCircumference;
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden px-5"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#020711] px-4 py-5"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.45 }}
       style={{
-        background:
-          "radial-gradient(circle at 50% 18%, rgba(34,211,238,0.16), transparent 34%), linear-gradient(180deg, #020711 0%, #06121d 48%, #020711 100%)",
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
-      <div className="relative z-10 w-full max-w-[390px] text-center">
+      <img
+        src="/first-reset-neural-bg.jpg"
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover opacity-70"
+      />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(2,7,17,0.35)_0%,rgba(2,7,17,0.72)_52%,rgba(2,7,17,0.94)_100%)]" />
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/10 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#020711] to-transparent" />
+
+      <div className="relative z-10 flex max-h-full w-full max-w-[430px] flex-col overflow-y-auto text-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <motion.div
-          className="mx-auto mb-7 flex h-20 w-20 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-300/10"
-          animate={{ boxShadow: ["0 0 24px rgba(34,211,238,0.18)", "0 0 48px rgba(34,211,238,0.38)", "0 0 24px rgba(34,211,238,0.18)"] }}
+          className="mx-auto mb-5 flex h-[86px] w-[86px] items-center justify-center rounded-full border border-cyan-100/45 bg-white/10 shadow-[inset_0_1px_18px_rgba(255,255,255,0.18)] backdrop-blur-xl"
+          animate={{ boxShadow: ["0 0 28px rgba(186,243,255,0.18), inset 0 1px 18px rgba(255,255,255,0.18)", "0 0 58px rgba(186,243,255,0.42), inset 0 1px 22px rgba(255,255,255,0.24)", "0 0 28px rgba(186,243,255,0.18), inset 0 1px 18px rgba(255,255,255,0.18)"] }}
           transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
         >
-          {phase === "reward" ? <CheckCircle2 className="text-emerald-300" size={34} /> : <Wind className="text-cyan-200" size={34} />}
+          {phase === "reward" ? <CheckCircle2 className="text-emerald-200 drop-shadow-[0_0_12px_rgba(110,231,183,0.65)]" size={36} /> : <Wind className="text-cyan-100 drop-shadow-[0_0_12px_rgba(186,243,255,0.7)]" size={36} />}
         </motion.div>
 
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-200/65">
+        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.42em] text-cyan-100/70">
           First Quest
         </p>
 
         {phase === "reward" ? (
           <>
-            <h1 className="mb-3 text-3xl font-black uppercase tracking-[0.03em] text-white">
+            <h1 className="mb-3 text-[32px] font-black uppercase leading-none tracking-[0.08em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.16)]">
               System Online
             </h1>
             <p className="mx-auto mb-7 max-w-[320px] text-sm leading-6 text-white/55">
               Nice start{firstName ? `, ${firstName}` : ""}. You completed your first reset and earned momentum.
             </p>
-            <div className="mb-7 flex items-center justify-center gap-2 rounded-2xl border border-violet-300/25 bg-violet-300/10 px-5 py-4">
+            <div className="mb-7 flex items-center justify-center gap-3 rounded-[28px] border border-white/20 bg-white/[0.105] px-5 py-5 shadow-[0_22px_80px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.28)] backdrop-blur-2xl">
               <Zap className="text-violet-200" size={18} />
               <span className="text-sm font-black uppercase tracking-[0.18em] text-white">
                 +{FIRST_RESET_XP} XP
@@ -196,95 +207,139 @@ function FirstResetScreen({
             </div>
             <button
               onClick={onComplete}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 py-4 text-[12px] font-black uppercase tracking-[0.18em] text-slate-950 shadow-[0_0_42px_rgba(255,255,255,0.18)]"
+              className="group flex w-full items-center justify-center gap-3 rounded-full border border-cyan-100/55 bg-cyan-100/10 px-5 py-4 text-[12px] font-black uppercase tracking-[0.24em] text-white shadow-[0_0_44px_rgba(186,243,255,0.2),inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-xl transition hover:bg-cyan-100/16"
             >
               Choose Style
-              <ArrowRight size={16} />
+              <ArrowRight className="transition group-hover:translate-x-0.5" size={17} />
             </button>
           </>
         ) : (
           <>
-            <h1 className="mb-3 text-3xl font-black uppercase tracking-[0.03em] text-white">
+            <h1 className="mb-4 text-[38px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[44px]">
               30-Second Reset
             </h1>
-            <p className="mx-auto mb-5 max-w-[320px] text-sm leading-6 text-white/55">
+            <p className="mx-auto mb-6 max-w-[340px] text-[15px] leading-7 text-white/62">
               Follow the pulse and the guided voice. One small reset before the system personalizes around you.
             </p>
 
-            <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.045] px-5 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.36)]">
-              <div className="mb-5 flex items-center justify-between gap-3">
+            <div className="relative mb-6 overflow-hidden rounded-[30px] border border-white/22 bg-white/[0.105] px-5 py-6 shadow-[0_26px_90px_rgba(0,0,0,0.44),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-2xl">
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+              <div className="pointer-events-none absolute -left-16 top-24 h-28 w-60 rotate-[-18deg] rounded-full bg-cyan-200/12 blur-2xl" />
+              <div className="pointer-events-none absolute -right-20 bottom-20 h-24 w-64 rotate-[22deg] rounded-full bg-violet-300/10 blur-2xl" />
+
+              <div className="relative mb-5 flex items-start justify-between gap-3">
                 <div className="text-left">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-white/35">Breath Guide</p>
-                  <p className="mt-1 text-sm font-bold text-white">{phase === "active" ? breathInstruction : "Guided voice ready"}</p>
+                  <p className="text-[11px] font-black uppercase tracking-[0.32em] text-white/48">Breath Guide</p>
+                  <p className="mt-2 text-[20px] font-black leading-tight text-white">{isActive ? breathInstruction : "Guided voice ready"}</p>
                 </div>
-                <div className="rounded-full border border-cyan-200/20 bg-cyan-200/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-100">
+                <div className="shrink-0 rounded-full border border-white/18 bg-white/10 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]">
                   Voice On
                 </div>
               </div>
 
-              <div className="relative mx-auto mb-5 flex h-[232px] w-[232px] items-center justify-center">
-                <div className="absolute h-[210px] w-[210px] rounded-full border border-dashed border-cyan-200/15" />
+              <div className="relative mx-auto mb-5 flex h-[260px] w-full max-w-[300px] items-center justify-center">
+                <svg className="absolute h-[250px] w-[250px] overflow-visible" viewBox="0 0 250 250" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="first-reset-ring" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#cffafe" />
+                      <stop offset="58%" stopColor="#67e8f9" />
+                      <stop offset="100%" stopColor="#a78bfa" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="125" cy="125" r={ringRadius} fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="8" strokeLinecap="round" strokeDasharray="178 46" />
+                  <motion.circle
+                    cx="125"
+                    cy="125"
+                    r={ringRadius}
+                    fill="none"
+                    stroke="url(#first-reset-ring)"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={ringCircumference}
+                    animate={{ strokeDashoffset: ringDashOffset }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    style={{ rotate: -90, transformOrigin: "center", filter: "drop-shadow(0 0 12px rgba(103,232,249,0.58))" }}
+                  />
+                  {[0, 1, 2, 3].map((index) => (
+                    <motion.ellipse
+                      key={index}
+                      cx="125"
+                      cy="125"
+                      rx="74"
+                      ry="100"
+                      fill="none"
+                      stroke="rgba(207,250,254,0.42)"
+                      strokeWidth="1.5"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 14 + index * 2, repeat: Infinity, ease: "linear" }}
+                      style={{ transformOrigin: "center", rotate: index * 45 }}
+                    />
+                  ))}
+                </svg>
                 <motion.div
-                  className="absolute rounded-full border border-cyan-200/20"
+                  className="absolute rounded-full border border-cyan-100/30"
                   animate={{
-                    width: phase === "active" && breathState.phase === "inhale" ? [180, 230] : 180,
-                    height: phase === "active" && breathState.phase === "inhale" ? [180, 230] : 180,
-                    opacity: phase === "active" && breathState.phase === "inhale" ? [0.35, 0] : 0.16,
+                    width: isActive && breathState.phase === "inhale" ? [154, 214] : 154,
+                    height: isActive && breathState.phase === "inhale" ? [154, 214] : 154,
+                    opacity: isActive && breathState.phase === "inhale" ? [0.42, 0] : 0.18,
                   }}
-                  transition={{ duration: 1.7, repeat: phase === "active" && breathState.phase === "inhale" ? Infinity : 0, ease: "easeOut" }}
+                  transition={{ duration: 1.9, repeat: isActive && breathState.phase === "inhale" ? Infinity : 0, ease: "easeOut" }}
                 />
                 <motion.div
                   className="absolute rounded-full"
-                  animate={{ scale: phase === "active" ? breathState.scale : 0.78 }}
+                  animate={{ scale: isActive ? breathState.scale : 0.82 }}
                   transition={{ duration: 0.75, ease: [0.22, 0.61, 0.36, 1] }}
                   style={{
-                    width: 170,
-                    height: 170,
-                    background: `radial-gradient(circle at 50% 35%, ${phaseColor}38 0%, ${phaseColor}13 48%, rgba(2,7,17,0.30) 100%)`,
+                    width: 158,
+                    height: 158,
+                    background: `radial-gradient(circle at 50% 28%, rgba(255,255,255,0.24) 0%, ${phaseColor}38 28%, ${phaseColor}16 56%, rgba(2,7,17,0.44) 100%)`,
                     border: `2px solid ${phaseColor}55`,
-                    boxShadow: `0 0 54px ${phaseColor}1f, inset 0 0 36px ${phaseColor}12`,
+                    boxShadow: `0 0 62px ${phaseColor}2b, inset 0 0 38px ${phaseColor}19, inset 0 1px 22px rgba(255,255,255,0.14)`,
                   }}
                 />
                 <div className="relative z-10 flex flex-col items-center">
                   <motion.span
-                    key={phase === "active" ? breathState.phase : "ready"}
+                    key={isActive ? breathState.phase : "ready"}
                     initial={{ opacity: 0, y: 7 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25 }}
-                    className="text-[11px] font-black uppercase tracking-[0.34em]"
-                    style={{ color: phase === "active" ? phaseColor : "rgba(255,255,255,0.45)", textShadow: `0 0 14px ${phaseColor}44` }}
+                    className="text-[16px] font-black uppercase tracking-[0.32em]"
+                    style={{ color: isActive ? phaseColor : "rgba(255,255,255,0.54)", textShadow: `0 0 14px ${phaseColor}44` }}
                   >
-                    {phase === "active" ? breathLabel : "Ready"}
+                    {isActive ? breathLabel : "Ready"}
                   </motion.span>
-                  <span className="mt-3 text-5xl font-black tabular-nums text-white">
-                    {phase === "active" ? breathState.secondsLeft : remaining}
+                  <span className="mt-2 text-[64px] font-black leading-none tabular-nums text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)]">
+                    {isActive ? breathState.secondsLeft : remaining}
                   </span>
-                  <span className="mt-2 text-[9px] font-bold uppercase tracking-[0.22em] text-white/35">
-                    {phase === "active" ? "phase" : "seconds"}
+                  <span className="mt-3 text-[12px] font-black uppercase tracking-[0.28em] text-white/36">
+                    {isActive ? "phase" : "seconds"}
                   </span>
                 </div>
               </div>
 
-              <div className="mb-3 flex items-center justify-center gap-2">
-                <span className="text-2xl font-black tabular-nums text-white">{remaining}</span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">sec remaining</span>
+              <div className="relative mb-4 flex items-center justify-center gap-2">
+                <span className="text-[34px] font-black leading-none tabular-nums text-white">{remaining}</span>
+                <span className="text-[13px] font-black uppercase tracking-[0.28em] text-white/38">sec remaining</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="relative h-3 overflow-hidden rounded-full bg-white/10 shadow-[inset_0_1px_8px_rgba(0,0,0,0.24)]">
                 <motion.div
-                  className="h-full rounded-full bg-cyan-200"
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-100 via-cyan-300 to-violet-300 shadow-[0_0_18px_rgba(103,232,249,0.55)]"
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.35, ease: "easeOut" }}
                 />
               </div>
+              <p className="mt-5 text-[11px] font-black uppercase tracking-[0.28em] text-cyan-100/55">
+                Personalization Pathway
+              </p>
             </div>
 
             <button
               onClick={startReset}
-              disabled={phase === "active"}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-200 px-5 py-4 text-[12px] font-black uppercase tracking-[0.18em] text-slate-950 shadow-[0_0_42px_rgba(34,211,238,0.24)] disabled:cursor-default disabled:bg-cyan-200/45"
+              disabled={isActive}
+              className="group flex w-full items-center justify-center gap-3 rounded-full border border-cyan-100/60 bg-white/[0.055] px-5 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-white shadow-[0_0_46px_rgba(186,243,255,0.2),inset_0_0_0_1px_rgba(255,255,255,0.14)] backdrop-blur-xl transition hover:bg-cyan-100/12 disabled:cursor-default disabled:opacity-70"
             >
-              {phase === "active" ? "Reset In Progress" : "Start Reset"}
-              <ArrowRight size={16} />
+              {isActive ? "Reset In Progress" : "Start Reset"}
+              <ArrowRight className="transition group-hover:translate-x-0.5" size={17} />
             </button>
           </>
         )}
