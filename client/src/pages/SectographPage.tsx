@@ -376,12 +376,21 @@ export default function SectographPage() {
         });
       }
     },
+    onError: () => {
+      setVitalityXpAwarded(false);
+      toast({
+        title: "Vitality XP did not sync",
+        description: "Return to this step and try again.",
+        variant: "destructive",
+      });
+    },
   });
 
-  useEffect(() => {
+  const awardVitalityCompletion = useCallback((sleepDone = vitalitySleepDone, questDone = vitalityQuestDone) => {
     if (
       isVitalityMode &&
-      vitalityStep === 3 &&
+      sleepDone &&
+      questDone &&
       !vitalityXpAwarded &&
       !vitalityXpMutation.isPending &&
       !vitalityXpMutation.isSuccess &&
@@ -390,7 +399,21 @@ export default function SectographPage() {
       setVitalityXpAwarded(true);
       vitalityXpMutation.mutate();
     }
-  }, [isVitalityMode, vitalityStep, vitalityXpAwarded, player?.id]);
+  }, [
+    isVitalityMode,
+    player?.id,
+    vitalityQuestDone,
+    vitalitySleepDone,
+    vitalityXpAwarded,
+    vitalityXpMutation.isPending,
+    vitalityXpMutation.isSuccess,
+  ]);
+
+  useEffect(() => {
+    if (vitalityStep === 3) {
+      awardVitalityCompletion();
+    }
+  }, [awardVitalityCompletion, vitalityStep]);
 
   // Weekly planning state
   const { roles } = useRoles();
@@ -815,6 +838,7 @@ export default function SectographPage() {
       } else if (isDailyFlowBlock && vitalitySleepDone && !vitalityQuestDone) {
         markVitalityQuestScheduled();
         setVitalityQuestDone(true);
+        awardVitalityCompletion(true, true);
         // Notify Day6Home so it re-reads vitalityDone from localStorage.
         window.dispatchEvent(new CustomEvent("ascend:vitality-done"));
         setTimeout(() => toast({
