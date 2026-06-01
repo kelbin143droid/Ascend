@@ -26,7 +26,7 @@ import { markFlowCompleted, isVitalityQuestScheduledToday } from "@/lib/userStat
 import { computeXPState } from "@/lib/xpSystem";
 import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 import { useSessionProgress } from "@/hooks/useSessionProgress";
-import { PHASE1_XP } from "@shared/gameProgression";
+import { PHASE1_DAILY_TARGET_XP, PHASE1_XP } from "@shared/gameProgression";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -317,7 +317,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   }, [autoStartPending, activities.length]);
 
   useEffect(() => {
-    if (!allDone || homeData.isOnboardingComplete || onboardingCompleteRequestedRef.current) return;
+    const needsOnboardingXpRepair = (playerData?.totalExp ?? 0) < PHASE1_DAILY_TARGET_XP;
+    if (!allDone || (homeData.isOnboardingComplete && !needsOnboardingXpRepair) || onboardingCompleteRequestedRef.current) return;
     onboardingCompleteRequestedRef.current = true;
     fetch(`/api/player/${player.id}/onboarding-complete`, { method: "POST" })
       .then(() => Promise.allSettled([
@@ -327,7 +328,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       .catch(() => {
         onboardingCompleteRequestedRef.current = false;
       });
-  }, [allDone, homeData.isOnboardingComplete, player.id, queryClient]);
+  }, [allDone, homeData.isOnboardingComplete, player.id, playerData?.totalExp, queryClient]);
   const handleFlowDone = useCallback((ids: string[]) => {
     // Close the flow engine immediately so the home content is visible right away
     // (avoids a blank/loading flash while queries refetch in the background).

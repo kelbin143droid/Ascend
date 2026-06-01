@@ -237,11 +237,13 @@ export async function registerRoutes(
     try {
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
-      // Idempotent: if already completed, just return
-      if (player.onboardingCompleted === 1) {
+      const xpDeficit = Math.max(0, PHASE1_DAILY_TARGET_XP - (player.totalExp ?? 0));
+      // Idempotent only once the target XP is already met. The intro flow also
+      // uses onboardingCompleted, so this endpoint must still repair XP deficits.
+      if (player.onboardingCompleted === 1 && xpDeficit === 0) {
         return res.json(attachDerivedStats(player, "Already completed"));
       }
-      const xpDeficit = Math.max(0, PHASE1_DAILY_TARGET_XP - (player.totalExp ?? 0));
+
       let completedPlayer = player;
       if (xpDeficit > 0) {
         completedPlayer = (await storage.gainExp(req.params.id, xpDeficit)) ?? player;
