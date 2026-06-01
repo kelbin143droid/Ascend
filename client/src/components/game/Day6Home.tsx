@@ -105,6 +105,7 @@ const ACTIVITY_XP: Record<string, number> = {
 };
 
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
+const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
 
 function todayDateKey(): string {
   return new Date().toISOString().split("T")[0];
@@ -113,6 +114,14 @@ function todayDateKey(): string {
 function wasFirstResetCompletedToday(): boolean {
   try {
     return localStorage.getItem(FIRST_RESET_COMPLETED_DATE_KEY) === todayDateKey();
+  } catch {
+    return false;
+  }
+}
+
+function wasFirstResetCompleted(): boolean {
+  try {
+    return localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true" || wasFirstResetCompletedToday();
   } catch {
     return false;
   }
@@ -207,10 +216,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   // isActivityDone checks both the phase1 ID and the standalone session page ID
   const isActivityDone = (activityId: string): boolean => {
-    if (activityId === "phase1_meditation" && wasFirstResetCompletedToday()) return true;
     if (completedIds.has(activityId)) return true;
     const sessionId = ACTIVITY_TO_SESSION[activityId];
-    return sessionId ? completedIds.has(sessionId) : false;
+    if (sessionId && completedIds.has(sessionId)) return true;
+    const onboardingIntroResetCounts = !homeData.isOnboardingComplete && wasFirstResetCompleted();
+    if (activityId === "phase1_meditation" && onboardingIntroResetCounts) return true;
+    if (activityId === "phase1_meditation" && (completedIds.has("phase1_agility") || completedIds.has("light-movement") || completedIds.has("phase1_strength"))) return true;
+    if (activityId === "phase1_agility" && completedIds.has("phase1_strength")) return true;
+    return false;
   };
 
   const pendingSeq = seqCards.filter(c => !isActivityDone(c.id));
@@ -253,8 +266,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
   const vitalityPending = seqAllDone && !vitalityDone;
   const currentDashLabel = DASH_CARDS.find(d => d.activityId === currentAid)?.label ?? null;
-  const firstResetCompletedToday = wasFirstResetCompletedToday();
-  const firstResetJustUnlockedMovement = firstResetCompletedToday && currentAid === "phase1_agility";
+  const firstResetCompleted = wasFirstResetCompleted();
+  const firstResetJustUnlockedMovement = !homeData.isOnboardingComplete && firstResetCompleted && currentAid === "phase1_agility";
   const totalMissionCount = seqCards.length + 1;
   const completedMissionCount = doneSeq.length + (vitalityDone ? 1 : 0);
   const activeMissionNumber = Math.min(totalMissionCount, completedMissionCount + 1);
@@ -277,7 +290,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     : "";
   const systemMission = allDone ? "All missions complete."
     : vitalityPending ? "Complete your Vitality session."
-    : firstResetJustUnlockedMovement ? "Calm Mind complete. Begin Agility."
+    : firstResetJustUnlockedMovement ? "First mission complete. Begin Agility."
     : currentDashLabel ? `Begin with ${currentDashLabel}.` : pathRec.headline;
   const systemHint = allDone ? "Rest well. You showed up today."
     : vitalityPending ? `Final step: schedule sleep and Daily Quest to earn ${rewardLabel}.`
@@ -344,10 +357,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
 
   const handleFeaturedTap = () => {
-    if (firstResetJustUnlockedMovement && currentAid) {
-      startActivity(currentAid);
-      return;
-    }
     if (featuredCard?.id === "vitality") {
       navigate("/sectograph?vitality=1");
       return;
@@ -362,8 +371,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const vitalityCard = DASH_CARDS.find(d => d.id === "vitality")!;
   const featuredCard = vitalityPending
     ? vitalityCard
-    : firstResetJustUnlockedMovement
-      ? DASH_CARDS[0]
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
   const supportCards = MISSION_CARD_ORDER.filter(d =>
     d !== featuredCard && (d.id === "vitality" || todayIds.has(d.activityId))
@@ -787,18 +794,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {/* ── FEATURED MISSION CARD ─────────────────────────────────────── */}
         {!allDone && featuredCard && (() => {
           const dc    = featuredCard;
-          const isFirstResetSummaryCard = firstResetJustUnlockedMovement && dc.activityId === "phase1_meditation";
           const dur   = actDurMap[dc.activityId] ?? 2;
-          const displayRewardLabel = isFirstResetSummaryCard ? `+${PHASE1_XP.sense} XP earned` : rewardLabel;
-          const displayNextUnlockLabel = isFirstResetSummaryCard ? "Movement unlocked next" : nextUnlockLabel;
           const ctaText = vitalityPending
             ? `Finish setup · ${compactRewardLabel}`
-            : isFirstResetSummaryCard
-              ? "Begin Agility"
             : currentAid === "phase1_strength"
               ? `Start circuit · ${compactRewardLabel}`
               : `Begin mission · ${compactRewardLabel}`;
-          const barPct = isFirstResetSummaryCard ? 100 : dc.barType === "mp" ? mpPct : dc.barType === "hp" ? hpPct
+          const barPct = dc.barType === "mp" ? mpPct : dc.barType === "hp" ? hpPct
             : (() => { const sl = playerData?.statLevels?.[dc.statKey]; return sl ? Math.min(100, (sl.currentXP / sl.xpForNext) * 100) : 0; })();
 
           return (
@@ -901,13 +903,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     </div>
                     <span
                       className="text-[7px] font-bold tracking-[0.20em] px-2 py-[3px] rounded-full shrink-0 uppercase"
-                      style={{
-                        background: isFirstResetSummaryCard ? "rgba(34,197,94,0.14)" : `${dc.color}14`,
-                        color: isFirstResetSummaryCard ? "#22c55e" : dc.color,
-                        border: `1px solid ${isFirstResetSummaryCard ? "rgba(34,197,94,0.28)" : `${dc.color}28`}`,
-                      }}
+                      style={{ background: `${dc.color}14`, color: dc.color, border: `1px solid ${dc.color}28` }}
                     >
-                      {isFirstResetSummaryCard ? "Complete" : `Step ${missionStepLabel}`}
+                      Step {missionStepLabel}
                     </span>
                   </div>
 
@@ -923,7 +921,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                         Reward
                       </p>
                       <p className="text-[11px] font-bold leading-tight mt-1" style={{ color: cardTextCol }}>
-                        {displayRewardLabel}
+                        {rewardLabel}
                       </p>
                     </div>
                     <div
@@ -934,7 +932,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                         Next
                       </p>
                       <p className="text-[10px] font-semibold leading-tight mt-1" style={{ color: "rgba(236,242,255,0.90)" }}>
-                        {displayNextUnlockLabel || `${dur} min guided`}
+                        {nextUnlockLabel || `${dur} min guided`}
                       </p>
                     </div>
                   </div>
