@@ -222,10 +222,10 @@ function FirstResetScreen({
               Press Start, then breathe with the pulse until the timer ends.
             </p>
 
-            <div className="relative mb-6 min-h-[280px] overflow-hidden rounded-[30px] border border-white/18 bg-white/[0.06] px-4 py-5 shadow-[0_26px_90px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-xl">
-              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+            <div className="relative mb-6 min-h-[280px] overflow-hidden rounded-[30px] border border-white/12 bg-white/[0.035] px-4 py-5 shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-md">
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/32 to-transparent" />
 
-              <div className="absolute right-4 top-4 z-20 rounded-full border border-white/18 bg-white/10 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+              <div className="absolute right-4 top-4 z-20 rounded-full border border-white/14 bg-white/[0.055] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
                 Voice On
               </div>
 
@@ -344,13 +344,13 @@ function FirstResetScreen({
             <button
               onClick={startReset}
               disabled={isActive}
-              className="group relative flex min-h-[68px] w-full items-center justify-center overflow-hidden rounded-[34px] border-2 border-cyan-100/60 bg-cyan-100/[0.075] px-5 py-4 text-[12px] font-black uppercase tracking-[0.28em] text-white shadow-[0_0_38px_rgba(186,243,255,0.24),inset_0_0_22px_rgba(186,243,255,0.08)] backdrop-blur-xl transition hover:border-cyan-100/80 hover:bg-cyan-100/[0.105] hover:shadow-[0_0_54px_rgba(186,243,255,0.34),inset_0_0_26px_rgba(186,243,255,0.12)] disabled:cursor-default"
+              className="group relative flex min-h-[68px] w-full items-center justify-center overflow-hidden rounded-[34px] border-2 border-cyan-100/50 bg-cyan-100/[0.045] px-5 py-4 text-[12px] font-black uppercase tracking-[0.28em] text-white shadow-[0_0_28px_rgba(186,243,255,0.18),inset_0_0_16px_rgba(186,243,255,0.055)] backdrop-blur-md transition hover:border-cyan-100/70 hover:bg-cyan-100/[0.075] hover:shadow-[0_0_42px_rgba(186,243,255,0.28),inset_0_0_20px_rgba(186,243,255,0.09)] disabled:cursor-default"
             >
-              <span className="pointer-events-none absolute inset-[7px] rounded-[26px] border border-cyan-100/35" />
-              <span className="pointer-events-none absolute left-8 right-8 top-[7px] h-px bg-gradient-to-r from-transparent via-white/75 to-transparent" />
-              <span className="pointer-events-none absolute left-8 right-8 bottom-[7px] h-px bg-gradient-to-r from-transparent via-cyan-100/65 to-transparent" />
-              <span className="pointer-events-none absolute -left-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/14 blur-xl transition group-hover:bg-cyan-100/20" />
-              <span className="pointer-events-none absolute -right-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/14 blur-xl transition group-hover:bg-cyan-100/20" />
+              <span className="pointer-events-none absolute inset-[7px] rounded-[26px] border border-cyan-100/25" />
+              <span className="pointer-events-none absolute left-8 right-8 top-[7px] h-px bg-gradient-to-r from-transparent via-white/48 to-transparent" />
+              <span className="pointer-events-none absolute left-8 right-8 bottom-[7px] h-px bg-gradient-to-r from-transparent via-cyan-100/42 to-transparent" />
+              <span className="pointer-events-none absolute -left-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/9 blur-xl transition group-hover:bg-cyan-100/14" />
+              <span className="pointer-events-none absolute -right-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/9 blur-xl transition group-hover:bg-cyan-100/14" />
               <span className="relative z-10 flex items-center justify-center gap-3 drop-shadow-[0_0_10px_rgba(186,243,255,0.36)]">
                 {isActive ? "Reset In Progress" : "Start Reset"}
                 <ArrowRight className="transition group-hover:translate-x-0.5" size={18} />
