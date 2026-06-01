@@ -4,9 +4,9 @@ export const STAT_POINTS_PER_LEVEL = 4;
 export const PHASE1_XP = {
   sense: 15,
   agility: 15,
-  vitality: 10,
+  vitality: 20,
   strength: 40,
-  synthesisBonus: 20,
+  synthesisBonus: 10,
 } as const;
 
 export const PHASE1_TASK_XP_TOTAL =
