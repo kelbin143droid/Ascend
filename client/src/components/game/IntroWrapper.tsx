@@ -222,13 +222,11 @@ function FirstResetScreen({
               Press Start, then breathe with the pulse until the timer ends.
             </p>
 
-            <div className="relative mb-6 overflow-hidden rounded-[30px] border border-white/18 bg-white/[0.06] px-4 py-5 shadow-[0_26px_90px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-xl">
+            <div className="relative mb-6 min-h-[280px] overflow-hidden rounded-[30px] border border-white/18 bg-white/[0.06] px-4 py-5 shadow-[0_26px_90px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-xl">
               <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
 
-              <div className="relative flex justify-end">
-                <div className="rounded-full border border-white/18 bg-white/10 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
-                  Voice On
-                </div>
+              <div className="absolute right-4 top-4 z-20 rounded-full border border-white/18 bg-white/10 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+                Voice On
               </div>
 
               {isActive && (
@@ -237,14 +235,14 @@ function FirstResetScreen({
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="relative mt-1 text-center text-[20px] font-black leading-tight text-white"
+                  className="relative mt-11 text-center text-[20px] font-black leading-tight text-white"
                 >
                   {breathInstruction}
                 </motion.p>
               )}
 
-              <div className="relative mx-auto mb-4 mt-1 flex h-[276px] w-full max-w-[310px] items-center justify-center">
-                <svg className="absolute h-[250px] w-[250px] overflow-visible" viewBox="0 0 250 250" aria-hidden="true">
+              <div className={`relative mx-auto flex w-full max-w-[290px] items-center justify-center ${isActive ? "mb-4 mt-3 h-[238px]" : "mt-8 h-[220px]"}`}>
+                <svg className="absolute h-[226px] w-[226px] overflow-visible" viewBox="0 0 250 250" aria-hidden="true">
                   <defs>
                     <linearGradient id="first-reset-ring" x1="0" y1="0" x2="1" y2="1">
                       <stop offset="0%" stopColor="#cffafe" />
@@ -285,8 +283,8 @@ function FirstResetScreen({
                 <motion.div
                   className="absolute rounded-full border border-cyan-100/30"
                   animate={{
-                    width: isActive && breathState.phase === "inhale" ? [154, 214] : 154,
-                    height: isActive && breathState.phase === "inhale" ? [154, 214] : 154,
+                    width: isActive && breathState.phase === "inhale" ? [142, 194] : 142,
+                    height: isActive && breathState.phase === "inhale" ? [142, 194] : 142,
                     opacity: isActive && breathState.phase === "inhale" ? [0.42, 0] : 0.18,
                   }}
                   transition={{ duration: 1.9, repeat: isActive && breathState.phase === "inhale" ? Infinity : 0, ease: "easeOut" }}
@@ -296,8 +294,8 @@ function FirstResetScreen({
                   animate={{ scale: isActive ? breathState.scale : 0.82 }}
                   transition={{ duration: 0.75, ease: [0.22, 0.61, 0.36, 1] }}
                   style={{
-                    width: 158,
-                    height: 158,
+                    width: 148,
+                    height: 148,
                     background: `radial-gradient(circle at 50% 28%, rgba(255,255,255,0.24) 0%, ${phaseColor}38 28%, ${phaseColor}16 56%, rgba(2,7,17,0.44) 100%)`,
                     border: `2px solid ${phaseColor}55`,
                     boxShadow: `0 0 62px ${phaseColor}2b, inset 0 0 38px ${phaseColor}19, inset 0 1px 22px rgba(255,255,255,0.14)`,
@@ -323,20 +321,24 @@ function FirstResetScreen({
                 </div>
               </div>
 
-              <div className="relative mb-4 flex items-center justify-center gap-2">
-                <span className="text-[34px] font-black leading-none tabular-nums text-white">{remaining}</span>
-                <span className="text-[13px] font-black uppercase tracking-[0.28em] text-white/38">sec remaining</span>
-              </div>
-              <div className="relative h-3 overflow-hidden rounded-full bg-white/10 shadow-[inset_0_1px_8px_rgba(0,0,0,0.24)]">
-                <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-100 via-cyan-300 to-violet-300 shadow-[0_0_18px_rgba(103,232,249,0.55)]"
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.35, ease: "easeOut" }}
-                />
-              </div>
-              <p className="mt-5 text-[11px] font-black uppercase tracking-[0.28em] text-cyan-100/55">
-                Personalization Pathway
-              </p>
+              {isActive && (
+                <>
+                  <div className="relative mb-4 flex items-center justify-center gap-2">
+                    <span className="text-[34px] font-black leading-none tabular-nums text-white">{remaining}</span>
+                    <span className="text-[13px] font-black uppercase tracking-[0.28em] text-white/38">sec remaining</span>
+                  </div>
+                  <div className="relative h-3 overflow-hidden rounded-full bg-white/10 shadow-[inset_0_1px_8px_rgba(0,0,0,0.24)]">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-cyan-100 via-cyan-300 to-violet-300 shadow-[0_0_18px_rgba(103,232,249,0.55)]"
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 0.35, ease: "easeOut" }}
+                    />
+                  </div>
+                  <p className="mt-5 text-[11px] font-black uppercase tracking-[0.28em] text-cyan-100/55">
+                    Personalization Pathway
+                  </p>
+                </>
+              )}
             </div>
 
             <button
