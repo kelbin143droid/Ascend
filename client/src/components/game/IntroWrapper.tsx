@@ -27,6 +27,7 @@ const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
 const INHALE_AUDIO_URL = "/audio/inhale.mp3";
 const HOLD_AUDIO_URL = "/audio/hold.mp3";
 const EXHALE_AUDIO_URL = "/audio/exhale.mp3";
+const FIRST_RESET_BACKGROUND_VIDEO_URL = "/first-reset-neural-bg-animated.mp4";
 
 type FirstResetBreathPhase = "inhale" | "hold" | "exhale";
 
@@ -82,6 +83,7 @@ function FirstResetScreen({
     hold: null,
     exhale: null,
   });
+  const backgroundVideoRef = useRef<HTMLVideoElement | null>(null);
   const lastAudioPhase = useRef<FirstResetBreathPhase | null>(null);
   const elapsed = FIRST_RESET_DURATION_SECONDS - remaining;
   const progress = phase === "reward" ? 100 : Math.min(100, Math.max(0, (elapsed / FIRST_RESET_DURATION_SECONDS) * 100));
@@ -151,9 +153,26 @@ function FirstResetScreen({
 
   const startReset = () => {
     lastAudioPhase.current = null;
+    const backgroundVideo = backgroundVideoRef.current;
+    if (backgroundVideo) {
+      backgroundVideo.volume = 0.18;
+      backgroundVideo.muted = false;
+      backgroundVideo.play().catch(() => {
+        backgroundVideo.muted = true;
+        backgroundVideo.play().catch(() => {});
+      });
+    }
     setRemaining(FIRST_RESET_DURATION_SECONDS);
     setPhase("active");
   };
+
+  useEffect(() => {
+    const backgroundVideo = backgroundVideoRef.current;
+    if (!backgroundVideo) return;
+    if (phase !== "active") {
+      backgroundVideo.muted = true;
+    }
+  }, [phase]);
   const isActive = phase === "active";
   const ringRadius = 104;
   const ringCircumference = 2 * Math.PI * ringRadius;
@@ -169,10 +188,17 @@ function FirstResetScreen({
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
-      <img
-        src="/first-reset-neural-bg.jpg"
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover opacity-85"
+      <video
+        ref={backgroundVideoRef}
+        className="absolute inset-0 h-full w-full object-cover opacity-90"
+        src={FIRST_RESET_BACKGROUND_VIDEO_URL}
+        poster="/first-reset-neural-bg.jpg"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        aria-hidden="true"
       />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(34,211,238,0.06),transparent_34%),linear-gradient(180deg,rgba(2,7,17,0.22)_0%,rgba(2,7,17,0.52)_56%,rgba(2,7,17,0.88)_100%)]" />
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/10 to-transparent" />
@@ -218,7 +244,7 @@ function FirstResetScreen({
             <h1 className="mb-4 text-[38px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[44px]">
               30-Second Reset
             </h1>
-            <p className="mx-auto mb-6 max-w-[350px] text-[17px] font-semibold leading-6 text-cyan-100/82">
+            <p className="mx-auto mb-6 max-w-[350px] text-[17px] font-bold leading-6 text-cyan-200 drop-shadow-[0_0_12px_rgba(103,232,249,0.32)]">
               Press Start, then breathe with the pulse until the timer ends.
             </p>
 
