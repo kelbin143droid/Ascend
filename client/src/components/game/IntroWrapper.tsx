@@ -172,9 +172,9 @@ function FirstResetScreen({
       <img
         src="/first-reset-neural-bg.jpg"
         alt=""
-        className="absolute inset-0 h-full w-full object-cover opacity-70"
+        className="absolute inset-0 h-full w-full object-cover opacity-85"
       />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(2,7,17,0.35)_0%,rgba(2,7,17,0.72)_52%,rgba(2,7,17,0.94)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(34,211,238,0.06),transparent_34%),linear-gradient(180deg,rgba(2,7,17,0.22)_0%,rgba(2,7,17,0.52)_56%,rgba(2,7,17,0.88)_100%)]" />
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/10 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#020711] to-transparent" />
 
@@ -218,26 +218,32 @@ function FirstResetScreen({
             <h1 className="mb-4 text-[38px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[44px]">
               30-Second Reset
             </h1>
-            <p className="mx-auto mb-6 max-w-[340px] text-[15px] leading-7 text-white/62">
-              Follow the pulse and the guided voice. One small reset before the system personalizes around you.
+            <p className="mx-auto mb-6 max-w-[350px] text-[17px] font-semibold leading-6 text-white/78">
+              Press Start, then breathe with the pulse until the timer ends.
             </p>
 
-            <div className="relative mb-6 overflow-hidden rounded-[30px] border border-white/22 bg-white/[0.105] px-5 py-6 shadow-[0_26px_90px_rgba(0,0,0,0.44),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-2xl">
-              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
-              <div className="pointer-events-none absolute -left-16 top-24 h-28 w-60 rotate-[-18deg] rounded-full bg-cyan-200/12 blur-2xl" />
-              <div className="pointer-events-none absolute -right-20 bottom-20 h-24 w-64 rotate-[22deg] rounded-full bg-violet-300/10 blur-2xl" />
+            <div className="relative mb-6 overflow-hidden rounded-[30px] border border-white/18 bg-white/[0.06] px-4 py-5 shadow-[0_26px_90px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-xl">
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
 
-              <div className="relative mb-5 flex items-start justify-between gap-3">
-                <div className="text-left">
-                  <p className="text-[11px] font-black uppercase tracking-[0.32em] text-white/48">Breath Guide</p>
-                  <p className="mt-2 text-[20px] font-black leading-tight text-white">{isActive ? breathInstruction : "Guided voice ready"}</p>
-                </div>
-                <div className="shrink-0 rounded-full border border-white/18 bg-white/10 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]">
+              <div className="relative flex justify-end">
+                <div className="rounded-full border border-white/18 bg-white/10 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
                   Voice On
                 </div>
               </div>
 
-              <div className="relative mx-auto mb-5 flex h-[260px] w-full max-w-[300px] items-center justify-center">
+              {isActive && (
+                <motion.p
+                  key={breathInstruction}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="relative mt-1 text-center text-[20px] font-black leading-tight text-white"
+                >
+                  {breathInstruction}
+                </motion.p>
+              )}
+
+              <div className="relative mx-auto mb-4 mt-1 flex h-[276px] w-full max-w-[310px] items-center justify-center">
                 <svg className="absolute h-[250px] w-[250px] overflow-visible" viewBox="0 0 250 250" aria-hidden="true">
                   <defs>
                     <linearGradient id="first-reset-ring" x1="0" y1="0" x2="1" y2="1">
@@ -336,10 +342,17 @@ function FirstResetScreen({
             <button
               onClick={startReset}
               disabled={isActive}
-              className="group flex w-full items-center justify-center gap-3 rounded-full border border-cyan-100/60 bg-white/[0.055] px-5 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-white shadow-[0_0_46px_rgba(186,243,255,0.2),inset_0_0_0_1px_rgba(255,255,255,0.14)] backdrop-blur-xl transition hover:bg-cyan-100/12 disabled:cursor-default disabled:opacity-70"
+              className="group relative flex min-h-[68px] w-full items-center justify-center overflow-hidden rounded-[34px] border-2 border-cyan-100/60 bg-cyan-100/[0.075] px-5 py-4 text-[12px] font-black uppercase tracking-[0.28em] text-white shadow-[0_0_38px_rgba(186,243,255,0.24),inset_0_0_22px_rgba(186,243,255,0.08)] backdrop-blur-xl transition hover:border-cyan-100/80 hover:bg-cyan-100/[0.105] hover:shadow-[0_0_54px_rgba(186,243,255,0.34),inset_0_0_26px_rgba(186,243,255,0.12)] disabled:cursor-default"
             >
-              {isActive ? "Reset In Progress" : "Start Reset"}
-              <ArrowRight className="transition group-hover:translate-x-0.5" size={17} />
+              <span className="pointer-events-none absolute inset-[7px] rounded-[26px] border border-cyan-100/35" />
+              <span className="pointer-events-none absolute left-8 right-8 top-[7px] h-px bg-gradient-to-r from-transparent via-white/75 to-transparent" />
+              <span className="pointer-events-none absolute left-8 right-8 bottom-[7px] h-px bg-gradient-to-r from-transparent via-cyan-100/65 to-transparent" />
+              <span className="pointer-events-none absolute -left-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/14 blur-xl transition group-hover:bg-cyan-100/20" />
+              <span className="pointer-events-none absolute -right-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/14 blur-xl transition group-hover:bg-cyan-100/20" />
+              <span className="relative z-10 flex items-center justify-center gap-3 drop-shadow-[0_0_10px_rgba(186,243,255,0.36)]">
+                {isActive ? "Reset In Progress" : "Start Reset"}
+                <ArrowRight className="transition group-hover:translate-x-0.5" size={18} />
+              </span>
             </button>
           </>
         )}
