@@ -264,7 +264,7 @@ function FirstResetScreen({
               Press Start, then breathe with the pulse until the timer ends.
             </p>
 
-            <div className="relative mb-6 min-h-[280px] overflow-hidden rounded-[30px] border border-white/10 bg-slate-200/[0.025] px-4 py-5 shadow-[0_18px_54px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-sm">
+            <div className={`relative mb-6 overflow-hidden rounded-[30px] border border-white/10 bg-slate-200/[0.025] px-4 shadow-[0_18px_54px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-sm ${isActive ? "min-h-[380px] py-5" : "min-h-[280px] py-5"}`}>
               <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
 
               <div className="absolute right-4 top-4 z-20 rounded-full border border-white/10 bg-slate-200/[0.035] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
@@ -277,13 +277,13 @@ function FirstResetScreen({
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="relative mt-10 text-center text-[20px] font-black leading-tight text-white"
+                  className="relative mt-9 text-center text-[20px] font-black leading-tight text-white"
                 >
                   {breathInstruction}
                 </motion.p>
               )}
 
-              <div className={`relative mx-auto flex w-full max-w-[290px] items-center justify-center ${isActive ? "mb-1 mt-0 h-[168px]" : "mt-8 h-[220px]"}`}>
+              <div className={`relative mx-auto flex w-full max-w-[290px] items-center justify-center ${isActive ? "mb-2 mt-0 h-[158px]" : "mt-8 h-[220px]"}`}>
                 <svg className={`absolute overflow-visible ${isActive ? "h-[188px] w-[188px]" : "h-[226px] w-[226px]"}`} viewBox="0 0 250 250" aria-hidden="true">
                   <defs>
                     <linearGradient id="first-reset-ring" x1="0" y1="0" x2="1" y2="1">
@@ -365,7 +365,7 @@ function FirstResetScreen({
 
               {isActive && (
                 <>
-                  <div className="relative mb-4 flex items-center justify-center gap-2">
+                  <div className="relative mb-3 flex items-center justify-center gap-2">
                     <span className="text-[34px] font-black leading-none tabular-nums text-white">{remaining}</span>
                     <span className="text-[13px] font-black uppercase tracking-[0.28em] text-white/38">sec remaining</span>
                   </div>
@@ -376,7 +376,7 @@ function FirstResetScreen({
                       transition={{ duration: 0.35, ease: "easeOut" }}
                     />
                   </div>
-                  <p className="mt-5 text-[11px] font-black uppercase tracking-[0.28em] text-cyan-100/55">
+                  <p className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-cyan-100/55">
                     Personalization Pathway
                   </p>
                 </>
