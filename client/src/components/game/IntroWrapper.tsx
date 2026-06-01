@@ -218,14 +218,14 @@ function FirstResetScreen({
             <h1 className="mb-4 text-[38px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[44px]">
               30-Second Reset
             </h1>
-            <p className="mx-auto mb-6 max-w-[350px] text-[17px] font-semibold leading-6 text-white/78">
+            <p className="mx-auto mb-6 max-w-[350px] text-[17px] font-semibold leading-6 text-cyan-100/82">
               Press Start, then breathe with the pulse until the timer ends.
             </p>
 
-            <div className="relative mb-6 min-h-[280px] overflow-hidden rounded-[30px] border border-white/18 bg-slate-200/[0.09] px-4 py-5 shadow-[0_24px_76px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-lg">
-              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/42 to-transparent" />
+            <div className="relative mb-6 min-h-[280px] overflow-hidden rounded-[30px] border border-white/12 bg-slate-200/[0.045] px-4 py-5 shadow-[0_20px_64px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.10)] backdrop-blur-md">
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/26 to-transparent" />
 
-              <div className="absolute right-4 top-4 z-20 rounded-full border border-white/18 bg-slate-200/[0.10] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+              <div className="absolute right-4 top-4 z-20 rounded-full border border-white/12 bg-slate-200/[0.055] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
                 Voice On
               </div>
 
@@ -344,16 +344,16 @@ function FirstResetScreen({
             <button
               onClick={startReset}
               disabled={isActive}
-              className="group relative flex min-h-[68px] w-full items-center justify-center overflow-hidden rounded-[34px] border-2 border-cyan-100/58 bg-slate-200/[0.075] px-5 py-4 text-[12px] font-black uppercase tracking-[0.28em] text-white shadow-[0_0_32px_rgba(186,243,255,0.2),inset_0_0_18px_rgba(186,243,255,0.065)] backdrop-blur-lg transition hover:border-cyan-100/76 hover:bg-slate-200/[0.105] hover:shadow-[0_0_44px_rgba(186,243,255,0.28),inset_0_0_20px_rgba(186,243,255,0.09)] disabled:cursor-default"
+              className="group relative flex min-h-[68px] w-full items-center justify-center overflow-hidden rounded-[34px] border-2 border-cyan-100/52 bg-slate-200/[0.052] px-5 py-4 text-[12px] font-black uppercase tracking-[0.28em] text-white shadow-[0_0_28px_rgba(186,243,255,0.18),inset_0_0_14px_rgba(186,243,255,0.05)] backdrop-blur-md transition hover:border-cyan-100/70 hover:bg-slate-200/[0.08] hover:shadow-[0_0_40px_rgba(186,243,255,0.25),inset_0_0_18px_rgba(186,243,255,0.075)] disabled:cursor-default"
             >
-              <span className="pointer-events-none absolute inset-[7px] rounded-[26px] border border-cyan-100/32" />
-              <span className="pointer-events-none absolute inset-x-4 top-3 h-5 rounded-full bg-gradient-to-b from-white/20 to-transparent blur-[1px]" />
-              <span className="pointer-events-none absolute -left-12 top-0 h-full w-32 rotate-[-18deg] bg-gradient-to-r from-transparent via-white/12 to-transparent transition group-hover:translate-x-8" />
-              <span className="pointer-events-none absolute inset-x-14 top-1/2 h-10 -translate-y-1/2 rounded-full bg-cyan-100/10 blur-xl" />
-              <span className="pointer-events-none absolute left-8 right-8 top-[7px] h-px bg-gradient-to-r from-transparent via-white/58 to-transparent" />
-              <span className="pointer-events-none absolute left-8 right-8 bottom-[7px] h-px bg-gradient-to-r from-transparent via-cyan-100/48 to-transparent" />
-              <span className="pointer-events-none absolute -left-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/11 blur-xl transition group-hover:bg-cyan-100/16" />
-              <span className="pointer-events-none absolute -right-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/11 blur-xl transition group-hover:bg-cyan-100/16" />
+              <span className="pointer-events-none absolute inset-[7px] rounded-[26px] border border-cyan-100/26" />
+              <span className="pointer-events-none absolute inset-x-4 top-3 h-5 rounded-full bg-gradient-to-b from-white/13 to-transparent blur-[1px]" />
+              <span className="pointer-events-none absolute -left-12 top-0 h-full w-32 rotate-[-18deg] bg-gradient-to-r from-transparent via-white/8 to-transparent transition group-hover:translate-x-8" />
+              <span className="pointer-events-none absolute inset-x-14 top-1/2 h-10 -translate-y-1/2 rounded-full bg-cyan-100/8 blur-xl" />
+              <span className="pointer-events-none absolute left-8 right-8 top-[7px] h-px bg-gradient-to-r from-transparent via-white/42 to-transparent" />
+              <span className="pointer-events-none absolute left-8 right-8 bottom-[7px] h-px bg-gradient-to-r from-transparent via-cyan-100/38 to-transparent" />
+              <span className="pointer-events-none absolute -left-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/8 blur-xl transition group-hover:bg-cyan-100/12" />
+              <span className="pointer-events-none absolute -right-10 top-1/2 h-10 w-24 -translate-y-1/2 rounded-full bg-cyan-100/8 blur-xl transition group-hover:bg-cyan-100/12" />
               <span className="relative z-10 flex items-center justify-center gap-3 drop-shadow-[0_0_10px_rgba(186,243,255,0.36)]">
                 {isActive ? "Reset In Progress" : "Start Reset"}
                 <ArrowRight className="transition group-hover:translate-x-0.5" size={18} />
