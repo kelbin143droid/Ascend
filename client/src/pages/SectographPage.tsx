@@ -352,6 +352,8 @@ export default function SectographPage() {
         addXP(bonusXP, "system");
         setFlowBonusAwarded(true);
       }
+      markVitalityQuestScheduled();
+      setVitalityQuestDone(true);
       completeTask("phase1_vitality");
       try {
         const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
@@ -361,6 +363,7 @@ export default function SectographPage() {
         localStorage.setItem(todayKey, JSON.stringify(ids));
       } catch { /* noop */ }
       window.dispatchEvent(new CustomEvent("ascend:activity-completed", { detail: { activityId: "phase1_vitality" } }));
+      window.dispatchEvent(new CustomEvent("ascend:vitality-done"));
       queryClient.invalidateQueries({ queryKey: ["/api/player", player?.id] });
       queryClient.invalidateQueries({ queryKey: ["home", player?.id] });
       toast({
@@ -836,14 +839,10 @@ export default function SectographPage() {
           description: "Sleep block locked in. Vitality restoring.",
         }), 400);
       } else if (isDailyFlowBlock && vitalitySleepDone && !vitalityQuestDone) {
-        markVitalityQuestScheduled();
-        setVitalityQuestDone(true);
         awardVitalityCompletion(true, true);
-        // Notify Day6Home so it re-reads vitalityDone from localStorage.
-        window.dispatchEvent(new CustomEvent("ascend:vitality-done"));
         setTimeout(() => toast({
           title: "🟡 Growth path initialized",
-          description: "Daily Quest scheduled. XP inbound.",
+          description: "Daily Quest scheduled. Saving Vitality XP.",
         }), 400);
       }
       return;

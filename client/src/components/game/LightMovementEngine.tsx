@@ -191,8 +191,8 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
   const [paused, setPaused] = useState(false);
   const [bowEnded, setBowEnded] = useState(false);
   const [earnedXp, setEarnedXp] = useState<number>(15);
+  const [saveError, setSaveError] = useState(false);
   const bowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const completeFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasCompletedRef = useRef(false);
 
   const pausedRef = useRef(false);
@@ -210,10 +210,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
   const finishCompletion = useCallback((xp: number) => {
     if (hasCompletedRef.current) return;
     hasCompletedRef.current = true;
-    if (completeFallbackRef.current) {
-      clearTimeout(completeFallbackRef.current);
-      completeFallbackRef.current = null;
-    }
     onCompleteRef.current(xp);
   }, []);
 
@@ -231,13 +227,15 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
       const xp = data?.xpEarned ?? XP_REWARD;
       setEarnedXp(xp);
       addXP(xp, "agility");
+      completeTask("phase1_agility");
       completeTask("agility");
       queryClient.invalidateQueries({ queryKey: ["/api/player", playerId] });
       queryClient.invalidateQueries({ queryKey: ["home", playerId] });
       finishCompletion(xp);
     },
     onError: () => {
-      finishCompletion(XP_REWARD);
+      setXpClaimed(false);
+      setSaveError(true);
     },
   });
 
@@ -333,12 +331,6 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
     return () => clearTimer();
   }, [clearTimer]);
 
-  useEffect(() => {
-    return () => {
-      if (completeFallbackRef.current) clearTimeout(completeFallbackRef.current);
-    };
-  }, []);
-
   const exerciseVideoRef = useCallback((el: HTMLVideoElement | null) => {
     videoRef.current = el;
   }, []);
@@ -424,10 +416,10 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
 
   const handleClaim = useCallback(() => {
     if (!noApiCall && !xpClaimed) {
+      setSaveError(false);
       setXpClaimed(true);
       localStorage.setItem("ascend_light_movement_completed", new Date().toISOString().split("T")[0]);
       completeTask("phase1_agility");
-      completeFallbackRef.current = setTimeout(() => finishCompletion(XP_REWARD), 9000);
       claimMutation.mutate();
     } else {
       finishCompletion(XP_REWARD);
@@ -735,13 +727,26 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
               >
                 +{earnedXp} XP
               </div>
+              {saveError && (
+                <p className="text-center text-xs font-semibold text-red-300">
+                  XP did not save. Check connection and try again.
+                </p>
+              )}
               <button
                 className="w-full py-4 rounded-2xl font-bold text-base transition-all active:scale-95"
-                style={{ backgroundColor: COLOR, color: "#fff" }}
+                style={{
+                  backgroundColor: claimMutation.isPending ? "rgba(255,255,255,0.16)" : COLOR,
+                  color: "#fff",
+                }}
                 onClick={handleClaim}
+                disabled={claimMutation.isPending}
                 data-testid="button-claim-light-movement-xp"
               >
-                {nextLabel ? `Continue to ${nextLabel}` : "Continue"}
+                {claimMutation.isPending
+                  ? "Saving XP..."
+                  : saveError
+                    ? "Retry XP Save"
+                    : nextLabel ? `Continue to ${nextLabel}` : "Continue"}
               </button>
             </motion.div>
           )}
