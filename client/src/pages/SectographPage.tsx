@@ -94,7 +94,7 @@ import {
   deleteTemplate,
   type BlockTemplate,
 } from "@/lib/customBlockTemplateStore";
-import { addXP, completeTask } from "@/lib/workoutProgressStore";
+import { addXP, completeTask, getDailyCompletedTasks } from "@/lib/workoutProgressStore";
 import { PHASE1_XP } from "@shared/gameProgression";
 
 type ViewTab = "sectograph" | "calendar" | "plan";
@@ -131,6 +131,28 @@ const SEGMENT_LABELS: Record<string, { label: string; color: string }> = {
   focus: { label: "Focus", color: "#6b5b8a" },
   open: { label: "Open Time", color: "#22c55e" },
 };
+
+function hasCompletedActivityToday(activityId: string): boolean {
+  try {
+    const todayKey = `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+    const raw = localStorage.getItem(todayKey);
+    const ids: string[] = raw ? JSON.parse(raw) : [];
+    return ids.includes(activityId);
+  } catch {
+    return false;
+  }
+}
+
+function hasVitalityAwardedToday(): boolean {
+  try {
+    return (
+      getDailyCompletedTasks().includes("phase1_vitality") ||
+      hasCompletedActivityToday("phase1_vitality")
+    );
+  } catch {
+    return hasCompletedActivityToday("phase1_vitality");
+  }
+}
 
 const BLOCK_PRESETS = [
   { id: "sleep",      name: "Sleep",       icon: Moon,      color: "#3b4d6b", defaultStart: { h: 22, m: 0 }, defaultEnd: { h: 6,  m: 0 } },
@@ -266,6 +288,15 @@ export default function SectographPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const persistSchedule = useCallback(async (schedule: ScheduleBlock[]) => {
+    if (!player?.id) throw new Error("No player loaded");
+    const res = await apiRequest("PATCH", `/api/player/${player.id}`, { schedule });
+    const updatedPlayer = await res.json();
+    queryClient.setQueryData(["/api/player", player.id], updatedPlayer);
+    queryClient.invalidateQueries({ queryKey: ["/api/player", player.id] });
+    return updatedPlayer;
+  }, [player?.id, queryClient]);
+
   const [activeTab, setActiveTab] = useState<ViewTab>("sectograph");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -306,7 +337,7 @@ export default function SectographPage() {
   const [day5FlowDone, setDay5FlowDone] = useState(() => isDayFiveFlowScheduled());
   const [vitalitySleepDone, setVitalitySleepDone] = useState(() => isVitalitySleepScheduledToday());
   const [vitalityQuestDone, setVitalityQuestDone] = useState(() => isVitalityQuestScheduledToday());
-  const [vitalityXpAwarded, setVitalityXpAwarded] = useState(false);
+  const [vitalityXpAwarded, setVitalityXpAwarded] = useState(() => hasVitalityAwardedToday());
   const [vitalityIntroSeen, setVitalityIntroSeen] = useState(() => localStorage.getItem("ascend_vitality_intro_seen") === "1");
   const [showVitalitySleepPresets, setShowVitalitySleepPresets] = useState(false);
   const [vitalityOverlayDismissed, setVitalityOverlayDismissed] = useState(
@@ -397,6 +428,7 @@ export default function SectographPage() {
       !vitalityXpAwarded &&
       !vitalityXpMutation.isPending &&
       !vitalityXpMutation.isSuccess &&
+      !hasVitalityAwardedToday() &&
       player?.id  // only fire when player is loaded — prevents silent no-op
     ) {
       setVitalityXpAwarded(true);
@@ -812,7 +844,18 @@ export default function SectographPage() {
           blockFinal,
         ]
       : current.map((b: any) => b.id === blockFinal.id ? blockFinal : b);
-    updatePlayer({ schedule: newSchedule });
+    try {
+      await persistSchedule(newSchedule);
+    } catch (err) {
+      console.warn("[SectographPage] schedule save failed", err);
+      toast({
+        title: "Schedule did not sync",
+        description: "Try saving this block again before continuing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setEditingBlock(null);
     setCustomBlockName("");
 
