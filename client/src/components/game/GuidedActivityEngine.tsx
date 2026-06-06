@@ -21,6 +21,39 @@ import { readEnergySettings } from "@/lib/energySettingsStore";
 import { addXP, completeTask } from "@/lib/workoutProgressStore";
 import { PHASE1_XP } from "@shared/gameProgression";
 
+type StepPhase = "ready" | "getready" | "running" | "done" | "rest";
+
+function normalizeSavedStepPhase(
+  savedPhase: "ready" | "running" | "getready" | "done" | undefined,
+  step: ActivityStep | undefined,
+  timerRemaining: number | undefined,
+): StepPhase {
+  if (!savedPhase || savedPhase === "getready") return "ready";
+  if (savedPhase !== "running") return savedPhase;
+
+  if (step?.type === "rep") return "running";
+  if ((step?.type === "timer" || step?.type === "breath") && (timerRemaining ?? 0) > 0) {
+    return "ready";
+  }
+  return "ready";
+}
+
+function checkpointStepPhase(
+  stepPhase: StepPhase,
+  step: ActivityStep | undefined,
+  timerRemaining: number,
+): "ready" | "running" | "getready" | "done" {
+  if (stepPhase === "rest" || stepPhase === "getready") return "ready";
+  if (
+    stepPhase === "running" &&
+    (step?.type === "timer" || step?.type === "breath") &&
+    timerRemaining <= 0
+  ) {
+    return "ready";
+  }
+  return stepPhase;
+}
+
 /**
  * Map a guided-session step id to its canonical exercise name used by
  * the calorie tables in workoutLogStore. Returns null for steps that
@@ -936,8 +969,9 @@ export function GuidedActivityEngine({
   }, []);
 
   const [currentStepIdx, setCurrentStepIdx] = useState(savedSession?.stepIdx ?? 0);
-  const [stepPhase, setStepPhase] = useState<"ready" | "getready" | "running" | "done" | "rest">(
-    savedSession?.stepPhase === "running" ? "ready" : (savedSession?.stepPhase ?? "ready")
+  const savedStep = savedSession ? activity.steps[savedSession.stepIdx] : undefined;
+  const [stepPhase, setStepPhase] = useState<StepPhase>(
+    normalizeSavedStepPhase(savedSession?.stepPhase, savedStep, savedSession?.timerRemaining)
   );
   const [stepsCompleted, setStepsCompleted] = useState<Set<number>>(
     () => new Set(savedSession?.stepsCompleted ?? [])
@@ -993,17 +1027,18 @@ export function GuidedActivityEngine({
   // --- Persist session state so the user can resume after navigating away ---
   useEffect(() => {
     if (isCompletionStep) return; // don't save on completion step
+    const isTimedStep = step?.type === "timer" || step?.type === "breath";
     saveSession({
       activityId: activity.id,
       stepIdx: currentStepIdx,
-      stepPhase: stepPhase === "rest" || stepPhase === "getready" ? "ready" : stepPhase,
-      timerRemaining,
+      stepPhase: checkpointStepPhase(stepPhase, step, timerRemaining),
+      timerRemaining: isTimedStep ? Math.max(0, timerRemaining) : 0,
       stepsCompleted: Array.from(stepsCompleted),
       stepsSkipped: Array.from(stepsSkipped),
       repsPerStep: actualRepsRef.current,
       savedAt: Date.now(),
     });
-  }, [currentStepIdx, stepPhase, timerRemaining, stepsCompleted, stepsSkipped, isCompletionStep, activity.id]);
+  }, [currentStepIdx, stepPhase, step, timerRemaining, stepsCompleted, stepsSkipped, isCompletionStep, activity.id]);
 
   const completeMutation = useMutation({
     retry: 1,
