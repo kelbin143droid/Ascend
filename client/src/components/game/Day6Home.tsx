@@ -105,7 +105,6 @@ const ACTIVITY_XP: Record<string, number> = {
 };
 
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
-const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
 
 function todayDateKey(): string {
   return new Date().toISOString().split("T")[0];
@@ -114,14 +113,6 @@ function todayDateKey(): string {
 function wasFirstResetCompletedToday(): boolean {
   try {
     return localStorage.getItem(FIRST_RESET_COMPLETED_DATE_KEY) === todayDateKey();
-  } catch {
-    return false;
-  }
-}
-
-function wasFirstResetCompleted(): boolean {
-  try {
-    return localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true" || wasFirstResetCompletedToday();
   } catch {
     return false;
   }
@@ -219,7 +210,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (completedIds.has(activityId)) return true;
     const sessionId = ACTIVITY_TO_SESSION[activityId];
     if (sessionId && completedIds.has(sessionId)) return true;
-    const onboardingIntroResetCounts = !homeData.isOnboardingComplete && wasFirstResetCompleted();
+    const onboardingIntroResetCounts = !homeData.isOnboardingComplete && wasFirstResetCompletedToday();
     if (activityId === "phase1_meditation" && onboardingIntroResetCounts) return true;
     if (activityId === "phase1_meditation" && (completedIds.has("phase1_agility") || completedIds.has("light-movement") || completedIds.has("phase1_strength"))) return true;
     if (activityId === "phase1_agility" && completedIds.has("phase1_strength")) return true;
@@ -266,7 +257,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
   const vitalityPending = seqAllDone && !vitalityDone;
   const currentDashLabel = DASH_CARDS.find(d => d.activityId === currentAid)?.label ?? null;
-  const firstResetCompleted = wasFirstResetCompleted();
+  const firstResetCompleted = wasFirstResetCompletedToday();
   const firstResetJustUnlockedMovement = !homeData.isOnboardingComplete && firstResetCompleted && currentAid === "phase1_agility";
   const totalMissionCount = seqCards.length + 1;
   const completedMissionCount = doneSeq.length + (vitalityDone ? 1 : 0);
