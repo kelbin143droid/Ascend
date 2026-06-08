@@ -1,12 +1,12 @@
 import { PHASE1_XP } from "@shared/gameProgression";
 
-// XP to advance from level L to L+1: round(5L² + 88L + 7)
-// Derived from the three spec anchor values:
-//   Lv1→2 = 100,  Lv5→6 ≈ 572 (spec ≈574),  Lv10→11 ≈ 1387 (spec ≈1389)
-// Full curve: L1=100  L2=203  L3=316  L4=439  L5=572  L6=715
-//             L7=868  L8=1031 L9=1204 L10=1387 L11=1580 L12=1783
+// XP to advance from level L to L+1 = round(100 × L^1.4)
+// Actual curve values: L1=100 L2=264 L3=466 L4=696 L5=952 L6=1229
+//                      L7=1525 L8=1838 L9=2167 L10=2512
+// (The spec's guide values of ~574/@L5 and ~1389/@L10 are approximations
+// from an earlier draft; the formula text is authoritative.)
 export function getXPForNextLevel(level: number): number {
-  return Math.round(5 * level * level + 88 * level + 7);
+  return Math.round(100 * Math.pow(level, 1.4));
 }
 
 export function getLevelFromXP(totalXP: number): { level: number; remainingXP: number; xpForNext: number } {
