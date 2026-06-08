@@ -171,17 +171,25 @@ export async function registerRoutes(
       // Streak multiplier (shown in profile, also used by progress engine)
       const streakMultiplier = computeStreakMultiplier(player.streak || 0);
 
-      // Server-computed combat power: weighted formula × class multiplier
-      const CLASS_MULTIPLIERS: Record<string, number> = {
-        WARRIOR: 1.3,
-        SAGE:    1.3,
-        SHADOW:  1.4,
-        WARDEN:  1.3,
-      };
+      // Server-computed combat power: weighted formula with per-stat class multipliers
+      // Each class boosts only its signature stats; non-signature stats use ×1.0
       const jobUpper2 = (player.job || "").toUpperCase();
-      const classMultiplier = CLASS_MULTIPLIERS[jobUpper2] ?? 1.0;
+      type StatMultipliers = { str: number; intV: number; vit: number; agi: number; sen: number; dis: number };
+      const CLASS_STAT_MULTIPLIERS: Record<string, StatMultipliers> = {
+        WARRIOR: { str: 1.3, intV: 1.0, vit: 1.3, agi: 1.0, sen: 1.0, dis: 1.0 },
+        SAGE:    { str: 1.0, intV: 1.3, vit: 1.0, agi: 1.0, sen: 1.3, dis: 1.0 },
+        SHADOW:  { str: 1.0, intV: 1.0, vit: 1.0, agi: 1.4, sen: 1.0, dis: 1.0 },
+        WARDEN:  { str: 1.0, intV: 1.0, vit: 1.3, agi: 1.0, sen: 1.0, dis: 1.3 },
+      };
+      const cm: StatMultipliers = CLASS_STAT_MULTIPLIERS[jobUpper2]
+        ?? { str: 1.0, intV: 1.0, vit: 1.0, agi: 1.0, sen: 1.0, dis: 1.0 };
       const combatPower = Math.round(
-        (str * 12 + intVal * 12 + vit * 10 + agi * 9 + sen * 7 + disVal * 3) * classMultiplier
+        str * 12 * cm.str +
+        intVal * 12 * cm.intV +
+        vit * 10 * cm.vit +
+        agi * 9 * cm.agi +
+        sen * 7 * cm.sen +
+        disVal * 3 * cm.dis
       );
 
       // Class index from job string
