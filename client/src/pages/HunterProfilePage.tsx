@@ -421,6 +421,8 @@ export default function HunterProfilePage() {
   const [localStats,      setLocalStats]      = useState<StatEntry[]>([]);
   const [availPts,        setAvailPts]        = useState(0);
   const [cp,              setCp]              = useState(0);
+  const [allocError,      setAllocError]      = useState<string | null>(null);
+  const [allocating,      setAllocating]      = useState(false);
   const xpRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -469,16 +471,39 @@ export default function HunterProfilePage() {
     setLocalStats(localStats.map(s => ({ ...s, pending: 0 })));
   }
 
-  function commitPoints() {
-    if (!data) return;
+  async function commitPoints() {
+    if (!data || !player?.id) return;
     const spent = totalPending();
-    if (spent <= 0) return;
-    const next = localStats.map(s => ({ ...s, val: s.val + s.pending, pending: 0 }));
-    setLocalStats(next);
-    setAvailPts(p => p - spent);
-    setCp(c => c + spent * data.cpPerPoint);
-    // TODO (production): POST /api/player/:id/allocate with per-stat deltas.
-    // Server must re-validate points balance, apply, recompute CP, and return state.
+    if (spent <= 0 || allocating) return;
+
+    const KEY_MAP: Record<string, string> = { STR: "str", AGI: "agi", VIT: "vit", SEN: "sen", DIS: "dis" };
+    const deltas: Record<string, number> = { str: 0, agi: 0, vit: 0, sen: 0, dis: 0 };
+    for (const s of localStats) {
+      if (s.pending > 0) deltas[KEY_MAP[s.key] ?? s.key.toLowerCase()] = s.pending;
+    }
+
+    setAllocating(true);
+    setAllocError(null);
+    try {
+      const resp = await fetch(`/api/player/${player.id}/allocate-stats`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deltas }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) {
+        setAllocError(json.error ?? "Allocation failed");
+        return;
+      }
+      const newStatPoints: number = json.statPoints ?? 0;
+      setAvailPts(newStatPoints);
+      setLocalStats(prev => prev.map(s => ({ ...s, val: s.val + s.pending, pending: 0 })));
+      setCp(c => c + spent * (data.cpPerPoint ?? 12));
+    } catch {
+      setAllocError("Network error — please try again");
+    } finally {
+      setAllocating(false);
+    }
   }
 
   // ── Class picker ─────────────────────────────────────────────────────────
@@ -735,9 +760,22 @@ export default function HunterProfilePage() {
                   ))}
                 </div>
                 <div className="confirmrow">
-                  <button className={`cancelbtn${pending <= 0 ? " disabled" : ""}`} onClick={clearPending}>CANCEL</button>
-                  <button className={`confirmbtn${pending <= 0 ? " disabled" : ""}`} onClick={commitPoints}>CONFIRM CHANGES</button>
+                  <button className={`cancelbtn${pending <= 0 || allocating ? " disabled" : ""}`} onClick={clearPending} data-testid="button-cancel-alloc">CANCEL</button>
+                  <button className={`confirmbtn${pending <= 0 || allocating ? " disabled" : ""}`} onClick={commitPoints} data-testid="button-confirm-alloc">
+                    {allocating ? "SAVING..." : "CONFIRM CHANGES"}
+                  </button>
                 </div>
+                {allocError && (
+                  <div data-testid="text-alloc-error" style={{
+                    color: "#ff5158", fontSize: "12px", fontFamily: "'Chakra Petch',sans-serif",
+                    fontWeight: 700, letterSpacing: "1px", textAlign: "center",
+                    marginTop: "6px", padding: "6px 10px",
+                    background: "rgba(255,81,88,0.1)", border: "1px solid rgba(255,81,88,0.3)",
+                    borderRadius: "8px",
+                  }}>
+                    ⚠ {allocError}
+                  </div>
+                )}
                 <button className="detailbtn">STAT DETAILS ›</button>
               </div>
             )}

@@ -304,6 +304,54 @@ export async function registerRoutes(
     }
   });
 
+  // ── Stat allocation — server-authoritative point spending ───────────────
+  app.post("/api/player/:id/allocate-stats", async (req, res) => {
+    try {
+      const bodySchema = z.object({
+        deltas: z.object({
+          str: z.number().int().min(0).default(0),
+          agi: z.number().int().min(0).default(0),
+          vit: z.number().int().min(0).default(0),
+          sen: z.number().int().min(0).default(0),
+          dis: z.number().int().min(0).default(0),
+        }),
+      });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid allocation payload" });
+      }
+      const { deltas } = parsed.data;
+      const total = deltas.str + deltas.agi + deltas.vit + deltas.sen + deltas.dis;
+      if (total === 0) {
+        return res.status(400).json({ error: "No points to allocate" });
+      }
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+      const available = player.statPoints ?? 0;
+      if (total > available) {
+        return res.status(400).json({ error: "Not enough stat points" });
+      }
+      const stats = { ...(player.stats as Record<string, number>) };
+      if (deltas.str > 0) stats.strength   = (stats.strength   || 0) + deltas.str;
+      if (deltas.agi > 0) stats.agility    = (stats.agility    || 0) + deltas.agi;
+      if (deltas.vit > 0) stats.vitality   = (stats.vitality   || 0) + deltas.vit;
+      if (deltas.sen > 0) stats.sense      = (stats.sense      || 0) + deltas.sen;
+      if (deltas.dis > 0) stats.discipline = (stats.discipline || 0) + deltas.dis;
+      const updated = await storage.updatePlayer(req.params.id, {
+        stats: stats as any,
+        statPoints: available - total,
+      });
+      if (!updated) return res.status(404).json({ error: "Player not found" });
+      return res.json({
+        stats:       updated.stats,
+        statPoints:  updated.statPoints ?? 0,
+      });
+    } catch (err) {
+      console.error("[POST /api/player/:id/allocate-stats] error:", err);
+      res.status(500).json({ error: "Failed to allocate stats" });
+    }
+  });
+
   app.get("/api/player-stats", async (req, res) => {
     try {
       const userId = (req.query.userId as string) || (req.headers["x-user-id"] as string);

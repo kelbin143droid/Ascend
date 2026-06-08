@@ -1,5 +1,5 @@
 export const XP_PER_LEVEL = 100;
-export const STAT_POINTS_PER_LEVEL = 4;
+export const STAT_POINTS_PER_LEVEL = 3;
 
 export const PHASE1_XP = {
   sense: 15,

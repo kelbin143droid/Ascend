@@ -1,10 +1,9 @@
-import { PHASE1_XP, XP_PER_LEVEL } from "@shared/gameProgression";
+import { PHASE1_XP } from "@shared/gameProgression";
 
-const BASE_XP = XP_PER_LEVEL;
-const GROWTH = 0;
-
+// Exponential curve: XP needed to go from level L to L+1 = round(100 × L^1.4)
+// Examples: Lv1→2 ≈ 100, Lv5→6 ≈ 574, Lv10→11 ≈ 1389
 export function getXPForNextLevel(level: number): number {
-  return GROWTH === 0 ? BASE_XP : Math.floor(BASE_XP * Math.pow(level, GROWTH));
+  return Math.round(100 * Math.pow(level, 1.4));
 }
 
 export function getLevelFromXP(totalXP: number): { level: number; remainingXP: number; xpForNext: number } {
