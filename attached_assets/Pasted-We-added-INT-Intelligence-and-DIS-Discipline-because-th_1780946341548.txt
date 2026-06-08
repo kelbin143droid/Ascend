@@ -1,0 +1,164 @@
+We added INT (Intelligence) and DIS (Discipline) because the original four stats covered physical and wellness habits well, but they didn't reward two major areas of personal growth:
+Learning
+Consistency
+Without INT and DIS, a user who reads every day or maintains perfect habit streaks wouldn't see that effort reflected in their Hunter.
+INT — Intelligence
+Productivity App Meaning
+INT is earned from activities that improve knowledge and learning.
+Examples:
+Reading books
+Studying
+Online courses
+Educational videos
+Language learning
+Skill development
+The idea is:
+"The more knowledge you gain in real life, the more intelligent your Hunter becomes."
+Game Meaning
+INT represents magical knowledge and mental power.
+INT increases:
+Magic damage
+Ability power
+Skill effectiveness
+Spell scaling
+Future possibilities:
+Reduced skill cooldowns
+Increased elemental damage
+Better mana efficiency
+Classes That Benefit Most
+Sage
+Primary stats:
+INT
+SEN
+A Sage with high INT becomes a powerful spellcaster.
+Example
+Real Life:
+Read 30 minutes
++10 INT XP
+Game:
+INT 20 → 21
+
+Fireball Damage
+120 → 128
+DIS — Discipline
+Productivity App Meaning
+DIS is earned through consistency.
+Not from what you do.
+From how consistently you do it.
+Examples:
+Daily streaks
+Habit completion rate
+Weekly consistency
+Consecutive productive days
+Following routines
+The idea is:
+"Discipline is the ability to show up repeatedly."
+Game Meaning
+DIS represents efficiency, endurance, and progression.
+We discussed making DIS one of the most unique stats because most RPGs don't have anything like it.
+DIS affects:
+Dungeon Energy
+Resource efficiency
+Bonus rewards
+Progression speed
+Possible future bonuses:
+More daily dungeon entries
+Increased gold gain
+Increased XP gain
+Better loot chance
+Reduced energy costs
+Classes That Benefit Most
+Warden
+Primary stats:
+DIS
+VIT
+The Warden isn't the strongest damage dealer.
+Instead:
+Stays active longer
+Earns more resources
+Progresses efficiently
+Example
+Real Life:
+7-day habit streak
++15 DIS XP
+Game:
+DIS 15 → 16
+
+Dungeon Energy
+100 → 105
+
+Gold Bonus
++5%
+Why These Two Stats Matter
+Without them:
+Real Life Activity	Stat
+Exercise	STR
+Stretching	AGI
+Meditation	SEN
+Sleep	VIT
+Reading	?
+Consistency	?
+There would be gaps.
+With INT and DIS:
+Real Life Activity	Stat
+Exercise	STR
+Stretching	AGI
+Meditation	SEN
+Sleep	VIT
+Reading / Learning	INT
+Consistency / Streaks	DIS
+Now every major self-improvement category has a corresponding Hunter stat.
+The Final Stat System
+STR
+Represents physical strength.
+Real Life:
+Exercise
+Workouts
+Game:
+Physical damage
+AGI
+Represents mobility and flexibility.
+Real Life:
+Stretching
+Yoga
+Game:
+Speed
+Dodge
+Critical hits
+VIT
+Represents recovery and health.
+Real Life:
+Sleep
+Recovery
+Game:
+Health
+Defense
+SEN
+Represents awareness and focus.
+Real Life:
+Meditation
+Mindfulness
+Game:
+Mana regeneration
+Awareness
+Resource recovery
+INT
+Represents knowledge and learning.
+Real Life:
+Reading
+Studying
+Courses
+Game:
+Magic power
+Ability damage
+DIS
+Represents consistency and discipline.
+Real Life:
+Habit streaks
+Daily completion
+Game:
+Dungeon energy
+XP efficiency
+Reward bonuses
+Long-term progression
+The interesting thing is that DIS may end up being one of the strongest stats in the entire game, because it rewards the exact behavior your productivity app is trying to encourage: showing up every day.

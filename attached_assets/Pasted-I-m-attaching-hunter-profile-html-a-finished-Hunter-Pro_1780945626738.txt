@@ -1,0 +1,71 @@
+I'm attaching hunter-profile.html — a finished Hunter Profile screen for the
+game side of this app. I want you to replace the current placeholder Hunter
+Profile UI in the "future game" section with this, and wire it to show the
+logged-in user's REAL data instead of the demo data baked into the file.
+
+ABOUT THE FILE
+It's self-contained (inline CSS + JS). Everything it displays is driven by a
+single JavaScript object called `playerData` near the bottom of the <script>,
+which is passed to renderProfile(playerData). To show real data, you replace
+that hardcoded object with the current user's data in the SAME shape.
+
+STEP 1 — PLACEMENT
+Inspect how the frontend is structured (framework, routing, how the "future
+game" section renders) and integrate this file the idiomatic way for THIS
+codebase — e.g. as a component or template — rather than assuming. Replace the
+existing placeholder Hunter Profile in the "future game" section. Keep the
+visual design exactly as-is; do not restyle it.
+
+STEP 2 — REAL DATA
+Create a backend endpoint (e.g. GET /api/player/profile for the authenticated
+user) that assembles and returns the playerData object below from our existing
+data/models. Have the page fetch it on load and call renderProfile(data),
+replacing the hardcoded demo object.
+
+DATA SHAPE the UI expects (fill these from our real data):
+  name            – the user's display name
+  rank            – hunter rank string ("E", "D", ...); use "E" if we don't track it yet
+  role            – name of the player's active class
+  level           – overall hunter level
+  xp / xpMax      – current XP and XP needed for next level
+  combatPower     – computed power score (compute on the SERVER)
+  characterImage  – URL to character art if we have one, else null
+  wallet          – array of { type:"gem"|"coin"|"diamond", value }
+  chosenClass     – index of the player's main class, or null for brand-new
+                    players (null makes the file show the class-picker; a
+                    returning player must get their saved index here so the
+                    picker does NOT reappear)
+  classes         – keep the 4 from the file; set each class's `lv`
+  availablePoints – unspent stat points the player can allocate (granted on level-up)
+  stats           – the 6 stats; set each one's `val` from our data. KEEP the
+                    color/icon/key/pending fields from the file unchanged.
+  equipment, skills – map if we have data; otherwise leave the file's values
+                    and flag them (see below)
+
+Keep all cosmetic fields (colors, icons, class descriptions, cpPerPoint) as
+they are in the file. cpPerPoint is just a demo placeholder — real combat power
+must come from the server.
+
+STAT MAPPING (only I know this — use exactly this):
+  STR ← [FILL IN: which app metric, e.g. "workouts logged"]
+  AGI ← [FILL IN]
+  VIT ← [FILL IN]
+  SEN ← [FILL IN]
+  INT ← [FILL IN]
+  DIS ← [FILL IN]
+
+RULES
+- Do NOT invent data. For any field we have no real source for, keep the
+  file's placeholder value and list it back to me explicitly.
+- Hardcode nothing to a single user — use the authenticated user.
+- This pass is DISPLAY ONLY. The file has two interactive writes — stat-point
+  allocation (CONFIRM CHANGES) and class selection (CONFIRM CLASS) — marked in
+  the code with comments containing "TODO (production)". Leave those as local-
+  only for now; we'll wire them to validated backend endpoints in a separate
+  step. When we do, the server must re-check the player actually has the points
+  / hasn't already chosen, and never trust client-sent values.
+
+WHEN DONE, tell me:
+  1. how you integrated it (file/route/component),
+  2. the endpoint(s) you created,
+  3. which fields you mapped to real data vs. left as placeholders.

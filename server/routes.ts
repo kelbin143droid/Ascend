@@ -122,6 +122,135 @@ export async function registerRoutes(
     }
   });
 
+  // ── Hunter Profile — full playerData shape for the game screen ──────────
+  app.get("/api/player/:id/hunter-profile", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const stats   = player.stats   || { strength: 1, agility: 1, sense: 1, vitality: 1 };
+      const bonuses = (player.bonusStats as Record<string, number>) || {};
+
+      const str = (stats.strength  || 1) + (bonuses.strength  || 0);
+      const agi = (stats.agility   || 1) + (bonuses.agility   || 0);
+      const vit = (stats.vitality  || 1) + (bonuses.vitality  || 0);
+      const sen = (stats.sense     || 1) + (bonuses.sense     || 0);
+
+      // INT: no learning-activity tracking yet — starts at 0
+      const intVal = 0;
+
+      // DIS: derived from streak + consecutive active days (no new DB column needed)
+      const stability = (player.stability as Record<string, any>) || {};
+      const consecutiveActiveDays: number = stability.consecutiveActiveDays ?? 0;
+      const disVal = Math.min(50, Math.max(0,
+        Math.floor((player.streak || 0) * 2 + consecutiveActiveDays * 0.5),
+      ));
+
+      // Server-computed combat power
+      const combatPower =
+        str * 12 + agi * 10 + vit * 8 + sen * 8 + intVal * 6 + disVal * 6 + player.level * 20;
+
+      // Class index from job string
+      const CLASS_NAMES = ["WARRIOR", "SAGE", "SHADOW", "WARDEN"] as const;
+      const jobUpper  = (player.job || "").toUpperCase();
+      const jobIdx    = CLASS_NAMES.indexOf(jobUpper as any);
+      const chosenClass: number | null = jobIdx >= 0 ? jobIdx : null;
+
+      // Equipment slots — map 3-slot DB schema to the 6-slot UI
+      const eq = player.equipment || { weapon: null, armor: null, accessory: null };
+      const equipment = [
+        { type: "weapon", filled: !!eq.weapon   },
+        { type: "helmet", filled: false          },   // not tracked yet
+        { type: "chest",  filled: !!eq.armor     },
+        { type: "gloves", filled: !!eq.accessory },
+        { type: "boots",  filled: false          },   // not tracked yet
+        { type: "locked", unlockLv: 15           },
+      ];
+
+      // Skills — map DB skills or fall back to class-appropriate demo set
+      const dbSkills = (player.skills || []) as any[];
+      const CLASS_SKILL_DEFAULTS: Record<string, any[]> = {
+        WARRIOR: [
+          { name: "Power Strike", lv: 1, icon: "fist",   color: "var(--str)" },
+          { name: "Iron Guard",   lv: 1, icon: "shield", color: "var(--vit)" },
+          { locked: true, unlockLv: 10 },
+        ],
+        SAGE: [
+          { name: "Arcane Bolt",  lv: 1, icon: "spark", color: "var(--int)" },
+          { name: "Mind Shield",  lv: 1, icon: "eye",   color: "var(--sen)" },
+          { locked: true, unlockLv: 10 },
+        ],
+        SHADOW: [
+          { name: "Quick Strike", lv: 1, icon: "wing",   color: "var(--agi)" },
+          { name: "Shadow Step",  lv: 1, icon: "fist",   color: "var(--agi)" },
+          { locked: true, unlockLv: 10 },
+        ],
+        WARDEN: [
+          { name: "Endure",       lv: 1, icon: "shield", color: "var(--dis)" },
+          { name: "Steady Guard", lv: 1, icon: "crown",  color: "var(--vit)" },
+          { locked: true, unlockLv: 10 },
+        ],
+      };
+      const skills = dbSkills.length > 0
+        ? dbSkills.slice(0, 3).map((s: any) => ({
+            name:  s.name,
+            lv:    s.level || 1,
+            icon:  "fist",
+            color: "var(--str)",
+          }))
+        : (CLASS_SKILL_DEFAULTS[jobUpper] ?? CLASS_SKILL_DEFAULTS["WARRIOR"]);
+
+      const playerData = {
+        name:           player.name,
+        rank:           player.rank || "E",
+        role:           chosenClass !== null ? CLASS_NAMES[chosenClass] : "AWAKENED",
+        level:          player.level,
+        xp:             player.exp,
+        xpMax:          player.maxExp,
+        combatPower,
+        characterImage: null,   // placeholder — no art stored yet
+        wallet: [
+          { type: "coin",    value: player.gold || 0 },
+          { type: "gem",     value: 0 },               // placeholder — no gem system yet
+          { type: "diamond", value: 0 },               // placeholder — no diamond system yet
+        ],
+        chosenClass,
+        classes: [
+          { name: "WARRIOR", lv: 1, color: "#4cc2ff", desc: "Frontline melee power"      },
+          { name: "SAGE",    lv: 1, color: "#b46cff", desc: "Arcane support & healing"   },
+          { name: "SHADOW",  lv: 1, color: "#3ee07f", desc: "Stealth & critical strikes" },
+          { name: "WARDEN",  lv: 1, color: "#f5b942", desc: "Guardian & defense"         },
+        ],
+        availablePoints: player.statPoints || 0,
+        cpPerPoint:      12,   // client-side preview only; server recomputes on confirm
+        stats: [
+          { key: "STR", val: str,    pending: 0, color: "var(--str)", icon: "fist"   },
+          { key: "AGI", val: agi,    pending: 0, color: "var(--agi)", icon: "wing"   },
+          { key: "VIT", val: vit,    pending: 0, color: "var(--vit)", icon: "shield" },
+          { key: "SEN", val: sen,    pending: 0, color: "var(--sen)", icon: "eye"    },
+          { key: "INT", val: intVal, pending: 0, color: "var(--int)", icon: "spark"  },
+          { key: "DIS", val: disVal, pending: 0, color: "var(--dis)", icon: "crown"  },
+        ],
+        equipment,
+        skills,
+        _meta: {
+          placeholders: [
+            "wallet.gem / wallet.diamond — no currency system yet, showing 0",
+            "INT — no learning-activity tracking yet, showing 0",
+            "equipment.helmet / equipment.boots — not tracked in DB, showing empty",
+            "characterImage — no character art stored, showing silhouette",
+            "skills — using class defaults (DB skills mapped when present)",
+          ],
+        },
+      };
+
+      res.json(playerData);
+    } catch (err) {
+      console.error("[GET /api/player/:id/hunter-profile] error:", err);
+      res.status(500).json({ error: "Failed to build hunter profile" });
+    }
+  });
+
   app.get("/api/player-stats", async (req, res) => {
     try {
       const userId = (req.query.userId as string) || (req.headers["x-user-id"] as string);

@@ -1,0 +1,1 @@
+- [Hunter Profile & 6-stat system](hunter-profile.md) — INT/DIS added as new game stats; DIS is server-derived (no schema change), INT starts at 0 until learning tracking exists.
