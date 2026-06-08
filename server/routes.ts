@@ -31,7 +31,7 @@ import { checkNotificationEligibility, buildNotification, type PreviousState } f
 import { PHASE_NAMES, PHASE_DESCRIPTIONS } from "@shared/schema";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
-import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES, progressToNextPoint, initializeStatProgress, type StatProgressResult } from "./gameLogic/statProgression";
+import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES, progressToNextPoint, initializeStatProgress, processStatProgress, type StatProgressResult } from "./gameLogic/statProgression";
 import type { StatProgress } from "@shared/schema";
 import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, type TaskStatType } from "./gameLogic/xpProgressionSystem";
 import { getStatFromLevel as getStatLevel, getRankFromLevel, getXPForNextLevel as calculateXPRequired, getTotalXPForLevel } from "./gameLogic/levelSystem";
@@ -243,6 +243,7 @@ export async function registerRoutes(
           { key: "INT", val: intVal, pending: 0, color: "var(--int)", icon: "spark"   },
           { key: "DIS", val: disVal, pending: 0, color: "var(--dis)", icon: "crown"   },
         ],
+        pendingStatEvents: (player.statProgress as StatProgress | null)?.pendingEvents ?? [],
         equipment,
         skills,
         _meta: {
@@ -619,21 +620,39 @@ export async function registerRoutes(
 
       // During active onboarding (completing an onboarding session), skip stat XP entirely.
       // Stat progression starts only after the 5-day onboarding journey is complete.
+      let statIncrements: { stat: string; times: number }[] = [];
+      let progressAdded = 0;
+      let cappedByDaily = false;
+
       if (!isOnboardingSession) {
+        const currentProgress = (player.statProgress as StatProgress | null)
+          ?? initializeStatProgress();
+        const currentStats = {
+          strength: Math.floor(player.stats.strength || 1),
+          agility:  Math.floor(player.stats.agility  || 1),
+          sense:    Math.floor(player.stats.sense     || 1),
+          vitality: Math.floor(player.stats.vitality  || 1),
+        };
+        const progressResult = processStatProgress({
+          stat: parsed.data.stat,
+          durationMinutes: parsed.data.durationMinutes,
+          currentStats,
+          currentProgress,
+        });
+
+        // Keep statXP updated for backward compat (statLevels display)
         const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
         const statKey = parsed.data.stat as keyof typeof currentStatXP;
-        const newStatXP = {
+        playerUpdates.statXP = {
           ...currentStatXP,
-          [statKey]: (currentStatXP[statKey] || 0) + guidedXP,
+          [statKey]: (currentStatXP[statKey] || 0) + progressResult.hunterXP,
         };
-        const derivedStats = {
-          strength: getStatLevel(newStatXP.strength).level,
-          agility: getStatLevel(newStatXP.agility).level,
-          sense: getStatLevel(newStatXP.sense).level,
-          vitality: getStatLevel(newStatXP.vitality).level,
-        };
-        playerUpdates.statXP = newStatXP;
-        playerUpdates.stats = derivedStats;
+        playerUpdates.stats = progressResult.updatedStats;
+        playerUpdates.statProgress = progressResult.updatedProgress;
+
+        statIncrements = progressResult.increments;
+        progressAdded = progressResult.progressAdded;
+        cappedByDaily = progressResult.cappedByDaily;
       }
 
       // Increment streak for first-time onboarding session completions (not for chained/paired sessions)
@@ -654,6 +673,9 @@ export async function registerRoutes(
         tierMultiplier,
         antiGrindMultiplier,
         dailyCapReached: remainingCap === 0,
+        statIncrements,
+        progressAdded,
+        cappedByDaily,
       });
     } catch (error) {
       console.error("[complete-guided-session] Error for player", req.params.id, "session", req.body?.sessionId, ":", error);

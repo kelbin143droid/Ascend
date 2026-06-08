@@ -83,27 +83,19 @@ export function processStatProgress(params: {
       dailyProgress: dailyProgressSoFar + progressAdded,
       lastDate: today,
     },
+    pendingEvents: increments.length > 0 ? increments : undefined,
   };
 
   return { updatedStats, updatedProgress, increments, progressAdded, cappedByDaily, hunterXP };
 }
 
-export function initializeStatProgress(stats: Stats): StatProgress {
-  const init = (statVal: number) => {
-    const floored = Math.floor(statVal);
-    const fraction = statVal - floored;
-    const threshold = progressToNextPoint(floored);
-    return {
-      progress: Math.round(fraction * threshold),
-      dailyProgress: 0,
-      lastDate: "",
-    };
-  };
+export function initializeStatProgress(_stats?: Stats): StatProgress {
+  const init = () => ({ progress: 0, dailyProgress: 0, lastDate: "" });
   return {
-    strength: init(stats.strength),
-    agility:  init(stats.agility),
-    sense:    init(stats.sense),
-    vitality: init(stats.vitality),
+    strength: init(),
+    agility:  init(),
+    sense:    init(),
+    vitality: init(),
   };
 }
 

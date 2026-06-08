@@ -32,13 +32,17 @@ export const statProgressEntrySchema = z.object({
 });
 export type StatProgressEntry = z.infer<typeof statProgressEntrySchema>;
 
+const statProgressEventSchema = z.object({ stat: z.string(), times: z.number() });
+
 export const statProgressSchema = z.object({
   strength: statProgressEntrySchema,
   agility: statProgressEntrySchema,
   sense: statProgressEntrySchema,
   vitality: statProgressEntrySchema,
+  pendingEvents: z.array(statProgressEventSchema).optional(),
 });
 export type StatProgress = z.infer<typeof statProgressSchema>;
+export type StatProgressEvent = z.infer<typeof statProgressEventSchema>;
 
 export const DEFAULT_STAT_PROGRESS: StatProgress = {
   strength: { progress: 0, dailyProgress: 0, lastDate: "" },
