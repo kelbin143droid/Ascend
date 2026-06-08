@@ -12,11 +12,12 @@ import {
   type HabitCompletion, type InsertHabitCompletion,
   type Badge, type InsertBadge,
   type BadHabit, type InsertBadHabit, type UpdateBadHabit,
+  type StatProgress, DEFAULT_STAT_PROGRESS,
   PHASE_UNLOCK_DATA 
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, like, desc, sql } from "drizzle-orm";
-import { processSession, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
+import { processStatProgress, initializeStatProgress, updateFatigueTracker, getTodayDateString, type SessionResult } from "./gameLogic/statProgression";
 import { updateStamina } from "./gameLogic/xpProgressionSystem";
 import { STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
 
@@ -223,44 +224,64 @@ export class DatabaseStorage implements IStorage {
     const player = await this.getPlayer(id);
     if (!player) return undefined;
 
-    const fatigue = player.fatigue || { date: "", sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 } };
+    // Initialize progress meter for existing players that predate this system
+    const currentProgress: StatProgress = (player.statProgress as StatProgress | null) 
+      ?? initializeStatProgress(player.stats);
 
-    const result = processSession({
-      xp: input.xp,
+    // Floor existing stats to integers on first migration
+    const currentStats = {
+      strength: Math.floor(player.stats.strength || 1),
+      agility:  Math.floor(player.stats.agility  || 1),
+      sense:    Math.floor(player.stats.sense     || 1),
+      vitality: Math.floor(player.stats.vitality  || 1),
+    };
+
+    const progressResult = processStatProgress({
       stat: input.stat,
-      currentStats: player.stats,
-      phase: player.phase,
       durationMinutes: input.durationMinutes,
-      fatigue
+      currentStats,
+      currentProgress,
     });
 
-    const newFatigue = updateFatigueTracker(fatigue, input.stat);
-
-    const { getStatFromLevel } = await import("./gameLogic/levelSystem");
+    // Keep statXP updated for the statLevels display (backward compat)
     const currentStatXP = player.statXP || { strength: 0, agility: 0, sense: 0, vitality: 0 };
     const statKey = input.stat as keyof typeof currentStatXP;
     const newStatXP = {
       ...currentStatXP,
-      [statKey]: (currentStatXP[statKey] || 0) + result.levelXP,
+      [statKey]: (currentStatXP[statKey] || 0) + progressResult.hunterXP,
     };
 
-    const derivedStats = {
-      strength: getStatFromLevel(newStatXP.strength).level,
-      agility: getStatFromLevel(newStatXP.agility).level,
-      sense: getStatFromLevel(newStatXP.sense).level,
-      vitality: getStatFromLevel(newStatXP.vitality).level,
-    };
-
+    const newFatigue = updateFatigueTracker(
+      player.fatigue || { date: "", sessions: { strength: 0, agility: 0, sense: 0, vitality: 0 } },
+      input.stat
+    );
     const newStamina = updateStamina(newStatXP.strength, newStatXP.agility);
 
     await this.updatePlayer(id, {
-      stats: derivedStats,
+      stats: progressResult.updatedStats,
+      statProgress: progressResult.updatedProgress,
       fatigue: newFatigue,
       statXP: newStatXP,
       stamina: newStamina,
     });
 
-    const updatedPlayer = await this.gainExp(id, result.levelXP);
+    const updatedPlayer = await this.gainExp(id, progressResult.hunterXP);
+
+    const incMsg = progressResult.increments.length > 0
+      ? progressResult.increments.map(i => `+${i.times} ${i.stat.toUpperCase()}`).join(', ') + '!'
+      : progressResult.cappedByDaily
+        ? `Daily cap reached — XP still earned`
+        : `+${Math.round(progressResult.progressAdded)} progress toward ${input.stat.toUpperCase()}`;
+
+    const result: SessionResult = {
+      updatedStats: progressResult.updatedStats,
+      levelXP: progressResult.hunterXP,
+      message: incMsg,
+      phaseLimitReached: false,
+      statIncrements: progressResult.increments,
+      progressAdded: progressResult.progressAdded,
+      cappedByDaily: progressResult.cappedByDaily,
+    };
 
     return { player: updatedPlayer!, result };
   }
@@ -609,6 +630,7 @@ export class DatabaseStorage implements IStorage {
       onboardingCompleted: 0,
       statXP: { strength: 0, agility: 0, sense: 0, vitality: 0 },
       stats: { strength: 1, agility: 1, sense: 1, vitality: 1 },
+      statProgress: DEFAULT_STAT_PROGRESS,
       trainingScaling: {
         strength: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
         agility: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },

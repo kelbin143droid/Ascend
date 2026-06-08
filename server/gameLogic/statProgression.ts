@@ -1,5 +1,5 @@
-import type { Stats, StatName, FatigueData } from "@shared/schema";
-import { PHASE_STAT_CAPS, FATIGUE_MULTIPLIERS } from "@shared/schema";
+import type { Stats, StatName, FatigueData, StatProgress } from "@shared/schema";
+import { PHASE_STAT_CAPS, FATIGUE_MULTIPLIERS, DEFAULT_STAT_PROGRESS } from "@shared/schema";
 
 export interface SessionResult {
   updatedStats: Stats;
@@ -7,6 +7,104 @@ export interface SessionResult {
   message: string;
   phaseLimitReached: boolean;
   spilloverApplied?: { stat: StatName; amount: number };
+  statIncrements?: { stat: StatName; times: number }[];
+  progressAdded?: number;
+  cappedByDaily?: boolean;
+}
+
+// ── Progress-meter constants (tunable) ───────────────────────────────────
+export const PROGRESS_TUNING = {
+  BASE_COST: 50,
+  COST_STEP: 10,
+  DAILY_CAP: 120,
+} as const;
+
+export const PROGRESS_RATES_PER_MINUTE: Record<StatName, number> = {
+  strength: 1,    // exercise: 1 progress/min
+  agility: 1,     // stretching/yoga: 1 progress/min
+  sense: 2,       // meditation: 2 progress/min (potent)
+  vitality: 0.2,  // sleep: ~12/hr = 0.2/min
+};
+
+// ── Core progress-meter functions ─────────────────────────────────────────
+export function progressToNextPoint(currentVal: number): number {
+  return PROGRESS_TUNING.BASE_COST + currentVal * PROGRESS_TUNING.COST_STEP;
+}
+
+export interface StatProgressResult {
+  updatedStats: Stats;
+  updatedProgress: StatProgress;
+  increments: { stat: StatName; times: number }[];
+  progressAdded: number;
+  cappedByDaily: boolean;
+  hunterXP: number;
+}
+
+export function processStatProgress(params: {
+  stat: StatName;
+  durationMinutes: number;
+  currentStats: Stats;
+  currentProgress: StatProgress;
+  streakMultiplier?: number;
+}): StatProgressResult {
+  const { stat, durationMinutes, currentStats, currentProgress, streakMultiplier = 0 } = params;
+  const today = getTodayDateString();
+  const entry = currentProgress[stat];
+
+  const resetDaily = entry.lastDate !== today;
+  const dailyProgressSoFar = resetDaily ? 0 : entry.dailyProgress;
+
+  const ratePerMin = PROGRESS_RATES_PER_MINUTE[stat];
+  const rawProgress = durationMinutes * ratePerMin * (1 + streakMultiplier);
+
+  const remainingCap = Math.max(0, PROGRESS_TUNING.DAILY_CAP - dailyProgressSoFar);
+  const cappedByDaily = rawProgress > remainingCap;
+  const progressAdded = Math.min(rawProgress, remainingCap);
+
+  const hunterXP = Math.max(1, Math.round(durationMinutes * 2 * (1 + streakMultiplier)));
+
+  let meterProgress = entry.progress + progressAdded;
+  let statVal = Math.floor(currentStats[stat]);
+  const increments: { stat: StatName; times: number }[] = [];
+  let incrementCount = 0;
+
+  while (meterProgress >= progressToNextPoint(statVal)) {
+    meterProgress -= progressToNextPoint(statVal);
+    statVal += 1;
+    incrementCount++;
+  }
+  if (incrementCount > 0) increments.push({ stat, times: incrementCount });
+
+  const updatedStats: Stats = { ...currentStats, [stat]: statVal };
+  const updatedProgress: StatProgress = {
+    ...currentProgress,
+    [stat]: {
+      progress: meterProgress,
+      dailyProgress: dailyProgressSoFar + progressAdded,
+      lastDate: today,
+    },
+  };
+
+  return { updatedStats, updatedProgress, increments, progressAdded, cappedByDaily, hunterXP };
+}
+
+export function initializeStatProgress(stats: Stats): StatProgress {
+  const init = (statVal: number) => {
+    const floored = Math.floor(statVal);
+    const fraction = statVal - floored;
+    const threshold = progressToNextPoint(floored);
+    return {
+      progress: Math.round(fraction * threshold),
+      dailyProgress: 0,
+      lastDate: "",
+    };
+  };
+  return {
+    strength: init(stats.strength),
+    agility:  init(stats.agility),
+    sense:    init(stats.sense),
+    vitality: init(stats.vitality),
+  };
 }
 
 export interface CompleteSessionParams {

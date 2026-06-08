@@ -31,11 +31,23 @@ import { checkNotificationEligibility, buildNotification, type PreviousState } f
 import { PHASE_NAMES, PHASE_DESCRIPTIONS } from "@shared/schema";
 import { z } from "zod";
 import { calculateDerivedStats, type DerivedStats } from "./gameLogic/stats";
-import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES } from "./gameLogic/statProgression";
+import { getDisplayStats, getTodayDateString, getFatigueMultiplier, calculateHPUpdate, getVitalityMinutesForDate, VITALITY_GOAL_MINUTES, calculateMPUpdate, getSenseMinutesForDate, SENSE_GOAL_MINUTES, progressToNextPoint, initializeStatProgress, type StatProgressResult } from "./gameLogic/statProgression";
+import type { StatProgress } from "@shared/schema";
 import { processTaskCompletion, applyMinimumViableDay, applyPenalty, updateStamina, getCompletionPercentage, type TaskStatType } from "./gameLogic/xpProgressionSystem";
 import { getStatFromLevel as getStatLevel, getRankFromLevel, getXPForNextLevel as calculateXPRequired, getTotalXPForLevel } from "./gameLogic/levelSystem";
 import { getFlowState, updateFlowAfterCompletion } from "./gameLogic/flowEngine";
 import { PHASE1_DAILY_TARGET_XP, PHASE1_XP, STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
+
+function buildProgressInfo(stat: StatName, displayVal: number, player: any) {
+  const sp = player.statProgress as StatProgress | null;
+  const progress = sp ? sp[stat] : initializeStatProgress(player.stats)[stat];
+  const threshold = progressToNextPoint(Math.floor(displayVal));
+  return {
+    progressMeter: Math.round(progress?.progress ?? 0),
+    progressThreshold: threshold,
+    dailyProgressUsed: Math.round(progress?.dailyProgress ?? 0),
+  };
+}
 
 function getWeekStartDate(date: Date = new Date()): string {
   const d = new Date(date);
@@ -128,13 +140,13 @@ export async function registerRoutes(
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
-      const stats   = player.stats   || { strength: 1, agility: 1, sense: 1, vitality: 1 };
-      const bonuses = (player.bonusStats as Record<string, number>) || {};
+      const rawStats = player.stats || { strength: 1, agility: 1, sense: 1, vitality: 1 };
+      const bonuses  = (player.bonusStats as Record<string, number>) || {};
 
-      const str = (stats.strength  || 1) + (bonuses.strength  || 0);
-      const agi = (stats.agility   || 1) + (bonuses.agility   || 0);
-      const vit = (stats.vitality  || 1) + (bonuses.vitality  || 0);
-      const sen = (stats.sense     || 1) + (bonuses.sense     || 0);
+      const str = Math.floor(rawStats.strength  || 1) + (bonuses.strength  || 0);
+      const agi = Math.floor(rawStats.agility   || 1) + (bonuses.agility   || 0);
+      const vit = Math.floor(rawStats.vitality  || 1) + (bonuses.vitality  || 0);
+      const sen = Math.floor(rawStats.sense     || 1) + (bonuses.sense     || 0);
 
       // INT: no learning-activity tracking yet — starts at 0
       const intVal = 0;
@@ -224,12 +236,12 @@ export async function registerRoutes(
         availablePoints: player.statPoints || 0,
         cpPerPoint:      12,   // client-side preview only; server recomputes on confirm
         stats: [
-          { key: "STR", val: str,    pending: 0, color: "var(--str)", icon: "fist"   },
-          { key: "AGI", val: agi,    pending: 0, color: "var(--agi)", icon: "wing"   },
-          { key: "VIT", val: vit,    pending: 0, color: "var(--vit)", icon: "shield" },
-          { key: "SEN", val: sen,    pending: 0, color: "var(--sen)", icon: "eye"    },
-          { key: "INT", val: intVal, pending: 0, color: "var(--int)", icon: "spark"  },
-          { key: "DIS", val: disVal, pending: 0, color: "var(--dis)", icon: "crown"  },
+          { key: "STR", val: str,    pending: 0, color: "var(--str)", icon: "fist",   ...buildProgressInfo("strength",  str,    player) },
+          { key: "AGI", val: agi,    pending: 0, color: "var(--agi)", icon: "wing",   ...buildProgressInfo("agility",   agi,    player) },
+          { key: "VIT", val: vit,    pending: 0, color: "var(--vit)", icon: "shield", ...buildProgressInfo("vitality",  vit,    player) },
+          { key: "SEN", val: sen,    pending: 0, color: "var(--sen)", icon: "eye",    ...buildProgressInfo("sense",     sen,    player) },
+          { key: "INT", val: intVal, pending: 0, color: "var(--int)", icon: "spark"   },
+          { key: "DIS", val: disVal, pending: 0, color: "var(--dis)", icon: "crown"   },
         ],
         equipment,
         skills,
@@ -789,7 +801,12 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Player not found" });
       }
       
-      res.json(attachDerivedStats(result.player, result.result.message));
+      res.json({
+        ...attachDerivedStats(result.player, result.result.message),
+        statIncrements: result.result.statIncrements ?? [],
+        progressAdded: result.result.progressAdded ?? 0,
+        cappedByDaily: result.result.cappedByDaily ?? false,
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to complete session" });
     }

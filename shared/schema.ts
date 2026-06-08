@@ -25,6 +25,28 @@ export const fatigueDataSchema = z.object({
 
 export type FatigueData = z.infer<typeof fatigueDataSchema>;
 
+export const statProgressEntrySchema = z.object({
+  progress: z.number().default(0),
+  dailyProgress: z.number().default(0),
+  lastDate: z.string().default(""),
+});
+export type StatProgressEntry = z.infer<typeof statProgressEntrySchema>;
+
+export const statProgressSchema = z.object({
+  strength: statProgressEntrySchema,
+  agility: statProgressEntrySchema,
+  sense: statProgressEntrySchema,
+  vitality: statProgressEntrySchema,
+});
+export type StatProgress = z.infer<typeof statProgressSchema>;
+
+export const DEFAULT_STAT_PROGRESS: StatProgress = {
+  strength: { progress: 0, dailyProgress: 0, lastDate: "" },
+  agility: { progress: 0, dailyProgress: 0, lastDate: "" },
+  sense: { progress: 0, dailyProgress: 0, lastDate: "" },
+  vitality: { progress: 0, dailyProgress: 0, lastDate: "" },
+};
+
 export const PHASE_STAT_CAPS: Record<number, number> = {
   1: 30,
   2: 60,
@@ -307,6 +329,7 @@ export const players = pgTable("players", {
   statXP: jsonb("stat_xp").$type<StatXP>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0 }),
   statPoints: integer("stat_points").notNull().default(0),
   bonusStats: jsonb("bonus_stats").$type<Stats>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0 }),
+  statProgress: jsonb("stat_progress").$type<StatProgress | null>().default(null),
   streak: integer("streak").notNull().default(0),
   consecutiveMissedDays: integer("consecutive_missed_days").notNull().default(0),
   stamina: integer("stamina").notNull().default(1),
