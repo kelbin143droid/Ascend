@@ -1,0 +1,185 @@
+# Hunter System — Stat & Progression Spec
+
+**Purpose:** Defines how real-life productivity activity becomes in-game power. This is the rulebook for the "work → power" pipeline. Every rule here is **server-authoritative** — the game and profile UI only *display* values the server computes. Numbers marked _(tunable)_ are starting defaults meant to be adjusted once real player data exists.
+
+---
+
+## 1. Core Principles
+
+1. **The server is the only authority.** It decides what activity counts, how much it's worth, and what the resulting stats and combat power are. The client never sends stat values, XP, or points to be trusted — it sends *activity records*, and the server derives everything.
+2. **Two sources of stat growth.** Most of a stat comes from doing the matching real-life activity (typed growth). A smaller pool comes from leveling up and is freely allocated by the player.
+3. **Reward consistency over bursts.** The system is tuned so that showing up every day beats cramming. This is intentional — it aligns the optimal in-game strategy with the real-life behavior the app exists to build.
+
+---
+
+## 2. The Six Stats
+
+| Stat | Real-Life Source | In-Game Effect |
+|------|------------------|----------------|
+| **STR** | Exercise, workouts | Physical damage |
+| **AGI** | Stretching, yoga | Speed, dodge, critical hits |
+| **VIT** | Sleep, recovery | Health, defense |
+| **SEN** | Meditation, mindfulness | Mana regen, awareness, resource recovery |
+| **INT** | Reading, studying, courses | Magic power, ability damage |
+| **DIS** | Habit streaks, daily completion | Dungeon energy, XP efficiency, reward bonuses, long-term progression |
+
+STR, AGI, VIT, SEN, and INT are **combat stats**. DIS is a **meta stat** — see §6.
+
+---
+
+## 3. Stat Growth — Source 1: Typed Growth (automatic, permanent)
+
+Each stat has a hidden **progress meter**. Logging the matching activity adds progress. When the meter fills, the stat increases by **+1** and the meter resets — with the **cost of the next point rising** as the stat climbs. Early points come quickly; high points take sustained effort (mirrors real diminishing returns and prevents trivial inflation).
+
+**Cost curve for the next point:**
+```
+progressToNextPoint(currentValue) = BASE_COST + (currentValue × COST_STEP)
+```
+_(tunable: BASE_COST ≈ 50, COST_STEP ≈ 10)_
+Example: STR 0→1 needs 50 progress; STR 15→16 needs 200; STR 40→41 needs 450.
+
+**Progress earned per activity** _(tunable starting rates — normalize by genuine effort):_
+
+| Activity | Stat | Progress |
+|----------|------|----------|
+| Exercise | STR | 1 per minute |
+| Stretching / yoga | AGI | 1 per minute |
+| Sleep | VIT | ~12 per hour (a full ~7–8h night is a large chunk) |
+| Meditation | SEN | 2 per minute (potent per-minute) |
+| Reading / studying | INT | 1 per minute |
+| (DIS earned differently — see §6) | DIS | — |
+
+These increases are **committed immediately and permanently**. They cannot be removed (they were earned by real work). In UI terms they raise `stats[].val` directly.
+
+**Daily cap:** progress toward any single stat is capped per day _(tunable ≈ 120 progress/day per stat, ~2h equivalent)_. Activity beyond the cap stops counting toward that stat (it may still earn Hunter XP — see §5). This blocks marathon-gaming a single stat.
+
+---
+
+## 4. Stat Growth — Source 2: Free Points (allocated)
+
+Leveling up the hunter grants free stat points the player allocates manually via the +/− confirm panel in the profile UI.
+
+- Each hunter level grants **FREE_POINTS_PER_LEVEL** _(tunable ≈ 3)_ points → added to `availablePoints`.
+- The player stages points with +, rearranges freely, and locks them in with **Confirm**.
+- **Minus only removes points staged this session** — it can never drop a stat below its committed base (typed growth + previously confirmed allocations).
+- On Confirm, the server re-validates the player actually had those points before applying them. No free respec of confirmed points.
+
+A stat's displayed `val` = typed growth + confirmed allocations. `pending` = points staged but not yet confirmed.
+
+---
+
+## 5. Hunter XP & Leveling
+
+All activity (regardless of category, and even past a stat's daily cap) feeds a general **Hunter XP** pool, separate from typed stat growth.
+
+```
+xpGained = baseActivityXP × (1 + streakMultiplier) × (1 + DIS_xpBonus)
+```
+_(baseActivityXP tunable, e.g. ~2 XP per effort-minute)_
+
+**Level curve** — each level costs more than the last:
+```
+xpForNextLevel(L) = round(XP_BASE × L ^ XP_EXPONENT)
+```
+_(tunable: XP_BASE ≈ 100, XP_EXPONENT ≈ 1.3–1.6)_
+
+Maps to UI fields: `level`, `xp` (current toward next), `xpMax` (= `xpForNextLevel(level)`). Each level-up adds `FREE_POINTS_PER_LEVEL` to `availablePoints` (§4).
+
+---
+
+## 6. DIS — The Meta Stat (the most important design in the system)
+
+DIS contributes **little to raw combat power** but **multiplies the rate at which everything else grows**. A high-DIS player doesn't out-hit a min-maxer in a single fight; they level faster, earn better rewards, and can run more content — and those compounding edges dominate over weeks. Consistency wins the long game, which is exactly the behavior the app wants to instill.
+
+DIS has **two parts**:
+
+### 6a. Permanent DIS stat
+- Grows slowly with **total consistency** (e.g. +1 DIS per N days of maintained streak / daily completions) _(tunable)_.
+- **Never decreases** — earned discipline stays earned.
+- Because it accrues across calendar days, it is the one stat that **cannot be faked in a burst**.
+- Drives permanent meta bonuses (all bounded):
+  - **Dungeon energy** (stamina to run dungeons): `maxEnergy = BASE_ENERGY + DIS × ENERGY_PER_DIS`
+  - **Reward / loot bonus:** `+ DIS × LOOT_PER_DIS%`, capped _(tunable cap)_
+  - **XP efficiency:** `DIS_xpBonus = min(DIS × XP_PER_DIS%, XP_BONUS_CAP)` _(tunable cap ≈ +50%)_
+
+### 6b. Active streak multiplier (temporary)
+- Scales with the player's **current unbroken streak**: `streakMultiplier = min(streakDays × STREAK_STEP, STREAK_CAP)` _(tunable, e.g. +1%/day capped at +50%)_.
+- Applies to XP and typed stat progress.
+- **Resets to 0 if a day is missed.** The streak resets; the permanent DIS stat does not. This creates "don't break the chain" tension without permanently punishing a slip.
+
+**Safety valve:** every DIS bonus is capped, and DIS itself is time-gated, so the compounding is strong but never runaway.
+
+---
+
+## 7. Combat Power
+
+```
+CombatPower = ( STR×W_STR + INT×W_INT + VIT×W_VIT
+              + AGI×W_AGI + SEN×W_SEN + DIS×W_DIS )
+              × classMultiplier
+              + gearBonus
+```
+
+**Starting weights** _(tunable):_
+
+| Stat | Weight | Rationale |
+|------|--------|-----------|
+| STR | 12 | primary physical damage |
+| INT | 12 | primary magic/ability damage |
+| VIT | 10 | effective health |
+| AGI | 9 | crit / dodge → effective DPS & survival |
+| SEN | 7 | sustain / utility |
+| DIS | 3 | low direct power — its value is meta (§6) |
+
+**classMultiplier:** the player's main class amplifies its signature stats (e.g. Warrior boosts STR/VIT, Sage boosts INT, Shadow boosts AGI, Warden boosts VIT) _(tunable ≈ ×1.2–1.5 on signature stats)._
+
+Combat power is **always server-computed** and returned to the UI as `combatPower`. The `cpPerPoint` value in the prototype is a placeholder and is replaced by this formula.
+
+---
+
+## 8. Anti-Gaming Guardrails (all server-side)
+
+1. **Validate against recorded activity**, never client claims.
+2. **Daily caps** per stat (§3) — one long session can't become unlimited points.
+3. **Rising point cost** (§3) — diminishing returns on every stat.
+4. **Diminishing returns within a day** for repeated trivial actions (e.g. 1st–5th task full value, later tasks taper) _(tunable)_.
+5. **Consistency > bursts** — streaks (§6) are time-gated and far harder to fake than a one-day flood of activity.
+6. **Bounded DIS** — every DIS-driven multiplier is capped (§6).
+
+---
+
+## 9. Data Contract → Profile UI
+
+The server assembles the player's state and the UI renders it. Fields this spec produces:
+
+| UI field | Produced by |
+|----------|-------------|
+| `stats[].val` | typed growth (§3) + confirmed allocations (§4) |
+| `availablePoints` | accumulated free points from leveling (§5), minus confirmed spend |
+| `level`, `xp`, `xpMax` | leveling (§5) |
+| `combatPower` | combat power formula (§7) |
+| `chosenClass`, `classes[].lv` | class system (separate spec) |
+
+Writes the server must validate:
+- **Allocate / Confirm Changes** → player truly had the points before applying.
+- **Confirm Class** → player hasn't already chosen (and any later class switch is gated, not free).
+
+---
+
+## 10. Tuning Knobs (quick reference)
+
+| Knob | Default | Controls |
+|------|---------|----------|
+| `BASE_COST` / `COST_STEP` | 50 / 10 | how fast stats rise from activity |
+| per-activity progress rates | see §3 | relative value of each activity |
+| daily stat cap | ~120 | max single-stat progress/day |
+| `FREE_POINTS_PER_LEVEL` | 3 | free points per hunter level |
+| `XP_BASE` / `XP_EXPONENT` | 100 / 1.3–1.6 | level curve steepness |
+| `baseActivityXP` | ~2/min | XP rate from activity |
+| DIS gain rate | +1 per N streak days | how fast permanent DIS grows |
+| `STREAK_STEP` / `STREAK_CAP` | +1%/day / +50% | active streak multiplier |
+| XP / loot / energy per DIS + caps | tunable | strength of the meta stat |
+| combat power weights | see §7 | how stats convert to power |
+| `classMultiplier` | ×1.2–1.5 | class signature-stat boost |
+
+> All defaults are first guesses. The real values come from watching how actual players progress and adjusting so that a healthy daily routine produces a satisfying — not trivial, not punishing — rate of growth.
