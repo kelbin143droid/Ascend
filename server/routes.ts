@@ -635,13 +635,19 @@ export async function registerRoutes(
         }
       }
 
+      // Apply streak multiplier to awarded XP for non-onboarding sessions
+      const streakMult = computeStreakMultiplier(player.streak || 0);
+      const finalPlayerXP = !isOnboardingSession && streakMult > 0
+        ? Math.round(playerXP * (1 + streakMult))
+        : playerXP;
+
       const updatedScaling = processSessionCompletion(scaling, category, player.phase || 1);
 
       await storage.createHabitCompletion({
         habitId: sessionHabitId,
         userId: req.params.id,
         durationMinutes: parsed.data.durationMinutes,
-        xpEarned: playerXP,
+        xpEarned: finalPlayerXP,
       });
 
       const stabilityData = player.stability || {
@@ -703,13 +709,14 @@ export async function registerRoutes(
       }
       await storage.updatePlayer(req.params.id, playerUpdates);
 
-      const updatedPlayer = await storage.gainExp(req.params.id, playerXP);
+      const updatedPlayer = await storage.gainExp(req.params.id, finalPlayerXP);
 
       res.json({
         success: true,
-        xpEarned: playerXP,
+        xpEarned: finalPlayerXP,
         statXpEarned: guidedXP,
-        bonusXP: playerXP - guidedXP,
+        bonusXP: finalPlayerXP - guidedXP,
+        streakMultiplier: streakMult,
         stabilityScore: newScore,
         trainingScaling: updatedScaling,
         tierMultiplier,
