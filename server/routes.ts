@@ -80,13 +80,25 @@ interface PlayerWithDerived extends Player {
   };
 }
 
+function computeStreakMultiplier(streak: number): number {
+  return Math.min((streak || 0) * 0.01, 0.5);
+}
+
+function disGrowthFromStreak(oldStreak: number, newStreak: number, currentDiscipline: number): number {
+  const oldMilestone = Math.floor(oldStreak / 7);
+  const newMilestone = Math.floor(newStreak / 7);
+  const gained = Math.max(0, newMilestone - oldMilestone);
+  return currentDiscipline + gained;
+}
+
 function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithDerived {
-  const bonusStats = player.bonusStats || { strength: 0, agility: 0, sense: 0, vitality: 0 };
+  const bonusStats = player.bonusStats || { strength: 0, agility: 0, sense: 0, vitality: 0, discipline: 0 };
   const totalStats = {
-    strength: player.stats.strength + (bonusStats.strength ?? 0),
-    agility: player.stats.agility + (bonusStats.agility ?? 0),
-    sense: player.stats.sense + (bonusStats.sense ?? 0),
-    vitality: player.stats.vitality + (bonusStats.vitality ?? 0),
+    strength:   player.stats.strength   + (bonusStats.strength   ?? 0),
+    agility:    player.stats.agility    + (bonusStats.agility    ?? 0),
+    sense:      player.stats.sense      + (bonusStats.sense      ?? 0),
+    vitality:   player.stats.vitality   + (bonusStats.vitality   ?? 0),
+    discipline: (player.stats.discipline ?? 0) + ((bonusStats as any).discipline ?? 0),
   };
   const displayStats = getDisplayStats(totalStats);
   
@@ -153,20 +165,28 @@ export async function registerRoutes(
       // INT: no learning-activity tracking yet — starts at 0
       const intVal = 0;
 
-      // DIS: derived from streak + consecutive active days (no new DB column needed)
-      const stability = (player.stability as Record<string, any>) || {};
-      const consecutiveActiveDays: number = stability.consecutiveActiveDays ?? 0;
-      const disVal = Math.min(50, Math.max(0,
-        Math.floor((player.streak || 0) * 2 + consecutiveActiveDays * 0.5),
-      ));
+      // DIS: permanent stat stored in player.stats, grown via streak milestones
+      const disVal = Math.floor((rawStats as any).discipline ?? 0) + (bonuses.discipline || 0);
 
-      // Server-computed combat power
-      const combatPower =
-        str * 12 + agi * 10 + vit * 8 + sen * 8 + intVal * 6 + disVal * 6 + player.level * 20;
+      // Streak multiplier (shown in profile, also used by progress engine)
+      const streakMultiplier = computeStreakMultiplier(player.streak || 0);
+
+      // Server-computed combat power: weighted formula × class multiplier
+      const CLASS_MULTIPLIERS: Record<string, number> = {
+        WARRIOR: 1.3,
+        SAGE:    1.3,
+        SHADOW:  1.4,
+        WARDEN:  1.3,
+      };
+      const jobUpper2 = (player.job || "").toUpperCase();
+      const classMultiplier = CLASS_MULTIPLIERS[jobUpper2] ?? 1.0;
+      const combatPower = Math.round(
+        (str * 12 + intVal * 12 + vit * 10 + agi * 9 + sen * 7 + disVal * 3) * classMultiplier
+      );
 
       // Class index from job string
       const CLASS_NAMES = ["WARRIOR", "SAGE", "SHADOW", "WARDEN"] as const;
-      const jobUpper  = (player.job || "").toUpperCase();
+      const jobUpper  = jobUpper2;
       const jobIdx    = CLASS_NAMES.indexOf(jobUpper as any);
       const chosenClass: number | null = jobIdx >= 0 ? jobIdx : null;
 
@@ -255,6 +275,7 @@ export async function registerRoutes(
           { key: "DIS", val: disVal, pending: 0, color: "var(--dis)", icon: "crown"   },
         ],
         pendingStatEvents: pendingEvents,
+        streakMultiplier,
         equipment,
         skills,
         _meta: {
@@ -639,16 +660,18 @@ export async function registerRoutes(
         const currentProgress = (player.statProgress as StatProgress | null)
           ?? initializeStatProgress();
         const currentStats = {
-          strength: Math.floor(player.stats.strength || 1),
-          agility:  Math.floor(player.stats.agility  || 1),
-          sense:    Math.floor(player.stats.sense     || 1),
-          vitality: Math.floor(player.stats.vitality  || 1),
+          strength:   Math.floor(player.stats.strength   || 1),
+          agility:    Math.floor(player.stats.agility    || 1),
+          sense:      Math.floor(player.stats.sense      || 1),
+          vitality:   Math.floor(player.stats.vitality   || 1),
+          discipline: Math.floor((player.stats as any).discipline ?? 0),
         };
         const progressResult = processStatProgress({
           stat: parsed.data.stat,
           durationMinutes: parsed.data.durationMinutes,
           currentStats,
           currentProgress,
+          streakMultiplier: computeStreakMultiplier(player.streak || 0),
         });
 
         // Keep statXP updated for backward compat (statLevels display)
@@ -941,6 +964,13 @@ export async function registerRoutes(
         streak: mvdResult.newStreak,
         lastMVDCheckDate: today,
       };
+
+      // DIS permanent growth: +1 for every 7-streak-day milestone crossed
+      const oldDis = (player.stats as any).discipline ?? 0;
+      const newDis = disGrowthFromStreak(player.streak || 0, mvdResult.newStreak, oldDis);
+      if (newDis !== oldDis) {
+        updates.stats = { ...player.stats, discipline: newDis };
+      }
 
       if (mvdResult.achieved) {
         updates.totalExp = player.totalExp + mvdResult.bonusXP;
@@ -1746,10 +1776,11 @@ export async function registerRoutes(
         [statKey]: (currentStatXP[statKey] || 0) + xpEarned,
       };
       const derivedStats = {
-        strength: getStatFromLevel(newStatXP.strength).level,
-        agility: getStatFromLevel(newStatXP.agility).level,
-        sense: getStatFromLevel(newStatXP.sense).level,
-        vitality: getStatFromLevel(newStatXP.vitality).level,
+        strength:   getStatFromLevel(newStatXP.strength).level,
+        agility:    getStatFromLevel(newStatXP.agility).level,
+        sense:      getStatFromLevel(newStatXP.sense).level,
+        vitality:   getStatFromLevel(newStatXP.vitality).level,
+        discipline: (player.stats as any).discipline ?? 0,
       };
       await storage.updatePlayer(habit.userId, { statXP: newStatXP, stats: derivedStats });
 
@@ -3116,6 +3147,13 @@ export async function registerRoutes(
 
       const newStreak = Math.min(player.streak + dayCount, 999);
       const playerUpdates: Record<string, unknown> = { streak: newStreak };
+
+      // DIS permanent growth: +1 for every 7-streak-day milestone crossed during simulation
+      const simOldDis = (player.stats as any).discipline ?? 0;
+      const simNewDis = disGrowthFromStreak(player.streak || 0, newStreak, simOldDis);
+      if (simNewDis !== simOldDis) {
+        playerUpdates.stats = { ...player.stats, discipline: simNewDis };
+      }
 
       // Auto-complete onboarding when all 5 sessions are simulated
       // Player stays at Level 1 with naturally earned XP (5 XP × 5 days = 25 XP)

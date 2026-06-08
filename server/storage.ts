@@ -230,10 +230,11 @@ export class DatabaseStorage implements IStorage {
 
     // Floor existing stats to integers on first migration
     const currentStats = {
-      strength: Math.floor(player.stats.strength || 1),
-      agility:  Math.floor(player.stats.agility  || 1),
-      sense:    Math.floor(player.stats.sense     || 1),
-      vitality: Math.floor(player.stats.vitality  || 1),
+      strength:   Math.floor(player.stats.strength   || 1),
+      agility:    Math.floor(player.stats.agility    || 1),
+      sense:      Math.floor(player.stats.sense      || 1),
+      vitality:   Math.floor(player.stats.vitality   || 1),
+      discipline: Math.floor((player.stats as any).discipline ?? 0),
     };
 
     const progressResult = processStatProgress({
@@ -241,6 +242,7 @@ export class DatabaseStorage implements IStorage {
       durationMinutes: input.durationMinutes,
       currentStats,
       currentProgress,
+      streakMultiplier: Math.min((player.streak || 0) * 0.01, 0.5),
     });
 
     // Keep statXP updated for the statLevels display (backward compat)
@@ -629,7 +631,7 @@ export class DatabaseStorage implements IStorage {
       consecutiveMissedDays: 0,
       onboardingCompleted: 0,
       statXP: { strength: 0, agility: 0, sense: 0, vitality: 0 },
-      stats: { strength: 1, agility: 1, sense: 1, vitality: 1 },
+      stats: { strength: 1, agility: 1, sense: 1, vitality: 1, discipline: 0 },
       statProgress: DEFAULT_STAT_PROGRESS,
       trainingScaling: {
         strength: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },

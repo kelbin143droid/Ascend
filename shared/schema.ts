@@ -11,6 +11,7 @@ export const statsSchema = z.object({
   agility: z.number(),
   sense: z.number(),
   vitality: z.number(),
+  discipline: z.number().default(0),
 });
 
 export const fatigueDataSchema = z.object({
@@ -294,6 +295,7 @@ export const players = pgTable("players", {
     agility: 1,
     sense: 1,
     vitality: 1,
+    discipline: 0,
   }),
   phase: integer("phase").notNull().default(1),
   gold: integer("gold").notNull().default(0),
@@ -332,7 +334,7 @@ export const players = pgTable("players", {
   dailyStatProgress: jsonb("daily_stat_progress").$type<DailyStatProgress[]>().notNull().default([]),
   statXP: jsonb("stat_xp").$type<StatXP>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0 }),
   statPoints: integer("stat_points").notNull().default(0),
-  bonusStats: jsonb("bonus_stats").$type<Stats>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0 }),
+  bonusStats: jsonb("bonus_stats").$type<Stats>().notNull().default({ strength: 0, agility: 0, sense: 0, vitality: 0, discipline: 0 }),
   statProgress: jsonb("stat_progress").$type<StatProgress | null>().default(null),
   streak: integer("streak").notNull().default(0),
   consecutiveMissedDays: integer("consecutive_missed_days").notNull().default(0),

@@ -236,10 +236,11 @@ export function updateFatigueTracker(
 
 export function floorStats(stats: Stats): Stats {
   return {
-    strength: Math.floor(stats.strength),
-    agility: Math.floor(stats.agility),
-    sense: Math.floor(stats.sense),
-    vitality: Math.floor(stats.vitality),
+    strength:   Math.floor(stats.strength),
+    agility:    Math.floor(stats.agility),
+    sense:      Math.floor(stats.sense),
+    vitality:   Math.floor(stats.vitality),
+    discipline: Math.floor(stats.discipline ?? 0),
   };
 }
 
