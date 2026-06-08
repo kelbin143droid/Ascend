@@ -20,3 +20,8 @@ DIS represents consistency, which is already captured by streak + consecutive ac
 - CSS scoped under `.hp-root` to avoid Tailwind collisions
 - Class picker and stat allocation are local-only (server wiring is TODO — flagged in code comments)
 - `_meta.placeholders` array in API response documents every field that isn't real data yet
+
+## Navigation flow (after move to Future Game)
+- Entry point: Sidebar → Future Game → `/game3d` → compact hunter card at top → tap → `/hunter-profile`
+- Back button on HunterProfilePage: navigates to `/game3d` (label "← FUTURE GAME")
+- Game3DPage no longer has a CHARACTER tab — only DUNGEON and GEAR. Default = DUNGEON.

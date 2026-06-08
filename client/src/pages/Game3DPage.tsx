@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useLocation } from 'wouter';
 import { useGame } from '@/context/GameContext';
 import { SystemLayout } from '@/components/game/SystemLayout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -785,7 +786,8 @@ export default function Game3DPage() {
   const { player, gainExp } = useGame();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<'character'|'dungeon'|'gear'>('character');
+  const [activeTab, setActiveTab] = useState<'dungeon'|'gear'>('dungeon');
+  const [, navigate] = useLocation();
 
   // ── Archetype + class lock ──
   const [archetype, setArchetype] = useState<ArchetypeId>(() => {
@@ -1025,221 +1027,83 @@ export default function Game3DPage() {
 
       <div className="-mx-4 -mt-6">
 
-        {/* ══ CHARACTER SCREEN ════════════════════════════════════════════════ */}
-        <div className="relative overflow-hidden"
-          style={{ background: 'radial-gradient(ellipse 90% 65% at 50% 42%, #1a2540 0%, #0c1220 45%, #060a12 100%)', minHeight: 400 }}>
-          {/* Spotlight + scan */}
-          <div className="absolute pointer-events-none" style={{
-            left:'50%',top:'44%',transform:'translate(-50%,-50%)',
-            width:260,height:260,borderRadius:'50%',
-            background:`radial-gradient(circle, ${archetypeData.color}22 0%, transparent 70%)`,
-          }}/>
-          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.025]">
-            <div className="w-full h-1.5 blur-sm" style={{ background:`linear-gradient(transparent,${archetypeData.color},transparent)`, animation:'rpgScan 7s linear infinite' }}/>
-          </div>
+        {/* ══ HUNTER PROFILE ENTRY ════════════════════════════════════════════ */}
+        <motion.button
+          data-testid="button-open-hunter-profile"
+          onClick={() => navigate('/hunter-profile')}
+          whileTap={{ scale: 0.98 }}
+          className="relative w-full overflow-hidden flex items-center gap-4 px-4 py-4"
+          style={{
+            background: `radial-gradient(ellipse 80% 70% at 30% 50%, ${archetypeData.color}18 0%, #060a12 70%)`,
+            borderBottom: `1px solid ${archetypeData.color}22`,
+          }}
+        >
+          {/* Particle dots */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {[...Array(18)].map((_,i) => (
+            {[...Array(10)].map((_,i) => (
               <div key={i} className="absolute rounded-full" style={{
-                left:`${(i*47+9)%100}%`,top:`${(i*63+11)%100}%`,width:i%3===0?2:1.5,height:i%3===0?2:1.5,
-                backgroundColor:archetypeData.color,opacity:.22,
-                animation:`rpgParticle ${(2.3+(i%4)*0.6).toFixed(1)}s ${((i*0.4)%2.6).toFixed(1)}s ease-in-out infinite`,
+                left:`${(i*43+7)%100}%`, top:`${(i*61+13)%100}%`,
+                width: i%3===0 ? 2 : 1.5, height: i%3===0 ? 2 : 1.5,
+                backgroundColor: archetypeData.color, opacity: .18,
+                animation: `rpgParticle ${(2.2+(i%4)*0.7).toFixed(1)}s ${((i*0.5)%2.4).toFixed(1)}s ease-in-out infinite`,
               }}/>
             ))}
           </div>
 
-          {/* TOP STAT BAR */}
-          <div className="relative z-10 flex items-center gap-2 px-3 pt-2.5 pb-2"
-            style={{ borderBottom:`1px solid ${archetypeData.color}1e` }}>
-            {/* Rank badge */}
-            <div className="flex flex-col items-center justify-center px-2.5 py-1 rounded-lg shrink-0"
-              style={{ background:`${RANK_COLOR[rank]}16`,border:`1px solid ${RANK_COLOR[rank]}40` }}>
-              <span className="text-[7px] font-mono uppercase tracking-widest" style={{ color:RANK_COLOR[rank] }}>RANK</span>
-              <span className="text-xl font-display font-black leading-none" style={{ color:RANK_COLOR[rank] }}>{rank}</span>
+          {/* Avatar */}
+          <div className="relative shrink-0 flex items-end justify-center"
+            style={{ width: 64, height: 80, filter: `drop-shadow(0 0 10px ${archetypeData.color}60)` }}>
+            <RankAura rank={rank} color={evTier.color}/>
+            <ArchetypeAvatar id={archetype} color={archetypeData.color} accent={archetypeData.accent}/>
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0 relative z-10">
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className="flex flex-col items-center justify-center px-2 py-0.5 rounded"
+                style={{ background:`${RANK_COLOR[rank]}16`, border:`1px solid ${RANK_COLOR[rank]}38` }}>
+                <span className="text-[6px] font-mono uppercase tracking-widest" style={{ color:RANK_COLOR[rank] }}>RANK</span>
+                <span className="text-sm font-display font-black leading-none" style={{ color:RANK_COLOR[rank] }}>{rank}</span>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-display font-bold uppercase tracking-wide truncate"
+                  style={{ color: archetypeData.color }}>{player.name || 'AWAKENED'}</div>
+                <div className="text-[8px] font-mono" style={{ color: `${archetypeData.color}80` }}>
+                  {archetypeData.name} · Lv {level} · {evTier.label.toUpperCase()}
+                </div>
+              </div>
             </div>
-            {/* Name + XP */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[10px] font-mono font-bold truncate" style={{ color:archetypeData.color }}>{player.name||'AWAKENED'}</span>
-                <span className="text-[8px] font-mono shrink-0 ml-1" style={{ color:`${archetypeData.color}88` }}>Lv {level} · {withinXP}/{maxXP}</span>
-              </div>
-              <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background:`${archetypeData.color}14` }}>
-                <motion.div className="h-full rounded-full" animate={{ width:`${xpPct}%` }} transition={{ duration:1.2,ease:'easeOut' }}
-                  style={{ background:`linear-gradient(to right,${archetypeData.color},${archetypeData.accent})`,boxShadow:`0 0 8px ${archetypeData.color}70` }}/>
-              </div>
-              <div className="text-[7px] font-mono mt-0.5" style={{ color:evTier.color,opacity:.7,letterSpacing:'0.12em' }}>{evTier.label.toUpperCase()}</div>
+            {/* XP bar */}
+            <div className="w-full h-1 rounded-full overflow-hidden mt-1.5" style={{ background:`${archetypeData.color}14` }}>
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width:`${xpPct}%`, background:`linear-gradient(to right,${archetypeData.color},${archetypeData.accent})`, boxShadow:`0 0 6px ${archetypeData.color}60` }}/>
             </div>
             {/* Stat pills */}
-            <div className="flex gap-1 shrink-0">
+            <div className="flex gap-1.5 mt-2">
               {STAT_META.map(s => (
-                <div key={s.key} className="flex flex-col items-center px-1.5 py-1 rounded"
-                  style={{ background:`${s.color}0e`,border:`1px solid ${s.color}22` }}>
+                <div key={s.key} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded"
+                  style={{ background:`${s.color}0e`, border:`1px solid ${s.color}20` }}>
                   <span className="text-[7px] font-mono font-bold" style={{ color:s.color }}>{s.label}</span>
-                  <span className="text-[11px] font-mono font-bold leading-none tabular-nums" style={{ color:s.color }}>
+                  <span className="text-[9px] font-mono font-bold tabular-nums ml-0.5" style={{ color:s.color }}>
                     {(displayStats[s.key]??1)+(equippedBonuses[s.key]??0)}
                   </span>
-                  {(equippedBonuses[s.key]??0)>0 && <span className="text-[6px] font-mono" style={{ color:`${s.color}80` }}>+{equippedBonuses[s.key]}</span>}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* 3-COLUMN BODY */}
-          <div className="relative z-10 flex items-stretch" style={{ minHeight:300 }}>
-
-            {/* LEFT — class selector */}
-            <div className="flex flex-col items-center justify-center gap-2 py-4 shrink-0"
-              style={{ width:66,borderRight:`1px solid ${archetypeData.color}12` }}>
-              {ARCHETYPES.map(a => {
-                const sel = a.id === archetype;
-                const locked = rpgState.classLocked && rpgState.lockedClass === a.id;
-                return (
-                  <motion.button key={a.id} data-testid={`button-archetype-${a.id}`}
-                    onClick={() => handleArchetypeClick(a.id)} whileTap={{ scale:0.9 }}
-                    className="relative flex flex-col items-center justify-center rounded-xl"
-                    style={{
-                      width:54,height:58,
-                      background:sel?`${a.color}1e`:'rgba(255,255,255,0.025)',
-                      border:`1.5px solid ${sel?a.color:'rgba(255,255,255,0.06)'}`,
-                      boxShadow:sel?`0 0 14px ${a.color}38,inset 0 0 10px ${a.color}0e`:'none',
-                      transition:'all 0.25s ease',
-                    }}>
-                    <div className="w-8 h-9 flex items-end justify-center overflow-hidden">
-                      <ArchetypeAvatar id={a.id} color={a.color} accent={a.accent}/>
-                    </div>
-                    <span className="text-[7px] font-mono font-bold uppercase tracking-tight leading-none mt-0.5"
-                      style={{ color:sel?a.color:'rgba(255,255,255,0.25)' }}>{a.name}</span>
-                    {locked && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center"
-                        style={{ background:a.color, fontSize:7 }}>🔒</div>
-                    )}
-                    {sel && (
-                      <motion.div layoutId="activeIndicator"
-                        className="absolute -right-0.5 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full"
-                        style={{ background:a.color,boxShadow:`0 0 6px ${a.color}` }}/>
-                    )}
-                  </motion.button>
-                );
-              })}
-              {!rpgState.classLocked && (
-                <div className="text-[6px] font-mono text-center leading-tight px-1" style={{ color:'rgba(255,255,255,0.20)' }}>
-                  TAP TO<br/>LOCK IN
-                </div>
-              )}
-            </div>
-
-            {/* CENTER — character */}
-            <div className="flex-1 flex flex-col items-center justify-end pb-2 px-1 relative overflow-hidden">
-              <div className="absolute top-2 left-0 right-0 text-center">
-                <span className="text-[8px] font-mono uppercase tracking-[0.18em]"
-                  style={{ color:archetypeData.color,opacity:.55 }}>{archetypeData.tagline}</span>
-              </div>
-              <motion.div key={archetype} initial={{ opacity:0,scale:0.9 }} animate={{ opacity:1,scale:1 }}
-                transition={{ duration:0.3 }} className="relative flex items-end justify-center"
-                style={{ width:130,height:230,animation:'rpgFloat 5s ease-in-out infinite' }}>
-                <RankAura rank={rank} color={evTier.color}/>
-                <ArchetypeAvatar id={archetype} color={archetypeData.color} accent={archetypeData.accent}/>
-                {['B','A','S'].includes(rank) && (
-                  <div className="absolute pointer-events-none" style={{
-                    top:'20%',left:'50%',transform:'translateX(-50%)',
-                    width:8,height:4,borderRadius:'50%',
-                    background:evTier.color,filter:'blur(2px)',
-                    animation:'rpgBlink 3.2s ease-in-out infinite',
-                  }}/>
-                )}
-                {/* Equipped weapon glow overlay */}
-                {rpgState.equipped.weapon && (
-                  <div className="absolute bottom-0 right-0 pointer-events-none"
-                    style={{ fontSize:20, filter:`drop-shadow(0 0 8px ${RARITY_COLORS[rpgState.equipped.weapon.rarity]})` }}>
-                    {rpgState.equipped.weapon.icon}
-                  </div>
-                )}
-              </motion.div>
-              <div className="w-full flex justify-center -mt-4 relative z-10">
-                <svg viewBox="0 0 160 60" fill="none" className="w-full max-w-[160px]">
-                  <ellipse cx="80" cy="30" rx="72" ry="22" fill={archetypeData.color} opacity=".06"/>
-                  <polygon points="80,8 116,22 116,42 80,56 44,42 44,22" fill={archetypeData.color} fillOpacity=".09" stroke={archetypeData.color} strokeWidth="1.5" strokeOpacity=".4"/>
-                </svg>
-              </div>
-              <div className="text-center mt-0.5 relative z-10">
-                <span className="text-[11px] font-display font-bold uppercase tracking-[0.18em]"
-                  style={{ color:archetypeData.color }} data-testid="archetype-name-label">{archetypeData.name}</span>
-                {rpgState.classLocked && rpgState.lockedClass === archetype && (
-                  <span className="ml-1.5 text-[7px] font-mono px-1 py-0.5 rounded"
-                    style={{ color:archetypeData.color,background:`${archetypeData.color}18`,border:`1px solid ${archetypeData.color}28` }}>LOCKED</span>
-                )}
-              </div>
-            </div>
-
-            {/* RIGHT — stat allocation */}
-            <div className="flex flex-col justify-center py-4 px-2 shrink-0"
-              style={{ width:86,borderLeft:`1px solid ${archetypeData.color}12` }}>
-              <AnimatePresence>
-                {statPoints > 0 && (
-                  <motion.div initial={{ opacity:0,scale:0.85 }} animate={{ opacity:1,scale:1 }} exit={{ opacity:0 }}
-                    className="mb-3 py-1 px-1.5 rounded text-center"
-                    style={{ background:`${archetypeData.accent}1e`,border:`1px solid ${archetypeData.accent}3e` }}>
-                    <span className="text-[8px] font-mono font-bold"
-                      style={{ color:archetypeData.accent,animation:'rpgBlink 2s ease-in-out infinite' }}>
-                      {statPoints} PTS FREE
-                    </span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              {STAT_META.map(s => {
-                const base   = displayStats[s.key]??1;
-                const bonus  = equippedBonuses[s.key]??0;
-                const canAdd = statPoints>0;
-                const pend   = allocatingFor===s.key;
-                return (
-                  <div key={s.key} className="mb-3">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <div>
-                        <div className="flex items-center gap-1">
-                          <span style={{ color:s.color,opacity:.7 }}>{s.icon}</span>
-                          <span className="text-[7px] font-mono font-bold uppercase" style={{ color:s.color }}>{s.label}</span>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-sm font-mono font-bold" style={{ color:s.color }}>{base+bonus}</span>
-                          {bonus>0 && <span className="text-[7px] font-mono" style={{ color:`${s.color}70` }}>+{bonus}</span>}
-                        </div>
-                      </div>
-                      <motion.button data-testid={`button-allocate-${s.label.toLowerCase()}`}
-                        aria-label={`Allocate one point to ${s.label}`}
-                        disabled={!canAdd||allocateMutation.isPending}
-                        onClick={() => { if(!canAdd)return; setAllocatingFor(s.key); allocateMutation.mutate({stat:s.key}); }}
-                        whileTap={canAdd?{scale:0.85}:{}}
-                        className="flex items-center justify-center rounded-lg shrink-0"
-                        style={{
-                          width:26,height:26,
-                          background:canAdd?`${s.color}1e`:'rgba(255,255,255,0.03)',
-                          border:`1.5px solid ${canAdd?s.color:'rgba(255,255,255,0.07)'}`,
-                          opacity:canAdd?1:0.25,
-                          boxShadow:canAdd?`0 0 10px ${s.color}28`:'none',
-                          cursor:canAdd?'pointer':'default',
-                        }}>
-                        {pend
-                          ? <div className="rounded-full border-2 border-t-transparent animate-spin w-3 h-3" style={{ borderColor:s.color,borderTopColor:'transparent' }}/>
-                          : <Plus size={12} style={{ color:canAdd?s.color:'rgba(255,255,255,0.18)' }}/>
-                        }
-                      </motion.button>
-                    </div>
-                    <div className="mt-1 w-full h-[3px] rounded-full overflow-hidden" style={{ background:`${s.color}10` }}>
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{ width:`${Math.min(100,base+bonus)}%`,background:s.color,boxShadow:`0 0 4px ${s.color}` }}/>
-                    </div>
-                  </div>
-                );
-              })}
-              {statPoints===0 && <p className="text-[7px] font-mono text-center leading-tight mt-1" style={{ color:'rgba(255,255,255,0.18)' }}>Level up to<br/>gain points</p>}
-            </div>
+          {/* Arrow */}
+          <div className="shrink-0 relative z-10 flex flex-col items-center gap-1">
+            <span className="text-[8px] font-mono uppercase tracking-widest" style={{ color:`${archetypeData.color}70` }}>VIEW</span>
+            <span style={{ color: archetypeData.color, fontSize: 18, lineHeight: 1 }}>›</span>
           </div>
-        </div>
+        </motion.button>
 
         {/* ══ TAB BAR ═══════════════════════════════════════════════════════ */}
         <div className="flex sticky top-0 z-20"
           style={{ background:'#060a12',borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-          {(['character','dungeon','gear'] as const).map(tab => {
-            const labels: Record<string,string> = { character:'⚔  CHARACTER', dungeon:'🌑  DUNGEON', gear:'◆  GEAR' };
+          {(['dungeon','gear'] as const).map(tab => {
+            const labels: Record<string,string> = { dungeon:'🌑  DUNGEON', gear:'◆  GEAR' };
             const active = activeTab===tab;
             return (
               <button key={tab} onClick={() => setActiveTab(tab)}

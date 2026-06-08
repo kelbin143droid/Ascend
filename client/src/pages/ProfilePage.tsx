@@ -74,8 +74,6 @@ export default function ProfilePage() {
     { icon: Settings, label: "App Settings",           key: "app-settings" },
   ];
 
-  const handleHunterProfile = () => navigate("/hunter-profile");
-
   const STAT_META = [
     { key: "strength"   as const, label: "STR", color: "#fbbf24" },
     { key: "vitality"   as const, label: "VIT", color: "#34d399" },
@@ -208,43 +206,6 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-
-        {/* ── HUNTER PROFILE ──────────────────────────────────── */}
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-          onClick={handleHunterProfile}
-          data-testid="button-hunter-profile"
-          className="w-full rounded-xl px-4 py-3.5 flex items-center justify-between transition-all active:scale-[0.98]"
-          style={{
-            background: `linear-gradient(135deg, ${colors.primary}18, ${colors.primary}08)`,
-            border: `1px solid ${colors.primary}35`,
-            boxShadow: `0 0 18px ${colors.primary}12`,
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: `${colors.primary}20`, border: `1px solid ${colors.primary}30` }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke={colors.primary} strokeWidth="1.8" width="16" height="16">
-                <path d="M12 2l3 5 5 1-3.5 4 1 5L12 19l-5.5 3 1-5L4 8l5-1z" />
-              </svg>
-            </div>
-            <div className="text-left">
-              <div className="text-sm font-display font-bold" style={{ color: colors.text }}>Hunter Profile</div>
-              <div className="text-[10px] tracking-widest" style={{ color: colors.textMuted }}>GAME CHARACTER SCREEN</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
-              style={{ background: `${colors.primary}15`, color: colors.primary, border: `1px solid ${colors.primary}25` }}>
-              NEW
-            </span>
-            <ChevronRight size={14} style={{ color: colors.textMuted }} />
-          </div>
-        </motion.button>
 
         {/* ── SYNC PROFILE (Radar Chart) ───────────────────────── */}
         {radarValues && (
