@@ -897,10 +897,11 @@ export async function registerRoutes(
       );
 
       const derivedStats = {
-        strength: getStatLevel(result.newStatXP.strength).level,
-        agility: getStatLevel(result.newStatXP.agility).level,
-        sense: getStatLevel(result.newStatXP.sense).level,
-        vitality: getStatLevel(result.newStatXP.vitality).level,
+        strength:   getStatLevel(result.newStatXP.strength).level,
+        agility:    getStatLevel(result.newStatXP.agility).level,
+        sense:      getStatLevel(result.newStatXP.sense).level,
+        vitality:   getStatLevel(result.newStatXP.vitality).level,
+        discipline: (player.stats as any).discipline ?? 0,
       };
 
       const updates: Record<string, any> = {
