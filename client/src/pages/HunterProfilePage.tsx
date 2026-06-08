@@ -14,6 +14,7 @@ interface PlayerData  {
   wallet: WalletEntry[]; chosenClass: number | null; classes: ClassEntry[];
   availablePoints: number; cpPerPoint: number;
   stats: StatEntry[]; equipment: EquipEntry[]; skills: SkillEntry[];
+  streakMultiplier?: number;
 }
 
 // ── SVG path data (verbatim from original design) ────────────────────────
@@ -703,6 +704,18 @@ export default function HunterProfilePage() {
                   <span>AVAILABLE POINTS</span>
                   <b>{remaining}</b>
                 </div>
+                {(data.streakMultiplier ?? 0) > 0 && (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    background: "rgba(245,185,66,0.1)", border: "1px solid rgba(245,185,66,0.35)",
+                    borderRadius: "10px", padding: "7px 12px", marginBottom: "8px",
+                    fontSize: "12px", fontFamily: "'Chakra Petch',sans-serif", fontWeight: 700,
+                    letterSpacing: "1px", color: "var(--dis)",
+                  }}>
+                    <span style={{ fontSize: "16px" }}>🔥</span>
+                    <span>STREAK BONUS: +{Math.round((data.streakMultiplier ?? 0) * 100)}% XP &amp; PROGRESS</span>
+                  </div>
+                )}
                 <div className="statgrid">
                   {localStats.map((s, i) => (
                     <div key={s.key} className="statcard">

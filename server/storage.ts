@@ -107,6 +107,15 @@ export class DatabaseStorage implements IStorage {
         softRegressionActive: false,
       };
     }
+    // Safe backfill: ensure discipline exists for legacy players
+    if ((player.stats as any).discipline === undefined) {
+      (player.stats as any).discipline = 0;
+      // Best-effort async persist — don't await to avoid blocking reads
+      db.update(players)
+        .set({ stats: player.stats })
+        .where(eq(players.id, player.id))
+        .catch(() => { /* silently ignore */ });
+    }
     return player;
   }
 
