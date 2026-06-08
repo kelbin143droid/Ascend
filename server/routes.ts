@@ -38,10 +38,12 @@ import { getStatFromLevel as getStatLevel, getRankFromLevel, getXPForNextLevel a
 import { getFlowState, updateFlowAfterCompletion } from "./gameLogic/flowEngine";
 import { PHASE1_DAILY_TARGET_XP, PHASE1_XP, STAT_POINTS_PER_LEVEL } from "@shared/gameProgression";
 
-function buildProgressInfo(stat: StatName, displayVal: number, player: any) {
+function buildProgressInfo(stat: StatName, _displayVal: number, player: any) {
   const sp = player.statProgress as StatProgress | null;
-  const progress = sp ? sp[stat] : initializeStatProgress(player.stats)[stat];
-  const threshold = progressToNextPoint(Math.floor(displayVal));
+  const progress = sp ? sp[stat] : initializeStatProgress()[stat];
+  // Use raw base stat (no bonus points) — must match what processStatProgress uses
+  const baseStat = Math.floor((player.stats?.[stat] as number) || 1);
+  const threshold = progressToNextPoint(baseStat);
   return {
     progressMeter: Math.round(progress?.progress ?? 0),
     progressThreshold: threshold,
@@ -212,6 +214,15 @@ export async function registerRoutes(
           }))
         : (CLASS_SKILL_DEFAULTS[jobUpper] ?? CLASS_SKILL_DEFAULTS["WARRIOR"]);
 
+      // Consume-on-read: collect pending +1 events and clear them so the client
+      // only animates each increment once.
+      const sp = player.statProgress as StatProgress | null;
+      const pendingEvents = sp?.pendingEvents ?? [];
+      if (pendingEvents.length > 0 && sp) {
+        const cleared: StatProgress = { ...sp, pendingEvents: undefined };
+        storage.updatePlayer(req.params.id, { statProgress: cleared }).catch(() => {/* best-effort */});
+      }
+
       const playerData = {
         name:           player.name,
         rank:           player.rank || "E",
@@ -243,7 +254,7 @@ export async function registerRoutes(
           { key: "INT", val: intVal, pending: 0, color: "var(--int)", icon: "spark"   },
           { key: "DIS", val: disVal, pending: 0, color: "var(--dis)", icon: "crown"   },
         ],
-        pendingStatEvents: (player.statProgress as StatProgress | null)?.pendingEvents ?? [],
+        pendingStatEvents: pendingEvents,
         equipment,
         skills,
         _meta: {
