@@ -1,7 +1,11 @@
 import { PHASE1_XP } from "@shared/gameProgression";
 
 // Exponential curve: XP needed to go from level L to L+1 = round(100 × L^1.4)
-// Examples: Lv1→2 ≈ 100, Lv5→6 ≈ 574, Lv10→11 ≈ 1389
+// Actual curve (not the approximate values cited in the task description):
+//   Lv1→2 = 100   Lv2→3 = 264   Lv3→4 = 466   Lv4→5 = 696
+//   Lv5→6 = 952   Lv10→11 = 2512
+// The spec cited ~574 and ~1389 as approximate targets but the formula
+// round(100 × L^1.4) is authoritative; those example values are rough guides.
 export function getXPForNextLevel(level: number): number {
   return Math.round(100 * Math.pow(level, 1.4));
 }

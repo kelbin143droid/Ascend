@@ -497,7 +497,16 @@ export default function HunterProfilePage() {
       }
       const newStatPoints: number = json.statPoints ?? 0;
       setAvailPts(newStatPoints);
-      setLocalStats(prev => prev.map(s => ({ ...s, val: s.val + s.pending, pending: 0 })));
+      // Replace stat values from authoritative server response
+      const SERVER_KEY: Record<string, string> = {
+        STR: "strength", AGI: "agility", VIT: "vitality",
+        SEN: "sense",   DIS: "discipline",
+      };
+      const serverStats = json.stats as Record<string, number>;
+      setLocalStats(prev => prev.map(s => {
+        const sk = SERVER_KEY[s.key];
+        return { ...s, val: sk ? (serverStats[sk] ?? s.val) : s.val, pending: 0 };
+      }));
       setCp(c => c + spent * (data.cpPerPoint ?? 12));
     } catch {
       setAllocError("Network error — please try again");
@@ -753,8 +762,10 @@ export default function HunterProfilePage() {
                             ? <><span className="base">{s.val}</span><span className="arrow">→</span><span className="staged">{s.val + s.pending}</span></>
                             : s.val}
                         </span>
-                        <button className={`minusbtn${s.pending <= 0 ? " disabled" : ""}`} onClick={() => adjust(i, -1)}>−</button>
-                        <button className={`plusbtn${remaining <= 0 ? " disabled" : ""}`} onClick={() => adjust(i, 1)}>+</button>
+                        <button className={`minusbtn${s.pending <= 0 || s.key === "INT" ? " disabled" : ""}`} onClick={() => adjust(i, -1)}>−</button>
+                        <button className={`plusbtn${remaining <= 0 || s.key === "INT" ? " disabled" : ""}`}
+                          onClick={() => adjust(i, 1)}
+                          title={s.key === "INT" ? "INT unlocks with learning activities" : undefined}>+</button>
                       </div>
                     </div>
                   ))}
