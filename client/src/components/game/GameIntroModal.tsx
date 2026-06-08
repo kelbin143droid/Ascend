@@ -82,7 +82,7 @@ export function GameIntroModal({ open, onClose, playerName }: GameIntroModalProp
     markGameUnlocked();
     setSlide(0);
     onClose();
-    navigate("/game3d");
+    navigate("/hunter-profile");
   };
 
   if (!open) return null;

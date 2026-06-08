@@ -546,11 +546,6 @@ export default function HunterProfilePage() {
           ))}
         </div>
 
-        {/* Back button */}
-        <button className="back-btn" onClick={() => navigate("/game3d")} data-testid="button-back-game">
-          ← FUTURE GAME
-        </button>
-
         <div className="screen">
           {/* Top bar */}
           <div className="topbar">

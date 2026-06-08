@@ -33,7 +33,7 @@ const menuItems: MenuItem[] = [
   { icon: Trophy, label: "Achievements", path: "/inventory" },
   { icon: Clock, label: "Sectograph", path: "/sectograph", section: "system", unlockDay: 1, lockMessage: "Sectograph unlocks once your rhythm begins." },
   { icon: Apple, label: "Nutrition", path: "/nutrition", section: "system" },
-  { icon: Gamepad2, label: "Future Game", path: "/game3d", section: "game", isGame: true },
+  { icon: Gamepad2, label: "Future Game", path: "/hunter-profile", section: "game", isGame: true },
 ];
 
 export function SidebarMenu() {
