@@ -7,7 +7,8 @@ const HOLD_URL = "/audio/hold.mp3";
 const EXHALE_URL = "/audio/exhale.mp3";
 
 export function CalmBreathingSessionScreen({
-  targetSeconds = 28,
+  targetSeconds = 30,
+  guidanceSeconds = 28,
   title = "30-Second Reset",
   accentColor = "#3b82f6",
   backgroundColor = "#020810",
@@ -16,6 +17,7 @@ export function CalmBreathingSessionScreen({
   onCancel,
 }: {
   targetSeconds?: number;
+  guidanceSeconds?: number;
   title?: string;
   accentColor?: string;
   backgroundColor?: string;
@@ -185,7 +187,8 @@ export function CalmBreathingSessionScreen({
         ) : (
           <CalmBreathingEngine
             accentColor={accentColor}
-            targetSeconds={targetSeconds}
+            targetSeconds={guidanceSeconds}
+            silentCompletionSeconds={Math.max(0, targetSeconds - guidanceSeconds)}
             onDone={onComplete}
             paused={paused}
           />

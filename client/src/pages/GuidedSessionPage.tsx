@@ -32,7 +32,7 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
     id: "calm-breathing",
     title: "30-Second Reset",
     stat: "sense",
-    durationSeconds: 28,
+    durationSeconds: 30,
     icon: Wind,
     type: "breathing",
   },
@@ -77,6 +77,7 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
     type: "instant",
   },
 };
+const CALM_BREATHING_GUIDANCE_SECONDS = 28;
 
 const INHALE_URL = "/audio/inhale.mp3";
 const HOLD_URL = "/audio/hold.mp3";
@@ -811,7 +812,8 @@ export default function GuidedSessionPage() {
         {state === "active" && session.type === "breathing" && (
           <CalmBreathingEngine
             accentColor={accentColor}
-            targetSeconds={session.durationSeconds}
+            targetSeconds={session.id === "calm-breathing" ? CALM_BREATHING_GUIDANCE_SECONDS : session.durationSeconds}
+            silentCompletionSeconds={session.id === "calm-breathing" ? session.durationSeconds - CALM_BREATHING_GUIDANCE_SECONDS : 0}
             onDone={handleComplete}
             paused={paused}
           />

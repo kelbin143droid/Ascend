@@ -23,7 +23,8 @@ interface IntroWrapperProps {
   children: React.ReactNode;
 }
 
-const FIRST_RESET_DURATION_SECONDS = 28;
+const FIRST_RESET_DURATION_SECONDS = 30;
+const FIRST_RESET_GUIDANCE_SECONDS = 28;
 const FIRST_RESET_XP = 15;
 const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
@@ -296,6 +297,7 @@ function FirstResetScreen({
         accentColor="#3b82f6"
         backgroundColor="#020810"
         targetSeconds={FIRST_RESET_DURATION_SECONDS}
+        guidanceSeconds={FIRST_RESET_GUIDANCE_SECONDS}
         zIndexClass="z-[100]"
         onCancel={() => setPhase("ready")}
         onComplete={() => setPhase("reward")}

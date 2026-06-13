@@ -5,6 +5,7 @@ const HOLD_URL = "/audio/hold.mp3";
 const EXHALE_URL = "/audio/exhale.mp3";
 
 type BreathPhase = "Inhale" | "Hold" | "Exhale";
+type DisplayPhase = BreathPhase | "Quiet";
 
 const VOICE_DURATIONS: Record<BreathPhase, number> = {
   Inhale: 4000,
@@ -163,13 +164,15 @@ export function CalmBreathingEngine({
   targetSeconds,
   onDone,
   paused = false,
+  silentCompletionSeconds = 0,
 }: {
   accentColor: string;
   targetSeconds: number;
   onDone: () => void;
   paused?: boolean;
+  silentCompletionSeconds?: number;
 }) {
-  const [phase, setPhase] = useState<BreathPhase>("Inhale");
+  const [phase, setPhase] = useState<DisplayPhase>("Inhale");
   const onDoneRef = useRef(onDone);
   const pausedRef = useRef(paused);
 
@@ -210,6 +213,8 @@ export function CalmBreathingEngine({
     let curPhase: BreathPhase = "Inhale";
     let phaseElapsedMs = 0;
     let sessionElapsedMs = 0;
+    let silentElapsedMs = 0;
+    let inSilentCompletion = false;
     let lastTick = performance.now();
     setPhase("Inhale");
     speakPhase("Inhale");
@@ -225,6 +230,17 @@ export function CalmBreathingEngine({
 
       const delta = now - lastTick;
       lastTick = now;
+
+      if (inSilentCompletion) {
+        silentElapsedMs += delta;
+        if (silentElapsedMs >= silentCompletionSeconds * 1000) {
+          alive = false;
+          clearInterval(tickId);
+          onDoneRef.current();
+        }
+        return;
+      }
+
       phaseElapsedMs += delta;
       sessionElapsedMs += delta;
 
@@ -237,7 +253,13 @@ export function CalmBreathingEngine({
             activeAudio.pause();
             activeAudio = null;
           }
-          onDoneRef.current();
+          if (silentCompletionSeconds > 0) {
+            inSilentCompletion = true;
+            silentElapsedMs = 0;
+            setPhase("Quiet");
+          } else {
+            onDoneRef.current();
+          }
           return;
         }
         curPhase = VOICE_NEXT[curPhase];
@@ -255,7 +277,7 @@ export function CalmBreathingEngine({
         activeAudio = null;
       }
     };
-  }, [targetSeconds]);
+  }, [targetSeconds, silentCompletionSeconds]);
 
   const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.5;
   const transitionDuration =
@@ -265,7 +287,8 @@ export function CalmBreathingEngine({
   const phaseHint =
     phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
     : phase === "Hold" ? `${VOICE_DURATIONS.Hold / 1000}s`
-    : `${VOICE_DURATIONS.Exhale / 1000}s`;
+    : phase === "Exhale" ? `${VOICE_DURATIONS.Exhale / 1000}s`
+    : "";
 
   return (
     <div className="flex flex-col items-center gap-8">
@@ -287,15 +310,19 @@ export function CalmBreathingEngine({
           className="text-xl font-display font-medium tracking-wider"
           style={{ color: `${accentColor}ff` }}
         >
-          {phase}
+          {phase === "Quiet" ? "" : phase}
         </p>
-        <p className="text-xs" style={{ color: `${accentColor}cc` }}>
-          {phaseHint}
-        </p>
+        {phaseHint && (
+          <p className="text-xs" style={{ color: `${accentColor}cc` }}>
+            {phaseHint}
+          </p>
+        )}
       </div>
-      <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>
-        Voice guided · Ambient audio
-      </p>
+      {phase !== "Quiet" && (
+        <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>
+          Voice guided · Ambient audio
+        </p>
+      )}
     </div>
   );
 }
