@@ -71,7 +71,7 @@ export function TasksProvider({
       (t) => t?.id && t?.startTime && new Date(t.startTime).getTime() > Date.now(),
     );
     const signature = upcoming
-      .map((t) => `${t.id}:${new Date(t.startTime!).getTime()}:${t.title ?? ""}`)
+      .map((t) => `${t.id}:${new Date(t.startTime!).getTime()}:${t.name ?? ""}`)
       .sort()
       .join("|");
     if (signature === syncedSignatureRef.current) return;
@@ -210,7 +210,8 @@ export function TasksProvider({
   };
 
   const deleteTask = async (id: string, confirmStrategic?: boolean) => {
-    return deleteTaskMutation.mutateAsync({ id, confirmStrategic });
+    const result = await deleteTaskMutation.mutateAsync({ id, confirmStrategic });
+    return result.ok;
   };
 
   const getTasksByQuadrant = (quadrant: Quadrant) => {

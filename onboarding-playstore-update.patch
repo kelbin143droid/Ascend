@@ -1,0 +1,778 @@
+From d8482bc73493fcc0119a2f1add6ed58ec9cd58a9 Mon Sep 17 00:00:00 2001
+From: KelbinDiaz <kelbin@KelbinDiazs-Air.lan>
+Date: Fri, 12 Jun 2026 23:20:29 -0400
+Subject: [PATCH] Improve onboarding flow for Play Store readiness
+
+---
+ .../components/game/CardioSessionEngine.tsx   |   2 +-
+ client/src/components/game/Day6Home.tsx       |   4 +-
+ .../components/game/GenderSelectScreen.tsx    |  19 +-
+ .../src/components/game/GoalSelectScreen.tsx  | 248 ++++++++++++++++++
+ client/src/components/game/IntroScreen.tsx    |  31 ++-
+ client/src/components/game/IntroWrapper.tsx   |  49 +++-
+ client/src/components/game/OnboardingFlow.tsx |   1 +
+ .../src/components/game/PlayerInfoScreen.tsx  |   2 +-
+ .../components/game/RecommendedPathScreen.tsx |  30 ++-
+ client/src/components/game/SystemLayout.tsx   |   2 +-
+ client/src/context/TasksContext.tsx           |   5 +-
+ client/src/pages/GuidedSessionPage.tsx        |   2 +-
+ server/storage.ts                             |  25 +-
+ shared/schema.ts                              |  12 +-
+ tsconfig.json                                 |   1 +
+ 15 files changed, 374 insertions(+), 59 deletions(-)
+ create mode 100644 client/src/components/game/GoalSelectScreen.tsx
+
+diff --git a/client/src/components/game/CardioSessionEngine.tsx b/client/src/components/game/CardioSessionEngine.tsx
+index 0eb95ec..0ec8c1f 100644
+--- a/client/src/components/game/CardioSessionEngine.tsx
++++ b/client/src/components/game/CardioSessionEngine.tsx
+@@ -105,7 +105,7 @@ function CircularCountdown({ total, remaining, isRest }: { total: number; remain
+ }
+ 
+ interface Props {
+-  playerId: number;
++  playerId: string;
+   onComplete: (xp: number) => void;
+   onCancel: () => void;
+   noApiCall?: boolean;
+diff --git a/client/src/components/game/Day6Home.tsx b/client/src/components/game/Day6Home.tsx
+index 5feaf7d..0146c09 100644
+--- a/client/src/components/game/Day6Home.tsx
++++ b/client/src/components/game/Day6Home.tsx
+@@ -979,8 +979,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
+             // so we use the reactive vitalityDone flag for its "done" state.
+             const isDone  = dc.id === "vitality"
+               ? vitalityDone
+-              : (dc.activityId !== "" && isActivityDone(dc.activityId));
+-            const inFlow  = dc.activityId !== "" && todayIds.has(dc.activityId);
++              : isActivityDone(dc.activityId);
++            const inFlow  = dc.id !== "vitality" && todayIds.has(dc.activityId);
+             const isLocked = !isDone;
+             const action  = resolveAction(dc);
+ 
+diff --git a/client/src/components/game/GenderSelectScreen.tsx b/client/src/components/game/GenderSelectScreen.tsx
+index d56f417..3d64851 100644
+--- a/client/src/components/game/GenderSelectScreen.tsx
++++ b/client/src/components/game/GenderSelectScreen.tsx
+@@ -71,8 +71,9 @@ function GenderCard({
+   const isMale = gender === "male";
+   const color = isMale ? "#3FB6FF" : "#d946ef";
+   const accentGold = "#E8B964";
+-  const label = isMale ? "Male" : "Female";
++  const label = isMale ? "Focused" : "Vibrant";
+   const subtitle = isMale ? "IRON SOVEREIGN" : "NEON EMPRESS";
++  const description = isMale ? "Strong · disciplined · precise" : "Sharp · expressive · electric";
+ 
+   const burstParticles = useRef(
+     Array.from({ length: 10 }, (_, i) => {
+@@ -106,7 +107,7 @@ function GenderCard({
+         onTouchEnd={() => setPressed(false)}
+         onMouseDown={() => setPressed(true)}
+         onMouseUp={() => setPressed(false)}
+-        aria-label={`Select ${label} — ${subtitle}`}
++        aria-label={`Select ${subtitle} — ${description}`}
+         whileTap={{ scale: 0.95 }}
+         animate={{
+           scale: selected ? 1.03 : 1,
+@@ -251,6 +252,18 @@ function GenderCard({
+           >
+             {subtitle}
+           </div>
++          <div
++            style={{
++              marginTop: "6px",
++              fontSize: "0.56rem",
++              fontWeight: 600,
++              letterSpacing: "0.05em",
++              color: "rgba(255,255,255,0.52)",
++              lineHeight: 1.25,
++            }}
++          >
++            {description}
++          </div>
+         </div>
+       </motion.button>
+     </motion.div>
+@@ -485,7 +498,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
+                       : "0 0 48px rgba(217,70,239,0.55), 0 4px 28px rgba(217,70,239,0.35), 0 8px 32px rgba(0,0,0,0.4)",
+                 }}
+               >
+-                {selected === "male" ? "APPLY MALE STYLE" : "APPLY FEMALE STYLE"}
++                  {selected === "male" ? "APPLY IRON SOVEREIGN" : "APPLY NEON EMPRESS"}
+                 <ArrowRight size={16} />
+               </motion.button>
+             ) : (
+diff --git a/client/src/components/game/GoalSelectScreen.tsx b/client/src/components/game/GoalSelectScreen.tsx
+new file mode 100644
+index 0000000..4b7db81
+--- /dev/null
++++ b/client/src/components/game/GoalSelectScreen.tsx
+@@ -0,0 +1,248 @@
++import { useRef, useState } from "react";
++import { motion, AnimatePresence } from "framer-motion";
++import { Activity, ArrowRight, Brain, Dumbbell, Flame, Repeat2 } from "lucide-react";
++import type { LucideIcon } from "lucide-react";
++
++export type AscendGoal = "discipline" | "health" | "focus" | "routine" | "everything";
++
++interface GoalOption {
++  id: AscendGoal;
++  label: string;
++  description: string;
++  Icon: LucideIcon;
++  color: string;
++}
++
++interface GoalSelectScreenProps {
++  firstName: string;
++  onSelect: (goal: AscendGoal) => void;
++}
++
++const GOALS: GoalOption[] = [
++  {
++    id: "discipline",
++    label: "Build discipline",
++    description: "Show up daily and turn effort into momentum.",
++    Icon: Flame,
++    color: "#f97316",
++  },
++  {
++    id: "health",
++    label: "Get healthier",
++    description: "Improve movement, recovery, nutrition, and energy.",
++    Icon: Activity,
++    color: "#22c55e",
++  },
++  {
++    id: "focus",
++    label: "Improve focus",
++    description: "Train attention, calm, and deep work habits.",
++    Icon: Brain,
++    color: "#38bdf8",
++  },
++  {
++    id: "routine",
++    label: "Fix my routine",
++    description: "Plan your day and make time visible.",
++    Icon: Repeat2,
++    color: "#a78bfa",
++  },
++  {
++    id: "everything",
++    label: "Level up everything",
++    description: "Build a full-life system across all stats.",
++    Icon: Dumbbell,
++    color: "#facc15",
++  },
++];
++
++export function GoalSelectScreen({ firstName, onSelect }: GoalSelectScreenProps) {
++  const [selected, setSelected] = useState<AscendGoal | null>(null);
++  const [exiting, setExiting] = useState(false);
++  const particles = useRef(
++    Array.from({ length: 18 }, (_, i) => ({
++      id: i,
++      x: 4 + Math.random() * 92,
++      y: 5 + Math.random() * 88,
++      size: 0.8 + Math.random() * 1.8,
++      duration: 10 + Math.random() * 14,
++      delay: Math.random() * 7,
++      driftX: (Math.random() - 0.5) * 34,
++      driftY: -(16 + Math.random() * 46),
++    })),
++  ).current;
++
++  const selectedGoal = GOALS.find((goal) => goal.id === selected);
++
++  const handleContinue = () => {
++    if (!selected || exiting) return;
++    setExiting(true);
++    window.setTimeout(() => onSelect(selected), 520);
++  };
++
++  return (
++    <motion.div
++      className="fixed inset-0 z-50 overflow-hidden px-5 py-8 text-white"
++      style={{
++        background:
++          "radial-gradient(circle at 20% 10%, rgba(56,189,248,0.16), transparent 28%), radial-gradient(circle at 85% 70%, rgba(168,85,247,0.14), transparent 30%), linear-gradient(180deg, #020810 0%, #06111f 52%, #020610 100%)",
++        fontFamily: "Inter, system-ui, sans-serif",
++      }}
++      initial={{ opacity: 0 }}
++      animate={{ opacity: exiting ? 0 : 1 }}
++      transition={{ duration: 0.5 }}
++    >
++      <div className="pointer-events-none absolute inset-0 opacity-[0.16]"
++        style={{
++          backgroundImage:
++            "linear-gradient(rgba(125,211,252,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(125,211,252,0.12) 1px, transparent 1px)",
++          backgroundSize: "64px 64px",
++        }}
++      />
++
++      {particles.map((particle) => (
++        <motion.span
++          key={particle.id}
++          className="pointer-events-none absolute rounded-full bg-cyan-200"
++          style={{
++            left: `${particle.x}%`,
++            top: `${particle.y}%`,
++            width: particle.size,
++            height: particle.size,
++            boxShadow: "0 0 8px rgba(125,211,252,0.75)",
++          }}
++          animate={{
++            x: [0, particle.driftX, 0],
++            y: [0, particle.driftY, 0],
++            opacity: [0, 0.48, 0],
++          }}
++          transition={{
++            duration: particle.duration,
++            delay: particle.delay,
++            repeat: Infinity,
++            ease: "easeInOut",
++          }}
++        />
++      ))}
++
++      <div className="relative z-10 mx-auto flex h-full w-full max-w-[430px] flex-col">
++        <header className="mb-5 pt-4 text-center">
++          <motion.p
++            className="mb-3 text-[10px] font-bold uppercase tracking-[0.32em] text-cyan-100/50"
++            initial={{ opacity: 0, y: -8 }}
++            animate={{ opacity: 1, y: 0 }}
++            transition={{ delay: 0.1 }}
++          >
++            Personal Protocol
++          </motion.p>
++          <motion.h1
++            className="text-[28px] font-black leading-tight tracking-[0.01em] min-[390px]:text-[32px]"
++            initial={{ opacity: 0, y: 12 }}
++            animate={{ opacity: 1, y: 0 }}
++            transition={{ delay: 0.18 }}
++          >
++            What are you here to improve{firstName ? `, ${firstName.split(" ")[0]}` : ""}?
++          </motion.h1>
++          <motion.p
++            className="mx-auto mt-3 max-w-[320px] text-sm font-medium leading-relaxed text-slate-300/72"
++            initial={{ opacity: 0 }}
++            animate={{ opacity: 1 }}
++            transition={{ delay: 0.3 }}
++          >
++            Ascend will shape your first quests around the outcome you care about most.
++          </motion.p>
++        </header>
++
++        <main className="min-h-0 flex-1 overflow-y-auto pb-4">
++          <div className="grid gap-3">
++            {GOALS.map(({ id, label, description, Icon, color }, index) => {
++              const isSelected = selected === id;
++              return (
++                <motion.button
++                  key={id}
++                  type="button"
++                  onClick={() => setSelected(id)}
++                  data-testid={`goal-${id}`}
++                  className="relative flex items-center gap-3 overflow-hidden rounded-2xl border p-4 text-left transition"
++                  style={{
++                    background: isSelected ? `${color}18` : "rgba(255,255,255,0.045)",
++                    borderColor: isSelected ? `${color}cc` : "rgba(125,211,252,0.18)",
++                    boxShadow: isSelected
++                      ? `0 0 34px ${color}35, inset 0 1px 0 rgba(255,255,255,0.16)`
++                      : "inset 0 1px 0 rgba(255,255,255,0.08)",
++                  }}
++                  initial={{ opacity: 0, y: 14 }}
++                  animate={{ opacity: 1, y: 0 }}
++                  transition={{ delay: 0.36 + index * 0.06 }}
++                  whileTap={{ scale: 0.98 }}
++                >
++                  <span
++                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
++                    style={{
++                      color,
++                      borderColor: `${color}70`,
++                      background: `${color}12`,
++                      boxShadow: isSelected ? `0 0 22px ${color}40` : "none",
++                    }}
++                  >
++                    <Icon size={22} />
++                  </span>
++                  <span className="min-w-0 flex-1">
++                    <span className="block text-[16px] font-black leading-tight text-white">
++                      {label}
++                    </span>
++                    <span className="mt-1 block text-[12px] font-medium leading-snug text-slate-300/68">
++                      {description}
++                    </span>
++                  </span>
++                  <span
++                    className="h-3 w-3 shrink-0 rounded-full"
++                    style={{
++                      background: isSelected ? color : "rgba(255,255,255,0.18)",
++                      boxShadow: isSelected ? `0 0 16px ${color}` : "none",
++                    }}
++                  />
++                </motion.button>
++              );
++            })}
++          </div>
++        </main>
++
++        <footer className="pb-2 pt-2">
++          <AnimatePresence mode="wait">
++            {selectedGoal ? (
++              <motion.button
++                key="continue"
++                type="button"
++                onClick={handleContinue}
++                data-testid="button-confirm-goal"
++                className="flex min-h-[56px] w-full items-center justify-center gap-3 rounded-2xl px-5 text-[12px] font-black uppercase tracking-[0.22em] text-slate-950"
++                style={{
++                  background: `linear-gradient(90deg, ${selectedGoal.color}, #67e8f9)`,
++                  boxShadow: `0 0 34px ${selectedGoal.color}55, 0 10px 34px rgba(0,0,0,0.36)`,
++                }}
++                initial={{ opacity: 0, y: 12 }}
++                animate={{ opacity: 1, y: 0 }}
++                exit={{ opacity: 0, y: 8 }}
++                whileTap={{ scale: 0.98 }}
++              >
++                Continue
++                <ArrowRight size={17} />
++              </motion.button>
++            ) : (
++              <motion.p
++                key="hint"
++                className="text-center text-[10px] font-bold uppercase tracking-[0.26em] text-white/34"
++                initial={{ opacity: 0 }}
++                animate={{ opacity: 1 }}
++                exit={{ opacity: 0 }}
++              >
++                Choose your main goal
++              </motion.p>
++            )}
++          </AnimatePresence>
++        </footer>
++      </div>
++    </motion.div>
++  );
++}
+diff --git a/client/src/components/game/IntroScreen.tsx b/client/src/components/game/IntroScreen.tsx
+index 278d1f7..7cd974e 100644
+--- a/client/src/components/game/IntroScreen.tsx
++++ b/client/src/components/game/IntroScreen.tsx
+@@ -411,13 +411,34 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
+             </motion.div>
+           </div>
+ 
++          <motion.h1
++            className="mb-4 text-center text-[28px] font-black leading-tight tracking-[0.01em] text-white min-[390px]:text-[32px]"
++            initial={{ opacity: 0, y: 12 }}
++            animate={{ opacity: 1, y: 0 }}
++            transition={{ delay: 1.9, duration: 0.7 }}
++            style={{
++              textShadow: "0 0 34px rgba(6,182,212,0.38)",
++            }}
++          >
++            Turn your real life into a leveling system.
++          </motion.h1>
++
++          <motion.p
++            className="mb-8 max-w-[330px] text-center text-sm font-medium leading-relaxed text-slate-300/74"
++            initial={{ opacity: 0 }}
++            animate={{ opacity: 1 }}
++            transition={{ delay: 2.15, duration: 0.7 }}
++          >
++            Build habits, train your stats, plan your day, and grow through small daily quests.
++          </motion.p>
++
+           {/* ── PROTOCOL LABEL ── */}
+           <motion.p
+-            className="text-[9px] font-mono mb-10 tracking-[0.50em] uppercase"
++            className="text-[9px] font-mono mb-6 tracking-[0.50em] uppercase"
+             style={{ color: "rgba(6,182,212,0.55)", letterSpacing: "0.50em" }}
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+-            transition={{ delay: 2.0, duration: 0.9 }}
++            transition={{ delay: 2.3, duration: 0.9 }}
+           >
+             AWAKENED SYSTEM PROTOCOL
+           </motion.p>
+@@ -450,7 +471,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
+             className="w-full relative overflow-hidden"
+             initial={{ opacity: 0, y: 14 }}
+             animate={{ opacity: 1, y: 0 }}
+-            transition={{ delay: 3.2, duration: 0.85, ease: [0.25, 0.46, 0.45, 0.94] }}
++            transition={{ delay: 2.65, duration: 0.85, ease: [0.25, 0.46, 0.45, 0.94] }}
+             whileHover={{ scale: 1.022 }}
+             whileTap={{ scale: 0.965 }}
+             data-testid="button-begin-ascension"
+@@ -534,7 +555,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
+                 className="relative z-10 shrink-0"
+                 style={{ color: "#67e8f9", filter: "drop-shadow(0 0 6px rgba(6,182,212,0.9))" }}
+               />
+-              <span className="relative z-10">AWAKEN SYSTEM</span>
++              <span className="relative z-10">BEGIN</span>
+             </motion.div>
+           </motion.button>
+ 
+@@ -544,7 +565,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
+             style={{ color: "rgba(100,116,139,0.32)" }}
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+-            transition={{ delay: 2.8, duration: 0.6 }}
++            transition={{ delay: 2.9, duration: 0.6 }}
+           >
+             ASCEND v2.0 // NEON GENESIS
+           </motion.p>
+diff --git a/client/src/components/game/IntroWrapper.tsx b/client/src/components/game/IntroWrapper.tsx
+index f963981..5fcb6e0 100644
+--- a/client/src/components/game/IntroWrapper.tsx
++++ b/client/src/components/game/IntroWrapper.tsx
+@@ -3,6 +3,7 @@ import { useGame } from "@/context/GameContext";
+ import { IntroScreen } from "./IntroScreen";
+ import { PlayerInfoScreen } from "./PlayerInfoScreen";
+ import { GenderSelectScreen } from "./GenderSelectScreen";
++import { GoalSelectScreen, type AscendGoal } from "./GoalSelectScreen";
+ import { CalibrationFlow } from "./CalibrationFlow";
+ import { RecommendedPathScreen } from "./RecommendedPathScreen";
+ import { motion } from "framer-motion";
+@@ -25,6 +26,7 @@ const FIRST_RESET_DURATION_SECONDS = 30;
+ const FIRST_RESET_XP = 15;
+ const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
+ const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
++const GOAL_STORAGE_KEY = "ascend_primary_goal";
+ const INHALE_AUDIO_URL = "/audio/inhale.mp3";
+ const HOLD_AUDIO_URL = "/audio/hold.mp3";
+ const EXHALE_AUDIO_URL = "/audio/exhale.mp3";
+@@ -75,7 +77,7 @@ function getFirstResetBreathState(elapsedSeconds: number) {
+   };
+ }
+ 
+-type IntroStep = "loading" | "intro" | "info" | "first-reset" | "gender" | "welcome" | "calibration" | "recommendation" | "complete";
++type IntroStep = "loading" | "intro" | "info" | "goal" | "first-reset" | "gender" | "welcome" | "calibration" | "recommendation" | "complete";
+ 
+ function todayCompletedIdsKey(): string {
+   return `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
+@@ -782,13 +784,26 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
+     if (!isLoading && player && !initialCheckDone.current) {
+       initialCheckDone.current = true;
+       const hasName = player.name && player.name.trim() !== "";
++      const hasGoal = !!localStorage.getItem(GOAL_STORAGE_KEY);
+       const hasGender = !!localStorage.getItem("ascend_gender");
++      const hasCalibration = !!localStorage.getItem("ascend_calibration");
+       const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
+       if (!hasName) {
+         setStep("intro");
++      } else if (!hasGoal) {
++        setPlayerName(player.name || "");
++        setStep("goal");
+       } else if (!hasGender) {
+         setPlayerName(player.name || "");
+-        setStep(firstResetDone ? "gender" : "first-reset");
++        setStep("gender");
++      } else if (!hasCalibration) {
++        setPlayerName(player.name || "");
++        setPlayerGender(localStorage.getItem("ascend_gender") === "female" ? "female" : "male");
++        setStep("calibration");
++      } else if (!firstResetDone) {
++        setPlayerName(player.name || "");
++        setPlayerGender(localStorage.getItem("ascend_gender") === "female" ? "female" : "male");
++        setStep("first-reset");
+       } else {
+         setStep("complete");
+       }
+@@ -810,8 +825,9 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
+       setStep("welcome");
+       setTimeout(() => {
+         const alreadyCalibrated = !!localStorage.getItem("ascend_calibration");
+-        setStep(alreadyCalibrated ? "complete" : "calibration");
+-      }, 3800);
++        const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
++        setStep(alreadyCalibrated ? (firstResetDone ? "complete" : "first-reset") : "calibration");
++      }, 1800);
+     } else {
+       setStep("info");
+     }
+@@ -820,8 +836,22 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
+   const handleInfoComplete = (data: { name: string }) => {
+     setPlayerName(data.name);
+     updatePlayer({ name: data.name, onboardingCompleted: 1 });
++    setStep("goal");
++  };
++
++  const handleGoalSelect = (goal: AscendGoal) => {
++    localStorage.setItem(GOAL_STORAGE_KEY, goal);
++    const hasGender = !!localStorage.getItem("ascend_gender");
++    const hasCalibration = !!localStorage.getItem("ascend_calibration");
+     const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
+-    setStep(firstResetDone ? "gender" : "first-reset");
++    if (!hasGender) {
++      setStep("gender");
++    } else if (!hasCalibration) {
++      setPlayerGender(localStorage.getItem("ascend_gender") === "female" ? "female" : "male");
++      setStep("calibration");
++    } else {
++      setStep(firstResetDone ? "complete" : "first-reset");
++    }
+   };
+ 
+   const handleFirstResetComplete = () => {
+@@ -832,7 +862,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
+       localStorage.setItem(FIRST_RESET_STORAGE_KEY, "true");
+       gainExp(FIRST_RESET_XP);
+     }
+-    setStep("gender");
++    setStep("complete");
+   };
+ 
+   const handleCalibrationComplete = (answers: CalibrationAnswers) => {
+@@ -851,7 +881,8 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
+     const finalProfile: CalibrationProfile = { ...profile, derivedLevel: chosenLevel };
+     saveCalibrationProfile(finalProfile);
+     setWorkoutLevel(chosenLevel);
+-    setStep("complete");
++    const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
++    setStep(firstResetDone ? "complete" : "first-reset");
+   };
+ 
+   const getFirstName = () => {
+@@ -904,6 +935,10 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
+     return <PlayerInfoScreen onComplete={handleInfoComplete} />;
+   }
+ 
++  if (step === "goal") {
++    return <GoalSelectScreen firstName={getFirstName()} onSelect={handleGoalSelect} />;
++  }
++
+   if (step === "first-reset") {
+     return (
+       <FirstResetScreen
+diff --git a/client/src/components/game/OnboardingFlow.tsx b/client/src/components/game/OnboardingFlow.tsx
+index 6b7baf0..57e9597 100644
+--- a/client/src/components/game/OnboardingFlow.tsx
++++ b/client/src/components/game/OnboardingFlow.tsx
+@@ -12,6 +12,7 @@ interface OnboardingSlide {
+ 
+ interface OnboardingFlowProps {
+   onComplete: () => void;
++  onSkip?: () => void;
+   playerName?: string;
+ }
+ 
+diff --git a/client/src/components/game/PlayerInfoScreen.tsx b/client/src/components/game/PlayerInfoScreen.tsx
+index a4427a7..29ae057 100644
+--- a/client/src/components/game/PlayerInfoScreen.tsx
++++ b/client/src/components/game/PlayerInfoScreen.tsx
+@@ -211,7 +211,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
+             animate={{ opacity: 1 }}
+             transition={{ delay: 1.18, duration: 0.6 }}
+           >
+-            Your designation will be encoded into the system.
++            Choose the name you want to see as you level up.
+           </motion.p>
+         </div>
+ 
+diff --git a/client/src/components/game/RecommendedPathScreen.tsx b/client/src/components/game/RecommendedPathScreen.tsx
+index 9a04d28..e195adc 100644
+--- a/client/src/components/game/RecommendedPathScreen.tsx
++++ b/client/src/components/game/RecommendedPathScreen.tsx
+@@ -126,15 +126,15 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
+           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+           transition={{ delay: 0.55 }} />
+ 
+-        {/* "Efficiency at 100%" */}
++        {/* Personalized result */}
+         <motion.p
+-          className="text-[22px] font-bold text-center"
++          className="text-[20px] font-bold text-center leading-tight"
+           style={{ color: "#fff", fontFamily: "Inter, system-ui, sans-serif",
+             textShadow: "0 0 20px rgba(255,255,255,0.18)" }}
+           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+           transition={{ delay: 0.62, duration: 0.40 }}>
+-          Efficiency at{" "}
+-          <span style={{ color: colorAlt, textShadow: `0 0 18px ${glow}` }}>100%</span>
++          Starting Protocol:{" "}
++          <span style={{ color: colorAlt, textShadow: `0 0 18px ${glow}` }}>{LEVEL_DISPLAY_NAMES[chosenLevel]}</span>
+         </motion.p>
+ 
+         {/* Protocol word — glowing, large, level-coloured */}
+@@ -160,6 +160,26 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
+           </p>
+         </motion.div>
+ 
++        <motion.div
++          className="w-full rounded-2xl border px-4 py-3 text-center"
++          style={{
++            borderColor: `${color}35`,
++            background: `${color}10`,
++            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.10), 0 0 24px ${glowAlt}`,
++          }}
++          initial={{ opacity: 0, y: 10 }}
++          animate={{ opacity: 1, y: 0 }}
++          transition={{ delay: 0.82, duration: 0.4 }}
++        >
++          <p className="text-[10px] font-mono font-bold uppercase tracking-[0.22em]" style={{ color: `${colorAlt}cc` }}>
++            Today's First Quest
++          </p>
++          <p className="mt-1 text-base font-black text-white">30-Second Reset</p>
++          <p className="mt-1 text-xs font-medium text-white/58">
++            Earn your first XP and unlock the next mission.
++          </p>
++        </motion.div>
++
+         {/* CTA */}
+         <motion.button
+           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+@@ -179,7 +199,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
+               backgroundSize: "200% 100%",
+               animation: "xpShimmer 3s linear infinite",
+             }} />
+-          Initialise Protocol  →
++          Start First Quest  →
+         </motion.button>
+ 
+       </div>
+diff --git a/client/src/components/game/SystemLayout.tsx b/client/src/components/game/SystemLayout.tsx
+index b64bca6..0e50806 100644
+--- a/client/src/components/game/SystemLayout.tsx
++++ b/client/src/components/game/SystemLayout.tsx
+@@ -270,7 +270,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
+         {children}
+       </main>
+ 
+-      <DevPanel />
++      {import.meta.env.DEV && <DevPanel />}
+       <StreakCelebrationOverlay />
+ 
+       <nav
+diff --git a/client/src/context/TasksContext.tsx b/client/src/context/TasksContext.tsx
+index 12f7747..dde1971 100644
+--- a/client/src/context/TasksContext.tsx
++++ b/client/src/context/TasksContext.tsx
+@@ -71,7 +71,7 @@ export function TasksProvider({
+       (t) => t?.id && t?.startTime && new Date(t.startTime).getTime() > Date.now(),
+     );
+     const signature = upcoming
+-      .map((t) => `${t.id}:${new Date(t.startTime!).getTime()}:${t.title ?? ""}`)
++      .map((t) => `${t.id}:${new Date(t.startTime!).getTime()}:${t.name ?? ""}`)
+       .sort()
+       .join("|");
+     if (signature === syncedSignatureRef.current) return;
+@@ -210,7 +210,8 @@ export function TasksProvider({
+   };
+ 
+   const deleteTask = async (id: string, confirmStrategic?: boolean) => {
+-    return deleteTaskMutation.mutateAsync({ id, confirmStrategic });
++    const result = await deleteTaskMutation.mutateAsync({ id, confirmStrategic });
++    return result.ok;
+   };
+ 
+   const getTasksByQuadrant = (quadrant: Quadrant) => {
+diff --git a/client/src/pages/GuidedSessionPage.tsx b/client/src/pages/GuidedSessionPage.tsx
+index 843b0c4..b9731c0 100644
+--- a/client/src/pages/GuidedSessionPage.tsx
++++ b/client/src/pages/GuidedSessionPage.tsx
+@@ -925,7 +925,7 @@ export default function GuidedSessionPage() {
+   // Light Movement uses the video-guided engine instead of the generic session page
+   if (sessionId === "light-movement" && player?.id) {
+     const pathCfg = getPathFlowConfig(getWorkoutLevel());
+-    const handleLightMovementComplete = async (xpEarned = PHASE1_XP.agility) => {
++    const handleLightMovementComplete = async (xpEarned: number = PHASE1_XP.agility) => {
+       await queryClient.refetchQueries({ queryKey: ["home", player.id] });
+       // Always write both IDs so the dashboard tracks Agility as complete
+       try {
+diff --git a/server/storage.ts b/server/storage.ts
+index 8a5e859..7134121 100644
+--- a/server/storage.ts
++++ b/server/storage.ts
+@@ -13,7 +13,8 @@ import {
+   type Badge, type InsertBadge,
+   type BadHabit, type InsertBadHabit, type UpdateBadHabit,
+   type StatProgress, DEFAULT_STAT_PROGRESS,
+-  PHASE_UNLOCK_DATA 
++  PHASE_UNLOCK_DATA,
++  DEFAULT_STABILITY_DATA
+ } from "@shared/schema";
+ import { db } from "./db";
+ import { eq, and, gte, like, desc, sql } from "drizzle-orm";
+@@ -96,16 +97,7 @@ export interface IStorage {
+ export class DatabaseStorage implements IStorage {
+   private normalizePlayer(player: Player): Player {
+     if (!player.stability) {
+-      player.stability = {
+-        score: 50,
+-        habitCompletionPct: 0,
+-        sleepConsistency: 50,
+-        energyCompliance: 50,
+-        emotionalStability: 50,
+-        taskTimingAdherence: 50,
+-        consecutiveLowDays: 0,
+-        softRegressionActive: false,
+-      };
++      player.stability = { ...DEFAULT_STABILITY_DATA };
+     }
+     // Safe backfill: ensure discipline exists for legacy players
+     if ((player.stats as any).discipline === undefined) {
+@@ -648,16 +640,7 @@ export class DatabaseStorage implements IStorage {
+         vitality: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+         meditation: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+       },
+-      stability: {
+-        score: 50,
+-        habitCompletionPct: 0,
+-        sleepConsistency: 50,
+-        energyCompliance: 50,
+-        emotionalStability: 50,
+-        taskTimingAdherence: 50,
+-        consecutiveLowDays: 0,
+-        softRegressionActive: false,
+-      },
++      stability: { ...DEFAULT_STABILITY_DATA },
+     } as any);
+   }
+ }
+diff --git a/shared/schema.ts b/shared/schema.ts
+index df3ee6d..f38941d 100644
+--- a/shared/schema.ts
++++ b/shared/schema.ts
+@@ -237,6 +237,7 @@ export const stabilityDataSchema = z.object({
+ });
+ 
+ export type StabilityData = z.infer<typeof stabilityDataSchema>;
++export const DEFAULT_STABILITY_DATA: StabilityData = stabilityDataSchema.parse({});
+ 
+ export const categoryScalingSchema = z.object({
+   tier: z.number().min(1).max(5).default(1),
+@@ -347,16 +348,7 @@ export const players = pgTable("players", {
+     meditation: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+     vitality: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
+   }),
+-  stability: jsonb("stability").$type<StabilityData>().notNull().default({
+-    score: 50,
+-    habitCompletionPct: 0,
+-    sleepConsistency: 50,
+-    energyCompliance: 50,
+-    emotionalStability: 50,
+-    taskTimingAdherence: 50,
+-    consecutiveLowDays: 0,
+-    softRegressionActive: false,
+-  }),
++  stability: jsonb("stability").$type<StabilityData>().notNull().default(DEFAULT_STABILITY_DATA),
+ });
+ 
+ export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {
+diff --git a/tsconfig.json b/tsconfig.json
+index a0203ee..54de26a 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -5,6 +5,7 @@
+     "incremental": true,
+     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
+     "noEmit": true,
++    "target": "ES2020",
+     "module": "ESNext",
+     "strict": true,
+     "lib": ["esnext", "dom", "dom.iterable"],
+-- 
+2.50.1 (Apple Git-155)
+

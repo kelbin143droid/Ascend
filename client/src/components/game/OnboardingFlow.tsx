@@ -12,6 +12,7 @@ interface OnboardingSlide {
 
 interface OnboardingFlowProps {
   onComplete: () => void;
+  onSkip?: () => void;
   playerName?: string;
 }
 

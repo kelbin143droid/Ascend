@@ -126,15 +126,15 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           transition={{ delay: 0.55 }} />
 
-        {/* "Efficiency at 100%" */}
+        {/* Personalized result */}
         <motion.p
-          className="text-[22px] font-bold text-center"
+          className="text-[20px] font-bold text-center leading-tight"
           style={{ color: "#fff", fontFamily: "Inter, system-ui, sans-serif",
             textShadow: "0 0 20px rgba(255,255,255,0.18)" }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.62, duration: 0.40 }}>
-          Efficiency at{" "}
-          <span style={{ color: colorAlt, textShadow: `0 0 18px ${glow}` }}>100%</span>
+          Starting Protocol:{" "}
+          <span style={{ color: colorAlt, textShadow: `0 0 18px ${glow}` }}>{LEVEL_DISPLAY_NAMES[chosenLevel]}</span>
         </motion.p>
 
         {/* Protocol word — glowing, large, level-coloured */}
@@ -160,6 +160,26 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           </p>
         </motion.div>
 
+        <motion.div
+          className="w-full rounded-2xl border px-4 py-3 text-center"
+          style={{
+            borderColor: `${color}35`,
+            background: `${color}10`,
+            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.10), 0 0 24px ${glowAlt}`,
+          }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.82, duration: 0.4 }}
+        >
+          <p className="text-[10px] font-mono font-bold uppercase tracking-[0.22em]" style={{ color: `${colorAlt}cc` }}>
+            Today's First Quest
+          </p>
+          <p className="mt-1 text-base font-black text-white">30-Second Reset</p>
+          <p className="mt-1 text-xs font-medium text-white/58">
+            Earn your first XP and unlock the next mission.
+          </p>
+        </motion.div>
+
         {/* CTA */}
         <motion.button
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -179,7 +199,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
               backgroundSize: "200% 100%",
               animation: "xpShimmer 3s linear infinite",
             }} />
-          Initialise Protocol  →
+          Start First Quest  →
         </motion.button>
 
       </div>

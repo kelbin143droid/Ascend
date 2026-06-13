@@ -13,7 +13,8 @@ import {
   type Badge, type InsertBadge,
   type BadHabit, type InsertBadHabit, type UpdateBadHabit,
   type StatProgress, DEFAULT_STAT_PROGRESS,
-  PHASE_UNLOCK_DATA 
+  PHASE_UNLOCK_DATA,
+  DEFAULT_STABILITY_DATA
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, like, desc, sql } from "drizzle-orm";
@@ -96,16 +97,7 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   private normalizePlayer(player: Player): Player {
     if (!player.stability) {
-      player.stability = {
-        score: 50,
-        habitCompletionPct: 0,
-        sleepConsistency: 50,
-        energyCompliance: 50,
-        emotionalStability: 50,
-        taskTimingAdherence: 50,
-        consecutiveLowDays: 0,
-        softRegressionActive: false,
-      };
+      player.stability = { ...DEFAULT_STABILITY_DATA };
     }
     // Safe backfill: ensure discipline exists for legacy players
     if ((player.stats as any).discipline === undefined) {
@@ -648,16 +640,7 @@ export class DatabaseStorage implements IStorage {
         vitality: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
         meditation: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
       },
-      stability: {
-        score: 50,
-        habitCompletionPct: 0,
-        sleepConsistency: 50,
-        energyCompliance: 50,
-        emotionalStability: 50,
-        taskTimingAdherence: 50,
-        consecutiveLowDays: 0,
-        softRegressionActive: false,
-      },
+      stability: { ...DEFAULT_STABILITY_DATA },
     } as any);
   }
 }

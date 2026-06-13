@@ -270,7 +270,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <DevPanel />
+      {import.meta.env.DEV && <DevPanel />}
       <StreakCelebrationOverlay />
 
       <nav

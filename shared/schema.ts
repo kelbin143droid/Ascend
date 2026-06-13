@@ -237,6 +237,7 @@ export const stabilityDataSchema = z.object({
 });
 
 export type StabilityData = z.infer<typeof stabilityDataSchema>;
+export const DEFAULT_STABILITY_DATA: StabilityData = stabilityDataSchema.parse({});
 
 export const categoryScalingSchema = z.object({
   tier: z.number().min(1).max(5).default(1),
@@ -347,16 +348,7 @@ export const players = pgTable("players", {
     meditation: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
     vitality: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
   }),
-  stability: jsonb("stability").$type<StabilityData>().notNull().default({
-    score: 50,
-    habitCompletionPct: 0,
-    sleepConsistency: 50,
-    energyCompliance: 50,
-    emotionalStability: 50,
-    taskTimingAdherence: 50,
-    consecutiveLowDays: 0,
-    softRegressionActive: false,
-  }),
+  stability: jsonb("stability").$type<StabilityData>().notNull().default(DEFAULT_STABILITY_DATA),
 });
 
 export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {

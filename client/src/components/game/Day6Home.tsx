@@ -979,8 +979,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             // so we use the reactive vitalityDone flag for its "done" state.
             const isDone  = dc.id === "vitality"
               ? vitalityDone
-              : (dc.activityId !== "" && isActivityDone(dc.activityId));
-            const inFlow  = dc.activityId !== "" && todayIds.has(dc.activityId);
+              : isActivityDone(dc.activityId);
+            const inFlow  = dc.id !== "vitality" && todayIds.has(dc.activityId);
             const isLocked = !isDone;
             const action  = resolveAction(dc);
 

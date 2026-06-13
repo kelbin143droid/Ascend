@@ -925,7 +925,7 @@ export default function GuidedSessionPage() {
   // Light Movement uses the video-guided engine instead of the generic session page
   if (sessionId === "light-movement" && player?.id) {
     const pathCfg = getPathFlowConfig(getWorkoutLevel());
-    const handleLightMovementComplete = async (xpEarned = PHASE1_XP.agility) => {
+    const handleLightMovementComplete = async (xpEarned: number = PHASE1_XP.agility) => {
       await queryClient.refetchQueries({ queryKey: ["home", player.id] });
       // Always write both IDs so the dashboard tracks Agility as complete
       try {

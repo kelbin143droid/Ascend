@@ -211,7 +211,7 @@ export function PlayerInfoScreen({ onComplete }: PlayerInfoScreenProps) {
             animate={{ opacity: 1 }}
             transition={{ delay: 1.18, duration: 0.6 }}
           >
-            Your designation will be encoded into the system.
+            Choose the name you want to see as you level up.
           </motion.p>
         </div>
 

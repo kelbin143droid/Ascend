@@ -71,8 +71,9 @@ function GenderCard({
   const isMale = gender === "male";
   const color = isMale ? "#3FB6FF" : "#d946ef";
   const accentGold = "#E8B964";
-  const label = isMale ? "Male" : "Female";
+  const label = isMale ? "Focused" : "Vibrant";
   const subtitle = isMale ? "IRON SOVEREIGN" : "NEON EMPRESS";
+  const description = isMale ? "Strong · disciplined · precise" : "Sharp · expressive · electric";
 
   const burstParticles = useRef(
     Array.from({ length: 10 }, (_, i) => {
@@ -106,7 +107,7 @@ function GenderCard({
         onTouchEnd={() => setPressed(false)}
         onMouseDown={() => setPressed(true)}
         onMouseUp={() => setPressed(false)}
-        aria-label={`Select ${label} — ${subtitle}`}
+        aria-label={`Select ${subtitle} — ${description}`}
         whileTap={{ scale: 0.95 }}
         animate={{
           scale: selected ? 1.03 : 1,
@@ -250,6 +251,18 @@ function GenderCard({
             }}
           >
             {subtitle}
+          </div>
+          <div
+            style={{
+              marginTop: "6px",
+              fontSize: "0.56rem",
+              fontWeight: 600,
+              letterSpacing: "0.05em",
+              color: "rgba(255,255,255,0.52)",
+              lineHeight: 1.25,
+            }}
+          >
+            {description}
           </div>
         </div>
       </motion.button>
@@ -485,7 +498,7 @@ export function GenderSelectScreen({ onSelect }: GenderSelectScreenProps) {
                       : "0 0 48px rgba(217,70,239,0.55), 0 4px 28px rgba(217,70,239,0.35), 0 8px 32px rgba(0,0,0,0.4)",
                 }}
               >
-                {selected === "male" ? "APPLY MALE STYLE" : "APPLY FEMALE STYLE"}
+                  {selected === "male" ? "APPLY IRON SOVEREIGN" : "APPLY NEON EMPRESS"}
                 <ArrowRight size={16} />
               </motion.button>
             ) : (

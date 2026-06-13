@@ -411,13 +411,34 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             </motion.div>
           </div>
 
+          <motion.h1
+            className="mb-4 text-center text-[28px] font-black leading-tight tracking-[0.01em] text-white min-[390px]:text-[32px]"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.9, duration: 0.7 }}
+            style={{
+              textShadow: "0 0 34px rgba(6,182,212,0.38)",
+            }}
+          >
+            Turn your real life into a leveling system.
+          </motion.h1>
+
+          <motion.p
+            className="mb-8 max-w-[330px] text-center text-sm font-medium leading-relaxed text-slate-300/74"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 2.15, duration: 0.7 }}
+          >
+            Build habits, train your stats, plan your day, and grow through small daily quests.
+          </motion.p>
+
           {/* ── PROTOCOL LABEL ── */}
           <motion.p
-            className="text-[9px] font-mono mb-10 tracking-[0.50em] uppercase"
+            className="text-[9px] font-mono mb-6 tracking-[0.50em] uppercase"
             style={{ color: "rgba(6,182,212,0.55)", letterSpacing: "0.50em" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 2.0, duration: 0.9 }}
+            transition={{ delay: 2.3, duration: 0.9 }}
           >
             AWAKENED SYSTEM PROTOCOL
           </motion.p>
@@ -450,7 +471,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             className="w-full relative overflow-hidden"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 3.2, duration: 0.85, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{ delay: 2.65, duration: 0.85, ease: [0.25, 0.46, 0.45, 0.94] }}
             whileHover={{ scale: 1.022 }}
             whileTap={{ scale: 0.965 }}
             data-testid="button-begin-ascension"
@@ -534,7 +555,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
                 className="relative z-10 shrink-0"
                 style={{ color: "#67e8f9", filter: "drop-shadow(0 0 6px rgba(6,182,212,0.9))" }}
               />
-              <span className="relative z-10">AWAKEN SYSTEM</span>
+              <span className="relative z-10">BEGIN</span>
             </motion.div>
           </motion.button>
 
@@ -544,7 +565,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             style={{ color: "rgba(100,116,139,0.32)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 2.8, duration: 0.6 }}
+            transition={{ delay: 2.9, duration: 0.6 }}
           >
             ASCEND v2.0 // NEON GENESIS
           </motion.p>

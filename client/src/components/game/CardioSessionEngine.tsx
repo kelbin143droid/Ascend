@@ -105,7 +105,7 @@ function CircularCountdown({ total, remaining, isRest }: { total: number; remain
 }
 
 interface Props {
-  playerId: number;
+  playerId: string;
   onComplete: (xp: number) => void;
   onCancel: () => void;
   noApiCall?: boolean;
