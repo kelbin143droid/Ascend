@@ -6,6 +6,7 @@ import { GenderSelectScreen } from "./GenderSelectScreen";
 import { GoalSelectScreen, type AscendGoal } from "./GoalSelectScreen";
 import { CalibrationFlow } from "./CalibrationFlow";
 import { RecommendedPathScreen } from "./RecommendedPathScreen";
+import { CalmBreathingEngine } from "./CalmBreathingEngine";
 import { motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 import { ArrowRight, CheckCircle2, Wind, Zap } from "lucide-react";
@@ -134,6 +135,7 @@ function FirstResetScreen({
     : breathState.phase === "hold"
     ? "#c4b5fd"
     : "#93c5fd";
+  const usesSharedBreathingEngine = true;
 
   const stopAmbientPad = () => {
     const pad = ambientPadRef.current;
@@ -209,6 +211,7 @@ function FirstResetScreen({
   };
 
   useEffect(() => {
+    if (usesSharedBreathingEngine) return;
     if (phase !== "active") return;
     if (remaining <= 0) {
       setPhase("reward");
@@ -245,6 +248,7 @@ function FirstResetScreen({
   }, []);
 
   useEffect(() => {
+    if (usesSharedBreathingEngine) return;
     if (phase !== "active") return;
     if (remaining <= 0) return;
     if (lastAudioPhase.current === breathState.phase) return;
@@ -268,7 +272,6 @@ function FirstResetScreen({
         backgroundVideo.play().catch(() => {});
       });
     }
-    startAmbientPad();
     setRemaining(FIRST_RESET_DURATION_SECONDS);
     setPhase("active");
   };
@@ -286,6 +289,68 @@ function FirstResetScreen({
   const ringRadius = 104;
   const ringCircumference = 2 * Math.PI * ringRadius;
   const ringDashOffset = ringCircumference - (progress / 100) * ringCircumference;
+
+  if (isActive) {
+    return (
+      <motion.div
+        className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#020711] px-4 py-5"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.45 }}
+        style={{
+          fontFamily: "Inter, system-ui, sans-serif",
+        }}
+      >
+        <video
+          ref={backgroundVideoRef}
+          className="absolute inset-0 h-full w-full object-cover opacity-90"
+          src={FIRST_RESET_BACKGROUND_VIDEO_URL}
+          poster="/first-reset-neural-bg.jpg"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(34,211,238,0.06),transparent_34%),linear-gradient(180deg,rgba(2,7,17,0.22)_0%,rgba(2,7,17,0.52)_56%,rgba(2,7,17,0.88)_100%)]" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/10 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#020711] to-transparent" />
+
+        <div className="relative z-10 flex max-h-full w-full max-w-[430px] flex-col items-center overflow-y-auto text-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <motion.div
+            className="mx-auto mb-5 flex h-[86px] w-[86px] items-center justify-center rounded-full border border-cyan-100/45 bg-white/10 shadow-[inset_0_1px_18px_rgba(255,255,255,0.18)] backdrop-blur-xl"
+            animate={{ boxShadow: ["0 0 28px rgba(186,243,255,0.18), inset 0 1px 18px rgba(255,255,255,0.18)", "0 0 58px rgba(186,243,255,0.42), inset 0 1px 22px rgba(255,255,255,0.24)", "0 0 28px rgba(186,243,255,0.18), inset 0 1px 18px rgba(255,255,255,0.18)"] }}
+            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Wind className="text-cyan-100 drop-shadow-[0_0_12px_rgba(186,243,255,0.7)]" size={36} />
+          </motion.div>
+
+          <p className="mb-3 text-[11px] font-black uppercase tracking-[0.42em] text-cyan-100/70">
+            First Quest
+          </p>
+          <h1 className="mb-4 text-[38px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[44px]">
+            30-Second Reset
+          </h1>
+          <p className="mx-auto mb-8 max-w-[350px] text-[17px] font-bold leading-6 text-yellow-200 drop-shadow-[0_0_12px_rgba(250,204,21,0.26)]">
+            Breathe with the same reset you will use inside Ascend.
+          </p>
+
+          <div className="relative mb-6 flex min-h-[360px] w-full items-center justify-center overflow-hidden rounded-[30px] border border-white/10 bg-slate-200/[0.025] px-4 py-8 shadow-[0_18px_54px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
+            <div className="absolute right-4 top-4 z-20 rounded-full border border-white/10 bg-slate-200/[0.035] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+              Voice On
+            </div>
+            <CalmBreathingEngine
+              accentColor="#67e8f9"
+              targetSeconds={FIRST_RESET_DURATION_SECONDS}
+              onDone={() => setPhase("reward")}
+            />
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -344,7 +409,7 @@ function FirstResetScreen({
               onClick={onComplete}
               className="group flex w-full items-center justify-center gap-3 rounded-full border border-cyan-100/55 bg-cyan-100/10 px-5 py-4 text-[12px] font-black uppercase tracking-[0.24em] text-white shadow-[0_0_44px_rgba(186,243,255,0.2),inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-xl transition hover:bg-cyan-100/16"
             >
-              Choose Style
+              Enter Ascend
               <ArrowRight className="transition group-hover:translate-x-0.5" size={17} />
             </button>
           </>

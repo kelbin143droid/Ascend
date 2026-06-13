@@ -1,0 +1,760 @@
+diff --git a/client/src/components/game/CalmBreathingEngine.tsx b/client/src/components/game/CalmBreathingEngine.tsx
+new file mode 100644
+index 0000000..551adc2
+--- /dev/null
++++ b/client/src/components/game/CalmBreathingEngine.tsx
+@@ -0,0 +1,301 @@
++import { useEffect, useRef, useState } from "react";
++
++const INHALE_URL = "/audio/inhale.mp3";
++const HOLD_URL = "/audio/hold.mp3";
++const EXHALE_URL = "/audio/exhale.mp3";
++
++type BreathPhase = "Inhale" | "Hold" | "Exhale";
++
++const VOICE_DURATIONS: Record<BreathPhase, number> = {
++  Inhale: 4000,
++  Hold: 2000,
++  Exhale: 4000,
++};
++
++const VOICE_NEXT: Record<BreathPhase, BreathPhase> = {
++  Inhale: "Hold",
++  Hold: "Exhale",
++  Exhale: "Inhale",
++};
++
++const CALM_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
++
++function createPadOscillator(ctx: AudioContext, freq: number, detuneCents: number, gainValue: number, destination: AudioNode) {
++  const osc = ctx.createOscillator();
++  osc.type = "sine";
++  osc.frequency.setValueAtTime(freq, ctx.currentTime);
++  osc.detune.setValueAtTime(detuneCents, ctx.currentTime);
++  const gain = ctx.createGain();
++  gain.gain.setValueAtTime(gainValue, ctx.currentTime);
++  osc.connect(gain).connect(destination);
++  osc.start();
++  return osc;
++}
++
++function useBreathingAudio(active: boolean) {
++  const audioCtxRef = useRef<AudioContext | null>(null);
++  const oscillatorsRef = useRef<OscillatorNode[]>([]);
++  const lfoRef = useRef<OscillatorNode | null>(null);
++
++  useEffect(() => {
++    if (!active) return;
++
++    try {
++      const ctx = new AudioContext();
++      ctx.resume().catch(() => {});
++      audioCtxRef.current = ctx;
++
++      const masterGain = ctx.createGain();
++      masterGain.gain.setValueAtTime(0, ctx.currentTime);
++      masterGain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 3);
++
++      const lpFilter = ctx.createBiquadFilter();
++      lpFilter.type = "lowpass";
++      lpFilter.frequency.setValueAtTime(600, ctx.currentTime);
++      lpFilter.Q.setValueAtTime(0.7, ctx.currentTime);
++
++      const lfoGain = ctx.createGain();
++      lfoGain.gain.setValueAtTime(0.03, ctx.currentTime);
++      const lfo = ctx.createOscillator();
++      lfo.type = "sine";
++      lfo.frequency.setValueAtTime(0.15, ctx.currentTime);
++      lfo.connect(lfoGain).connect(masterGain.gain);
++      lfo.start();
++      lfoRef.current = lfo;
++
++      lpFilter.connect(masterGain).connect(ctx.destination);
++
++      const oscs: OscillatorNode[] = [];
++      oscs.push(createPadOscillator(ctx, 130.81, -4, 0.35, lpFilter));
++      oscs.push(createPadOscillator(ctx, 130.81, 4, 0.35, lpFilter));
++      oscs.push(createPadOscillator(ctx, 196.0, -3, 0.2, lpFilter));
++      oscs.push(createPadOscillator(ctx, 196.0, 3, 0.2, lpFilter));
++      oscs.push(createPadOscillator(ctx, 261.63, -5, 0.12, lpFilter));
++      oscs.push(createPadOscillator(ctx, 261.63, 5, 0.12, lpFilter));
++      oscs.push(createPadOscillator(ctx, 329.63, 0, 0.06, lpFilter));
++      oscillatorsRef.current = oscs;
++    } catch {}
++
++    return () => {
++      try {
++        oscillatorsRef.current.forEach((oscillator) => {
++          try {
++            oscillator.stop();
++          } catch {}
++        });
++        if (lfoRef.current) {
++          try {
++            lfoRef.current.stop();
++          } catch {}
++        }
++        audioCtxRef.current?.close();
++      } catch {}
++      oscillatorsRef.current = [];
++      lfoRef.current = null;
++      audioCtxRef.current = null;
++    };
++  }, [active]);
++}
++
++function useCalmMusic(active: boolean) {
++  const ctxRef = useRef<AudioContext | null>(null);
++  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
++
++  useEffect(() => {
++    if (!active) return;
++
++    let closed = false;
++
++    const playNote = (ctx: AudioContext, dest: GainNode) => {
++      if (closed) return;
++      const freq = CALM_NOTES[Math.floor(Math.random() * CALM_NOTES.length)];
++      const f = Math.random() > 0.7 ? freq * 2 : freq;
++
++      const osc = ctx.createOscillator();
++      osc.type = "sine";
++      osc.frequency.setValueAtTime(f, ctx.currentTime);
++
++      const gain = ctx.createGain();
++      gain.gain.setValueAtTime(0, ctx.currentTime);
++      gain.gain.linearRampToValueAtTime(0.055, ctx.currentTime + 1.2);
++      gain.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 3.5);
++      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 5.5);
++
++      osc.connect(gain);
++      gain.connect(dest);
++      osc.start(ctx.currentTime);
++      osc.stop(ctx.currentTime + 6);
++    };
++
++    const schedule = (ctx: AudioContext, dest: GainNode) => {
++      if (closed) return;
++      playNote(ctx, dest);
++      const delay = 2800 + Math.random() * 3200;
++      timerRef.current = setTimeout(() => schedule(ctx, dest), delay);
++    };
++
++    try {
++      const ctx = new AudioContext();
++      ctx.resume().catch(() => {});
++      ctxRef.current = ctx;
++
++      const master = ctx.createGain();
++      master.gain.setValueAtTime(0, ctx.currentTime);
++      master.gain.linearRampToValueAtTime(1, ctx.currentTime + 6);
++      master.connect(ctx.destination);
++
++      timerRef.current = setTimeout(() => schedule(ctx, master), 4000);
++    } catch {}
++
++    return () => {
++      closed = true;
++      if (timerRef.current) clearTimeout(timerRef.current);
++      try {
++        ctxRef.current?.close();
++      } catch {}
++      ctxRef.current = null;
++    };
++  }, [active]);
++}
++
++export function CalmBreathingEngine({
++  accentColor,
++  targetSeconds,
++  onDone,
++  paused = false,
++}: {
++  accentColor: string;
++  targetSeconds: number;
++  onDone: () => void;
++  paused?: boolean;
++}) {
++  const [phase, setPhase] = useState<BreathPhase>("Inhale");
++  const onDoneRef = useRef(onDone);
++  const pausedRef = useRef(paused);
++
++  useEffect(() => {
++    onDoneRef.current = onDone;
++  }, [onDone]);
++
++  useEffect(() => {
++    pausedRef.current = paused;
++  }, [paused]);
++
++  useBreathingAudio(!paused);
++  useCalmMusic(!paused);
++
++  useEffect(() => {
++    let alive = true;
++    const audioMap: Record<BreathPhase, string> = {
++      Inhale: INHALE_URL,
++      Hold: HOLD_URL,
++      Exhale: EXHALE_URL,
++    };
++    let activeAudio: HTMLAudioElement | null = null;
++
++    const speakPhase = (p: BreathPhase) => {
++      if (pausedRef.current) return;
++      try {
++        if (activeAudio) {
++          activeAudio.pause();
++          activeAudio.currentTime = 0;
++        }
++        const audio = new Audio(audioMap[p]);
++        audio.volume = 1.0;
++        activeAudio = audio;
++        audio.play().catch(() => {});
++      } catch {}
++    };
++
++    let curPhase: BreathPhase = "Inhale";
++    let phaseElapsedMs = 0;
++    let sessionElapsedMs = 0;
++    let lastTick = performance.now();
++    setPhase("Inhale");
++    speakPhase("Inhale");
++
++    const tickId = setInterval(() => {
++      if (!alive) return;
++      const now = performance.now();
++
++      if (pausedRef.current) {
++        lastTick = now;
++        return;
++      }
++
++      const delta = now - lastTick;
++      lastTick = now;
++      phaseElapsedMs += delta;
++      sessionElapsedMs += delta;
++
++      if (phaseElapsedMs >= VOICE_DURATIONS[curPhase]) {
++        const elapsedSec = sessionElapsedMs / 1000;
++        if (curPhase === "Exhale" && elapsedSec >= targetSeconds) {
++          alive = false;
++          clearInterval(tickId);
++          if (activeAudio) {
++            activeAudio.pause();
++            activeAudio = null;
++          }
++          onDoneRef.current();
++          return;
++        }
++        curPhase = VOICE_NEXT[curPhase];
++        phaseElapsedMs = 0;
++        setPhase(curPhase);
++        speakPhase(curPhase);
++      }
++    }, 100);
++
++    return () => {
++      alive = false;
++      clearInterval(tickId);
++      if (activeAudio) {
++        activeAudio.pause();
++        activeAudio = null;
++      }
++    };
++  }, [targetSeconds]);
++
++  const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.5;
++  const transitionDuration =
++    phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
++    : phase === "Hold" ? "0.2s"
++    : `${VOICE_DURATIONS.Exhale / 1000}s`;
++  const phaseHint =
++    phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
++    : phase === "Hold" ? `${VOICE_DURATIONS.Hold / 1000}s`
++    : `${VOICE_DURATIONS.Exhale / 1000}s`;
++
++  return (
++    <div className="flex flex-col items-center gap-8">
++      <div
++        className="w-32 h-32 rounded-full"
++        style={{
++          transform: `scale(${scale})`,
++          transition: `transform ${transitionDuration} ease-in-out`,
++          background: `radial-gradient(circle, ${accentColor}60 0%, ${accentColor}28 60%, transparent 100%)`,
++          border: `2px solid ${accentColor}aa`,
++          boxShadow: phase === "Hold"
++            ? `0 0 40px ${accentColor}55, 0 0 16px ${accentColor}30`
++            : `0 0 28px ${accentColor}40, 0 0 10px ${accentColor}22`,
++        }}
++      />
++      <div className="flex flex-col items-center gap-1">
++        <p
++          data-testid="breathing-phase-label"
++          className="text-xl font-display font-medium tracking-wider"
++          style={{ color: `${accentColor}ff` }}
++        >
++          {phase}
++        </p>
++        <p className="text-xs" style={{ color: `${accentColor}cc` }}>
++          {phaseHint}
++        </p>
++      </div>
++      <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>
++        Voice guided · Ambient audio
++      </p>
++    </div>
++  );
++}
+diff --git a/client/src/components/game/IntroWrapper.tsx b/client/src/components/game/IntroWrapper.tsx
+index 5fcb6e0..0a59a21 100644
+--- a/client/src/components/game/IntroWrapper.tsx
++++ b/client/src/components/game/IntroWrapper.tsx
+@@ -6,6 +6,7 @@ import { GenderSelectScreen } from "./GenderSelectScreen";
+ import { GoalSelectScreen, type AscendGoal } from "./GoalSelectScreen";
+ import { CalibrationFlow } from "./CalibrationFlow";
+ import { RecommendedPathScreen } from "./RecommendedPathScreen";
++import { CalmBreathingEngine } from "./CalmBreathingEngine";
+ import { motion } from "framer-motion";
+ import { useTheme } from "@/context/ThemeContext";
+ import { ArrowRight, CheckCircle2, Wind, Zap } from "lucide-react";
+@@ -134,6 +135,7 @@ function FirstResetScreen({
+     : breathState.phase === "hold"
+     ? "#c4b5fd"
+     : "#93c5fd";
++  const usesSharedBreathingEngine = true;
+ 
+   const stopAmbientPad = () => {
+     const pad = ambientPadRef.current;
+@@ -209,6 +211,7 @@ function FirstResetScreen({
+   };
+ 
+   useEffect(() => {
++    if (usesSharedBreathingEngine) return;
+     if (phase !== "active") return;
+     if (remaining <= 0) {
+       setPhase("reward");
+@@ -245,6 +248,7 @@ function FirstResetScreen({
+   }, []);
+ 
+   useEffect(() => {
++    if (usesSharedBreathingEngine) return;
+     if (phase !== "active") return;
+     if (remaining <= 0) return;
+     if (lastAudioPhase.current === breathState.phase) return;
+@@ -268,7 +272,6 @@ function FirstResetScreen({
+         backgroundVideo.play().catch(() => {});
+       });
+     }
+-    startAmbientPad();
+     setRemaining(FIRST_RESET_DURATION_SECONDS);
+     setPhase("active");
+   };
+@@ -287,6 +290,68 @@ function FirstResetScreen({
+   const ringCircumference = 2 * Math.PI * ringRadius;
+   const ringDashOffset = ringCircumference - (progress / 100) * ringCircumference;
+ 
++  if (isActive) {
++    return (
++      <motion.div
++        className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#020711] px-4 py-5"
++        initial={{ opacity: 0 }}
++        animate={{ opacity: 1 }}
++        transition={{ duration: 0.45 }}
++        style={{
++          fontFamily: "Inter, system-ui, sans-serif",
++        }}
++      >
++        <video
++          ref={backgroundVideoRef}
++          className="absolute inset-0 h-full w-full object-cover opacity-90"
++          src={FIRST_RESET_BACKGROUND_VIDEO_URL}
++          poster="/first-reset-neural-bg.jpg"
++          autoPlay
++          loop
++          muted
++          playsInline
++          preload="auto"
++          aria-hidden="true"
++        />
++        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(34,211,238,0.06),transparent_34%),linear-gradient(180deg,rgba(2,7,17,0.22)_0%,rgba(2,7,17,0.52)_56%,rgba(2,7,17,0.88)_100%)]" />
++        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/10 to-transparent" />
++        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#020711] to-transparent" />
++
++        <div className="relative z-10 flex max-h-full w-full max-w-[430px] flex-col items-center overflow-y-auto text-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
++          <motion.div
++            className="mx-auto mb-5 flex h-[86px] w-[86px] items-center justify-center rounded-full border border-cyan-100/45 bg-white/10 shadow-[inset_0_1px_18px_rgba(255,255,255,0.18)] backdrop-blur-xl"
++            animate={{ boxShadow: ["0 0 28px rgba(186,243,255,0.18), inset 0 1px 18px rgba(255,255,255,0.18)", "0 0 58px rgba(186,243,255,0.42), inset 0 1px 22px rgba(255,255,255,0.24)", "0 0 28px rgba(186,243,255,0.18), inset 0 1px 18px rgba(255,255,255,0.18)"] }}
++            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
++          >
++            <Wind className="text-cyan-100 drop-shadow-[0_0_12px_rgba(186,243,255,0.7)]" size={36} />
++          </motion.div>
++
++          <p className="mb-3 text-[11px] font-black uppercase tracking-[0.42em] text-cyan-100/70">
++            First Quest
++          </p>
++          <h1 className="mb-4 text-[38px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[44px]">
++            30-Second Reset
++          </h1>
++          <p className="mx-auto mb-8 max-w-[350px] text-[17px] font-bold leading-6 text-yellow-200 drop-shadow-[0_0_12px_rgba(250,204,21,0.26)]">
++            Breathe with the same reset you will use inside Ascend.
++          </p>
++
++          <div className="relative mb-6 flex min-h-[360px] w-full items-center justify-center overflow-hidden rounded-[30px] border border-white/10 bg-slate-200/[0.025] px-4 py-8 shadow-[0_18px_54px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-sm">
++            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
++            <div className="absolute right-4 top-4 z-20 rounded-full border border-white/10 bg-slate-200/[0.035] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
++              Voice On
++            </div>
++            <CalmBreathingEngine
++              accentColor="#67e8f9"
++              targetSeconds={FIRST_RESET_DURATION_SECONDS}
++              onDone={() => setPhase("reward")}
++            />
++          </div>
++        </div>
++      </motion.div>
++    );
++  }
++
+   return (
+     <motion.div
+       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#020711] px-4 py-5"
+@@ -344,7 +409,7 @@ function FirstResetScreen({
+               onClick={onComplete}
+               className="group flex w-full items-center justify-center gap-3 rounded-full border border-cyan-100/55 bg-cyan-100/10 px-5 py-4 text-[12px] font-black uppercase tracking-[0.24em] text-white shadow-[0_0_44px_rgba(186,243,255,0.2),inset_0_0_0_1px_rgba(255,255,255,0.12)] backdrop-blur-xl transition hover:bg-cyan-100/16"
+             >
+-              Choose Style
++              Enter Ascend
+               <ArrowRight className="transition group-hover:translate-x-0.5" size={17} />
+             </button>
+           </>
+diff --git a/client/src/pages/GuidedSessionPage.tsx b/client/src/pages/GuidedSessionPage.tsx
+index b9731c0..6f2129b 100644
+--- a/client/src/pages/GuidedSessionPage.tsx
++++ b/client/src/pages/GuidedSessionPage.tsx
+@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
+ import { DayCloseOverlay } from "@/components/game/DayCloseOverlay";
+ import { Day5ExpansionOverlay } from "@/components/game/Day5ExpansionOverlay";
+ import { Wind, Heart, Droplets, Brain, X, Pause, Play, SkipForward } from "lucide-react";
++import { CalmBreathingEngine } from "@/components/game/CalmBreathingEngine";
+ import { LightMovementEngine } from "@/components/game/LightMovementEngine";
+ import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
+ import { BreathingFeedbackModal } from "@/components/game/BreathingFeedbackModal";
+@@ -81,14 +82,6 @@ const INHALE_URL = "/audio/inhale.mp3";
+ const HOLD_URL = "/audio/hold.mp3";
+ const EXHALE_URL = "/audio/exhale.mp3";
+ 
+-const BREATHING_PHASES = [
+-  { label: "Inhale", duration: 4000 },
+-  { label: "Hold", duration: 2000 },
+-  { label: "Exhale", duration: 4000 },
+-];
+-
+-const CYCLE_MS = BREATHING_PHASES.reduce((s, p) => s + p.duration, 0); // 10000ms
+-
+ const MOVEMENT_PROMPTS = [
+   { text: "Roll your shoulders slowly, forward and back.", at: 0 },
+   { text: "Stretch your arms above your head. Hold.", at: 30 },
+@@ -114,294 +107,6 @@ const SESSION_XP_REWARD: Record<string, number | undefined> = {
+   "light-movement": PHASE1_XP.agility,
+ };
+ 
+-function createPadOscillator(
+-  ctx: AudioContext,
+-  freq: number,
+-  detuneCents: number,
+-  gainValue: number,
+-  destination: AudioNode
+-) {
+-  const osc = ctx.createOscillator();
+-  osc.type = "sine";
+-  osc.frequency.setValueAtTime(freq, ctx.currentTime);
+-  osc.detune.setValueAtTime(detuneCents, ctx.currentTime);
+-  const gain = ctx.createGain();
+-  gain.gain.setValueAtTime(gainValue, ctx.currentTime);
+-  osc.connect(gain).connect(destination);
+-  osc.start();
+-  return osc;
+-}
+-
+-function useBreathingAudio(active: boolean) {
+-  const audioCtxRef = useRef<AudioContext | null>(null);
+-  const oscillatorsRef = useRef<OscillatorNode[]>([]);
+-  const lfoRef = useRef<OscillatorNode | null>(null);
+-  useEffect(() => {
+-    if (!active) return;
+-
+-    try {
+-      const ctx = new AudioContext();
+-      ctx.resume().catch(() => {});
+-      audioCtxRef.current = ctx;
+-
+-      const masterGain = ctx.createGain();
+-      masterGain.gain.setValueAtTime(0, ctx.currentTime);
+-      masterGain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 3);
+-
+-      const lpFilter = ctx.createBiquadFilter();
+-      lpFilter.type = "lowpass";
+-      lpFilter.frequency.setValueAtTime(600, ctx.currentTime);
+-      lpFilter.Q.setValueAtTime(0.7, ctx.currentTime);
+-
+-      const lfoGain = ctx.createGain();
+-      lfoGain.gain.setValueAtTime(0.03, ctx.currentTime);
+-      const lfo = ctx.createOscillator();
+-      lfo.type = "sine";
+-      lfo.frequency.setValueAtTime(0.15, ctx.currentTime);
+-      lfo.connect(lfoGain).connect(masterGain.gain);
+-      lfo.start();
+-      lfoRef.current = lfo;
+-
+-      lpFilter.connect(masterGain).connect(ctx.destination);
+-
+-      const oscs: OscillatorNode[] = [];
+-      oscs.push(createPadOscillator(ctx, 130.81, -4, 0.35, lpFilter));
+-      oscs.push(createPadOscillator(ctx, 130.81, 4, 0.35, lpFilter));
+-      oscs.push(createPadOscillator(ctx, 196.00, -3, 0.2, lpFilter));
+-      oscs.push(createPadOscillator(ctx, 196.00, 3, 0.2, lpFilter));
+-      oscs.push(createPadOscillator(ctx, 261.63, -5, 0.12, lpFilter));
+-      oscs.push(createPadOscillator(ctx, 261.63, 5, 0.12, lpFilter));
+-      oscs.push(createPadOscillator(ctx, 329.63, 0, 0.06, lpFilter));
+-      oscillatorsRef.current = oscs;
+-    } catch {}
+-
+-    return () => {
+-      try {
+-        oscillatorsRef.current.forEach(o => { try { o.stop(); } catch {} });
+-        if (lfoRef.current) try { lfoRef.current.stop(); } catch {}
+-        audioCtxRef.current?.close();
+-      } catch {}
+-      oscillatorsRef.current = [];
+-      lfoRef.current = null;
+-      audioCtxRef.current = null;
+-    };
+-  }, [active]);
+-}
+-
+-// ─── Voice clip phase durations & order ──────────────────────────────────────
+-const VOICE_DURATIONS: Record<"Inhale" | "Hold" | "Exhale", number> = {
+-  Inhale: 4000,
+-  Hold:   2000,
+-  Exhale: 4000,
+-};
+-const VOICE_NEXT: Record<"Inhale" | "Hold" | "Exhale", "Inhale" | "Hold" | "Exhale"> = {
+-  Inhale: "Hold",
+-  Hold:   "Exhale",
+-  Exhale: "Inhale",
+-};
+-
+-// ─── Calm background music (pentatonic, Web Audio) ───────────────────────────
+-const CALM_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25]; // C D E G A C (pentatonic)
+-
+-function useCalmMusic(active: boolean) {
+-  const ctxRef = useRef<AudioContext | null>(null);
+-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+-
+-  useEffect(() => {
+-    if (!active) return;
+-
+-    let closed = false;
+-
+-    const playNote = (ctx: AudioContext, dest: GainNode) => {
+-      if (closed) return;
+-      const freq = CALM_NOTES[Math.floor(Math.random() * CALM_NOTES.length)];
+-      // Occasionally play the note an octave up for shimmer
+-      const f = Math.random() > 0.7 ? freq * 2 : freq;
+-
+-      const osc = ctx.createOscillator();
+-      osc.type = "sine";
+-      osc.frequency.setValueAtTime(f, ctx.currentTime);
+-
+-      const g = ctx.createGain();
+-      g.gain.setValueAtTime(0, ctx.currentTime);
+-      g.gain.linearRampToValueAtTime(0.055, ctx.currentTime + 1.2);
+-      g.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 3.5);
+-      g.gain.linearRampToValueAtTime(0, ctx.currentTime + 5.5);
+-
+-      osc.connect(g);
+-      g.connect(dest);
+-      osc.start(ctx.currentTime);
+-      osc.stop(ctx.currentTime + 6);
+-    };
+-
+-    const schedule = (ctx: AudioContext, dest: GainNode) => {
+-      if (closed) return;
+-      playNote(ctx, dest);
+-      const delay = 2800 + Math.random() * 3200;
+-      timerRef.current = setTimeout(() => schedule(ctx, dest), delay);
+-    };
+-
+-    try {
+-      const ctx = new AudioContext();
+-      ctx.resume().catch(() => {});
+-      ctxRef.current = ctx;
+-
+-      const master = ctx.createGain();
+-      master.gain.setValueAtTime(0, ctx.currentTime);
+-      master.gain.linearRampToValueAtTime(1, ctx.currentTime + 6);
+-      master.connect(ctx.destination);
+-
+-      // Start first note after 4s (let ambient pad settle first)
+-      timerRef.current = setTimeout(() => schedule(ctx, master), 4000);
+-    } catch {}
+-
+-    return () => {
+-      closed = true;
+-      if (timerRef.current) clearTimeout(timerRef.current);
+-      try { ctxRef.current?.close(); } catch {}
+-      ctxRef.current = null;
+-    };
+-  }, [active]);
+-}
+-
+-
+-function BreathingSession({
+-  accentColor,
+-  targetSeconds,
+-  onDone,
+-  paused = false,
+-}: {
+-  accentColor: string;
+-  targetSeconds: number;
+-  onDone: () => void;
+-  paused?: boolean;
+-}) {
+-  const [phase, setPhase] = useState<"Inhale" | "Hold" | "Exhale">("Inhale");
+-  const onDoneRef = useRef(onDone);
+-  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
+-
+-  // Keep a ref so the interval closure can read the latest paused value
+-  const pausedRef = useRef(paused);
+-  useEffect(() => { pausedRef.current = paused; }, [paused]);
+-
+-  useBreathingAudio(!paused);
+-  useCalmMusic(!paused);
+-
+-  useEffect(() => {
+-    let alive = true;
+-
+-    // ── Voice via pre-recorded audio files ────────────────────────────────────
+-    const audioMap: Record<"Inhale" | "Hold" | "Exhale", string> = {
+-      Inhale: INHALE_URL,
+-      Hold:   HOLD_URL,
+-      Exhale: EXHALE_URL,
+-    };
+-    let activeAudio: HTMLAudioElement | null = null;
+-    const speakPhase = (p: "Inhale" | "Hold" | "Exhale") => {
+-      if (pausedRef.current) return;
+-      try {
+-        if (activeAudio) { activeAudio.pause(); activeAudio.currentTime = 0; }
+-        const a = new Audio(audioMap[p]);
+-        a.volume = 1.0;
+-        activeAudio = a;
+-        a.play().catch(() => {});
+-      } catch {}
+-    };
+-
+-    // ── Delta-based phase cycling — pauses cleanly ───────────────────────────
+-    let curPhase: "Inhale" | "Hold" | "Exhale" = "Inhale";
+-    let phaseElapsedMs = 0;
+-    let sessionElapsedMs = 0;
+-    let lastTick = performance.now();
+-    setPhase("Inhale");
+-    speakPhase("Inhale");
+-
+-    const tickId = setInterval(() => {
+-      if (!alive) return;
+-      const now = performance.now();
+-
+-      if (pausedRef.current) {
+-        // Keep resetting lastTick while paused so the first resumed tick
+-        // has a small delta (≈100ms) instead of the full paused duration.
+-        lastTick = now;
+-        return;
+-      }
+-
+-      const delta = now - lastTick;
+-      lastTick = now;
+-      phaseElapsedMs  += delta;
+-      sessionElapsedMs += delta;
+-
+-      if (phaseElapsedMs >= VOICE_DURATIONS[curPhase]) {
+-        const elapsedSec = sessionElapsedMs / 1000;
+-        // After an Exhale completes and we've met the target duration, end cleanly
+-        if (curPhase === "Exhale" && elapsedSec >= targetSeconds) {
+-          alive = false;
+-          clearInterval(tickId);
+-          if (activeAudio) { activeAudio.pause(); activeAudio = null; }
+-          onDoneRef.current();
+-          return;
+-        }
+-        curPhase = VOICE_NEXT[curPhase];
+-        phaseElapsedMs = 0;
+-        setPhase(curPhase);
+-        speakPhase(curPhase);
+-      }
+-    }, 100);
+-
+-    return () => {
+-      alive = false;
+-      clearInterval(tickId);
+-      if (activeAudio) { activeAudio.pause(); activeAudio = null; }
+-    };
+-  }, [targetSeconds]);
+-
+-  // Circle: small → large on inhale, stays large on hold, large → small on exhale
+-  const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.5;
+-  const transitionDuration =
+-    phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
+-    : phase === "Hold"   ? "0.2s"
+-    : `${VOICE_DURATIONS.Exhale / 1000}s`;
+-
+-  // Duration label shown below phase name
+-  const phaseHint =
+-    phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
+-    : phase === "Hold"   ? `${VOICE_DURATIONS.Hold / 1000}s`
+-    : `${VOICE_DURATIONS.Exhale / 1000}s`;
+-
+-  return (
+-    <div className="flex flex-col items-center gap-8">
+-      <div
+-        className="w-32 h-32 rounded-full"
+-        style={{
+-          transform: `scale(${scale})`,
+-          transition: `transform ${transitionDuration} ease-in-out`,
+-          background: `radial-gradient(circle, ${accentColor}60 0%, ${accentColor}28 60%, transparent 100%)`,
+-          border: `2px solid ${accentColor}aa`,
+-          boxShadow: phase === "Hold"
+-            ? `0 0 40px ${accentColor}55, 0 0 16px ${accentColor}30`
+-            : `0 0 28px ${accentColor}40, 0 0 10px ${accentColor}22`,
+-        }}
+-      />
+-      <div className="flex flex-col items-center gap-1">
+-        <p
+-          data-testid="breathing-phase-label"
+-          className="text-xl font-display font-medium tracking-wider"
+-          style={{ color: `${accentColor}ff` }}
+-        >
+-          {phase}
+-        </p>
+-        <p className="text-xs" style={{ color: `${accentColor}cc` }}>
+-          {phaseHint}
+-        </p>
+-      </div>
+-      <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>
+-        Voice guided · Ambient audio
+-      </p>
+-    </div>
+-  );
+-}
+-
+ const TIME_SLOTS = [
+   "6:00 AM", "7:00 AM", "8:00 AM", "9:00 AM",
+   "12:00 PM", "3:00 PM", "6:00 PM", "9:00 PM",
+@@ -1104,7 +809,7 @@ export default function GuidedSessionPage() {
+           </div>
+         )}
+         {state === "active" && session.type === "breathing" && (
+-          <BreathingSession
++          <CalmBreathingEngine
+             accentColor={accentColor}
+             targetSeconds={session.durationSeconds}
+             onDone={handleComplete}
