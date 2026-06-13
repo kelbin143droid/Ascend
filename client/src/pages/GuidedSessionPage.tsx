@@ -79,6 +79,13 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
 };
 const CALM_BREATHING_GUIDANCE_SECONDS = 28;
 
+function formatSessionSeconds(seconds: number): string {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainder = safeSeconds % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
 const INHALE_URL = "/audio/inhale.mp3";
 const HOLD_URL = "/audio/hold.mp3";
 const EXHALE_URL = "/audio/exhale.mp3";
@@ -713,6 +720,7 @@ export default function GuidedSessionPage() {
 
   const accentColor = STAT_COLORS[session.stat] || "#3b82f6";
   const progress = session.durationSeconds > 0 ? Math.min(elapsed / session.durationSeconds, 1) : 0;
+  const remainingSeconds = session.durationSeconds > 0 ? Math.max(0, session.durationSeconds - elapsed) : 0;
   const Icon = session.icon;
 
   return (
@@ -726,17 +734,21 @@ export default function GuidedSessionPage() {
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <video
             src="/videos/calm-breathing.mp4"
-            className="w-full h-full object-cover"
+            className="h-full w-full scale-110 object-cover blur-[5px]"
             autoPlay
             playsInline
             muted
             loop
             preload="auto"
-            style={{ opacity: 0.18 }}
+            style={{ opacity: 0.11 }}
           />
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.40) 50%, rgba(0,0,0,0.65) 100%)" }}
+            style={{ background: "linear-gradient(to bottom, rgba(2,8,16,0.82) 0%, rgba(2,8,16,0.70) 46%, rgba(2,8,16,0.90) 100%)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: `radial-gradient(circle at 50% 42%, ${accentColor}20 0%, rgba(2,8,16,0.10) 28%, rgba(2,8,16,0.78) 72%)` }}
           />
         </div>
       )}
@@ -787,10 +799,25 @@ export default function GuidedSessionPage() {
               }}
             />
           </div>
+          {sessionId === "calm-breathing" && state === "active" && (
+            <div className="mt-4 flex justify-center">
+              <span
+                data-testid="session-countdown-timer"
+                className="rounded-full px-3 py-1 text-xs font-medium tabular-nums tracking-wide"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.055)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "rgba(255,255,255,0.68)",
+                }}
+              >
+                {formatSessionSeconds(remainingSeconds)}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="flex-1 flex items-center justify-center" style={{ animation: "gsFadeIn 0.5s ease-out" }}>
+      <div className="flex-1 flex items-center justify-center px-6" style={{ animation: "gsFadeIn 0.5s ease-out" }}>
         {state === "countdown" && (
           <div className="flex flex-col items-center gap-6">
             <p className="text-sm tracking-wide" style={{ color: "rgba(255,255,255,0.5)" }}>
@@ -914,39 +941,37 @@ export default function GuidedSessionPage() {
           )}
 
           {/* ── Pause / Skip controls ── */}
-          <div className="flex gap-3 w-full max-w-[260px]">
+          <div className="flex gap-2.5 w-full max-w-[220px]">
             <button
               data-testid="button-pause-session"
               onClick={() => setPaused(p => !p)}
-              className="flex-1 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
+              className="flex-1 py-2.5 rounded-2xl text-xs font-medium flex items-center justify-center gap-1.5 transition-all active:scale-[0.96]"
               style={{
-                backgroundColor: paused ? `${accentColor}30` : "rgba(255,255,255,0.18)",
-                border: paused ? `1px solid ${accentColor}80` : "1px solid rgba(255,255,255,0.35)",
-                color: paused ? accentColor : "rgba(255,255,255,0.90)",
+                backgroundColor: paused ? `${accentColor}20` : "rgba(255,255,255,0.08)",
+                border: paused ? `1px solid ${accentColor}55` : "1px solid rgba(255,255,255,0.14)",
+                color: paused ? `${accentColor}dd` : "rgba(255,255,255,0.62)",
               }}
             >
-              {paused ? <Play size={14} /> : <Pause size={14} />}
+              {paused ? <Play size={13} /> : <Pause size={13} />}
               {paused ? "Resume" : "Pause"}
             </button>
             <button
               data-testid="button-skip-session"
               onClick={() => { setPaused(false); handleComplete(); }}
-              className="flex-1 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.96]"
+              className="flex-1 py-2.5 rounded-2xl text-xs font-medium flex items-center justify-center gap-1.5 transition-all active:scale-[0.96]"
               style={{
-                backgroundColor: "rgba(255,255,255,0.14)",
-                border: "1px solid rgba(255,255,255,0.28)",
-                color: "rgba(255,255,255,0.78)",
+                backgroundColor: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.13)",
+                color: "rgba(255,255,255,0.55)",
               }}
             >
-              <SkipForward size={14} />
+              <SkipForward size={13} />
               Skip
             </button>
           </div>
 
-          <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.50)" }}>
-            {paused
-              ? "Session paused"
-              : `${Math.max(1, Math.ceil((session.durationSeconds - elapsed) / 60))} min remaining`}
+          <p className="min-h-4 text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.38)" }}>
+            {paused ? "Session paused" : sessionId === "calm-breathing" ? "" : `${Math.max(1, Math.ceil((session.durationSeconds - elapsed) / 60))} min remaining`}
           </p>
         </div>
       )}

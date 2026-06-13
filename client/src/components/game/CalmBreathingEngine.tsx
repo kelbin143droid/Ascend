@@ -247,8 +247,6 @@ export function CalmBreathingEngine({
       if (phaseElapsedMs >= VOICE_DURATIONS[curPhase]) {
         const elapsedSec = sessionElapsedMs / 1000;
         if (curPhase === "Exhale" && elapsedSec >= targetSeconds) {
-          alive = false;
-          clearInterval(tickId);
           if (activeAudio) {
             activeAudio.pause();
             activeAudio = null;
@@ -258,6 +256,8 @@ export function CalmBreathingEngine({
             silentElapsedMs = 0;
             setPhase("Quiet");
           } else {
+            alive = false;
+            clearInterval(tickId);
             onDoneRef.current();
           }
           return;
@@ -279,7 +279,7 @@ export function CalmBreathingEngine({
     };
   }, [targetSeconds, silentCompletionSeconds]);
 
-  const scale = phase === "Inhale" ? 1.0 : phase === "Hold" ? 1.0 : 0.5;
+  const scale = phase === "Inhale" ? 1.08 : phase === "Hold" ? 1.08 : 0.68;
   const transitionDuration =
     phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
     : phase === "Hold" ? "0.2s"
@@ -291,38 +291,48 @@ export function CalmBreathingEngine({
     : "";
 
   return (
-    <div className="flex flex-col items-center gap-8">
-      <div
-        className="w-32 h-32 rounded-full"
-        style={{
-          transform: `scale(${scale})`,
-          transition: `transform ${transitionDuration} ease-in-out`,
-          background: `radial-gradient(circle, ${accentColor}60 0%, ${accentColor}28 60%, transparent 100%)`,
-          border: `2px solid ${accentColor}aa`,
-          boxShadow: phase === "Hold"
-            ? `0 0 40px ${accentColor}55, 0 0 16px ${accentColor}30`
-            : `0 0 28px ${accentColor}40, 0 0 10px ${accentColor}22`,
-        }}
-      />
-      <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-6">
+      <div className="relative flex h-[230px] w-[230px] items-center justify-center sm:h-[260px] sm:w-[260px]">
+        <div
+          className="absolute h-[168px] w-[168px] rounded-full sm:h-[190px] sm:w-[190px]"
+          style={{
+            transform: `scale(${scale})`,
+            transition: `transform ${transitionDuration} ease-in-out, box-shadow 0.6s ease`,
+            background: `radial-gradient(circle at 50% 44%, rgba(255,255,255,0.13) 0%, ${accentColor}66 24%, ${accentColor}22 62%, transparent 100%)`,
+            border: `1.5px solid ${accentColor}aa`,
+            boxShadow: phase === "Hold"
+              ? `0 0 72px ${accentColor}55, 0 0 22px ${accentColor}36, inset 0 0 34px rgba(255,255,255,0.08)`
+              : `0 0 52px ${accentColor}44, 0 0 14px ${accentColor}28, inset 0 0 30px rgba(255,255,255,0.06)`,
+          }}
+        />
+        <div
+          className="absolute h-[214px] w-[214px] rounded-full sm:h-[242px] sm:w-[242px]"
+          style={{
+            border: `1px solid ${accentColor}30`,
+            boxShadow: `inset 0 0 46px ${accentColor}12`,
+          }}
+        />
+        <div
+          className="absolute h-[190px] w-[190px] rounded-full sm:h-[216px] sm:w-[216px]"
+          style={{
+            border: `1px solid ${accentColor}18`,
+          }}
+        />
+      </div>
+      <div className="flex min-h-[54px] flex-col items-center gap-1">
         <p
           data-testid="breathing-phase-label"
-          className="text-xl font-display font-medium tracking-wider"
+          className="text-2xl font-display font-medium tracking-wide"
           style={{ color: `${accentColor}ff` }}
         >
           {phase === "Quiet" ? "" : phase}
         </p>
         {phaseHint && (
-          <p className="text-xs" style={{ color: `${accentColor}cc` }}>
+          <p className="text-sm tabular-nums" style={{ color: `${accentColor}cc` }}>
             {phaseHint}
           </p>
         )}
       </div>
-      {phase !== "Quiet" && (
-        <p className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.55)" }}>
-          Voice guided · Ambient audio
-        </p>
-      )}
     </div>
   );
 }
