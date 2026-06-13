@@ -23,7 +23,7 @@ interface IntroWrapperProps {
   children: React.ReactNode;
 }
 
-const FIRST_RESET_DURATION_SECONDS = 30;
+const FIRST_RESET_DURATION_SECONDS = 28;
 const FIRST_RESET_XP = 15;
 const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
@@ -44,8 +44,8 @@ type FirstResetAmbientPad = {
 
 const FIRST_RESET_BREATHING = {
   inhale: 4,
-  hold: 2,
-  exhale: 4,
+  hold: 4,
+  exhale: 6,
 } as const;
 const FIRST_RESET_CYCLE_SECONDS =
   FIRST_RESET_BREATHING.inhale +

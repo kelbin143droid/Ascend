@@ -7,7 +7,7 @@ const HOLD_URL = "/audio/hold.mp3";
 const EXHALE_URL = "/audio/exhale.mp3";
 
 export function CalmBreathingSessionScreen({
-  targetSeconds = 30,
+  targetSeconds = 28,
   title = "30-Second Reset",
   accentColor = "#3b82f6",
   backgroundColor = "#020810",

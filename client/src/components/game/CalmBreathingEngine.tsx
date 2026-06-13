@@ -8,8 +8,8 @@ type BreathPhase = "Inhale" | "Hold" | "Exhale";
 
 const VOICE_DURATIONS: Record<BreathPhase, number> = {
   Inhale: 4000,
-  Hold: 2000,
-  Exhale: 4000,
+  Hold: 4000,
+  Exhale: 6000,
 };
 
 const VOICE_NEXT: Record<BreathPhase, BreathPhase> = {

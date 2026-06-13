@@ -32,7 +32,7 @@ const SESSIONS: Record<SessionId, SessionConfig> = {
     id: "calm-breathing",
     title: "30-Second Reset",
     stat: "sense",
-    durationSeconds: 30,
+    durationSeconds: 28,
     icon: Wind,
     type: "breathing",
   },
