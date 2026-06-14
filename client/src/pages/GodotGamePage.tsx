@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useGame } from "@/context/GameContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -59,6 +59,13 @@ interface ActiveDungeonConfig {
   gateId: string;
 }
 
+// ── Orientation helpers ────────────────────────────────────────────────────────
+
+function isPortraitNow() {
+  if (screen.orientation) return screen.orientation.type.startsWith("portrait");
+  return window.innerHeight > window.innerWidth;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function GodotGamePage() {
@@ -67,6 +74,27 @@ export default function GodotGamePage() {
   const [, navigate]  = useLocation();
   const iframeRef     = useRef<HTMLIFrameElement>(null);
   const readyRef      = useRef(false);
+  const [portrait, setPortrait] = useState(isPortraitNow);
+
+  // ── Orientation lock ───────────────────────────────────────────────────────
+  useEffect(() => {
+    // Try to lock to landscape (works on mobile after a user gesture / fullscreen)
+    if (screen.orientation?.lock) {
+      screen.orientation.lock("landscape").catch(() => {/* desktop/unsupported — silent */});
+    }
+
+    const update = () => setPortrait(isPortraitNow());
+    screen.orientation?.addEventListener("change", update);
+    window.addEventListener("resize", update);
+    update();
+
+    return () => {
+      screen.orientation?.removeEventListener("change", update);
+      window.removeEventListener("resize", update);
+      // Unlock when leaving game
+      if (screen.orientation?.unlock) screen.orientation.unlock();
+    };
+  }, []);
 
   // ── Stats: send on ready + whenever player changes ─────────────────────────
   const sendStats = useCallback((overrideStats?: GameStats) => {
@@ -190,6 +218,42 @@ export default function GodotGamePage() {
         title="SoloHeroWars"
         data-testid="iframe-godot-game"
       />
+
+      {/* Portrait-mode blocker */}
+      {portrait && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "#060d1a",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 20,
+        }}>
+          {/* Animated phone-rotate icon */}
+          <div style={{
+            fontSize: 72,
+            animation: "rotate-hint 1.8s ease-in-out infinite",
+          }}>📱</div>
+          <div style={{
+            color: "#e2e8f0", fontWeight: 700, fontSize: 18,
+            fontFamily: "'Chakra Petch', sans-serif", letterSpacing: 2,
+            textAlign: "center",
+          }}>
+            ROTATE DEVICE
+          </div>
+          <div style={{
+            color: "#64748b", fontSize: 13, textAlign: "center", maxWidth: 240, lineHeight: 1.6,
+          }}>
+            This dungeon requires landscape mode. Turn your phone sideways to continue.
+          </div>
+          <style>{`
+            @keyframes rotate-hint {
+              0%   { transform: rotate(0deg);   }
+              30%  { transform: rotate(-90deg); }
+              70%  { transform: rotate(-90deg); }
+              100% { transform: rotate(0deg);   }
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }
