@@ -747,7 +747,8 @@ export default function WorldMapPage() {
             ref={iframeRef}
             src="/game/index.html"
             style={{ width: "100%", height: "100%", border: "none", display: "block" }}
-            allow="autoplay; fullscreen"
+            allow="pointer-lock; fullscreen; autoplay"
+            allowFullScreen
             title="Dungeon"
             data-testid="iframe-dungeon-game"
           />
