@@ -410,7 +410,7 @@ function classModel(c: ClassEntry) {
 
 // ── 3-D Warrior Viewer ────────────────────────────────────────────────────
 function WarriorModel() {
-  const { scene } = useGLTF("/assets/models/player.glb");
+  const { scene } = useGLTF("/assets/models/warrior.glb");
   return <primitive object={scene} position={[0, -1, 0]} />;
 }
 
