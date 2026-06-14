@@ -597,6 +597,12 @@ export default function HunterProfilePage() {
         <div className="screen">
           {/* Top bar */}
           <div className="topbar">
+            <button
+              className="back-btn"
+              onClick={() => window.history.back()}
+              data-testid="button-hunter-profile-back"
+              aria-label="Go back"
+            >←</button>
             <div className="logo"><b>HUNTER</b><small>SYSTEM</small></div>
             <div className="wallet">
               {data.wallet.map((w, i) => (
@@ -806,7 +812,7 @@ export default function HunterProfilePage() {
           </div>
 
           {/* Enter World */}
-          <div className="enter">
+          <div className="enter" onClick={() => navigate("/world-map")} data-testid="button-enter-world">
             <b>ENTER WORLD</b>
             <small>BEGIN YOUR ADVENTURE</small>
           </div>
