@@ -8,10 +8,10 @@ export const modules: ModuleMap = {
   "./components/mockups/onboarding-home/HighContrastBold.tsx": () => import("../components/mockups/onboarding-home/HighContrastBold.tsx"),
   "./components/mockups/onboarding-home/SoftMinimal.tsx": () => import("../components/mockups/onboarding-home/SoftMinimal.tsx"),
   "./components/mockups/onboarding-home/WarmGrounded.tsx": () => import("../components/mockups/onboarding-home/WarmGrounded.tsx"),
-  "./components/mockups/surprise-home/DawnDusk.tsx": () => import("../components/mockups/surprise-home/DawnDusk.tsx"),
-  "./components/mockups/surprise-home/RitualCard.tsx": () => import("../components/mockups/surprise-home/RitualCard.tsx"),
-  "./components/mockups/surprise-home/VoidOrb.tsx": () => import("../components/mockups/surprise-home/VoidOrb.tsx"),
   "./components/mockups/usability-home/AccessibleReadable.tsx": () => import("../components/mockups/usability-home/AccessibleReadable.tsx"),
   "./components/mockups/usability-home/AffordanceFirst.tsx": () => import("../components/mockups/usability-home/AffordanceFirst.tsx"),
-  "./components/mockups/usability-home/ClearHierarchy.tsx": () => import("../components/mockups/usability-home/ClearHierarchy.tsx")
+  "./components/mockups/usability-home/ClearHierarchy.tsx": () => import("../components/mockups/usability-home/ClearHierarchy.tsx"),
+  "./components/mockups/surprise-home/DawnDusk.tsx": () => import("../components/mockups/surprise-home/DawnDusk.tsx"),
+  "./components/mockups/surprise-home/RitualCard.tsx": () => import("../components/mockups/surprise-home/RitualCard.tsx"),
+  "./components/mockups/surprise-home/VoidOrb.tsx": () => import("../components/mockups/surprise-home/VoidOrb.tsx")
 };

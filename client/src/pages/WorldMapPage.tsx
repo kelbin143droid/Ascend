@@ -6,12 +6,11 @@ import { useGame } from "@/context/GameContext";
 import {
   GATE_CONFIG,
   DUNGEON_NAMES,
-  MAX_DUNGEON_ENERGY,
-  ENERGY_RECHARGE_MS,
   WALK_RADIUS_M,
   RANK_COUNTS,
   RANK_SPAWN_RADIUS_M,
   RANK_ORDER,
+  TELEPORT_COST,
   ACTIVE_DUNGEON_KEY,
   CLEARED_GATE_KEY,
   PERSISTED_GATES_KEY,
@@ -86,28 +85,37 @@ function saveGates(gates: Gate[]) {
   localStorage.setItem(PERSISTED_GATES_KEY, JSON.stringify(gates));
 }
 
-// ── Dungeon energy (localStorage) ─────────────────────────────────────────────
+// ── Energy bar UI (DB-backed, regen ETA countdown) ───────────────────────────
 
-const E_KEY    = "ascend_dungeon_energy";
-const E_TS_KEY = "ascend_dungeon_energy_ts";
-
-function loadEnergy(): number {
-  const stored    = parseInt(localStorage.getItem(E_KEY) ?? `${MAX_DUNGEON_ENERGY}`, 10);
-  const ts        = parseInt(localStorage.getItem(E_TS_KEY) ?? `${Date.now()}`, 10);
-  const recharged = Math.floor((Date.now() - ts) / ENERGY_RECHARGE_MS);
-  const current   = Math.min(stored + recharged, MAX_DUNGEON_ENERGY);
-  if (recharged > 0) {
-    localStorage.setItem(E_KEY, String(current));
-    localStorage.setItem(E_TS_KEY, String(ts + recharged * ENERGY_RECHARGE_MS));
-  }
-  return current;
-}
-
-function consumeEnergy(current: number): number {
-  const next = Math.max(0, current - 1);
-  localStorage.setItem(E_KEY, String(next));
-  if (next < MAX_DUNGEON_ENERGY) localStorage.setItem(E_TS_KEY, String(Date.now()));
-  return next;
+function EnergyBar({ energy, maxEnergy, nextRegenSec }: { energy: number; maxEnergy: number; nextRegenSec: number }) {
+  const [countdown, setCountdown] = useState(nextRegenSec);
+  useEffect(() => { setCountdown(nextRegenSec); }, [nextRegenSec]);
+  useEffect(() => {
+    if (energy >= maxEnergy) return;
+    const t = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [energy, maxEnergy]);
+  const pct = maxEnergy > 0 ? Math.round((energy / maxEnergy) * 100) : 0;
+  const min = Math.floor(countdown / 60);
+  const sec = countdown % 60;
+  return (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3 }}>
+      <div style={{ color:"#94a3b8", fontSize:9, letterSpacing:.5 }}>DUNGEON ENERGY</div>
+      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+        <div style={{ width:80, height:6, borderRadius:3, background:"#1e293b", overflow:"hidden" }}>
+          <div style={{ width:`${pct}%`, height:"100%", background:"#0ea5e9", borderRadius:3, transition:"width .4s" }} />
+        </div>
+        <span style={{ color:"#0ea5e9", fontWeight:700, fontSize:11 }}>
+          {energy}<span style={{ color:"#475569" }}>/{maxEnergy}</span>
+        </span>
+      </div>
+      {energy < maxEnergy && (
+        <div style={{ color:"#475569", fontSize:8 }}>
+          +1 in {min}:{sec.toString().padStart(2, "0")}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Leaflet CSS + animation injection ────────────────────────────────────────
@@ -193,21 +201,6 @@ function RankBadge({ rank }: { rank: GateRank }) {
   );
 }
 
-function EnergyDots({ energy }: { energy: number }) {
-  return (
-    <div style={{ display:"flex", gap:4 }}>
-      {Array.from({ length: MAX_DUNGEON_ENERGY }).map((_, i) => (
-        <div key={i} style={{
-          width:8,height:8,borderRadius:"50%",
-          background: i < energy ? "#0ea5e9" : "#1e293b",
-          border:"1px solid #334155",
-          boxShadow: i < energy ? "0 0 6px #0ea5e9" : "none",
-          transition:"all 0.3s",
-        }} />
-      ))}
-    </div>
-  );
-}
 
 const TIER_LABELS = ["", "Common", "Uncommon", "Rare", "Epic", "Legendary"];
 
@@ -222,13 +215,15 @@ export default function WorldMapPage() {
   const playerMarkerRef = useRef<L.Marker | null>(null);
   const gateMarkersRef  = useRef<Map<string, L.Marker>>(new Map());
 
-  const [playerPos, setPlayerPos]     = useState<{ lat: number; lng: number } | null>(null);
-  const [gpsError, setGpsError]       = useState<string | null>(null);
-  const [gates, setGates]             = useState<Gate[]>(() => loadPersistedGates());
+  const [playerPos, setPlayerPos]       = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsError, setGpsError]         = useState<string | null>(null);
+  const [gates, setGates]               = useState<Gate[]>(() => loadPersistedGates());
   const [selectedGate, setSelectedGate] = useState<Gate | null>(null);
-  const [energy, setEnergy]           = useState<number>(MAX_DUNGEON_ENERGY);
+  const [energy, setEnergy]             = useState<number>(100);
+  const [maxEnergy, setMaxEnergy]       = useState<number>(100);
+  const [nextRegenSec, setNextRegenSec] = useState<number>(720);
   const [distToSelected, setDistToSelected] = useState<number>(Infinity);
-  const [enterError, setEnterError]   = useState<string | null>(null);
+  const [enterError, setEnterError]     = useState<string | null>(null);
 
   const playerCP = player ? computeCP(buildStats(player)) : 0;
 
@@ -260,12 +255,18 @@ export default function WorldMapPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Energy: load + recharge ticker ──────────────────────────────────────
+  // ── Energy: fetch from DB on load ────────────────────────────────────────
   useEffect(() => {
-    setEnergy(loadEnergy());
-    const tick = setInterval(() => setEnergy(loadEnergy()), 60_000);
-    return () => clearInterval(tick);
-  }, []);
+    if (!player?.id) return;
+    fetch(`/api/player/${player.id}/dungeon-energy`)
+      .then((r) => r.json())
+      .then((d) => {
+        setEnergy(d.energy);
+        setMaxEnergy(d.maxEnergy);
+        setNextRegenSec(d.nextRegenInSec);
+      })
+      .catch(() => {});
+  }, [player?.id]);
 
   // ── Persist gates whenever they change ───────────────────────────────────
   useEffect(() => { if (gates.length > 0) saveGates(gates); }, [gates]);
@@ -368,33 +369,45 @@ export default function WorldMapPage() {
   }, [gates, playerPos]);
 
   // ── Enter gate ────────────────────────────────────────────────────────────
-  const enterGate = useCallback((gate: Gate, method: "walk" | "teleport") => {
+  const enterGate = useCallback(async (gate: Gate, method: "walk" | "teleport") => {
     setEnterError(null);
-    const cfg = GATE_CONFIG[gate.rank];
 
     if (method === "teleport") {
-      if (energy <= 0) {
-        setEnterError("No Dungeon Energy left. Wait for recharge or walk to the gate.");
+      const cost = TELEPORT_COST[gate.rank];
+      if (energy < cost) {
+        setEnterError(`Need ${cost} energy to teleport (you have ${energy}).`);
         return;
       }
-      setEnergy(consumeEnergy(energy));
+      if (!player?.id) return;
+      try {
+        const res  = await fetch(`/api/player/${player.id}/dungeon-energy/spend`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ amount: cost }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setEnterError(data.error ?? "Failed to spend energy."); return; }
+        setEnergy(data.energy);
+        setMaxEnergy(data.maxEnergy);
+      } catch {
+        setEnterError("Network error — try again.");
+        return;
+      }
     }
 
-    // Persist the gate config for GodotGamePage to read
     localStorage.setItem(ACTIVE_DUNGEON_KEY, JSON.stringify({
       dungeon: gate.name,
       rank:    gate.rank,
       waves:   gate.waves,
       gateId:  gate.id,
     }));
-    // Also stash the gateId so GodotGamePage can write it to CLEARED_GATE_KEY on victory
     localStorage.setItem("_last_gate_id", gate.id);
-
     navigate("/game");
-  }, [playerCP, energy, navigate]);
+  }, [energy, player?.id, navigate]);
 
-  const canWalk     = distToSelected <= WALK_RADIUS_M;
-  const canTeleport = energy > 0;
+  const teleportCost = selectedGate ? TELEPORT_COST[selectedGate.rank] : 0;
+  const canWalk      = distToSelected <= WALK_RADIUS_M;
+  const canTeleport  = energy >= teleportCost;
 
   return (
     <div style={{ position:"fixed", inset:0, background:"#060d1a", overflow:"hidden" }}>
@@ -408,18 +421,25 @@ export default function WorldMapPage() {
         background:"linear-gradient(180deg,rgba(6,13,26,.92) 0%,transparent 100%)",
         padding:"12px 16px 20px",
         display:"flex", alignItems:"center", justifyContent:"space-between",
-        pointerEvents:"none",
       }}>
-        <div>
-          <div style={{ color:"#e2e8f0", fontWeight:700, fontSize:15, letterSpacing:1 }}>⬡ GATE DISTRICT</div>
-          {gpsError && (
-            <div style={{ color:"#f59e0b", fontSize:10, marginTop:2, maxWidth:220 }}>{gpsError}</div>
-          )}
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <button
+            data-testid="button-worldmap-back"
+            onClick={() => window.history.back()}
+            style={{
+              background:"rgba(6,13,26,.85)", border:"1px solid #1e3a5f",
+              borderRadius:8, color:"#94a3b8", fontSize:18, cursor:"pointer",
+              padding:"5px 11px", lineHeight:1,
+            }}
+          >←</button>
+          <div>
+            <div style={{ color:"#e2e8f0", fontWeight:700, fontSize:15, letterSpacing:1 }}>⬡ GATE DISTRICT</div>
+            {gpsError && (
+              <div style={{ color:"#f59e0b", fontSize:10, marginTop:2, maxWidth:220 }}>{gpsError}</div>
+            )}
+          </div>
         </div>
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
-          <div style={{ color:"#94a3b8", fontSize:10, letterSpacing:.5 }}>DUNGEON ENERGY</div>
-          <EnergyDots energy={energy} />
-        </div>
+        <EnergyBar energy={energy} maxEnergy={maxEnergy} nextRegenSec={nextRegenSec} />
       </div>
 
       {/* CP badge */}
@@ -553,7 +573,7 @@ export default function WorldMapPage() {
                 >
                   ⚡ Teleport
                   <div style={{ fontSize:9, fontWeight:400, marginTop:2, opacity:.7 }}>
-                    {canTeleport ? `${energy}/${MAX_DUNGEON_ENERGY} energy` : "No energy"}
+                    {canTeleport ? `Costs ${teleportCost} ⚡` : `Need ${teleportCost} ⚡`}
                   </div>
                 </button>
               </div>

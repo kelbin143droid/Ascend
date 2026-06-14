@@ -46,10 +46,13 @@ export const RANK_SPAWN_RADIUS_M: Record<GateRank, [number, number]> = {
   S: [400, 600],
 };
 
+// ── Teleport costs by rank (dungeon energy) ───────────────────────────────────
+export const TELEPORT_COST: Record<GateRank, number> = {
+  E: 20, D: 30, C: 45, B: 65, A: 85, S: 110,
+};
+
 // ── Tunable constants ─────────────────────────────────────────────────────────
-export const MAX_DUNGEON_ENERGY   = 5;
-export const ENERGY_RECHARGE_MS   = 30 * 60 * 1000;  // 30 min per pip
-export const WALK_RADIUS_M        = 25;               // metres — Walk button threshold
+export const WALK_RADIUS_M = 25;  // metres — Walk button threshold
 
 // ── localStorage keys (shared between WorldMapPage ↔ GodotGamePage) ───────────
 export const ACTIVE_DUNGEON_KEY = "ascend_active_dungeon";   // payload written before /game

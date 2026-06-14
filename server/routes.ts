@@ -463,6 +463,83 @@ export async function registerRoutes(
     }
   });
 
+  // ── Dungeon Energy helpers (server-side elapsed-time regen) ────────────────
+  const REGEN_INTERVAL_MS = 12 * 60 * 1000; // 12 min per point
+
+  function computeMaxEnergy(player: Player): number {
+    const s  = (player.stats    as any) ?? {};
+    const b  = (player.bonusStats as any) ?? {};
+    const dis = (s.discipline ?? 0) + (b.discipline ?? 0);
+    return Math.min(100 + dis * 4, 600);
+  }
+
+  async function syncEnergy(player: Player): Promise<{ energy: number; maxEnergy: number; nextRegenInSec: number }> {
+    const maxEnergy = computeMaxEnergy(player);
+    const stored    = player.dungeonEnergy ?? maxEnergy;
+
+    if (!player.lastEnergyUpdate || stored >= maxEnergy) {
+      const capped = Math.min(stored, maxEnergy);
+      if (capped !== stored) await storage.updatePlayer(player.id, { dungeonEnergy: capped });
+      return { energy: capped, maxEnergy, nextRegenInSec: REGEN_INTERVAL_MS / 1000 };
+    }
+
+    const lastMs   = new Date(player.lastEnergyUpdate).getTime();
+    const elapsed  = Date.now() - lastMs;
+    const regenned = Math.floor(elapsed / REGEN_INTERVAL_MS);
+    const current  = Math.min(stored + regenned, maxEnergy);
+    if (regenned > 0) {
+      const newTs = new Date(lastMs + regenned * REGEN_INTERVAL_MS).toISOString();
+      await storage.updatePlayer(player.id, { dungeonEnergy: current, lastEnergyUpdate: newTs });
+    }
+    const nextRegenInSec = Math.ceil((REGEN_INTERVAL_MS - (elapsed % REGEN_INTERVAL_MS)) / 1000);
+    return { energy: current, maxEnergy, nextRegenInSec };
+  }
+
+  async function awardDungeonEnergy(playerId: string, amount: number): Promise<void> {
+    const player = await storage.getPlayer(playerId);
+    if (!player) return;
+    const { energy, maxEnergy } = await syncEnergy(player);
+    if (energy >= maxEnergy) return; // already full
+    const newEnergy = Math.min(energy + amount, maxEnergy);
+    const now = new Date().toISOString();
+    await storage.updatePlayer(playerId, { dungeonEnergy: newEnergy, lastEnergyUpdate: now });
+  }
+
+  app.get("/api/player/:id/dungeon-energy", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+      const result = await syncEnergy(player);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to get dungeon energy" });
+    }
+  });
+
+  app.post("/api/player/:id/dungeon-energy/spend", async (req, res) => {
+    try {
+      const schema = z.object({ amount: z.number().positive() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid amount" });
+
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      const { energy, maxEnergy } = await syncEnergy(player);
+      if (energy < parsed.data.amount)
+        return res.status(400).json({ error: `Need ${parsed.data.amount} energy, have ${energy}` });
+
+      const newEnergy = energy - parsed.data.amount;
+      await storage.updatePlayer(req.params.id, {
+        dungeonEnergy: newEnergy,
+        lastEnergyUpdate: new Date().toISOString(),
+      });
+      res.json({ energy: newEnergy, maxEnergy });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to spend dungeon energy" });
+    }
+  });
+
   app.post("/api/player/:id/onboarding-complete", async (req, res) => {
     try {
       const player = await storage.getPlayer(req.params.id);
@@ -758,6 +835,9 @@ export async function registerRoutes(
       await storage.updatePlayer(req.params.id, playerUpdates);
 
       const updatedPlayer = await storage.gainExp(req.params.id, finalPlayerXP);
+
+      // Award dungeon energy for completing a guided (workout) session
+      await awardDungeonEnergy(req.params.id, 25).catch(() => {});
 
       res.json({
         success: true,
@@ -1849,6 +1929,17 @@ export async function registerRoutes(
       await storage.updatePlayer(habit.userId, { statXP: newStatXP, stats: derivedStats });
 
       const updatedPlayer = await storage.gainExp(habit.userId, xpEarned);
+
+      // Award dungeon energy for habit completion
+      await awardDungeonEnergy(habit.userId, 15).catch(() => {});
+      // Streak bonus: +50 once per day
+      if (newStreak > 0) {
+        const freshPlayer2 = await storage.getPlayer(habit.userId);
+        if (freshPlayer2 && freshPlayer2.lastStreakEnergyDate !== today) {
+          await awardDungeonEnergy(habit.userId, 50).catch(() => {});
+          await storage.updatePlayer(habit.userId, { lastStreakEnergyDate: today });
+        }
+      }
 
       const allHabits = await storage.getHabits(habit.userId);
       const existingBadges = await storage.getBadges(habit.userId);

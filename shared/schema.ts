@@ -349,6 +349,9 @@ export const players = pgTable("players", {
     vitality: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
   }),
   stability: jsonb("stability").$type<StabilityData>().notNull().default(DEFAULT_STABILITY_DATA),
+  dungeonEnergy: integer("dungeon_energy").notNull().default(100),
+  lastEnergyUpdate: text("last_energy_update"),
+  lastStreakEnergyDate: text("last_streak_energy_date"),
 });
 
 export const dailyStatSnapshots = pgTable("daily_stat_snapshots", {
