@@ -455,6 +455,14 @@ export default function HunterProfilePage() {
   // ── Stat allocation (local-only; server wiring is a future step) ────────
   const totalPending = () => localStats.reduce((a, s) => a + s.pending, 0);
 
+  function dispatchStatsToGame(stats: StatEntry[]) {
+    const detail: Record<string, number> = { STR: 0, AGI: 0, VIT: 0, SEN: 0, INT: 0, DIS: 0 };
+    for (const s of stats) {
+      if (s.key in detail) detail[s.key] = s.val + s.pending;
+    }
+    window.dispatchEvent(new CustomEvent("ascend:stats-updated", { detail }));
+  }
+
   function adjust(i: number, delta: number) {
     const s = [...localStats];
     if (delta > 0) {
@@ -465,10 +473,13 @@ export default function HunterProfilePage() {
       s[i] = { ...s[i], pending: s[i].pending - 1 };
     }
     setLocalStats(s);
+    dispatchStatsToGame(s);
   }
 
   function clearPending() {
-    setLocalStats(localStats.map(s => ({ ...s, pending: 0 })));
+    const cleared = localStats.map(s => ({ ...s, pending: 0 }));
+    setLocalStats(cleared);
+    dispatchStatsToGame(cleared);
   }
 
   async function commitPoints() {
@@ -503,10 +514,12 @@ export default function HunterProfilePage() {
         SEN: "sense",   DIS: "discipline",
       };
       const serverStats = json.stats as Record<string, number>;
-      setLocalStats(prev => prev.map(s => {
+      const updatedStats = localStats.map(s => {
         const sk = SERVER_KEY[s.key];
         return { ...s, val: sk ? (serverStats[sk] ?? s.val) : s.val, pending: 0 };
-      }));
+      });
+      setLocalStats(updatedStats);
+      dispatchStatsToGame(updatedStats);
       setCp(c => c + spent * (data.cpPerPoint ?? 12));
     } catch {
       setAllocError("Network error — please try again");

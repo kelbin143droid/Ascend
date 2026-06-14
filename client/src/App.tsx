@@ -45,6 +45,7 @@ const NightFlowPage = React.lazy(() => import("@/pages/NightFlowPage"));
 const SleepSettingsPage = React.lazy(() => import("@/pages/SleepSettingsPage"));
 const NotificationSettingsPage = React.lazy(() => import("@/pages/NotificationSettingsPage"));
 const HunterProfilePage = React.lazy(() => import("@/pages/HunterProfilePage"));
+const GodotGamePage = React.lazy(() => import("@/pages/GodotGamePage"));
 import { VoiceAlertEngine } from "@/components/game/VoiceAlertEngine";
 import { SystemMessageEngine } from "@/components/game/SystemMessageEngine";
 const NotFound = React.lazy(() => import("@/pages/not-found"));
@@ -99,6 +100,7 @@ function Router() {
       <Route path="/survival" component={SurvivalPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/hunter-profile" component={HunterProfilePage} />
+      <Route path="/game" component={GodotGamePage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/habits" component={HabitsPage} />
       <Route path="/wake-flow" component={WakeFlowPage} />
