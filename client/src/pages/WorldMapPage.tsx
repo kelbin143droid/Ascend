@@ -9,12 +9,12 @@ import {
   MAX_DUNGEON_ENERGY,
   ENERGY_RECHARGE_MS,
   WALK_RADIUS_M,
-  GATE_SPAWN_RADIUS_M,
-  GATE_COUNT_RANGE,
+  RANK_COUNTS,
+  RANK_SPAWN_RADIUS_M,
+  RANK_ORDER,
   ACTIVE_DUNGEON_KEY,
   CLEARED_GATE_KEY,
   PERSISTED_GATES_KEY,
-  pickRankForCP,
   type GateRank,
 } from "@/lib/gateConfig";
 
@@ -45,26 +45,30 @@ function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function randomPointNear(lat: number, lng: number, maxM: number): { lat: number; lng: number } {
+function randomPointNear(lat: number, lng: number, minM: number, maxM: number): { lat: number; lng: number } {
   const R = 6_371_000;
   const angle = Math.random() * 2 * Math.PI;
-  const dist  = 60 + Math.random() * (maxM - 60);
+  const dist  = minM + Math.random() * (maxM - minM);
   const dLat  = (dist * Math.cos(angle)) / R;
   const dLng  = (dist * Math.sin(angle)) / (R * Math.cos((lat * Math.PI) / 180));
   return { lat: lat + (dLat * 180) / Math.PI, lng: lng + (dLng * 180) / Math.PI };
 }
 
-function spawnGates(lat: number, lng: number, cp: number): Gate[] {
-  const [min, max] = GATE_COUNT_RANGE;
-  const count = min + Math.floor(Math.random() * (max - min + 1));
-  return Array.from({ length: count }, () => {
-    const rank  = pickRankForCP(cp);
-    const cfg   = GATE_CONFIG[rank];
-    const pos   = randomPointNear(lat, lng, GATE_SPAWN_RADIUS_M);
-    const name  = DUNGEON_NAMES[Math.floor(Math.random() * DUNGEON_NAMES.length)];
-    const waves = cfg.waves[0] + Math.floor(Math.random() * (cfg.waves[1] - cfg.waves[0] + 1));
-    return { id: crypto.randomUUID(), ...pos, rank, name, waves };
-  });
+// Spawn fixed counts per rank — more E/D, fewer A/S; easier ranks spawn closer
+function spawnGates(lat: number, lng: number): Gate[] {
+  const gates: Gate[] = [];
+  for (const rank of RANK_ORDER) {
+    const count       = RANK_COUNTS[rank];
+    const [minR, maxR] = RANK_SPAWN_RADIUS_M[rank];
+    const cfg         = GATE_CONFIG[rank];
+    for (let i = 0; i < count; i++) {
+      const pos   = randomPointNear(lat, lng, minR, maxR);
+      const name  = DUNGEON_NAMES[Math.floor(Math.random() * DUNGEON_NAMES.length)];
+      const waves = cfg.waves[0] + Math.floor(Math.random() * (cfg.waves[1] - cfg.waves[0] + 1));
+      gates.push({ id: crypto.randomUUID(), ...pos, rank, name, waves });
+    }
+  }
+  return gates;
 }
 
 // ── Gate persistence ──────────────────────────────────────────────────────────
@@ -243,7 +247,7 @@ export default function WorldMapPage() {
         setPlayerPos((pos) => {
           if (pos) {
             setGates((prev) => {
-              const fresh = spawnGates(pos.lat, pos.lng, playerCP).slice(0, 1);
+              const fresh = spawnGates(pos.lat, pos.lng).slice(0, 1);
               const next  = [...prev, ...fresh];
               saveGates(next);
               return next;
@@ -315,7 +319,7 @@ export default function WorldMapPage() {
   // ── Spawn gates once we have a position + CP ──────────────────────────────
   useEffect(() => {
     if (!playerPos || gates.length > 0) return;
-    const fresh = spawnGates(playerPos.lat, playerPos.lng, playerCP);
+    const fresh = spawnGates(playerPos.lat, playerPos.lng);
     setGates(fresh);
     saveGates(fresh);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,10 +372,6 @@ export default function WorldMapPage() {
     setEnterError(null);
     const cfg = GATE_CONFIG[gate.rank];
 
-    if (playerCP < cfg.requiredPower) {
-      setEnterError(`Combat Power too low! Need ${cfg.requiredPower} CP — you have ${playerCP}.`);
-      return;
-    }
     if (method === "teleport") {
       if (energy <= 0) {
         setEnterError("No Dungeon Energy left. Wait for recharge or walk to the gate.");
@@ -472,10 +472,11 @@ export default function WorldMapPage() {
               {/* CP bar */}
               <div style={{
                 background:"#0f1c2e", borderRadius:10, padding:"10px 14px",
-                marginBottom:12, border:"1px solid #1e3a5f",
+                marginBottom:12,
+                border: `1px solid ${cpOk ? "#1e3a5f" : "rgba(245,158,11,0.35)"}`,
               }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                  <span style={{ color:"#64748b", fontSize:11 }}>Required Power</span>
+                  <span style={{ color:"#64748b", fontSize:11 }}>Recommended CP</span>
                   <span style={{ color:"#64748b", fontSize:11 }}>Your CP</span>
                 </div>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -483,11 +484,11 @@ export default function WorldMapPage() {
                     {cfg.requiredPower > 0 ? cfg.requiredPower : "—"}
                   </span>
                   <span style={{ color:"#475569", fontSize:12 }}>vs</span>
-                  <span style={{ color: cpOk ? "#22c55e" : "#ef4444", fontWeight:900, fontSize:22 }}>{playerCP}</span>
+                  <span style={{ color: cpOk ? "#22c55e" : "#f59e0b", fontWeight:900, fontSize:22 }}>{playerCP}</span>
                 </div>
                 {!cpOk && (
-                  <div style={{ color:"#ef4444", fontSize:10, marginTop:4 }}>
-                    ⚠ Need {cfg.requiredPower - playerCP} more CP to enter
+                  <div style={{ color:"#f59e0b", fontSize:10, marginTop:4 }}>
+                    ⚠ High Risk — enter at your own peril
                   </div>
                 )}
                 <div style={{ color:"#64748b", fontSize:10, marginTop:4 }}>Reward: {cfg.rewardXP} XP on clear</div>

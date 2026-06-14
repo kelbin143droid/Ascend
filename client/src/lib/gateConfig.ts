@@ -30,31 +30,26 @@ export const DUNGEON_NAMES = [
 
 export const RANK_ORDER: GateRank[] = ["E", "D", "C", "B", "A", "S"];
 
-// ── Rank selection weighted toward player's current combat power ──────────────
-export function pickRankForCP(cp: number): GateRank {
-  const weights: [GateRank, number][] =
-    cp < 100
-      ? [["E", 50], ["D", 35], ["C", 10], ["B", 4],  ["A", 1],  ["S", 0]]
-      : cp < 300
-      ? [["E", 35], ["D", 35], ["C", 18], ["B", 8],  ["A", 3],  ["S", 1]]
-      : cp < 600
-      ? [["E", 18], ["D", 28], ["C", 25], ["B", 16], ["A", 9],  ["S", 4]]
-      : [["E", 8],  ["D", 18], ["C", 25], ["B", 25], ["A", 14], ["S", 10]];
+// ── Per-rank gate counts (higher rank = fewer gates) ─────────────────────────
+export const RANK_COUNTS: Record<GateRank, number> = {
+  E: 10, D: 8, C: 6, B: 4, A: 2, S: 1,
+};
 
-  let r = Math.random() * 100;
-  for (const [rank, w] of weights) {
-    r -= w;
-    if (r <= 0) return rank;
-  }
-  return "E";
-}
+// ── Per-rank spawn radii [minMetres, maxMetres] ───────────────────────────────
+// Easier gates are closer so they're genuinely walkable; harder gates spread out
+export const RANK_SPAWN_RADIUS_M: Record<GateRank, [number, number]> = {
+  E: [20,  80],
+  D: [60,  150],
+  C: [120, 250],
+  B: [200, 350],
+  A: [300, 500],
+  S: [400, 600],
+};
 
 // ── Tunable constants ─────────────────────────────────────────────────────────
 export const MAX_DUNGEON_ENERGY   = 5;
 export const ENERGY_RECHARGE_MS   = 30 * 60 * 1000;  // 30 min per pip
 export const WALK_RADIUS_M        = 25;               // metres — Walk button threshold
-export const GATE_SPAWN_RADIUS_M  = 400;              // metres — spawn ring radius
-export const GATE_COUNT_RANGE: [number, number] = [4, 6];
 
 // ── localStorage keys (shared between WorldMapPage ↔ GodotGamePage) ───────────
 export const ACTIVE_DUNGEON_KEY = "ascend_active_dungeon";   // payload written before /game
