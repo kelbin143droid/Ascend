@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useLocation } from "wouter";
 import { useGame } from "@/context/GameContext";
+import { Canvas } from "@react-three/fiber";
+import { useGLTF, OrbitControls } from "@react-three/drei";
 
 // ── Types ────────────────────────────────────────────────────────────────
 interface WalletEntry { type: "gem" | "coin" | "diamond"; value: number }
@@ -406,6 +408,38 @@ function classModel(c: ClassEntry) {
   </svg>`;
 }
 
+// ── 3-D Warrior Viewer ────────────────────────────────────────────────────
+function WarriorModel() {
+  const { scene } = useGLTF("/assets/models/player.glb");
+  return <primitive object={scene} position={[0, -1, 0]} />;
+}
+
+function WarriorViewer() {
+  return (
+    <Canvas
+      style={{ position: "absolute", inset: 0, zIndex: 2 }}
+      gl={{ alpha: true, antialias: true }}
+      camera={{ position: [0, 1.0, 3.2], fov: 42 }}
+    >
+      <ambientLight intensity={0.55} />
+      <directionalLight position={[2, 4, 3]}  intensity={1.5} color="#7dd3fc" />
+      <directionalLight position={[-2, 2, -2]} intensity={0.5} color="#c084fc" />
+      <pointLight position={[0, -1, 2]} intensity={0.3} color="#4cc2ff" />
+      <Suspense fallback={null}>
+        <WarriorModel />
+      </Suspense>
+      <OrbitControls
+        enablePan={false}
+        enableZoom={false}
+        minPolarAngle={Math.PI / 4}
+        maxPolarAngle={(Math.PI * 2) / 3}
+        autoRotate
+        autoRotateSpeed={1.8}
+      />
+    </Canvas>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 export default function HunterProfilePage() {
   const { player } = useGame();
@@ -671,19 +705,7 @@ export default function HunterProfilePage() {
                 {data.characterImage ? (
                   <img src={data.characterImage} className="charimg" alt="character" />
                 ) : (
-                  <svg className="charimg" viewBox="0 0 100 200">
-                    <defs>
-                      <linearGradient id="silh" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stopColor="#1a2c44" /><stop offset="1" stopColor="#0a1422" />
-                      </linearGradient>
-                    </defs>
-                    <g fill="url(#silh)" stroke="#4cc2ff" strokeWidth="0.6" strokeOpacity="0.5">
-                      <circle cx="50" cy="26" r="12" />
-                      <path d="M38 38 Q50 44 62 38 L70 70 Q72 96 64 120 L60 170 Q58 188 52 192 L48 192 Q42 188 40 170 L36 120 Q28 96 30 70 Z" />
-                      <path d="M38 44 L22 80 L26 84 L40 56 Z" />
-                      <path d="M62 44 L78 80 L74 84 L60 56 Z" />
-                    </g>
-                  </svg>
+                  <WarriorViewer />
                 )}
               </div>
               <div className="cp">
