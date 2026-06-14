@@ -299,6 +299,7 @@ function FirstResetScreen({
         targetSeconds={FIRST_RESET_DURATION_SECONDS}
         guidanceSeconds={FIRST_RESET_GUIDANCE_SECONDS}
         zIndexClass="z-[100]"
+        showSkip={false}
         onCancel={() => setPhase("ready")}
         onComplete={() => setPhase("reward")}
       />

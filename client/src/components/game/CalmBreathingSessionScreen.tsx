@@ -20,6 +20,7 @@ export function CalmBreathingSessionScreen({
   accentColor = "#3b82f6",
   backgroundColor = "#020810",
   zIndexClass = "z-40",
+  showSkip = true,
   onComplete,
   onCancel,
 }: {
@@ -29,6 +30,7 @@ export function CalmBreathingSessionScreen({
   accentColor?: string;
   backgroundColor?: string;
   zIndexClass?: string;
+  showSkip?: boolean;
   onComplete: () => void;
   onCancel: () => void;
 }) {
@@ -226,7 +228,7 @@ export function CalmBreathingSessionScreen({
 
       {state === "active" && (
         <div className="relative z-10 flex flex-col items-center gap-3 px-4 pb-8">
-          <div className="flex w-full max-w-[220px] gap-2.5">
+          <div className={`flex w-full gap-2.5 ${showSkip ? "max-w-[220px]" : "max-w-[132px]"}`}>
             <button
               data-testid="button-pause-session"
               onClick={() => setPaused((value) => !value)}
@@ -240,22 +242,24 @@ export function CalmBreathingSessionScreen({
               {paused ? <Play size={13} /> : <Pause size={13} />}
               {paused ? "Resume" : "Pause"}
             </button>
-            <button
-              data-testid="button-skip-session"
-              onClick={() => {
-                setPaused(false);
-                onComplete();
-              }}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-medium transition-all active:scale-[0.96]"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.07)",
-                border: "1px solid rgba(255,255,255,0.13)",
-                color: "rgba(255,255,255,0.55)",
-              }}
-            >
-              <SkipForward size={13} />
-              Skip
-            </button>
+            {showSkip && (
+              <button
+                data-testid="button-skip-session"
+                onClick={() => {
+                  setPaused(false);
+                  onComplete();
+                }}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-medium transition-all active:scale-[0.96]"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(255,255,255,0.13)",
+                  color: "rgba(255,255,255,0.55)",
+                }}
+              >
+                <SkipForward size={13} />
+                Skip
+              </button>
+            )}
           </div>
 
           <p className="min-h-4 text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.38)" }}>
