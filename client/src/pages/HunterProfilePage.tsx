@@ -529,12 +529,21 @@ export default function HunterProfilePage() {
   }
 
   // ── Class picker ─────────────────────────────────────────────────────────
-  function confirmClass() {
-    if (pickedClass === null || !data) return;
+  async function confirmClass() {
+    if (pickedClass === null || !data || !player?.id) return;
+    // Optimistically update UI immediately
     setChosenClass(pickedClass);
     setShowPicker(false);
-    // TODO (production): POST chosen class to server. Server verifies no class
-    // was already set before recording — never trust the client value alone.
+    // Persist to server — idempotent, so safe to call even if already set
+    try {
+      await fetch(`/api/player/${player.id}/choose-class`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ classIndex: pickedClass }),
+      });
+    } catch {
+      // UI already updated; failure is silent — next load will re-sync from server
+    }
   }
 
   if (loading || !data) {

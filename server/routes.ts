@@ -304,6 +304,32 @@ export async function registerRoutes(
     }
   });
 
+  // ── Class selection — one-time, server-authoritative ─────────────────────
+  app.post("/api/player/:id/choose-class", async (req, res) => {
+    try {
+      const CLASS_NAMES = ["WARRIOR", "SAGE", "SHADOW", "WARDEN"] as const;
+      const bodySchema = z.object({ classIndex: z.number().int().min(0).max(3) });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid class index" });
+
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) return res.status(404).json({ error: "Player not found" });
+
+      // Idempotent: if already set, just return current class without changing it
+      const current = (player.job || "").toUpperCase();
+      if (CLASS_NAMES.includes(current as any)) {
+        const idx = CLASS_NAMES.indexOf(current as any);
+        return res.json({ chosenClass: idx, job: current });
+      }
+
+      const chosenName = CLASS_NAMES[parsed.data.classIndex];
+      await storage.updatePlayer(req.params.id, { job: chosenName });
+      res.json({ chosenClass: parsed.data.classIndex, job: chosenName });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to save class" });
+    }
+  });
+
   // ── Stat allocation — server-authoritative point spending ───────────────
   app.post("/api/player/:id/allocate-stats", async (req, res) => {
     try {
