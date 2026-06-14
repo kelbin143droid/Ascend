@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Solo Hero Wars — Bridge Test Harness</title>
+<style>
+  * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+  body { margin: 0; background: #15161c; color: #e8e8ee; display: flex; height: 100vh; }
+  #panel { width: 370px; padding: 16px; overflow-y: auto; border-right: 1px solid #2a2c38; }
+  #stage { flex: 1; display: flex; flex-direction: column; }
+  iframe { flex: 1; width: 100%; border: 0; background: #000; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: #9aa; font-size: 12px; margin-bottom: 10px; }
+  .stat { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .stat label { width: 56px; font-weight: 600; }
+  .stat input[type=range] { flex: 1; }
+  .stat .val { width: 32px; text-align: right; color: #6cf; }
+  .row { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+  button { background: #2b6cff; color: #fff; border: 0; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  button.alt { background: #333644; }
+  .urlbar { display: flex; gap: 6px; margin-bottom: 12px; }
+  .urlbar input { flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #333; background: #1d1f29; color: #fff; }
+  select, input[type=number] { padding: 5px; background: #1d1f29; color: #fff; border: 1px solid #333; border-radius: 6px; }
+  .sec { border-top: 1px solid #2a2c38; margin: 14px 0; padding-top: 12px; }
+  #log { background: #0e0f15; border: 1px solid #2a2c38; border-radius: 6px; padding: 8px; height: 150px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 11px; white-space: pre-wrap; margin-top: 10px; }
+  .in { color: #7fd17f; } .out { color: #6cf; } .sys { color: #caa15a; }
+  #result { background: #1d1f29; border: 1px solid #2a2c38; border-radius: 6px; padding: 8px; font-size: 12px; margin-top: 8px; min-height: 20px; }
+</style>
+</head>
+<body>
+  <div id="panel">
+    <h1>⚔️ Bridge Test Harness</h1>
+    <div class="sub">Simulates your app: sends stats, gate, equipment; receives run results.</div>
+
+    <div class="urlbar">
+      <input id="gameUrl" value="index.html" />
+      <button class="alt" onclick="loadGame()">Load</button>
+    </div>
+
+    <div id="stats"></div>
+    <div class="row">
+      <button onclick="sendStats()">Send SET_STATS</button>
+      <button class="alt" onclick="preset(10)">Lvl ~10</button>
+      <button class="alt" onclick="preset(40)">Lvl ~40</button>
+      <button class="alt" onclick="preset(1)">Fresh</button>
+    </div>
+
+    <div class="sec">
+      <b>🌀 Gate (START_DUNGEON)</b>
+      <div class="stat" style="margin-top:8px;"><label>Dungeon</label>
+        <select id="g_dungeon" style="flex:1;">
+          <option>Shadow Forest</option><option>Goblin Cave</option><option>Orc Camp</option>
+          <option>Ancient Ruins</option><option>Ice Cavern</option><option>City</option>
+        </select></div>
+      <div class="stat"><label>Rank</label>
+        <select id="g_rank" style="flex:1;">
+          <option>E</option><option>D</option><option selected>C</option><option>B</option><option>A</option><option>S</option>
+        </select></div>
+      <div class="stat"><label>Waves</label>
+        <input type="number" id="g_waves" value="4" min="1" max="10" style="flex:1;"></div>
+      <button onclick="sendGate()">Send START_DUNGEON</button>
+    </div>
+
+    <div class="sec">
+      <b>🛡️ Equipment (SET_EQUIPMENT)</b>
+      <div id="equip"></div>
+      <button onclick="sendEquip()">Send SET_EQUIPMENT</button>
+    </div>
+
+    <div><b>Last RUN_RESULT:</b></div>
+    <div id="result">— none yet —</div>
+    <div id="log"></div>
+  </div>
+
+  <div id="stage">
+    <iframe id="game" src="index.html" allow="pointer-lock; fullscreen; autoplay" allowfullscreen></iframe>
+  </div>
+
+<script>
+  const STATS = ["STR", "AGI", "VIT", "SEN", "INT", "DIS"];
+  const SLOTS = ["Weapon", "Helmet", "Chest", "Gloves", "Boots"];
+  const RARITIES = ["None", "Common", "Rare", "Epic", "Legendary"];
+  const values = {};
+
+  const statsDiv = document.getElementById("stats");
+  STATS.forEach(name => {
+    values[name] = 1;
+    const row = document.createElement("div");
+    row.className = "stat";
+    row.innerHTML = `<label>${name}</label>
+      <input type="range" min="0" max="120" value="1" id="r_${name}">
+      <span class="val" id="v_${name}">1</span>`;
+    statsDiv.appendChild(row);
+    row.querySelector("input").addEventListener("input", e => {
+      values[name] = parseInt(e.target.value);
+      document.getElementById("v_" + name).textContent = e.target.value;
+      sendStats();
+    });
+  });
+
+  const equipDiv = document.getElementById("equip");
+  SLOTS.forEach(slot => {
+    const row = document.createElement("div");
+    row.className = "stat";
+    row.innerHTML = `<label>${slot}</label>
+      <select id="e_${slot}" style="flex:1;">${RARITIES.map(r => `<option>${r}</option>`).join("")}</select>`;
+    equipDiv.appendChild(row);
+    row.querySelector("select").addEventListener("change", sendEquip);
+  });
+
+  function preset(v) {
+    STATS.forEach(name => {
+      values[name] = v;
+      document.getElementById("r_" + name).value = v;
+      document.getElementById("v_" + name).textContent = v;
+    });
+    sendStats();
+  }
+
+  function gameWindow() { return document.getElementById("game").contentWindow; }
+
+  function sendStats() {
+    gameWindow().postMessage({ type: "SET_STATS", stats: { ...values } }, "*");
+    log("out", "→ SET_STATS " + JSON.stringify(values));
+  }
+
+  function sendGate() {
+    const config = {
+      dungeon: document.getElementById("g_dungeon").value,
+      rank: document.getElementById("g_rank").value,
+      waves: parseInt(document.getElementById("g_waves").value)
+    };
+    gameWindow().postMessage({ type: "START_DUNGEON", config }, "*");
+    log("out", "→ START_DUNGEON " + JSON.stringify(config));
+  }
+
+  function sendEquip() {
+    const equipment = {};
+    SLOTS.forEach(slot => {
+      const r = document.getElementById("e_" + slot).value;
+      if (r !== "None") equipment[slot] = { rarity: r, name: r + " " + slot };
+    });
+    gameWindow().postMessage({ type: "SET_EQUIPMENT", equipment }, "*");
+    log("out", "→ SET_EQUIPMENT " + JSON.stringify(equipment));
+  }
+
+  function loadGame() {
+    document.getElementById("game").src = document.getElementById("gameUrl").value;
+    log("sys", "Reloading game…");
+  }
+
+  ["g_dungeon", "g_rank", "g_waves"].forEach(id =>
+    document.getElementById(id).addEventListener("change", sendGate));
+
+  window.addEventListener("message", (e) => {
+    const d = e.data;
+    if (!d || !d.type) return;
+    if (d.type === "GODOT_READY") {
+      log("in", "← GODOT_READY — sending stats + gate + equipment");
+      sendStats(); sendGate(); sendEquip();
+    } else if (d.type === "RUN_RESULT") {
+      log("in", "← RUN_RESULT " + JSON.stringify(d.result));
+      document.getElementById("result").textContent = JSON.stringify(d.result, null, 2);
+    }
+  });
+
+  function log(cls, text) {
+    const el = document.getElementById("log");
+    el.innerHTML += `<span class="${cls}">[${new Date().toLocaleTimeString()}] ${text}</span>\n`;
+    el.scrollTop = el.scrollHeight;
+  }
+  log("sys", "Harness ready. Waiting for GODOT_READY…");
+</script>
+</body>
+</html>
