@@ -275,16 +275,20 @@ export default function GodotGamePage() {
         const gold    = data.result?.gold ?? 0;
         const outcome = data.result?.outcome ?? "";
         const raw     = localStorage.getItem("_last_gate_id");   // written just before navigate
+        const playerQuit = outcome === "quit";
 
-        if (gold > 0) addGold(gold);
-        if (data.result?.loot !== undefined) addLoot(data.result.loot);
-        if (data.result?.items !== undefined) setOwnedConsumables(data.result.items);
+        if (!playerQuit) {
+          if (gold > 0) addGold(gold);
+          if (data.result?.loot !== undefined) addLoot(data.result.loot);
+          if (data.result?.items !== undefined) setOwnedConsumables(data.result.items);
+        }
 
         // On victory, tell the world map which gate to remove
         if (outcome === "victory" && raw) {
           localStorage.setItem(CLEARED_GATE_KEY, raw);
           localStorage.removeItem("_last_gate_id");
         }
+        if (playerQuit) localStorage.removeItem("_last_gate_id");
 
         // Navigate back to the world map regardless of outcome
         readyRef.current = false;
