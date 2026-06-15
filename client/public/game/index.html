@@ -111,7 +111,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":48923092,"index.wasm":37897455},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":48923396,"index.wasm":37897455},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -215,6 +215,50 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 }());
 		</script>
-	</body>
+	<!-- Injected by deploy-to-ascend.sh: animated "Entering Gate" loading screen.
+     The Godot game removes #gate-loader once it's ready (see game_manager._ready). -->
+<style>
+#gate-loader{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;overflow:hidden;
+ background:radial-gradient(circle at 50% 42%,#0c1330 0%,#06080f 58%,#000 100%);
+ font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;color:#cdd6ff;
+ transition:opacity .6s ease}
+#gate-loader.done{opacity:0;pointer-events:none}
+#gate-loader .portal{position:relative;width:150px;height:220px;
+ border-radius:75px/110px;
+ background:radial-gradient(ellipse at 50% 50%,rgba(90,130,255,.40),rgba(20,30,80,.12) 68%,transparent);
+ box-shadow:0 0 70px 12px rgba(95,135,255,.45),inset 0 0 46px rgba(130,170,255,.5);
+ animation:gatePulse 2.2s ease-in-out infinite}
+#gate-loader .portal::before{content:"";position:absolute;inset:-7px;border-radius:inherit;
+ background:conic-gradient(from 0deg,#5a7cff,#9b5cff,#4ad6ff,#5a7cff);
+ filter:blur(9px);opacity:.85;z-index:-1;animation:gateSpin 4.5s linear infinite}
+#gate-loader .portal::after{content:"";position:absolute;inset:0;border-radius:inherit;
+ border:2px solid rgba(180,205,255,.75);animation:gatePulse 2.2s ease-in-out infinite}
+#gate-loader .rune{position:absolute;bottom:18px;width:7px;height:7px;border-radius:50%;
+ background:#a9caff;box-shadow:0 0 12px #6f9cff;animation:gateRise 3.2s linear infinite}
+#gate-loader .label{margin-top:48px;font-size:21px;letter-spacing:6px;font-weight:700;
+ text-transform:uppercase;text-shadow:0 0 14px rgba(110,150,255,.85)}
+#gate-loader .label .dots::after{content:"";animation:gateDots 1.5s steps(1,end) infinite}
+@keyframes gatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes gateSpin{to{transform:rotate(360deg)}}
+@keyframes gateRise{0%{transform:translateY(0) scale(.5);opacity:0}
+ 18%{opacity:1}100%{transform:translateY(-200px) scale(1);opacity:0}}
+@keyframes gateDots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+</style>
+<div id="gate-loader">
+ <div class="portal">
+  <span class="rune" style="left:28%;animation-delay:0s"></span>
+  <span class="rune" style="left:52%;animation-delay:.7s"></span>
+  <span class="rune" style="left:68%;animation-delay:1.5s"></span>
+  <span class="rune" style="left:42%;animation-delay:2.3s"></span>
+ </div>
+ <div class="label">Entering Gate<span class="dots"></span></div>
+</div>
+<script>
+ // Safety net: never trap the player if the game stalls on load.
+ setTimeout(function(){var g=document.getElementById('gate-loader');if(g)g.classList.add('done');},25000);
+</script>
+
+</body>
 </html>
 
