@@ -661,7 +661,7 @@ export default function GuidedSessionPage() {
         // Build/Evolve/Ascend continue directly into their strength circuit.
         setLocation("/?autostart=strength");
       } else {
-        // Foundation skips strength; returning home makes Vitality the next step.
+        // Foundation skips strength; returning home makes Intel the next step.
         setLocation("/");
       }
     };
@@ -671,7 +671,7 @@ export default function GuidedSessionPage() {
         playerId={player.id}
         onComplete={handleLightMovementComplete}
         onCancel={() => setLocation("/")}
-        nextLabel={pathCfg.includesStrength ? "Physical Circuit" : "Vitality"}
+        nextLabel={pathCfg.includesStrength ? "Physical Circuit" : "Intel"}
       />
     );
   }

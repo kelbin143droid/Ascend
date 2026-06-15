@@ -846,7 +846,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
         const alreadyCalibrated = !!localStorage.getItem("ascend_calibration");
         const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
         setStep(alreadyCalibrated ? (firstResetDone ? "complete" : "first-reset") : "calibration");
-      }, 1800);
+      }, 4200);
     } else {
       setStep("info");
     }

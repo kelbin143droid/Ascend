@@ -208,28 +208,29 @@ const CSS = `
 
 /* class picker overlay */
 .hp-root .classpick {
-  position:absolute; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
-  padding:24px 18px; background:rgba(4,7,15,0.85); backdrop-filter:blur(4px);
+  position:absolute; inset:0; z-index:50; display:flex; align-items:flex-start; justify-content:center;
+  padding:10px 18px 14px; background:rgba(4,7,15,0.85); backdrop-filter:blur(4px);
+  overflow-y:auto;
 }
-.hp-root .classpick-inner { width:100%; animation:hp-rise .4s cubic-bezier(.2,.8,.2,1); }
+.hp-root .classpick-inner { width:100%; max-height:100%; animation:hp-rise .4s cubic-bezier(.2,.8,.2,1); }
 @keyframes hp-rise { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
 .hp-root .classpick h2 {
   font-family:'Chakra Petch'; font-weight:700; font-size:23px; letter-spacing:2px;
   color:var(--ink); text-align:center; text-shadow:0 0 18px var(--cyan-glow);
 }
-.hp-root .classpick .sub { text-align:center; color:var(--ink-dim); font-size:13px; margin:5px 0 18px; }
+.hp-root .classpick .sub { text-align:center; color:var(--ink-dim); font-size:12px; margin:3px 0 8px; }
 .hp-root .pickpreview {
-  position:relative; width:100%; aspect-ratio:5/4;
-  display:flex; align-items:flex-end; justify-content:center; margin-bottom:4px;
+  position:relative; width:100%; height:clamp(210px, 38vh, 300px);
+  display:flex; align-items:flex-end; justify-content:center; margin-bottom:2px;
 }
 .hp-root .pickaura {
   position:absolute; bottom:6%; left:50%; transform:translateX(-50%);
   width:58%; aspect-ratio:1; border-radius:50%; filter:blur(22px); opacity:.4; transition:background .3s;
 }
-.hp-root .pickpreview .platform { width:60%; }
+.hp-root .pickpreview .platform { width:54%; }
 .hp-root .pickmodel { position:absolute; inset:0; z-index:2; pointer-events:none; }
-.hp-root .pickname { text-align:center; font-family:'Chakra Petch'; font-weight:700; font-size:20px; letter-spacing:2px; }
-.hp-root .pickdesc { text-align:center; color:var(--ink-dim); font-size:12px; margin:2px 0 12px; }
+.hp-root .pickname { text-align:center; font-family:'Chakra Petch'; font-weight:700; font-size:18px; letter-spacing:2px; }
+.hp-root .pickdesc { text-align:center; color:var(--ink-dim); font-size:11px; margin:1px 0 8px; }
 .hp-root .pickrow { display:flex; gap:6px; }
 .hp-root .pickopt {
   flex:1; background:var(--panel); border:1px solid rgba(76,170,255,0.14); border-radius:10px;
@@ -241,7 +242,7 @@ const CSS = `
 .hp-root .pickopt.sel { border-color:var(--cyan); box-shadow:0 0 14px rgba(76,194,255,0.25); }
 .hp-root .pickopt.sel span { color:var(--ink); }
 .hp-root .pickconfirm {
-  width:100%; margin-top:16px; border-radius:12px; padding:13px; cursor:pointer; transition:.2s;
+  width:100%; margin-top:10px; border-radius:12px; padding:12px; cursor:pointer; transition:.2s;
   background:linear-gradient(180deg,rgba(76,194,255,0.3),rgba(20,60,110,0.6));
   border:1.5px solid var(--cyan); color:var(--ink);
   font-family:'Chakra Petch'; font-weight:700; font-size:15px; letter-spacing:2px;
@@ -249,6 +250,13 @@ const CSS = `
 }
 .hp-root .pickconfirm:hover { box-shadow:0 0 28px var(--cyan-glow); }
 .hp-root .pickconfirm.disabled { opacity:.35; pointer-events:none; box-shadow:none; }
+@media (max-height: 740px) {
+  .hp-root .classpick h2 { font-size:20px; }
+  .hp-root .pickpreview { height:clamp(170px, 34vh, 240px); }
+  .hp-root .pickopt { padding:6px 2px; }
+  .hp-root .pickopt svg { width:20px; height:20px; }
+  .hp-root .pickconfirm { margin-top:8px; padding:10px; }
+}
 
 /* stage / character */
 .hp-root .stage { position:relative; display:flex; flex-direction:column; align-items:center; }
