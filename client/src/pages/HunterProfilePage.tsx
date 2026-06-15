@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useGame } from "@/context/GameContext";
 import { Canvas } from "@react-three/fiber";
@@ -41,12 +41,21 @@ const WALLETICON: Record<string, string> = {
   diamond: '<path d="M12 3l7 7-7 11-7-11z" fill="#c77dff"/>',
 };
 const EMBLEM = '<path d="M12 2l3 5 5 1-3.5 4 1 5L12 19l-5.5 3 1-5L4 8l5-1z"/>';
-const PROP: Record<string, string> = {
-  WARRIOR: '<path d="M66 60 h9 v4 h-9 Z"/><path d="M69 64 L73 134 L70.5 138 L67.5 136 L67 64 Z"/>',
-  SAGE:    '<rect x="21" y="44" width="3.5" height="100" rx="1.5"/><circle cx="22.7" cy="41" r="7"/>',
-  SHADOW:  '<path d="M37 22 Q50 4 63 22 Q57 14 50 13 Q43 14 37 22 Z"/><path d="M74 70 l5 24 -2.5 1 -4.5-23 Z"/><path d="M26 70 l-5 24 2.5 1 4.5-23 Z"/>',
-  WARDEN:  '<path d="M15 62 L33 62 L33 94 Q24 110 24 110 Q15 110 15 94 Z"/>',
-};
+const CLASS_DISPLAY_NAMES = ["Warrior", "Mage", "Assassin", "Archer"];
+const CLASS_MODEL_PATHS = [
+  "/assets/models/warrior.glb",
+  "/assets/models/mage.glb",
+  "/assets/models/rogue.glb",
+  "/assets/models/rogue_hooded.glb",
+];
+
+function classDisplayName(index: number, fallback: string) {
+  return CLASS_DISPLAY_NAMES[index] ?? fallback;
+}
+
+function classModelSrc(index: number) {
+  return CLASS_MODEL_PATHS[index] ?? CLASS_MODEL_PATHS[0];
+}
 
 // ── Deterministic streak lines so the animation doesn't jump ────────────
 const STREAKS = Array.from({ length: 14 }, (_, i) => ({
@@ -212,8 +221,7 @@ const CSS = `
   width:58%; aspect-ratio:1; border-radius:50%; filter:blur(22px); opacity:.4; transition:background .3s;
 }
 .hp-root .pickpreview .platform { width:60%; }
-.hp-root .pickmodel { position:relative; z-index:2; height:97%; display:flex; align-items:flex-end; }
-.hp-root .modelsvg { height:100%; filter:drop-shadow(0 8px 22px rgba(0,0,0,0.5)); animation:hp-rise .35s ease; }
+.hp-root .pickmodel { position:absolute; inset:0; z-index:2; pointer-events:none; }
 .hp-root .pickname { text-align:center; font-family:'Chakra Petch'; font-weight:700; font-size:20px; letter-spacing:2px; }
 .hp-root .pickdesc { text-align:center; color:var(--ink-dim); font-size:12px; margin:2px 0 12px; }
 .hp-root .pickrow { display:flex; gap:6px; }
@@ -392,41 +400,26 @@ const CSS = `
 }
 `;
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-function classModel(c: ClassEntry) {
-  return `<svg viewBox="0 0 100 200" style="height:100%;filter:drop-shadow(0 8px 22px rgba(0,0,0,0.5))">
-    <defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${c.color}" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#0a1422"/></linearGradient></defs>
-    <g fill="url(#mg)" stroke="${c.color}" stroke-width="0.8" stroke-opacity="0.7">
-      <circle cx="50" cy="26" r="12"/>
-      <path d="M38 38 Q50 44 62 38 L70 70 Q72 96 64 120 L60 170 Q58 188 52 192 L48 192 Q42 188 40 170 L36 120 Q28 96 30 70 Z"/>
-      <path d="M38 44 L22 80 L26 84 L40 56 Z"/>
-      <path d="M62 44 L78 80 L74 84 L60 56 Z"/>
-    </g>
-    <g fill="${c.color}" fill-opacity="0.85" stroke="${c.color}" stroke-width="0.5">${PROP[c.name] || ''}</g>
-  </svg>`;
+// ── 3-D Class Viewer ──────────────────────────────────────────────────────
+function ClassModel({ src, scale }: { src: string; scale: number }) {
+  const { scene } = useGLTF(src);
+  const model = useMemo(() => scene.clone(true), [scene]);
+  return <primitive object={model} position={[0, -1, 0]} scale={scale} />;
 }
 
-// ── 3-D Warrior Viewer ────────────────────────────────────────────────────
-function WarriorModel() {
-  const { scene } = useGLTF("/assets/models/warrior.glb");
-  return <primitive object={scene} position={[0, -1, 0]} scale={0.55} />;
-}
-
-function WarriorViewer() {
+function ClassViewer({ src, compact = false }: { src: string; compact?: boolean }) {
   return (
     <Canvas
       style={{ position: "absolute", inset: 0, zIndex: 2 }}
       gl={{ alpha: true, antialias: true }}
-      camera={{ position: [0, 1.0, 3.2], fov: 42 }}
+      camera={{ position: [0, compact ? 0.9 : 1.0, compact ? 3.0 : 3.2], fov: compact ? 38 : 42 }}
     >
       <ambientLight intensity={0.55} />
       <directionalLight position={[2, 4, 3]}  intensity={1.5} color="#7dd3fc" />
       <directionalLight position={[-2, 2, -2]} intensity={0.5} color="#c084fc" />
       <pointLight position={[0, -1, 2]} intensity={0.3} color="#4cc2ff" />
       <Suspense fallback={null}>
-        <WarriorModel />
+        <ClassModel src={src} scale={compact ? 0.62 : 0.55} />
       </Suspense>
       <OrbitControls
         enablePan={false}
@@ -439,6 +432,8 @@ function WarriorViewer() {
     </Canvas>
   );
 }
+
+CLASS_MODEL_PATHS.forEach((src) => useGLTF.preload(src));
 
 // ── Component ─────────────────────────────────────────────────────────────
 export default function HunterProfilePage() {
@@ -598,24 +593,26 @@ export default function HunterProfilePage() {
   function renderClassColumn() {
     if (chosenClass === null) return null;
     const main   = data!.classes[chosenClass];
-    const others = data!.classes.filter((_, i) => i !== chosenClass);
+    const others = data!.classes
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ index }) => index !== chosenClass);
     return (
       <>
         <div className="classcard active">
           <svg className="emblem" viewBox="0 0 24 24" fill="none" stroke={main.color} strokeWidth="1.6"
             dangerouslySetInnerHTML={{ __html: EMBLEM }} />
-          <div className="cname">{main.name}</div>
+          <div className="cname">{classDisplayName(chosenClass, main.name)}</div>
           <div className="clv">Lv. {main.lv}</div>
         </div>
         <button className={`otherstoggle${otherOpen ? " open" : ""}`} onClick={() => setOtherOpen(o => !o)}>
           OTHER CLASSES <span className="chev">›</span>
         </button>
-        {otherOpen && others.map(c => (
-          <div key={c.name} className="classcard">
-            <svg className="emblem" viewBox="0 0 24 24" fill="none" stroke={c.color} strokeWidth="1.6"
+        {otherOpen && others.map(({ entry, index }) => (
+          <div key={entry.name} className="classcard">
+            <svg className="emblem" viewBox="0 0 24 24" fill="none" stroke={entry.color} strokeWidth="1.6"
               dangerouslySetInnerHTML={{ __html: EMBLEM }} />
-            <div className="cname">{c.name}</div>
-            <div className="clv">Lv. {c.lv}</div>
+            <div className="cname">{classDisplayName(index, entry.name)}</div>
+            <div className="clv">Lv. {entry.lv}</div>
           </div>
         ))}
         <div className="classnote">Only one class can be active.</div>
@@ -624,6 +621,8 @@ export default function HunterProfilePage() {
   }
 
   const pickedData = pickedClass !== null ? data.classes[pickedClass] : null;
+  const activeClassIndex = chosenClass ?? 0;
+  const activeClassSrc = classModelSrc(activeClassIndex);
 
   return (
     <div className="hp-root" data-testid="hunter-profile-page">
@@ -705,7 +704,7 @@ export default function HunterProfilePage() {
                 {data.characterImage ? (
                   <img src={data.characterImage} className="charimg" alt="character" />
                 ) : (
-                  <WarriorViewer />
+                  <ClassViewer src={activeClassSrc} />
                 )}
               </div>
               <div className="cp">
@@ -866,12 +865,13 @@ export default function HunterProfilePage() {
                   <div className="core" />
                 </div>
                 {pickedData && (
-                  <div className="pickmodel"
-                    dangerouslySetInnerHTML={{ __html: classModel(pickedData) }} />
+                  <div className="pickmodel">
+                    <ClassViewer src={classModelSrc(pickedClass ?? 0)} compact />
+                  </div>
                 )}
               </div>
               <div className="pickname" style={{ color: pickedData?.color ?? "var(--ink)" }}>
-                {pickedData?.name ?? ""}
+                {pickedClass !== null && pickedData ? classDisplayName(pickedClass, pickedData.name) : ""}
               </div>
               <div className="pickdesc">{pickedData?.desc ?? ""}</div>
               <div className="pickrow">
@@ -880,7 +880,7 @@ export default function HunterProfilePage() {
                     onClick={() => setPickedClass(i)}>
                     <svg viewBox="0 0 24 24" fill="none" stroke={c.color} strokeWidth="1.6"
                       dangerouslySetInnerHTML={{ __html: EMBLEM }} />
-                    <span>{c.name}</span>
+                    <span>{classDisplayName(i, c.name)}</span>
                   </button>
                 ))}
               </div>

@@ -258,12 +258,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     ? `+${PHASE1_XP.vitality} XP + ${PHASE1_XP.synthesisBonus} bonus`
     : currentReward > 0 ? `+${currentReward} XP` : "";
   const compactRewardLabel = currentReward > 0 ? `+${currentReward} XP` : rewardLabel;
-  const nextUnlockLabel = intelligencePending
-    ? (lvl >= 2 ? "Avatar setup next" : "Level 2 and avatar setup next")
-    : currentAid === "phase1_meditation" ? "Movement unlocks next"
-    : currentAid === "phase1_agility" ? "Physical Circuit unlocks next"
-    : currentAid === "phase1_strength" ? "Daily Insight unlocks next"
-    : "";
   const systemMission = allDone ? "All missions complete."
     : intelligencePending ? "Complete your Daily Insight."
     : firstResetJustUnlockedMovement ? "First mission complete. Begin Agility."
@@ -853,7 +847,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {/* ── FEATURED MISSION CARD ─────────────────────────────────────── */}
         {!allDone && featuredCard && (() => {
           const dc    = featuredCard;
-          const dur   = actDurMap[dc.activityId] ?? 2;
           const ctaText = intelligencePending
             ? `Complete insight · ${compactRewardLabel}`
             : currentAid === "phase1_strength"
@@ -878,14 +871,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   onClick={handleFeaturedTap}
                   whileHover={{ scale: 1.006, transition: { duration: 0.2 } }}
                   whileTap={{ scale: 0.982, transition: { duration: 0.12 } }}
-                  className={`${CARD_BASE} gap-5 relative overflow-hidden`}
+                  className={`${CARD_BASE} gap-4 relative overflow-hidden`}
                   style={{
                     background: isNeonEmp
                       ? `linear-gradient(145deg, rgba(11,13,36,0.90) 0%, rgba(7,8,26,0.96) 58%, rgba(20,13,46,0.91) 100%)`
                       : `linear-gradient(140deg, rgba(6,7,22,0.98) 0%, rgba(10,6,28,0.97) 60%, rgba(6,8,24,0.98) 100%)`,
                     border: `1.5px solid ${dc.color}${isNeonEmp ? "66" : "3f"}`,
                     backdropFilter: "blur(22px) saturate(1.2)",
-                    padding: "24px 20px 20px",
+                    padding: "20px 18px 18px",
                     boxShadow: `inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -1px 0 rgba(0,0,0,0.45)`,
                   }}
                   data-testid="mission-card-current"
@@ -942,18 +935,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       <p className="text-[17px] font-black leading-none" style={{ color: "#4ade80" }}>{compactRewardLabel.replace(" XP", "")}</p>
                       <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: "#22c55e" }}>XP</p>
                     </div>
-                  </div>
-
-                  <div
-                    className="relative rounded-xl px-4 py-3"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: cardMutedCol }}
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "rgba(172,186,208,0.64)" }}>
-                      Next
-                    </span>
-                    <span className="ml-2 text-[12px] font-semibold leading-tight" style={{ color: "rgba(236,242,255,0.88)" }}>
-                      {nextUnlockLabel || `${dur} min guided`}
-                    </span>
                   </div>
 
                   {/* Bar */}
