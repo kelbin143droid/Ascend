@@ -783,7 +783,7 @@ function GearDetail({ item, equipped, onEquip, onClose }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Game3DPage() {
-  const { player, gainExp } = useGame();
+  const { player } = useGame();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<'dungeon'|'gear'>('dungeon');
@@ -926,15 +926,14 @@ export default function Game3DPage() {
 
   const collectRewards = useCallback(() => {
     if (!runResult) return;
-    gainExp(runResult.xp);
     if (runResult.gear) {
       setRpgState(s => ({ ...s, inventory: [...s.inventory, runResult.gear!] }));
       dispatchSystemMessage({ type: 'gear', title: 'GEAR FOUND', subtitle: `${runResult.gear.name} — ${runResult.gear.rarity.toUpperCase()}`, icon: '◆', color: RARITY_COLORS[runResult.gear.rarity] });
     }
-    dispatchSystemMessage({ type: 'dungeon', title: 'DUNGEON CLEARED', subtitle: `+${runResult.xp} XP · +${runResult.gold}G`, icon: '⚔' });
+    dispatchSystemMessage({ type: 'dungeon', title: 'DUNGEON CLEARED', subtitle: `+${runResult.gold}G`, icon: '⚔' });
     setRunResult(null);
     setDungeonPhase('idle');
-  }, [runResult, gainExp, setRpgState]);
+  }, [runResult, setRpgState]);
 
   // ── Gear ──
   const [selectedGear, setSelectedGear] = useState<GearItem | null>(null);
@@ -1185,11 +1184,7 @@ export default function Game3DPage() {
                 <div className="text-4xl">🏆</div>
                 <div className="font-display font-black text-xl uppercase tracking-widest"
                   style={{ color:'#f59e0b',textShadow:'0 0 24px rgba(245,158,11,0.45)' }}>DUNGEON CLEARED</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl py-2.5 px-3" style={{ background:'rgba(245,158,11,0.09)',border:'1px solid rgba(245,158,11,0.20)' }}>
-                    <div className="text-[8px] font-mono uppercase tracking-widest mb-0.5" style={{ color:'rgba(245,158,11,0.55)' }}>XP GAINED</div>
-                    <div className="font-display font-black text-xl" style={{ color:'#f59e0b' }}>+{runResult.xp}</div>
-                  </div>
+                <div className="grid grid-cols-1 gap-3">
                   <div className="rounded-xl py-2.5 px-3" style={{ background:'rgba(251,191,36,0.09)',border:'1px solid rgba(251,191,36,0.20)' }}>
                     <div className="text-[8px] font-mono uppercase tracking-widest mb-0.5" style={{ color:'rgba(251,191,36,0.55)' }}>GOLD</div>
                     <div className="font-display font-black text-xl" style={{ color:'#fbbf24' }}>+{runResult.gold}G</div>

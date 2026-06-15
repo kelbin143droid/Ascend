@@ -11,7 +11,6 @@ interface Enemy {
   hp: number;
   maxHp: number;
   atk: number;
-  exp: number;
   tier: string;
 }
 
@@ -22,7 +21,7 @@ const dungeonList = [
 ];
 
 export default function DungeonPage() {
-  const { player, isLoading, gainExp, modifyHp, modifyMp } = useGame();
+  const { player, isLoading, modifyHp, modifyMp } = useGame();
   const { toast } = useToast();
   const [activeDungeon, setActiveDungeon] = useState<any>(null);
   const [enemy, setEnemy] = useState<Enemy | null>(null);
@@ -48,7 +47,6 @@ export default function DungeonPage() {
         maxHp: 50 * player.level,
         hp: 50 * player.level,
         atk: 5 + player.level * 2,
-        exp: 30 * player.level,
         tier: dungeon.tier
     });
   };
@@ -65,8 +63,7 @@ export default function DungeonPage() {
     setEnemy(prev => prev ? { ...prev, hp: newEnemyHp } : null);
 
     if (newEnemyHp <= 0) {
-        setBattleLog(prev => [`Enemy defeated! Gained ${enemy.exp} EXP.`, ...prev].slice(0, 5));
-        gainExp(enemy.exp);
+        setBattleLog(prev => [`Enemy defeated!`, ...prev].slice(0, 5));
         setTimeout(() => {
             spawnEnemy(activeDungeon);
             setIsFighting(false);
@@ -95,7 +92,6 @@ export default function DungeonPage() {
     const skillDamage = player.stats.strength * 5;
     setEnemy(prev => prev ? { ...prev, hp: Math.max(0, prev.hp - skillDamage) } : null);
     if (enemy && enemy.hp - skillDamage <= 0) {
-        gainExp(enemy.exp);
         setTimeout(() => spawnEnemy(activeDungeon), 1000);
     }
   };

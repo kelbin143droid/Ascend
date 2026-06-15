@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useGame } from "@/context/GameContext";
-import { useQueryClient } from "@tanstack/react-query";
 import { ACTIVE_DUNGEON_KEY, CLEARED_GATE_KEY } from "@/lib/gateConfig";
 import {
   addGold,
@@ -87,7 +86,6 @@ function isPortraitNow() {
 
 export default function GodotGamePage() {
   const { player }    = useGame();
-  const queryClient   = useQueryClient();
   const [, navigate]  = useLocation();
   const iframeRef     = useRef<HTMLIFrameElement>(null);
   const readyRef      = useRef(false);
@@ -181,7 +179,6 @@ export default function GodotGamePage() {
           outcome?: string;
           wave?: number;
           kills?: number;
-          xp?: number;
           gold?: number;
           loot?: unknown;
           items?: unknown;
@@ -215,7 +212,6 @@ export default function GodotGamePage() {
       }
 
       if (data?.type === "RUN_RESULT") {
-        const xp      = data.result?.xp ?? 0;
         const gold    = data.result?.gold ?? 0;
         const outcome = data.result?.outcome ?? "";
         const raw     = localStorage.getItem("_last_gate_id");   // written just before navigate
@@ -223,21 +219,6 @@ export default function GodotGamePage() {
         if (gold > 0) addGold(gold);
         if (data.result?.loot !== undefined) addLoot(data.result.loot);
         if (data.result?.items !== undefined) setOwnedConsumables(data.result.items);
-
-        // Grant XP
-        if (xp > 0) {
-          try {
-            await fetch(`/api/player/${player.id}/gain-exp`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ amount: xp }),
-            });
-            queryClient.invalidateQueries({ queryKey: ["player", player.id] });
-            queryClient.invalidateQueries({ queryKey: ["home",   player.id] });
-          } catch (err) {
-            console.error("[GodotGame] RUN_RESULT XP award failed:", err);
-          }
-        }
 
         // On victory, tell the world map which gate to remove
         if (outcome === "victory" && raw) {
@@ -253,7 +234,7 @@ export default function GodotGamePage() {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [player?.id, queryClient, navigate]);
+  }, [player?.id, navigate]);
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 10 }}>
