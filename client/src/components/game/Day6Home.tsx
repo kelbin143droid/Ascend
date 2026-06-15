@@ -69,7 +69,7 @@ const DASH_CARDS = [
   },
   {
     id: "intelligence", activityId: INTELLIGENCE_ACTIVITY_ID, statKey: "sense",
-    label: "Intelligence", sub: "Daily Insight", desc: "3-min read",
+    label: "Intel", sub: "Daily Insight", desc: "3-min read",
     icon: BookOpen, color: "#38bdf8", glow: "rgba(56,189,248,0.45)",
     barLabel: "INT", barType: "xp" as const, fallbackRoute: "/library",
   },
@@ -359,7 +359,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
   const handleAvatarPick = (icon: string) => { saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false); };
 
-  // Featured vs supporting — Intelligence becomes featured once the body sequence is done.
+  // Featured vs supporting — Intel becomes featured once the body sequence is done.
   const intelligenceCard = DASH_CARDS.find(d => d.id === "intelligence")!;
   const featuredCard = intelligencePending
     ? intelligenceCard
@@ -759,7 +759,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             { id: "phase1_meditation", label: "Sense",    dc: DASH_CARDS[0] },
             { id: "phase1_agility",    label: "Agility",  dc: DASH_CARDS[3] },
             { id: "phase1_strength",   label: "Strength", dc: DASH_CARDS[2] },
-            { id: INTELLIGENCE_ACTIVITY_ID, label: "Intelligence", dc: DASH_CARDS[1] },
+            { id: INTELLIGENCE_ACTIVITY_ID, label: "Intel", dc: DASH_CARDS[1] },
           ] as const;
           const queueItems = QUEUE_DEFS.filter(q =>
             q.id === INTELLIGENCE_ACTIVITY_ID ? true : activities.some(a => a.id === q.id)

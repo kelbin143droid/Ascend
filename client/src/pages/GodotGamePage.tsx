@@ -3,10 +3,22 @@ import { useLocation } from "wouter";
 import { useGame } from "@/context/GameContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { ACTIVE_DUNGEON_KEY, CLEARED_GATE_KEY } from "@/lib/gateConfig";
+import {
+  addGold,
+  addLoot,
+  getOwnedConsumables,
+  getOwnedGear,
+  setOwnedConsumables,
+  type ConsumableInventory,
+  type GodotEquipment,
+  type GodotRarity,
+  type GodotSlot,
+} from "@/lib/godotEconomyStore";
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 type GameStats = { STR: number; AGI: number; VIT: number; SEN: number; INT: number; DIS: number };
+type GameStatsPayload = GameStats & { items: ConsumableInventory };
 
 function buildStats(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameStats {
   const s = (player.stats ?? {}) as Record<string, number>;
@@ -22,10 +34,6 @@ function buildStats(player: NonNullable<ReturnType<typeof useGame>["player"]>): 
 }
 
 // ── Equipment ─────────────────────────────────────────────────────────────────
-
-type GodotRarity   = "Common" | "Rare" | "Epic" | "Legendary";
-type GodotSlot     = "Weapon" | "Helmet" | "Chest" | "Gloves" | "Boots";
-type GodotEquipment = Partial<Record<GodotSlot, { name: string; rarity: GodotRarity }>>;
 
 const RARITY_MAP: Record<string, GodotRarity> = {
   T1: "Common", T2: "Rare", T3: "Epic", T4: "Legendary", T5: "Legendary",
@@ -48,6 +56,15 @@ function buildEquipment(player: NonNullable<ReturnType<typeof useGame>["player"]
     result[godotSlot] = { name: item.name, rarity: RARITY_MAP[item.rarity] ?? "Common" };
   }
   return result;
+}
+
+function buildStatsPayload(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameStatsPayload {
+  return { ...buildStats(player), items: getOwnedConsumables() };
+}
+
+function buildLoadoutEquipment(player: NonNullable<ReturnType<typeof useGame>["player"]>): GodotEquipment {
+  const ownedGear = getOwnedGear();
+  return Object.keys(ownedGear).length > 0 ? ownedGear : buildEquipment(player);
 }
 
 // ── Dungeon config type (written to localStorage by WorldMapPage) ─────────────
@@ -114,10 +131,10 @@ export default function GodotGamePage() {
   }, []);
 
   // ── Stats: send on ready + whenever player changes ─────────────────────────
-  const sendStats = useCallback((overrideStats?: GameStats) => {
+  const sendStats = useCallback((overrideStats?: GameStatsPayload) => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow || !readyRef.current) return;
-    const stats = overrideStats ?? (player ? buildStats(player) : null);
+    const stats = overrideStats ?? (player ? buildStatsPayload(player) : null);
     if (!stats) return;
     iframe.contentWindow.postMessage({ type: "SET_STATS", stats }, "*");
   }, [player]);
@@ -126,7 +143,7 @@ export default function GodotGamePage() {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const stats = (e as CustomEvent<GameStats>).detail;
+      const stats = (e as CustomEvent<GameStatsPayload>).detail;
       if (readyRef.current && iframeRef.current?.contentWindow && stats)
         iframeRef.current.contentWindow.postMessage({ type: "SET_STATS", stats }, "*");
     };
@@ -138,7 +155,7 @@ export default function GodotGamePage() {
   const sendEquipment = useCallback(() => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow || !readyRef.current || !player) return;
-    iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildEquipment(player) }, "*");
+    iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
   }, [player]);
 
   useEffect(() => { if (readyRef.current) sendEquipment(); }, [sendEquipment]);
@@ -160,22 +177,32 @@ export default function GodotGamePage() {
     const handleMessage = async (e: MessageEvent) => {
       const data = e.data as {
         type?: string;
-        result?: { outcome?: string; wave?: number; kills?: number; xp?: number };
+        result?: {
+          outcome?: string;
+          wave?: number;
+          kills?: number;
+          xp?: number;
+          gold?: number;
+          loot?: unknown;
+          items?: unknown;
+        };
       };
 
       if (data?.type === "GODOT_READY") {
         readyRef.current = true;
         const iframe = iframeRef.current;
         if (player && iframe?.contentWindow) {
-          // 1. Power layer
-          iframe.contentWindow.postMessage({ type: "SET_STATS",     stats:     buildStats(player) },     "*");
-          // 2. Visual layer
-          iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildEquipment(player) }, "*");
+          // 1. Power layer + consumables
+          iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
+          // 2. Visual/loadout layer
+          iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
           // 3. Dungeon config — if launched from the world map
           const raw = localStorage.getItem(ACTIVE_DUNGEON_KEY);
           if (raw) {
             try {
               const config = JSON.parse(raw) as ActiveDungeonConfig;
+              iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
+              iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
               iframe.contentWindow.postMessage(
                 { type: "START_DUNGEON", config: { dungeon: config.dungeon, rank: config.rank, waves: config.waves } },
                 "*",
@@ -189,8 +216,13 @@ export default function GodotGamePage() {
 
       if (data?.type === "RUN_RESULT") {
         const xp      = data.result?.xp ?? 0;
+        const gold    = data.result?.gold ?? 0;
         const outcome = data.result?.outcome ?? "";
         const raw     = localStorage.getItem("_last_gate_id");   // written just before navigate
+
+        if (gold > 0) addGold(gold);
+        if (data.result?.loot !== undefined) addLoot(data.result.loot);
+        if (data.result?.items !== undefined) setOwnedConsumables(data.result.items);
 
         // Grant XP
         if (xp > 0) {

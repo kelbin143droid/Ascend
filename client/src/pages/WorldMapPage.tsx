@@ -16,6 +16,15 @@ import {
   PERSISTED_GATES_KEY,
   type GateRank,
 } from "@/lib/gateConfig";
+import {
+  SHOP_CONSUMABLES,
+  SHOP_GEAR,
+  buyConsumable,
+  buyGear,
+  getEconomyState,
+  subscribeEconomy,
+  type ConsumableId,
+} from "@/lib/godotEconomyStore";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -224,8 +233,25 @@ export default function WorldMapPage() {
   const [nextRegenSec, setNextRegenSec] = useState<number>(720);
   const [distToSelected, setDistToSelected] = useState<number>(Infinity);
   const [enterError, setEnterError]     = useState<string | null>(null);
+  const [shopOpen, setShopOpen]         = useState(false);
+  const [shopError, setShopError]       = useState<string | null>(null);
+  const [economy, setEconomy]           = useState(() => getEconomyState());
 
   const playerCP = player ? computeCP(buildStats(player)) : 0;
+
+  useEffect(() => subscribeEconomy(() => setEconomy(getEconomyState())), []);
+
+  const purchaseConsumable = useCallback((id: ConsumableId) => {
+    const result = buyConsumable(id);
+    setEconomy(result.state);
+    setShopError(result.ok ? null : "Not enough gold.");
+  }, []);
+
+  const purchaseGear = useCallback((id: string) => {
+    const result = buyGear(id);
+    setEconomy(result.state);
+    setShopError(result.ok ? null : "Not enough gold.");
+  }, []);
 
   // ── On mount: handle returning from a dungeon ─────────────────────────────
   useEffect(() => {
@@ -439,7 +465,22 @@ export default function WorldMapPage() {
             )}
           </div>
         </div>
-        <EnergyBar energy={energy} maxEnergy={maxEnergy} nextRegenSec={nextRegenSec} />
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <button
+            data-testid="button-system-shop"
+            onClick={() => { setShopOpen(true); setShopError(null); }}
+            style={{
+              background:"rgba(245,158,11,.14)", border:"1px solid rgba(245,158,11,.38)",
+              borderRadius:12, color:"#fbbf24", cursor:"pointer",
+              padding:"8px 10px", display:"flex", flexDirection:"column", alignItems:"flex-end", gap:2,
+              boxShadow:"0 0 14px rgba(245,158,11,.12)",
+            }}
+          >
+            <span style={{ color:"#fef3c7", fontSize:11, fontWeight:900, lineHeight:1 }}>System Shop</span>
+            <span style={{ color:"#f59e0b", fontSize:10, fontWeight:800, lineHeight:1 }}>{economy.gold} G</span>
+          </button>
+          <EnergyBar energy={energy} maxEnergy={maxEnergy} nextRegenSec={nextRegenSec} />
+        </div>
       </div>
 
       {/* CP badge */}
@@ -456,6 +497,119 @@ export default function WorldMapPage() {
           {gates.length} gate{gates.length !== 1 ? "s" : ""} nearby
         </div>
       </div>
+
+      {/* System Shop */}
+      {shopOpen && (
+        <div
+          data-testid="system-shop-panel"
+          style={{
+            position:"absolute", inset:0, zIndex:700,
+            background:"rgba(2,6,18,.72)", backdropFilter:"blur(10px)",
+            display:"flex", alignItems:"flex-end", justifyContent:"center",
+          }}
+        >
+          <div style={{
+            width:"100%", maxHeight:"82vh", overflowY:"auto",
+            background:"linear-gradient(180deg,rgba(8,16,32,.98),rgba(6,13,26,1))",
+            borderTop:"1px solid #1e3a5f", borderRadius:"22px 22px 0 0",
+            padding:"20px 18px 34px", boxShadow:"0 -18px 60px rgba(0,0,0,.45)",
+          }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+              <div>
+                <div style={{ color:"#e2e8f0", fontWeight:900, fontSize:18, letterSpacing:1 }}>SYSTEM SHOP</div>
+                <div style={{ color:"#fbbf24", fontWeight:900, fontSize:13, marginTop:2 }}>{economy.gold} Gold</div>
+              </div>
+              <button
+                data-testid="button-close-system-shop"
+                onClick={() => setShopOpen(false)}
+                style={{ background:"none", border:"none", color:"#64748b", fontSize:24, cursor:"pointer", padding:4, lineHeight:1 }}
+              >✕</button>
+            </div>
+
+            {shopError && (
+              <div style={{
+                color:"#f87171", fontSize:12, marginBottom:12,
+                background:"rgba(239,68,68,.10)", border:"1px solid rgba(239,68,68,.20)",
+                borderRadius:10, padding:"9px 12px",
+              }}>{shopError}</div>
+            )}
+
+            <div style={{ color:"#64748b", fontSize:10, fontWeight:800, letterSpacing:1.4, margin:"12px 0 8px" }}>
+              CONSUMABLES
+            </div>
+            <div style={{ display:"grid", gap:9 }}>
+              {SHOP_CONSUMABLES.map((item) => {
+                const count = economy.consumables[item.id] ?? 0;
+                const canBuy = economy.gold >= item.price;
+                return (
+                  <button
+                    key={item.id}
+                    data-testid={`button-buy-${item.id}`}
+                    onClick={() => purchaseConsumable(item.id)}
+                    style={{
+                      display:"flex", alignItems:"center", justifyContent:"space-between", gap:12,
+                      borderRadius:14, padding:"12px 13px", textAlign:"left",
+                      border:`1px solid ${canBuy ? "rgba(14,165,233,.35)" : "rgba(51,65,85,.70)"}`,
+                      background: canBuy ? "rgba(14,165,233,.10)" : "rgba(15,23,42,.72)",
+                      color:"#e2e8f0", cursor:"pointer",
+                    }}
+                  >
+                    <span>
+                      <span style={{ display:"block", fontWeight:900, fontSize:13 }}>{item.name}</span>
+                      <span style={{ display:"block", color:"#64748b", fontSize:10, marginTop:2 }}>{item.description}</span>
+                    </span>
+                    <span style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3, flexShrink:0 }}>
+                      <span style={{ color:"#fbbf24", fontWeight:900, fontSize:12 }}>{item.price} G</span>
+                      <span style={{ color:"#94a3b8", fontSize:10 }}>Owned {count}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ color:"#64748b", fontSize:10, fontWeight:800, letterSpacing:1.4, margin:"18px 0 8px" }}>
+              EQUIPMENT
+            </div>
+            <div style={{ display:"grid", gap:9 }}>
+              {SHOP_GEAR.map((gear) => {
+                const equipped = economy.equipment[gear.slot]?.id === gear.id;
+                const owned = economy.gearVault.some((entry) => entry.id === gear.id);
+                const canBuy = economy.gold >= gear.price || owned;
+                return (
+                  <button
+                    key={gear.id}
+                    data-testid={`button-buy-${gear.id}`}
+                    onClick={() => !owned && purchaseGear(gear.id)}
+                    disabled={owned}
+                    style={{
+                      display:"flex", alignItems:"center", justifyContent:"space-between", gap:12,
+                      borderRadius:14, padding:"12px 13px", textAlign:"left",
+                      border:`1px solid ${equipped ? "rgba(34,197,94,.38)" : canBuy ? "rgba(245,158,11,.32)" : "rgba(51,65,85,.70)"}`,
+                      background: equipped ? "rgba(34,197,94,.10)" : canBuy ? "rgba(245,158,11,.09)" : "rgba(15,23,42,.72)",
+                      color:"#e2e8f0", cursor: owned ? "default" : "pointer", opacity: owned && !equipped ? .72 : 1,
+                    }}
+                  >
+                    <span>
+                      <span style={{ display:"block", fontWeight:900, fontSize:13 }}>
+                        {gear.name} <span style={{ color:"#64748b", fontWeight:700 }}>· {gear.slot}</span>
+                      </span>
+                      <span style={{ display:"block", color:"#64748b", fontSize:10, marginTop:2 }}>
+                        {gear.rarity} · {gear.description}
+                      </span>
+                    </span>
+                    <span style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3, flexShrink:0 }}>
+                      <span style={{ color: equipped ? "#22c55e" : "#fbbf24", fontWeight:900, fontSize:12 }}>
+                        {equipped ? "Equipped" : owned ? "Owned" : `${gear.price} G`}
+                      </span>
+                      <span style={{ color:"#94a3b8", fontSize:10 }}>{owned ? "Loadout" : "Buy"}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Gate preview — bottom sheet */}
       <div style={{
