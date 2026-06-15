@@ -76,11 +76,26 @@ export default function GodotGamePage() {
   const readyRef      = useRef(false);
   const [portrait, setPortrait] = useState(isPortraitNow);
 
-  // ── Orientation lock ───────────────────────────────────────────────────────
+  // ── Fullscreen + orientation lock ─────────────────────────────────────────
   useEffect(() => {
-    // Try to lock to landscape (works on mobile after a user gesture / fullscreen)
+    // Request fullscreen to hide browser chrome / address bar
+    const el = document.documentElement;
+    const reqFs = el.requestFullscreen?.bind(el)
+      ?? (el as any).webkitRequestFullscreen?.bind(el);
+    if (reqFs) reqFs({ navigationUI: "hide" }).catch(() => {});
+
+    // Lock to landscape once fullscreen is granted (required on some browsers)
+    const onFsChange = () => {
+      if (document.fullscreenElement && screen.orientation?.lock) {
+        screen.orientation.lock("landscape").catch(() => {});
+      }
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+
+    // Fallback: lock orientation even without fullscreen (works on some Android)
     if (screen.orientation?.lock) {
-      screen.orientation.lock("landscape").catch(() => {/* desktop/unsupported — silent */});
+      screen.orientation.lock("landscape").catch(() => {});
     }
 
     const update = () => setPortrait(isPortraitNow());
@@ -89,9 +104,11 @@ export default function GodotGamePage() {
     update();
 
     return () => {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
       screen.orientation?.removeEventListener("change", update);
       window.removeEventListener("resize", update);
-      // Unlock when leaving game
       if (screen.orientation?.unlock) screen.orientation.unlock();
     };
   }, []);
