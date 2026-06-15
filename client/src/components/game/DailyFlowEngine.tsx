@@ -298,7 +298,7 @@ export function DailyFlowEngine({
           >
             <Zap size={16} style={{ color: colors.primary }} />
             <span className="text-sm font-bold" style={{ color: colors.primary }}>
-              Complete your Vitality session to finish the Daily Quest
+              Return home to begin Intel
             </span>
           </div>
         )}

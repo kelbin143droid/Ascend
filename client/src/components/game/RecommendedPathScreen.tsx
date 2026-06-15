@@ -47,7 +47,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex flex-col items-center overflow-y-auto overflow-x-hidden"
+      className="fixed inset-0 z-[100] flex flex-col items-center overflow-hidden"
       style={{ background: bgGradient }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -77,7 +77,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.8 }} />
 
       {/* ── Content ── */}
-      <div className="relative z-10 w-full max-w-md px-5 flex flex-col items-center gap-3 pt-12 pb-8">
+      <div className="relative z-10 flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-2 px-5 py-5">
 
         {/* Status label */}
         <motion.div className="flex items-center gap-2"
@@ -87,13 +87,13 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
             animate={{ opacity: [1, 0.15, 1] }} transition={{ duration: 1.2, repeat: Infinity }} />
           <span className="text-[9px] tracking-[0.32em] uppercase font-mono font-bold"
             style={{ color: `${color}90` }}>
-            System Sync · Result
+            Sync Complete
           </span>
         </motion.div>
 
         {/* SYNC SUCCESSFUL */}
         <motion.h1
-          className="text-[30px] font-extrabold uppercase tracking-[0.10em] text-center"
+          className="text-[26px] font-extrabold uppercase tracking-[0.10em] text-center"
           style={{
             color,
             fontFamily: "Inter, system-ui, sans-serif",
@@ -101,7 +101,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           }}
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.18, duration: 0.48 }}>
-          SYNC SUCCESSFUL
+          SYSTEM READY
         </motion.h1>
 
         {/* Radar chart */}
@@ -112,7 +112,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           transition={{ delay: 0.28, duration: 0.55, ease: "easeOut" }}>
           <RadarChart
             values={radarValues}
-            chartSize={162}
+            chartSize={132}
             color={color}
             animate
             delay={520}
@@ -128,7 +128,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
 
         {/* Personalized result */}
         <motion.p
-          className="text-[20px] font-bold text-center leading-tight"
+          className="text-[17px] font-bold text-center leading-tight"
           style={{ color: "#fff", fontFamily: "Inter, system-ui, sans-serif",
             textShadow: "0 0 20px rgba(255,255,255,0.18)" }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -143,7 +143,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.74, duration: 0.48, ease: "easeOut" }}>
           <motion.p
-            className="text-[42px] font-black uppercase tracking-[0.08em] text-center"
+            className="text-[34px] font-black uppercase tracking-[0.08em] text-center"
             style={{
               color: levelColor,
               fontFamily: "Inter, system-ui, sans-serif",
@@ -161,7 +161,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
         </motion.div>
 
         <motion.div
-          className="w-full rounded-2xl border px-4 py-3 text-center"
+          className="w-full rounded-2xl border px-4 py-2.5 text-center"
           style={{
             borderColor: `${color}35`,
             background: `${color}10`,
@@ -171,13 +171,10 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.82, duration: 0.4 }}
         >
-          <p className="text-[10px] font-mono font-bold uppercase tracking-[0.22em]" style={{ color: `${colorAlt}cc` }}>
-            Today's First Quest
+          <p className="text-[10px] font-mono font-bold uppercase tracking-[0.20em]" style={{ color: `${colorAlt}cc` }}>
+            First Quest
           </p>
           <p className="mt-1 text-base font-black text-white">30-Second Reset</p>
-          <p className="mt-1 text-xs font-medium text-white/58">
-            Earn your first XP and unlock the next mission.
-          </p>
         </motion.div>
 
         {/* CTA */}
@@ -186,7 +183,7 @@ export function RecommendedPathScreen({ gender, profile, onConfirm }: Props) {
           transition={{ delay: 0.90, duration: 0.38 }}
           onClick={() => onConfirm(chosenLevel)}
           data-testid="button-begin-path"
-          className="w-full mt-2 py-[15px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] transition-all active:scale-[0.98] relative overflow-hidden"
+          className="w-full mt-1 py-[15px] rounded-2xl font-bold text-[13px] uppercase tracking-[0.20em] transition-all active:scale-[0.98] relative overflow-hidden"
           style={{
             background: `linear-gradient(90deg, ${color}, ${colorAlt})`,
             color: "#fff",

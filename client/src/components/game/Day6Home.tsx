@@ -266,7 +266,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const pathCfg    = getPathFlowConfig(wlevel);
   const pathRec    = getPathAwareRecommendation(wlevel);
   const recommendedIntelRead = useMemo(() => dailyIntelRead(), []);
-  const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers });
+  const tutorialSequenceActive = !homeData.isOnboardingComplete;
+  const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers })
+    .filter((activity) => !(tutorialSequenceActive && activity.id === "phase1_strength"));
   const totalMins  = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
   // XP
@@ -367,7 +369,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (!autoStartPending || activities.length === 0) return;
     window.history.replaceState(null, "", "/");
     setAutoStartPending(false);
-    if (!isActivityDone("phase1_strength")) {
+    const strengthAvailableToday = activities.some((activity) => activity.id === "phase1_strength");
+    if (strengthAvailableToday && !isActivityDone("phase1_strength")) {
       setSingleActivityId("phase1_strength");
       setFlowActive(true);
     }

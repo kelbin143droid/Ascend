@@ -417,7 +417,7 @@ export default function GuidedSessionPage() {
       .catch(() => { unlock.src = ""; });
   }, []);
 
-  const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean; completedToday: number }>({
+  const { data: homeData } = useQuery<{ onboardingDay: number; hasCompletedHabitToday: boolean; completedToday: number; isOnboardingComplete: boolean }>({
     queryKey: ["home", player?.id],
     queryFn: async () => {
       if (!player?.id) throw new Error("No player");
@@ -638,6 +638,7 @@ export default function GuidedSessionPage() {
   // Light Movement uses the video-guided engine instead of the generic session page
   if (sessionId === "light-movement" && player?.id) {
     const pathCfg = getPathFlowConfig(getWorkoutLevel());
+    const tutorialSequenceActive = homeData?.isOnboardingComplete !== true;
     const handleLightMovementComplete = async (xpEarned: number = PHASE1_XP.agility) => {
       await queryClient.refetchQueries({ queryKey: ["home", player.id] });
       // Always write both IDs so the dashboard tracks Agility as complete
@@ -657,11 +658,11 @@ export default function GuidedSessionPage() {
           },
         }));
       } catch { /* noop */ }
-      if (pathCfg.includesStrength) {
+      if (pathCfg.includesStrength && !tutorialSequenceActive) {
         // Build/Evolve/Ascend continue directly into their strength circuit.
         setLocation("/?autostart=strength");
       } else {
-        // Foundation skips strength; returning home makes Intel the next step.
+        // During onboarding, returning home makes Intel the next step.
         setLocation("/");
       }
     };
@@ -671,7 +672,7 @@ export default function GuidedSessionPage() {
         playerId={player.id}
         onComplete={handleLightMovementComplete}
         onCancel={() => setLocation("/")}
-        nextLabel={pathCfg.includesStrength ? "Physical Circuit" : "Intel"}
+        nextLabel={pathCfg.includesStrength && !tutorialSequenceActive ? "Physical Circuit" : "Intel"}
       />
     );
   }
