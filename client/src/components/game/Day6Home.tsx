@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
-  ArrowRight, Heart, Zap, Shield, Flame, Settings,
+  ArrowRight, BookOpen, Zap, Shield, Flame, Settings,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -22,11 +22,12 @@ import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
 import { getPathAwareRecommendation } from "@/lib/dailyRecommendationEngine";
 import { recordSleepCheck, recordBreathingSession, initLevelBaseline } from "@/lib/statsSystem";
-import { markFlowCompleted, isVitalityQuestScheduledToday } from "@/lib/userState";
+import { markFlowCompleted } from "@/lib/userState";
 import { computeXPState } from "@/lib/xpSystem";
 import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 import { useSessionProgress } from "@/hooks/useSessionProgress";
 import { PHASE1_DAILY_TARGET_XP, PHASE1_XP } from "@shared/gameProgression";
+import { addXP, completeTask } from "@/lib/workoutProgressStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -53,9 +54,11 @@ interface Props {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Card definitions
-// barType: "mp" | "hp" use living player stats; "xp" uses statLevels XP
+// barType: "mp" uses living player stats; "xp" uses statLevels XP
 // fallbackRoute: used when the activity is not in today's flow or is done
 // ─────────────────────────────────────────────────────────────────────────────
+
+const INTELLIGENCE_ACTIVITY_ID = "phase1_intelligence";
 
 const DASH_CARDS = [
   {
@@ -65,10 +68,10 @@ const DASH_CARDS = [
     barLabel: "MP", barType: "mp" as const, fallbackRoute: "/coach",
   },
   {
-    id: "vitality",   activityId: "",                  statKey: "vitality",
-    label: "Vitality",   sub: "Recovery",             desc: "Sleep & hydration",
-    icon: Heart,  color: "#f87171", glow: "rgba(248,113,113,0.45)",
-    barLabel: "HP", barType: "hp" as const, fallbackRoute: "/sectograph",
+    id: "intelligence", activityId: INTELLIGENCE_ACTIVITY_ID, statKey: "sense",
+    label: "Intelligence", sub: "Daily Insight", desc: "3-min read",
+    icon: BookOpen, color: "#38bdf8", glow: "rgba(56,189,248,0.45)",
+    barLabel: "INT", barType: "xp" as const, fallbackRoute: "/library",
   },
   {
     id: "strength",   activityId: "phase1_strength",   statKey: "strength",
@@ -88,20 +91,22 @@ const MISSION_CARD_ORDER = [
   DASH_CARDS[0], // Calm
   DASH_CARDS[3], // Agility
   DASH_CARDS[2], // Strength
-  DASH_CARDS[1], // Vitality
+  DASH_CARDS[1], // Intelligence
 ] as const;
 
 // System card hint lines
 const SYSTEM_HINTS: Record<string, string> = {
   phase1_meditation: `Earn +${PHASE1_XP.sense} XP. Calm first, then movement unlocks.`,
   phase1_agility:    `Earn +${PHASE1_XP.agility} XP. Complete this to unlock Physical Circuit.`,
-  phase1_strength:   `Earn +${PHASE1_XP.strength} XP. One short circuit before Vitality.`,
+  phase1_strength:   `Earn +${PHASE1_XP.strength} XP. One short circuit before Daily Insight.`,
+  [INTELLIGENCE_ACTIVITY_ID]: `Earn +${PHASE1_XP.vitality} XP. Feed the mind before the system levels up.`,
 };
 
 const ACTIVITY_XP: Record<string, number> = {
   phase1_meditation: PHASE1_XP.sense,
   phase1_agility: PHASE1_XP.agility,
   phase1_strength: PHASE1_XP.strength,
+  [INTELLIGENCE_ACTIVITY_ID]: PHASE1_XP.vitality,
 };
 
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
@@ -159,6 +164,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [avatarIcon,    setAvatarState]   = useState(() => getAvatarIcon());
   const [flowActive,       setFlowActive]       = useState(false);
   const [singleActivityId, setSingleActivityId] = useState<string | null>(null);
+  const [showIntelligence, setShowIntelligence] = useState(false);
   // Auto-start strength when navigated from agility completion (?autostart=strength)
   const [autoStartPending, setAutoStartPending] = useState(() =>
     typeof window !== "undefined" && window.location.search.includes("autostart=strength")
@@ -219,20 +225,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   const pendingSeq = seqCards.filter(c => !isActivityDone(c.id));
   const doneSeq    = seqCards.filter(c =>  isActivityDone(c.id));
-  // Reactive vitality-done: re-checks localStorage whenever the sectograph
-  // dispatches "ascend:vitality-done" after the user finishes setup.
-  const [vitalityDone, setVitalityDone] = useState(() => isVitalityQuestScheduledToday());
-  useEffect(() => {
-    const refresh = () => setVitalityDone(isVitalityQuestScheduledToday());
-    window.addEventListener("ascend:vitality-done", refresh);
-    // Also refresh on page focus so navigating back always shows the latest state.
-    window.addEventListener("focus", refresh);
-    return () => {
-      window.removeEventListener("ascend:vitality-done", refresh);
-      window.removeEventListener("focus", refresh);
-    };
-  }, []);
-  const allDone    = pendingSeq.length === 0 && seqCards.length > 0 && vitalityDone;
+  const intelligenceDone = completedIds.has(INTELLIGENCE_ACTIVITY_ID);
+  const allDone    = pendingSeq.length === 0 && seqCards.length > 0 && intelligenceDone;
   const currentAid = pendingSeq[0]?.id ?? null;
   const todayIds   = new Set(activities.map(a => a.id));
 
@@ -242,11 +236,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     : activities;
 
   // Living stats
-  const hp    = playerData?.hp    ?? 100;
-  const maxHp = playerData?.maxHp ?? 100;
   const mp    = playerData?.mp    ?? 10;
   const maxMp = playerData?.maxMp ?? 10;
-  const hpPct = maxHp > 0 ? Math.min(100, (hp / maxHp) * 100) : 100;
   const mpPct = maxMp > 0 ? Math.min(100, (mp / maxMp) * 100) : 100;
 
   const snap   = pathRec.progressSnapshot;
@@ -255,36 +246,36 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   // System card
   const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
-  const vitalityPending = seqAllDone && !vitalityDone;
+  const intelligencePending = seqAllDone && !intelligenceDone;
   const currentDashLabel = DASH_CARDS.find(d => d.activityId === currentAid)?.label ?? null;
   const firstResetCompleted = wasFirstResetCompletedToday();
   const firstResetJustUnlockedMovement = !homeData.isOnboardingComplete && firstResetCompleted && currentAid === "phase1_agility";
   const totalMissionCount = seqCards.length + 1;
-  const completedMissionCount = doneSeq.length + (vitalityDone ? 1 : 0);
+  const completedMissionCount = doneSeq.length + (intelligenceDone ? 1 : 0);
   const activeMissionNumber = Math.min(totalMissionCount, completedMissionCount + 1);
   const missionStepLabel = `${allDone ? totalMissionCount : activeMissionNumber}/${totalMissionCount}`;
   const questProgressPct = totalMissionCount > 0
     ? Math.min(100, (completedMissionCount / totalMissionCount) * 100)
     : 0;
-  const currentReward = vitalityPending
+  const currentReward = intelligencePending
     ? PHASE1_XP.vitality + PHASE1_XP.synthesisBonus
     : currentAid ? ACTIVITY_XP[currentAid] ?? 0 : 0;
-  const rewardLabel = vitalityPending
+  const rewardLabel = intelligencePending
     ? `+${PHASE1_XP.vitality} XP + ${PHASE1_XP.synthesisBonus} bonus`
     : currentReward > 0 ? `+${currentReward} XP` : "";
   const compactRewardLabel = currentReward > 0 ? `+${currentReward} XP` : rewardLabel;
-  const nextUnlockLabel = vitalityPending
+  const nextUnlockLabel = intelligencePending
     ? (lvl >= 2 ? "Avatar setup next" : "Level 2 and avatar setup next")
     : currentAid === "phase1_meditation" ? "Movement unlocks next"
     : currentAid === "phase1_agility" ? "Physical Circuit unlocks next"
-    : currentAid === "phase1_strength" ? "Vitality setup unlocks next"
+    : currentAid === "phase1_strength" ? "Daily Insight unlocks next"
     : "";
   const systemMission = allDone ? "All missions complete."
-    : vitalityPending ? "Complete your Vitality session."
+    : intelligencePending ? "Complete your Daily Insight."
     : firstResetJustUnlockedMovement ? "First mission complete. Begin Agility."
     : currentDashLabel ? `Begin with ${currentDashLabel}.` : pathRec.headline;
   const systemHint = allDone ? "Rest well. You showed up today."
-    : vitalityPending ? `Final step: schedule sleep and Daily Quest to earn ${rewardLabel}.`
+    : intelligencePending ? `Final step: read one short insight to earn ${rewardLabel}.`
     : firstResetJustUnlockedMovement ? `+${PHASE1_XP.sense} XP earned from your first reset. Movement is now unlocked.`
     : currentAid ? (SYSTEM_HINTS[currentAid] ?? "") : "";
 
@@ -336,6 +327,21 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     queryClient.invalidateQueries({ queryKey: ["home", player.id] });
   }, [markComplete, queryClient, player.id]);
 
+  const completeIntelligenceMission = useCallback(() => {
+    if (!intelligenceDone) {
+      addXP(PHASE1_XP.vitality, "intelligence");
+      addXP(PHASE1_XP.synthesisBonus, "system");
+      completeTask(INTELLIGENCE_ACTIVITY_ID);
+      markComplete(INTELLIGENCE_ACTIVITY_ID);
+      window.dispatchEvent(new CustomEvent("ascend:activity-completed", {
+        detail: { activityId: INTELLIGENCE_ACTIVITY_ID },
+      }));
+    }
+    setShowIntelligence(false);
+    queryClient.invalidateQueries({ queryKey: ["/api/player", player.id] });
+    queryClient.invalidateQueries({ queryKey: ["home", player.id] });
+  }, [intelligenceDone, markComplete, player.id, queryClient]);
+
   // Featured card tap — navigate to the correct standalone session,
   // or start an isolated single-activity flow for strength (no standalone page).
   const startActivity = (aid: string) => {
@@ -349,8 +355,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
 
   const handleFeaturedTap = () => {
-    if (featuredCard?.id === "vitality") {
-      navigate("/sectograph?vitality=1");
+    if (featuredCard?.id === "intelligence") {
+      setShowIntelligence(true);
       return;
     }
     const aid = featuredCard?.activityId;
@@ -359,18 +365,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
   const handleAvatarPick = (icon: string) => { saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false); };
 
-  // Featured vs supporting — vitality becomes featured when seq is done but vitality pending
-  const vitalityCard = DASH_CARDS.find(d => d.id === "vitality")!;
-  const featuredCard = vitalityPending
-    ? vitalityCard
+  // Featured vs supporting — Intelligence becomes featured once the body sequence is done.
+  const intelligenceCard = DASH_CARDS.find(d => d.id === "intelligence")!;
+  const featuredCard = intelligencePending
+    ? intelligenceCard
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
   const supportCards = MISSION_CARD_ORDER.filter(d =>
-    d !== featuredCard && (d.id === "vitality" || todayIds.has(d.activityId))
+    d !== featuredCard && (d.id === "intelligence" || todayIds.has(d.activityId))
   );
 
   // Resolve the click action for a supporting card
   const resolveAction = (dc: (typeof DASH_CARDS)[number]): () => void => {
-    if (dc.id === "vitality") return () => navigate("/sectograph?vitality=1");
+    if (dc.id === "intelligence") return () => setShowIntelligence(true);
     const sessionRoute = activitySessionRoute(dc.activityId);
     if (sessionRoute) return () => navigate(sessionRoute);
     // Strength: no standalone session — run isolated single-activity flow if pending
@@ -404,6 +410,96 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         fae={{ lavender: fae.lavender, lavenderDeep: fae.lavenderDeep, inkText: fae.ink }}
         pathColor={pathCfg.primaryColor}
       />
+      <AnimatePresence>
+        {showIntelligence && (
+          <motion.div
+            className="fixed inset-0 z-[80] flex items-center justify-center px-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ background: "rgba(2,6,18,0.82)", backdropFilter: "blur(18px)" }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="w-full max-w-sm rounded-3xl overflow-hidden"
+              style={{
+                background: "linear-gradient(145deg, rgba(8,14,32,0.96), rgba(4,9,24,0.98))",
+                border: "1px solid rgba(56,189,248,0.32)",
+                boxShadow: "0 24px 70px rgba(0,0,0,0.55), 0 0 42px rgba(56,189,248,0.18)",
+              }}
+              data-testid="intelligence-quest-modal"
+            >
+              <div className="relative px-6 pt-6 pb-5">
+                <button
+                  type="button"
+                  onClick={() => setShowIntelligence(false)}
+                  className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "rgba(226,232,240,0.72)" }}
+                  aria-label="Close Daily Insight"
+                  data-testid="button-close-intelligence"
+                >
+                  <X size={16} />
+                </button>
+                <div
+                  className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl"
+                  style={{
+                    background: "rgba(56,189,248,0.14)",
+                    border: "1px solid rgba(56,189,248,0.32)",
+                    color: "#38bdf8",
+                    boxShadow: "0 0 22px rgba(56,189,248,0.20)",
+                  }}
+                >
+                  <BookOpen size={22} />
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: "#38bdf8" }}>
+                  Daily Insight
+                </p>
+                <h2 className="mt-2 text-[28px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
+                  Start before it feels easy.
+                </h2>
+                <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "rgba(203,213,225,0.78)" }}>
+                  Momentum usually arrives after the first action, not before it. Make the first step so small that it is hard to refuse: open the page, write one line, stretch for one minute, or begin the first rep.
+                </p>
+                <div
+                  className="mt-5 rounded-2xl px-4 py-3"
+                  style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <p className="text-[12px] font-semibold leading-relaxed" style={{ color: "rgba(226,232,240,0.88)" }}>
+                    Today: choose one task and reduce it to the smallest visible action. Complete that action before judging your energy.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={completeIntelligenceMission}
+                  disabled={intelligenceDone}
+                  className="mt-6 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold disabled:opacity-70"
+                  style={{
+                    background: "linear-gradient(90deg, #2563eb, #38bdf8, #7c3aed)",
+                    color: "#fff",
+                    boxShadow: "0 10px 30px rgba(56,189,248,0.24)",
+                  }}
+                  data-testid="button-complete-intelligence"
+                >
+                  {intelligenceDone ? "Insight complete" : `Mark read complete · +${PHASE1_XP.vitality} XP`}
+                  <ArrowRight size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/library")}
+                  className="mt-3 w-full py-2 text-[12px] font-semibold"
+                  style={{ color: "rgba(203,213,225,0.64)" }}
+                  data-testid="button-open-library"
+                >
+                  Open Library
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Keyframes */}
       <style>{`
@@ -672,10 +768,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             { id: "phase1_meditation", label: "Sense",    dc: DASH_CARDS[0] },
             { id: "phase1_agility",    label: "Agility",  dc: DASH_CARDS[3] },
             { id: "phase1_strength",   label: "Strength", dc: DASH_CARDS[2] },
-            { id: "vitality",          label: "Vitality", dc: DASH_CARDS[1] },
+            { id: INTELLIGENCE_ACTIVITY_ID, label: "Intelligence", dc: DASH_CARDS[1] },
           ] as const;
           const queueItems = QUEUE_DEFS.filter(q =>
-            q.id === "vitality" ? true : activities.some(a => a.id === q.id)
+            q.id === INTELLIGENCE_ACTIVITY_ID ? true : activities.some(a => a.id === q.id)
           );
           if (queueItems.length < 2) return null;
           return (
@@ -687,13 +783,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             >
               {queueItems.map((q, idx) => {
                 const { dc } = q;
-                const done     = q.id === "vitality" ? vitalityDone : isActivityDone(q.id);
+                const done     = q.id === INTELLIGENCE_ACTIVITY_ID ? intelligenceDone : isActivityDone(q.id);
                 const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
-                const isActive = q.id === "vitality"
-                  ? (seqAllDone && !vitalityDone)
+                const isActive = q.id === INTELLIGENCE_ACTIVITY_ID
+                  ? (seqAllDone && !intelligenceDone)
                   : (q.id === currentAid && !allDone);
                 const nodeColor = done ? "#22c55e" : isActive ? dc.color : colors.textMuted;
-                const action = q.id === "vitality" ? () => navigate("/sectograph?vitality=1") : resolveAction(dc);
+                const action = q.id === INTELLIGENCE_ACTIVITY_ID ? () => setShowIntelligence(true) : resolveAction(dc);
                 const isTappable = done || isActive;
                 return (
                   <motion.button
@@ -760,12 +856,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         {!allDone && featuredCard && (() => {
           const dc    = featuredCard;
           const dur   = actDurMap[dc.activityId] ?? 2;
-          const ctaText = vitalityPending
-            ? `Finish setup · ${compactRewardLabel}`
+          const ctaText = intelligencePending
+            ? `Complete insight · ${compactRewardLabel}`
             : currentAid === "phase1_strength"
               ? `Start circuit · ${compactRewardLabel}`
               : `Begin mission · ${compactRewardLabel}`;
-          const barPct = dc.barType === "mp" ? mpPct : dc.barType === "hp" ? hpPct
+          const barPct = dc.barType === "mp" ? mpPct
             : (() => { const sl = playerData?.statLevels?.[dc.statKey]; return sl ? Math.min(100, (sl.currentXP / sl.xpForNext) * 100) : 0; })();
 
           return (
@@ -912,26 +1008,22 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </p>
           <div className={`grid gap-3 ${allDone ? "grid-cols-2" : "grid-cols-3"}`}>
           {supportCards.map((dc, idx) => {
-            // Vitality has no activityId (it's driven by sectograph setup),
-            // so we use the reactive vitalityDone flag for its "done" state.
-            const isDone  = dc.id === "vitality"
-              ? vitalityDone
+            const isDone  = dc.id === "intelligence"
+              ? intelligenceDone
               : isActivityDone(dc.activityId);
-            const inFlow  = dc.id !== "vitality" && todayIds.has(dc.activityId);
+            const inFlow  = dc.id !== "intelligence" && todayIds.has(dc.activityId);
             const isLocked = !isDone;
             const action  = resolveAction(dc);
 
             const sl     = playerData?.statLevels?.[dc.statKey];
             const sLvl   = sl?.level ?? 1;
             const barPct = dc.barType === "mp" ? mpPct
-              : dc.barType === "hp" ? hpPct
               : (sl ? Math.min(100, (sl.currentXP / sl.xpForNext) * 100) : 0);
 
-            // Sublabel: Vitality shows live HP state, others use static sub
             const sublabel = dc.activityId === "phase1_meditation" && isDone
               ? "30-sec reset complete"
-              : dc.id === "vitality"
-              ? (hpPct >= 100 ? "Recovery Stable" : `HP ${Math.round(hpPct)}%`)
+              : dc.id === "intelligence" && isDone
+              ? "Daily insight complete"
               : dc.sub;
             const description = dc.activityId === "phase1_meditation" && isDone
               ? `+${PHASE1_XP.sense} XP earned`
@@ -939,7 +1031,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
             const accentColor = isDone ? "#22c55e" : dc.color;
             const borderCol   = isDone ? "rgba(34,197,94,0.22)" : `${dc.color}20`;
-            const statusLabel = isDone ? "Done" : dc.id === "vitality" ? "Final" : inFlow ? "Queued" : "Open";
+            const statusLabel = isDone ? "Done" : dc.id === "intelligence" ? "Final" : inFlow ? "Queued" : "Open";
 
             const restShadow   = `0 2px 14px rgba(0,0,0,0.42), 0 0 0 1px ${accentColor}0a`;
             const hoverShadow  = `0 6px 24px rgba(0,0,0,0.55), 0 0 18px ${accentColor}20`;
