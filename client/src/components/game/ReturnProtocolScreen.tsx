@@ -1,14 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
-import { Wind, Sparkles, ArrowRight, RefreshCw } from "lucide-react";
+import { Wind, Sparkles, ArrowRight, RefreshCw, HeartPulse } from "lucide-react";
 
 interface ResetRitualStep {
   id: string;
-  type: "breathing" | "reflection" | "affirmation";
+  type: "reflection" | "affirmation";
   title: string;
   instruction: string;
   durationSeconds: number;
 }
+
+export type AwayModeReason = "sick" | "injured" | "emergency" | "travel" | "mental_reset" | "busy_season";
 
 interface ReturnProtocolData {
   active: boolean;
@@ -33,7 +35,17 @@ interface ReturnProtocolData {
 interface ReturnProtocolScreenProps {
   data: ReturnProtocolData;
   onComplete: () => void;
+  onAwayMode?: (reason: AwayModeReason) => void;
 }
+
+const AWAY_OPTIONS: { id: AwayModeReason; label: string }[] = [
+  { id: "sick", label: "Sick" },
+  { id: "injured", label: "Injured" },
+  { id: "emergency", label: "Emergency" },
+  { id: "travel", label: "Travel" },
+  { id: "mental_reset", label: "Mental reset" },
+  { id: "busy_season", label: "Busy season" },
+];
 
 const TIER_THEMES = {
   short: {
@@ -58,140 +70,6 @@ const TIER_THEMES = {
     title: "Fresh Start",
   },
 };
-
-// Phase durations and transition order
-const RETURN_DURATIONS: Record<"in" | "hold" | "out", number> = {
-  in: 4000, hold: 4000, out: 6000,
-};
-const RETURN_NEXT: Record<"in" | "hold" | "out", "in" | "hold" | "out"> = {
-  in: "hold", hold: "out", out: "in",
-};
-const RETURN_AUDIO_URLS: Record<"in" | "hold" | "out", string> = {
-  in: "/audio/inhale.mp3", hold: "/audio/hold.mp3", out: "/audio/exhale.mp3",
-};
-
-function BreathingExercise({ step, onDone }: { step: ResetRitualStep; onDone: () => void }) {
-  const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
-  const [timeLeft, setTimeLeft] = useState(step.durationSeconds);
-  const [circleScale, setCircleScale] = useState(1);
-  const timeExpiredRef = useRef(false);
-  const onDoneRef = useRef(onDone);
-  onDoneRef.current = onDone;
-  // Web Audio API breathing cues — same approach as BreathingSession:
-  // fetch → decode → AudioBufferSourceNode, explicit state machine, no modulo.
-  useEffect(() => {
-    let alive = true;
-    let voiceCtx: AudioContext | null = null;
-    let currentSrc: AudioBufferSourceNode | null = null;
-    let tickId: ReturnType<typeof setInterval> | undefined;
-    let completionScheduled = false;
-
-    const stopCurrent = () => {
-      if (currentSrc) { try { currentSrc.stop(); } catch {} currentSrc = null; }
-    };
-
-    (async () => {
-      try {
-        voiceCtx = new AudioContext();
-        await voiceCtx.resume();
-
-        const [inBuf, holdBuf, outBuf] = await Promise.all([
-          fetch(RETURN_AUDIO_URLS.in  ).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
-          fetch(RETURN_AUDIO_URLS.hold).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
-          fetch(RETURN_AUDIO_URLS.out ).then(r => r.arrayBuffer()).then(b => voiceCtx!.decodeAudioData(b)),
-        ]);
-        if (!alive || !voiceCtx) return;
-
-        const BUF: Record<"in" | "hold" | "out", AudioBuffer> = {
-          in: inBuf, hold: holdBuf, out: outBuf,
-        };
-
-        const playBuf = (p: "in" | "hold" | "out") => {
-          if (!voiceCtx || !alive) return;
-          stopCurrent();
-          const src = voiceCtx.createBufferSource();
-          src.buffer = BUF[p];
-          const gain = voiceCtx.createGain();
-          gain.gain.value = 0.9;
-          src.connect(gain).connect(voiceCtx.destination);
-          src.start();
-          currentSrc = src;
-        };
-
-        let curPhase: "in" | "hold" | "out" = "in";
-        let phaseStart = performance.now();
-        setPhase("in");
-        setCircleScale(1);
-        playBuf("in");
-
-        tickId = setInterval(() => {
-          if (!alive) return;
-          if (performance.now() - phaseStart >= RETURN_DURATIONS[curPhase]) {
-            curPhase = RETURN_NEXT[curPhase];
-            phaseStart = performance.now();
-            setPhase(curPhase);
-            setCircleScale(curPhase === "hold" ? 1.4 : 1);
-            playBuf(curPhase);
-
-            if (timeExpiredRef.current && curPhase === "out" && !completionScheduled) {
-              completionScheduled = true;
-              setTimeout(() => onDoneRef.current(), 6500);
-            }
-          }
-        }, 100);
-      } catch {}
-    })();
-
-    return () => {
-      alive = false;
-      if (tickId !== undefined) clearInterval(tickId);
-      stopCurrent();
-      voiceCtx?.close().catch(() => {});
-    };
-  }, []);
-
-  // Countdown timer — just tracks time, doesn't stop phase loop
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(t => {
-        if (t <= 1) {
-          clearInterval(timer);
-          timeExpiredRef.current = true;
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const phaseLabel = phase === "in" ? "Breathe In" : phase === "hold" ? "Hold" : "Breathe Out";
-
-  return (
-    <div className="flex flex-col items-center gap-6" data-testid="breathing-exercise">
-      <div
-        className="relative w-32 h-32 rounded-full flex items-center justify-center"
-        style={{
-          background: `radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.03) 70%)`,
-          transform: `scale(${circleScale})`,
-          transition: "transform 3.5s ease-in-out",
-          boxShadow: `0 0 40px rgba(59,130,246,${circleScale > 1 ? 0.25 : 0.1})`,
-        }}
-      >
-        <div
-          className="w-20 h-20 rounded-full"
-          style={{
-            background: `radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(59,130,246,0.08) 100%)`,
-            transform: `scale(${circleScale})`,
-            transition: "transform 3.5s ease-in-out",
-          }}
-        />
-      </div>
-      <p className="text-lg font-medium text-white/80 tracking-wide">{phaseLabel}</p>
-      <p className="text-xs text-white/30">{timeLeft}s</p>
-    </div>
-  );
-}
 
 function ReflectionPrompt({ step, onDone }: { step: ResetRitualStep; onDone: () => void }) {
   const [timeLeft, setTimeLeft] = useState(step.durationSeconds);
@@ -272,10 +150,10 @@ function AffirmationStep({ step, onDone }: { step: ResetRitualStep; onDone: () =
   );
 }
 
-export function ReturnProtocolScreen({ data, onComplete }: ReturnProtocolScreenProps) {
+export function ReturnProtocolScreen({ data, onComplete, onAwayMode }: ReturnProtocolScreenProps) {
   const { backgroundTheme } = useTheme();
   const colors = backgroundTheme.colors;
-  const [stage, setStage] = useState<"welcome" | "ritual" | "summary">("welcome");
+  const [stage, setStage] = useState<"welcome" | "ritual" | "summary" | "away">("welcome");
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   const theme = TIER_THEMES[data.tier];
@@ -298,6 +176,55 @@ export function ReturnProtocolScreen({ data, onComplete }: ReturnProtocolScreenP
       setStage("summary");
     }
   }, [currentStepIndex, ritualSteps.length]);
+
+  if (stage === "away") {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+        style={{ backgroundColor: colors.background }}
+        data-testid="return-protocol-away-mode"
+      >
+        <div className="flex flex-col items-center gap-5 max-w-sm text-center">
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: "rgba(34,197,94,0.10)", border: "1px solid rgba(34,197,94,0.22)" }}
+          >
+            <HeartPulse className="w-6 h-6" style={{ color: "#22c55e" }} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold" style={{ color: colors.text }}>Away Mode</h2>
+            <p className="mt-2 text-xs leading-relaxed" style={{ color: `${colors.text}88` }}>
+              No missed-day prompts. Progress stays safe. Resume when you are ready.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 w-full">
+            {AWAY_OPTIONS.map(option => (
+              <button
+                key={option.id}
+                onClick={() => onAwayMode?.(option.id)}
+                className="rounded-xl px-3 py-3 text-xs font-semibold transition-all active:scale-95"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: `${colors.text}dd`,
+                }}
+                data-testid={`button-away-mode-${option.id}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setStage("welcome")}
+            className="text-xs transition-colors"
+            style={{ color: `${colors.text}55` }}
+          >
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (stage === "welcome") {
     return (
@@ -369,9 +296,20 @@ export function ReturnProtocolScreen({ data, onComplete }: ReturnProtocolScreenP
             }}
             data-testid="button-start-reset-ritual"
           >
-            {data.resetRitual ? "Begin Reset Ritual" : "Continue"}
+            {data.resetRitual ? "Reflect and Continue" : "Continue"}
             <ArrowRight className="w-4 h-4" />
           </button>
+
+          {onAwayMode && (
+            <button
+              onClick={() => setStage("away")}
+              className="text-xs transition-colors"
+              style={{ color: `${colors.text}66` }}
+              data-testid="button-open-away-mode"
+            >
+              I need Away Mode
+            </button>
+          )}
 
           <button
             onClick={onComplete}
@@ -379,7 +317,7 @@ export function ReturnProtocolScreen({ data, onComplete }: ReturnProtocolScreenP
             style={{ color: `${colors.text}44` }}
             data-testid="button-skip-return-protocol"
           >
-            Skip
+            Skip for today
           </button>
         </div>
       </div>
@@ -402,9 +340,6 @@ export function ReturnProtocolScreen({ data, onComplete }: ReturnProtocolScreenP
             {step.title}
           </h2>
 
-          {step.type === "breathing" && (
-            <BreathingExercise step={step} onDone={handleStepDone} />
-          )}
           {step.type === "reflection" && (
             <ReflectionPrompt step={step} onDone={handleStepDone} />
           )}

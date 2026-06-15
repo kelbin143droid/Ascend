@@ -20,7 +20,7 @@ export interface ResetRitual {
 
 export interface ResetRitualStep {
   id: string;
-  type: "breathing" | "reflection" | "affirmation";
+  type: "reflection" | "affirmation";
   title: string;
   instruction: string;
   durationSeconds: number;
@@ -35,13 +35,13 @@ export interface SimplifyModeConfig {
 }
 
 const TIER_THRESHOLDS = {
-  short: { min: 3, max: 5 },
-  extended: { min: 10, max: 29 },
+  short: { min: 7, max: 13 },
+  extended: { min: 14, max: 29 },
   long: { min: 30 },
 };
 
 const COACH_MESSAGES: Record<Exclude<AbsenceTier, "none">, string> = {
-  short: "Welcome back. Rhythm paused for a few days. Let's restart calmly.",
+  short: "Welcome back. A full week away is real life, not failure. Let's make today easy.",
   extended: "It looks like the previous pace may have been heavier than needed. Let's simplify for a bit.",
   long: "It's been a while. Let's start fresh and rebuild your rhythm.",
 };
@@ -49,48 +49,34 @@ const COACH_MESSAGES: Record<Exclude<AbsenceTier, "none">, string> = {
 const RESET_RITUAL: ResetRitual = {
   steps: [
     {
-      id: "breathing",
-      type: "breathing",
-      title: "Calm Breathing",
-      instruction: "Breathe in slowly for 4 counts, hold for 4, exhale for 4. Repeat.",
-      durationSeconds: 30,
-    },
-    {
       id: "reflection",
       type: "reflection",
       title: "Quick Reflection",
-      instruction: "What's one small thing you'd like to focus on today?",
-      durationSeconds: 30,
+      instruction: "What's one small thing you want to restart today?",
+      durationSeconds: 20,
     },
   ],
-  totalDurationSeconds: 60,
+  totalDurationSeconds: 20,
 };
 
 const SOFT_RESTART_RITUAL: ResetRitual = {
   steps: [
     {
-      id: "breathing",
-      type: "breathing",
-      title: "Grounding Breath",
-      instruction: "Take 3 deep breaths. Each one a little slower than the last.",
-      durationSeconds: 20,
-    },
-    {
       id: "affirmation",
       type: "affirmation",
       title: "Fresh Start",
       instruction: "Returning restores momentum. Every restart is valid.",
-      durationSeconds: 15,
+      durationSeconds: 12,
     },
     {
       id: "reflection",
       type: "reflection",
       title: "One Small Step",
       instruction: "Choose one thing — anything — to do today. That's enough.",
-      durationSeconds: 25,
+      durationSeconds: 20,
     },
   ],
-  totalDurationSeconds: 60,
+  totalDurationSeconds: 32,
 };
 
 export function calculateDaysSinceLastActivity(completions: HabitCompletion[]): number {
@@ -199,9 +185,8 @@ export function getReturnProtocol(
 
 export function getReturnCoachComment(tier: AbsenceTier, daysSince: number): string {
   if (tier === "short") {
-    if (daysSince === 3) return "Three days is nothing. Rhythm paused, not lost.";
-    if (daysSince === 4) return "Four days away — your foundation is still here.";
-    return "A few days of rest. Returning restores momentum.";
+    if (daysSince === 7) return "A week away. Rhythm paused, not lost.";
+    return "Some time away. Returning starts with one small step.";
   }
   if (tier === "extended") {
     return "The pace before may have been more than needed. Starting lighter builds a stronger rhythm.";
