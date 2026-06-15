@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useGame } from "@/context/GameContext";
 import { Canvas } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 // ── Types ────────────────────────────────────────────────────────────────
 interface WalletEntry { type: "gem" | "coin" | "diamond"; value: number }
@@ -176,6 +177,7 @@ const CSS = `
 
 /* class cards */
 .hp-root .classcard {
+  width:100%; display:block; color:inherit; font:inherit; appearance:none;
   background:var(--panel); border:1px solid rgba(76,170,255,0.12);
   border-radius:12px; padding:10px 4px; text-align:center; margin-bottom:8px;
   cursor:pointer; transition:.2s; position:relative;
@@ -185,6 +187,10 @@ const CSS = `
   border-color:var(--cyan);
   background:linear-gradient(180deg,rgba(76,194,255,0.16),rgba(12,22,42,0.4));
   box-shadow:0 0 18px rgba(76,194,255,0.25),inset 0 0 14px rgba(76,194,255,0.12);
+}
+.hp-root .classcard.preview:not(.active) {
+  border-color:rgba(76,194,255,0.55);
+  background:rgba(76,194,255,0.10);
 }
 .hp-root .classcard .emblem { width:34px; height:34px; margin:0 auto 4px; }
 .hp-root .classcard .cname { font-family:'Chakra Petch'; font-size:12px; font-weight:700; color:var(--ink); letter-spacing:1px; }
@@ -403,7 +409,7 @@ const CSS = `
 // ── 3-D Class Viewer ──────────────────────────────────────────────────────
 function ClassModel({ src, scale }: { src: string; scale: number }) {
   const { scene } = useGLTF(src);
-  const model = useMemo(() => scene.clone(true), [scene]);
+  const model = useMemo(() => cloneSkeleton(scene), [scene]);
   return <primitive object={model} position={[0, -1, 0]} scale={scale} />;
 }
 
@@ -447,6 +453,7 @@ export default function HunterProfilePage() {
   const [showPicker,      setShowPicker]      = useState(false);
   const [pickedClass,     setPickedClass]     = useState<number | null>(null);
   const [chosenClass,     setChosenClass]     = useState<number | null>(null);
+  const [previewClass,    setPreviewClass]    = useState<number | null>(null);
   const [localStats,      setLocalStats]      = useState<StatEntry[]>([]);
   const [availPts,        setAvailPts]        = useState(0);
   const [cp,              setCp]              = useState(0);
@@ -464,6 +471,7 @@ export default function HunterProfilePage() {
         setAvailPts(d.availablePoints);
         setCp(d.combatPower);
         setChosenClass(d.chosenClass);
+        setPreviewClass(d.chosenClass ?? 0);
         setShowPicker(d.chosenClass === null);
         setPickedClass(d.chosenClass === null ? 0 : null);
       })
@@ -562,6 +570,7 @@ export default function HunterProfilePage() {
     if (pickedClass === null || !data || !player?.id) return;
     // Optimistically update UI immediately
     setChosenClass(pickedClass);
+    setPreviewClass(pickedClass);
     setShowPicker(false);
     // Persist to server — idempotent, so safe to call even if already set
     try {
@@ -598,30 +607,35 @@ export default function HunterProfilePage() {
       .filter(({ index }) => index !== chosenClass);
     return (
       <>
-        <div className="classcard active">
+        <button type="button" className={`classcard active${previewClass === chosenClass ? " preview" : ""}`} onClick={() => setPreviewClass(chosenClass)}>
           <svg className="emblem" viewBox="0 0 24 24" fill="none" stroke={main.color} strokeWidth="1.6"
             dangerouslySetInnerHTML={{ __html: EMBLEM }} />
           <div className="cname">{classDisplayName(chosenClass, main.name)}</div>
           <div className="clv">Lv. {main.lv}</div>
-        </div>
+        </button>
         <button className={`otherstoggle${otherOpen ? " open" : ""}`} onClick={() => setOtherOpen(o => !o)}>
           OTHER CLASSES <span className="chev">›</span>
         </button>
         {otherOpen && others.map(({ entry, index }) => (
-          <div key={entry.name} className="classcard">
+          <button
+            key={entry.name}
+            type="button"
+            className={`classcard${previewClass === index ? " preview" : ""}`}
+            onClick={() => setPreviewClass(index)}
+          >
             <svg className="emblem" viewBox="0 0 24 24" fill="none" stroke={entry.color} strokeWidth="1.6"
               dangerouslySetInnerHTML={{ __html: EMBLEM }} />
             <div className="cname">{classDisplayName(index, entry.name)}</div>
             <div className="clv">Lv. {entry.lv}</div>
-          </div>
+          </button>
         ))}
-        <div className="classnote">Only one class can be active.</div>
+        <div className="classnote">Tap a class to preview it.</div>
       </>
     );
   }
 
   const pickedData = pickedClass !== null ? data.classes[pickedClass] : null;
-  const activeClassIndex = chosenClass ?? 0;
+  const activeClassIndex = previewClass ?? chosenClass ?? 0;
   const activeClassSrc = classModelSrc(activeClassIndex);
 
   return (

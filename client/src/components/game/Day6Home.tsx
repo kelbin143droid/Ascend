@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
-  ArrowRight, BookOpen, Zap, Shield, Flame, Settings,
+  ArrowRight, BookOpen, Zap, Shield, Flame,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -86,14 +86,6 @@ const DASH_CARDS = [
     barLabel: "AGI", barType: "xp" as const, fallbackRoute: "/train",
   },
 ] as const;
-
-// System card hint lines
-const SYSTEM_HINTS: Record<string, string> = {
-  phase1_meditation: `Earn +${PHASE1_XP.sense} XP. Calm first, then movement unlocks.`,
-  phase1_agility:    `Earn +${PHASE1_XP.agility} XP. Complete this to unlock Physical Circuit.`,
-  phase1_strength:   `Earn +${PHASE1_XP.strength} XP. One short circuit before Daily Insight.`,
-  [INTELLIGENCE_ACTIVITY_ID]: `Earn +${PHASE1_XP.vitality} XP. Feed the mind before the system levels up.`,
-};
 
 const ACTIVITY_XP: Record<string, number> = {
   phase1_meditation: PHASE1_XP.sense,
@@ -178,7 +170,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const pathRec    = getPathAwareRecommendation(wlevel);
   const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers });
   const totalMins  = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
-  const actDurMap  = Object.fromEntries(activities.map(a => [a.id, Math.max(1, Math.round(a.duration / 60))]));
 
   // XP
   const xp  = computeXPState(playerData?.totalExp ?? 0, playerData?.level ?? 1, playerData?.exp ?? 0, playerData?.maxExp ?? 100);
@@ -258,14 +249,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     ? `+${PHASE1_XP.vitality} XP + ${PHASE1_XP.synthesisBonus} bonus`
     : currentReward > 0 ? `+${currentReward} XP` : "";
   const compactRewardLabel = currentReward > 0 ? `+${currentReward} XP` : rewardLabel;
-  const systemMission = allDone ? "All missions complete."
-    : intelligencePending ? "Complete your Daily Insight."
-    : firstResetJustUnlockedMovement ? "First mission complete. Begin Agility."
-    : currentDashLabel ? `Begin with ${currentDashLabel}.` : pathRec.headline;
-  const systemHint = allDone ? "Rest well. You showed up today."
-    : intelligencePending ? `Final step: read one short insight to earn ${rewardLabel}.`
-    : firstResetJustUnlockedMovement ? `+${PHASE1_XP.sense} XP earned from your first reset. Movement is now unlocked.`
-    : currentAid ? (SYSTEM_HINTS[currentAid] ?? "") : "";
+  const systemMission = allDone ? "Complete"
+    : intelligencePending ? "Next: Intel"
+    : firstResetJustUnlockedMovement ? "Next: Agility"
+    : currentDashLabel ? `Next: ${currentDashLabel}` : pathRec.headline;
 
   // Effects & handlers
   useEffect(() => { initLevelBaseline(lvl); }, [lvl]);
@@ -514,35 +501,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         }
       `}</style>
 
-      <div className="flex flex-col gap-4 px-4 py-4 max-w-md mx-auto w-full relative" data-testid="day6-home">
+      <div className="flex flex-col gap-3 px-4 py-3 max-w-md mx-auto w-full relative" data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
-
-        {/* ── SYSTEM TITLE HEADER ───────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="flex items-center justify-between px-1"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-[11px]" style={{ color: primary, opacity: 0.55 }}>✦</span>
-            <h1 className="text-[15px] font-bold tracking-wide leading-none" style={{ color: textCol }}>
-              {playerData?.name ? `${playerData.name}'s System` : "Ascend System"}
-            </h1>
-            <span className="text-[11px]" style={{ color: primary, opacity: 0.55 }}>✦</span>
-          </div>
-          <button
-            onClick={() => navigate("/profile")}
-            data-testid="button-settings"
-            className="flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-150 active:scale-90"
-            style={{
-              background: `${primary}0e`,
-              border: `1px solid ${primary}18`,
-              color: mutedCol,
-            }}
-          >
-            <Settings size={14} />
-          </button>
-        </motion.div>
 
         {/* ── PROFILE HUD ───────────────────────────────────────────────── */}
         <motion.div
@@ -688,7 +648,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         <motion.div
           initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.06 }}
-          className="rounded-2xl px-5 py-4 relative overflow-hidden"
+          className="rounded-2xl px-4 py-3 relative overflow-hidden"
           style={{
             background: panelBg,
             border: `1px solid ${panelBorder}`,
@@ -718,7 +678,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             );
           })()}
           <div className="relative z-10 flex items-center justify-between gap-3 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: primary }}>
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: primary }}>
               Daily Quest
             </span>
             <span className="text-[11px] font-mono tabular-nums" style={{ color: cardMutedCol }}>
@@ -726,7 +686,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </span>
           </div>
           <div
-            className="relative z-10 h-[5px] rounded-full overflow-hidden mb-3"
+            className="relative z-10 h-[5px] rounded-full overflow-hidden mb-2"
             style={{ background: "rgba(255,255,255,0.06)" }}
             aria-hidden="true"
           >
@@ -738,13 +698,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               style={{ background: primary, boxShadow: `0 0 10px ${primary}66` }}
             />
           </div>
-          <p className="relative z-10 text-[13px] font-semibold leading-snug tracking-tight" style={{ color: isNeonEmp ? "rgba(245,247,255,0.95)" : textCol }}
+          <p className="relative z-10 text-[12px] font-semibold leading-none tracking-tight" style={{ color: isNeonEmp ? "rgba(245,247,255,0.95)" : textCol }}
             data-testid="path-recommendation-text">
             {systemMission}
           </p>
-          {systemHint && (
-            <p className="relative z-10 text-[10px] mt-1 leading-snug" style={{ color: "rgba(220,228,244,0.86)" }}>{systemHint}</p>
-          )}
         </motion.div>
 
         {/* ── RITUAL QUEUE STRIP ───────────────────────────────────────── */}
