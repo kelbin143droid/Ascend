@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useGame } from "@/context/GameContext";
-import { ACTIVE_DUNGEON_KEY, CLEARED_GATE_KEY } from "@/lib/gateConfig";
+import { ACTIVE_DUNGEON_KEY, CLEARED_GATE_KEY, GATE_CONFIG, type GateRank } from "@/lib/gateConfig";
 import {
   addGold,
   addLoot,
@@ -70,9 +70,64 @@ function buildLoadoutEquipment(player: NonNullable<ReturnType<typeof useGame>["p
 
 interface ActiveDungeonConfig {
   dungeon: string;
-  rank: string;
+  rank: GateRank | string;
   waves: number;
   gateId: string;
+}
+
+const GATE_LOADING_MIN_MS = 2200;
+const GATE_LOADING_BG = "/videos/gate-loading-bg.mp4";
+
+function isGateRank(rank: string): rank is GateRank {
+  return rank in GATE_CONFIG;
+}
+
+function readActiveDungeonConfig(): ActiveDungeonConfig | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_DUNGEON_KEY);
+    return raw ? (JSON.parse(raw) as ActiveDungeonConfig) : null;
+  } catch {
+    return null;
+  }
+}
+
+function GateLoadingOverlay({ config }: { config: ActiveDungeonConfig | null }) {
+  const rank = config?.rank ?? "A";
+  const rankColor = isGateRank(rank) ? GATE_CONFIG[rank].color : "#a855f7";
+  const dungeonName = config?.dungeon ?? "Unknown Gate";
+
+  return (
+    <div
+      className="gate-loading-screen"
+      data-testid="gate-loading-screen"
+      style={{ ["--gate-rank-color" as string]: rankColor }}
+    >
+      <video
+        className="gate-loading-video"
+        src={GATE_LOADING_BG}
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
+      <div className="gate-loading-vignette" />
+      <div className="gate-loading-copy">
+        <div className="gate-loading-emblem">A</div>
+        <div className="gate-loading-rule" />
+        <div className="gate-loading-rank">
+          GATE LEVEL: RANK <span>{rank}</span> (INSTANCED)
+        </div>
+        <div className="gate-loading-dungeon">{dungeonName.toUpperCase()}</div>
+        <div className="gate-loading-bar">
+          <span className="gate-runes gate-runes-left">ᚠ ᚱ ᚨ ᚾ ᛞ</span>
+          <strong>LOADING DUNGEON...</strong>
+          <span className="gate-runes gate-runes-right">ᚦ ᚺ ᛒ ᛗ ᛉ</span>
+        </div>
+        <div className="gate-loading-instance">ENTERING INSTANCE...</div>
+      </div>
+      <div className="gate-loading-corner" />
+    </div>
+  );
 }
 
 // ── Orientation helpers ────────────────────────────────────────────────────────
@@ -90,6 +145,9 @@ export default function GodotGamePage() {
   const iframeRef     = useRef<HTMLIFrameElement>(null);
   const readyRef      = useRef(false);
   const [portrait, setPortrait] = useState(isPortraitNow);
+  const [activeDungeon] = useState<ActiveDungeonConfig | null>(() => readActiveDungeonConfig());
+  const [showGateLoading, setShowGateLoading] = useState(() => !!readActiveDungeonConfig());
+  const loadingStartedAtRef = useRef(Date.now());
 
   // ── Fullscreen + orientation lock ─────────────────────────────────────────
   useEffect(() => {
@@ -208,6 +266,8 @@ export default function GodotGamePage() {
             localStorage.removeItem(ACTIVE_DUNGEON_KEY);
           }
         }
+        const elapsed = Date.now() - loadingStartedAtRef.current;
+        window.setTimeout(() => setShowGateLoading(false), Math.max(0, GATE_LOADING_MIN_MS - elapsed));
         return;
       }
 
@@ -238,6 +298,161 @@ export default function GodotGamePage() {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 10 }}>
+      <style>{`
+        .gate-loading-screen {
+          position: fixed;
+          inset: 0;
+          z-index: 80;
+          overflow: hidden;
+          background: #020510;
+          font-family: 'Cinzel', 'Chakra Petch', serif;
+        }
+        .gate-loading-video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          filter: saturate(1.08) contrast(1.04);
+        }
+        .gate-loading-vignette {
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(ellipse at 50% 38%, rgba(40,75,140,0.02) 0%, rgba(2,5,16,0.04) 42%, rgba(0,0,0,0.72) 100%),
+            linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.18) 45%, rgba(0,0,0,0.66) 100%);
+        }
+        .gate-loading-copy {
+          position: absolute;
+          left: 50%;
+          bottom: clamp(16px, 5.5vh, 54px);
+          width: min(68vw, 920px);
+          transform: translateX(-50%);
+          text-align: center;
+          color: #e7ecff;
+          text-shadow: 0 2px 10px rgba(0,0,0,0.92), 0 0 18px rgba(115,150,255,0.58);
+        }
+        .gate-loading-emblem {
+          margin: 0 auto 4px;
+          width: clamp(30px, 4.8vw, 54px);
+          height: clamp(30px, 4.8vw, 54px);
+          display: grid;
+          place-items: center;
+          color: rgba(245,247,255,0.92);
+          font-size: clamp(24px, 4vw, 44px);
+          font-weight: 900;
+          line-height: 1;
+          letter-spacing: -0.08em;
+          filter: drop-shadow(0 0 14px rgba(199,213,255,0.72));
+        }
+        .gate-loading-rule {
+          height: 1px;
+          width: 58%;
+          margin: 0 auto 8px;
+          background: linear-gradient(90deg, transparent, rgba(210,225,255,0.44), transparent);
+        }
+        .gate-loading-rank {
+          font-size: clamp(13px, 2vw, 25px);
+          font-weight: 900;
+          letter-spacing: 0.04em;
+          color: rgba(226,232,240,0.94);
+        }
+        .gate-loading-rank span {
+          color: var(--gate-rank-color);
+          text-shadow: 0 0 14px var(--gate-rank-color), 0 0 28px rgba(139,92,246,0.72);
+        }
+        .gate-loading-dungeon {
+          margin-top: 5px;
+          font-family: 'Chakra Petch', system-ui, sans-serif;
+          font-size: clamp(9px, 1.2vw, 14px);
+          font-weight: 800;
+          letter-spacing: 0.34em;
+          color: rgba(180,210,255,0.78);
+        }
+        .gate-loading-bar {
+          position: relative;
+          margin: clamp(8px, 1.6vh, 18px) auto 8px;
+          min-height: clamp(42px, 7.2vh, 70px);
+          display: grid;
+          grid-template-columns: minmax(82px, 1fr) auto minmax(82px, 1fr);
+          align-items: center;
+          gap: clamp(8px, 1.4vw, 18px);
+          padding: 8px clamp(12px, 2.5vw, 34px);
+          border: 1px solid rgba(190,210,255,0.34);
+          background:
+            linear-gradient(90deg, rgba(28,42,78,0.76), rgba(12,12,16,0.90) 36%, rgba(12,12,16,0.90) 64%, rgba(28,42,78,0.76)),
+            linear-gradient(180deg, rgba(255,255,255,0.12), transparent 42%, rgba(0,0,0,0.42));
+          box-shadow:
+            0 0 22px rgba(78,112,255,0.42),
+            0 0 34px rgba(139,92,246,0.30),
+            inset 0 0 18px rgba(255,255,255,0.08);
+        }
+        .gate-loading-bar::before,
+        .gate-loading-bar::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(170,210,255,0.7), transparent);
+        }
+        .gate-loading-bar::before { top: -5px; }
+        .gate-loading-bar::after { bottom: -5px; }
+        .gate-loading-bar strong {
+          color: #efe8d9;
+          font-size: clamp(22px, 4.6vw, 50px);
+          font-weight: 900;
+          letter-spacing: 0.06em;
+          white-space: nowrap;
+        }
+        .gate-runes {
+          min-width: 0;
+          overflow: hidden;
+          white-space: nowrap;
+          color: #b7c7ff;
+          font-size: clamp(16px, 3vw, 38px);
+          letter-spacing: 0.16em;
+          text-shadow: 0 0 12px #5b7cff, 0 0 24px rgba(91,124,255,0.85);
+        }
+        .gate-runes-left { text-align: left; }
+        .gate-runes-right { text-align: right; }
+        .gate-loading-instance {
+          font-family: 'Chakra Petch', system-ui, sans-serif;
+          color: #a9d5ff;
+          font-size: clamp(15px, 2.6vw, 34px);
+          font-weight: 900;
+          letter-spacing: 0.11em;
+          text-shadow: 0 0 12px #5578ff, 0 0 24px rgba(93,103,255,0.78);
+          animation: gate-instance-pulse 1.6s ease-in-out infinite;
+        }
+        .gate-loading-corner {
+          position: absolute;
+          right: clamp(10px, 2vw, 32px);
+          bottom: clamp(10px, 2vw, 32px);
+          width: clamp(24px, 4.6vw, 58px);
+          height: clamp(24px, 4.6vw, 58px);
+          background: rgba(255,255,255,0.86);
+          clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+          opacity: 0.78;
+          filter: drop-shadow(0 0 16px rgba(225,235,255,0.70));
+        }
+        @keyframes gate-instance-pulse {
+          0%, 100% { opacity: 0.72; transform: translateY(0); }
+          50% { opacity: 1; transform: translateY(-1px); }
+        }
+        @media (max-width: 700px) {
+          .gate-loading-copy { width: 82vw; bottom: 18px; }
+          .gate-loading-bar {
+            grid-template-columns: 1fr;
+            gap: 2px;
+          }
+          .gate-runes { display: none; }
+          .gate-loading-bar strong {
+            font-size: clamp(20px, 8vw, 34px);
+          }
+        }
+      `}</style>
       <iframe
         id="game-frame"
         ref={iframeRef}
@@ -248,6 +463,8 @@ export default function GodotGamePage() {
         title="SoloHeroWars"
         data-testid="iframe-godot-game"
       />
+
+      {showGateLoading && <GateLoadingOverlay config={activeDungeon} />}
 
       {/* Portrait-mode blocker */}
       {portrait && (
