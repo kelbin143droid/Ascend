@@ -199,8 +199,8 @@ export function shouldSuggestLevelUp(level: WorkoutLevel): boolean {
 
 // ── Daily XP / task tracking (local, resets at midnight) ─────────────────────
 // Tracks XP earned per stat category and which tasks were completed today.
-// Used to power the XP breakdown display (Sense 15 + Agility 15 + Vitality 10
-// + Strength 40 + System Synthesis Bonus 20 = 100 XP).
+// Used to power the onboarding XP breakdown:
+// Sense 15 + Agility 10 + Strength 15 + Intel 10 + Vitality 10 + Bonus 40 = 100 XP.
 
 const KEY_DAILY_XP = "ascend_daily_xp_v1";
 

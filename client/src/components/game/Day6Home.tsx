@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
   ArrowRight, BookOpen, Zap, Shield, Flame,
+  Heart, Moon,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -59,6 +60,8 @@ interface Props {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const INTELLIGENCE_ACTIVITY_ID = "phase1_intelligence";
+const VITALITY_ACTIVITY_ID = "phase1_vitality";
+const STAT_INTRO_SEEN_KEY = "ascend_stat_intro_seen";
 
 const DASH_CARDS = [
   {
@@ -72,6 +75,12 @@ const DASH_CARDS = [
     label: "Intel", sub: "Daily Insight", desc: "3-min read",
     icon: BookOpen, color: "#38bdf8", glow: "rgba(56,189,248,0.45)",
     barLabel: "INT", barType: "xp" as const, fallbackRoute: "/library",
+  },
+  {
+    id: "vitality", activityId: VITALITY_ACTIVITY_ID, statKey: "vitality",
+    label: "Vitality", sub: "Sleep Log", desc: "Recovery check",
+    icon: Heart, color: "#f59e0b", glow: "rgba(245,158,11,0.45)",
+    barLabel: "VIT", barType: "xp" as const, fallbackRoute: "/sleep-settings",
   },
   {
     id: "strength",   activityId: "phase1_strength",   statKey: "strength",
@@ -91,13 +100,23 @@ const ACTIVITY_XP: Record<string, number> = {
   phase1_meditation: PHASE1_XP.sense,
   phase1_agility: PHASE1_XP.agility,
   phase1_strength: PHASE1_XP.strength,
-  [INTELLIGENCE_ACTIVITY_ID]: PHASE1_XP.vitality,
+  [INTELLIGENCE_ACTIVITY_ID]: PHASE1_XP.intelligence,
+  [VITALITY_ACTIVITY_ID]: PHASE1_XP.vitality,
 };
 
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
 const INTELLIGENCE_READ_SECONDS = 180;
 
 type IntelReadMode = "recommended" | "custom";
+type SleepQuality = "great" | "ok" | "rough";
+
+const STAT_EXPLAINERS = [
+  { key: "SEN", label: "Sense", text: "Calm, focus, and MP recovery." },
+  { key: "AGI", label: "Agility", text: "Mobility, speed, and movement control." },
+  { key: "STR", label: "Strength", text: "Power, discipline, and battle readiness." },
+  { key: "INT", label: "Intel", text: "Learning, strategy, and smarter choices." },
+  { key: "VIT", label: "Vitality", text: "Sleep, recovery, and HP stability." },
+];
 
 const DAILY_INTEL_READS = [
   {
@@ -196,6 +215,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [customIntelTopic, setCustomIntelTopic] = useState("");
   const [intelReadStarted, setIntelReadStarted] = useState(false);
   const [intelSecondsLeft, setIntelSecondsLeft] = useState(INTELLIGENCE_READ_SECONDS);
+  const [showVitality, setShowVitality] = useState(false);
+  const [sleepHours, setSleepHours] = useState("7");
+  const [sleepQuality, setSleepQuality] = useState<SleepQuality>("ok");
+  const [vitalitySubmitting, setVitalitySubmitting] = useState(false);
+  const [showStatIntro, setShowStatIntro] = useState(false);
   // Auto-start strength when navigated from agility completion (?autostart=strength)
   const [autoStartPending, setAutoStartPending] = useState(() =>
     typeof window !== "undefined" && window.location.search.includes("autostart=strength")
@@ -257,7 +281,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const pendingSeq = seqCards.filter(c => !isActivityDone(c.id));
   const doneSeq    = seqCards.filter(c =>  isActivityDone(c.id));
   const intelligenceDone = completedIds.has(INTELLIGENCE_ACTIVITY_ID);
-  const allDone    = pendingSeq.length === 0 && seqCards.length > 0 && intelligenceDone;
+  const vitalityDone = completedIds.has(VITALITY_ACTIVITY_ID);
+  const allDone    = pendingSeq.length === 0 && seqCards.length > 0 && intelligenceDone && vitalityDone;
   const currentAid = pendingSeq[0]?.id ?? null;
   const todayIds   = new Set(activities.map(a => a.id));
 
@@ -279,24 +304,26 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
   const isFirstDayGuided = !homeData.isOnboardingComplete && homeData.onboardingDay <= 1;
   const intelligencePending = seqAllDone && !intelligenceDone;
+  const vitalityPending = seqAllDone && intelligenceDone && !vitalityDone;
   const currentDashLabel = DASH_CARDS.find(d => d.activityId === currentAid)?.label ?? null;
   const firstResetCompleted = wasFirstResetCompletedToday();
   const firstResetJustUnlockedMovement = !homeData.isOnboardingComplete && firstResetCompleted && currentAid === "phase1_agility";
-  const totalMissionCount = seqCards.length + 1;
-  const completedMissionCount = doneSeq.length + (intelligenceDone ? 1 : 0);
+  const totalMissionCount = seqCards.length + 2;
+  const completedMissionCount = doneSeq.length + (intelligenceDone ? 1 : 0) + (vitalityDone ? 1 : 0);
   const activeMissionNumber = Math.min(totalMissionCount, completedMissionCount + 1);
   const missionStepLabel = `${allDone ? totalMissionCount : activeMissionNumber}/${totalMissionCount}`;
   const questProgressPct = totalMissionCount > 0
     ? Math.min(100, (completedMissionCount / totalMissionCount) * 100)
     : 0;
   const currentReward = intelligencePending
-    ? PHASE1_XP.vitality + PHASE1_XP.synthesisBonus
+    ? PHASE1_XP.intelligence
+    : vitalityPending
+      ? PHASE1_XP.vitality
     : currentAid ? ACTIVITY_XP[currentAid] ?? 0 : 0;
-  const rewardLabel = intelligencePending
-    ? `+${PHASE1_XP.vitality} XP + ${PHASE1_XP.synthesisBonus} bonus`
-    : currentReward > 0 ? `+${currentReward} XP` : "";
+  const rewardLabel = currentReward > 0 ? `+${currentReward} XP` : "";
   const compactRewardLabel = currentReward > 0 ? `+${currentReward} XP` : rewardLabel;
-  const systemMission = allDone ? "Complete"
+  const systemMission = allDone ? "System awakened"
+    : vitalityPending ? "Next: Vitality"
     : intelligencePending ? "Next: Intel"
     : firstResetJustUnlockedMovement ? "Next: Agility"
     : currentDashLabel ? `Next: ${currentDashLabel}` : pathRec.headline;
@@ -342,6 +369,15 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     return () => window.clearInterval(timer);
   }, [showIntelligence, intelReadStarted, intelSecondsLeft, intelligenceDone]);
 
+  useEffect(() => {
+    if (!allDone) return;
+    try {
+      if (localStorage.getItem(STAT_INTRO_SEEN_KEY) !== "1") setShowStatIntro(true);
+    } catch {
+      setShowStatIntro(true);
+    }
+  }, [allDone]);
+
   const resetIntelReader = useCallback(() => {
     setIntelReadMode("recommended");
     setCustomIntelTopic("");
@@ -378,8 +414,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const completeIntelligenceMission = useCallback(() => {
     if (!intelReadStarted || intelSecondsLeft > 0) return;
     if (!intelligenceDone) {
-      addXP(PHASE1_XP.vitality, "intelligence");
-      addXP(PHASE1_XP.synthesisBonus, "system");
+      addXP(PHASE1_XP.intelligence, "intelligence");
       completeTask(INTELLIGENCE_ACTIVITY_ID);
       markComplete(INTELLIGENCE_ACTIVITY_ID);
       window.dispatchEvent(new CustomEvent("ascend:activity-completed", {
@@ -391,6 +426,47 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     queryClient.invalidateQueries({ queryKey: ["/api/player", player.id] });
     queryClient.invalidateQueries({ queryKey: ["home", player.id] });
   }, [intelReadStarted, intelSecondsLeft, intelligenceDone, markComplete, player.id, queryClient, resetIntelReader]);
+
+  const completeVitalityMission = useCallback(async () => {
+    if (vitalityDone || vitalitySubmitting) return;
+    setVitalitySubmitting(true);
+    const parsedHours = Number.parseFloat(sleepHours);
+    const sleptWell = sleepQuality !== "rough";
+    try {
+      localStorage.setItem("ascend_last_sleep_log", JSON.stringify({
+        date: todayDateKey(),
+        hours: Number.isFinite(parsedHours) ? parsedHours : null,
+        quality: sleepQuality,
+      }));
+      window.dispatchEvent(new CustomEvent("ascend:sleep-check", { detail: { sleptWell } }));
+      const res = await fetch(`/api/player/${player.id}/complete-guided-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: VITALITY_ACTIVITY_ID,
+          stat: "vitality",
+          durationMinutes: 3,
+          category: "vitality",
+          xpMultiplier: 1.0,
+        }),
+      });
+      if (!res.ok) throw new Error("Vitality sync failed");
+      addXP(PHASE1_XP.vitality, "vitality");
+      completeTask(VITALITY_ACTIVITY_ID);
+      markComplete(VITALITY_ACTIVITY_ID);
+      window.dispatchEvent(new CustomEvent("ascend:activity-completed", {
+        detail: { activityId: VITALITY_ACTIVITY_ID },
+      }));
+      window.dispatchEvent(new CustomEvent("ascend:vitality-done"));
+      setShowVitality(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/player", player.id] });
+      queryClient.invalidateQueries({ queryKey: ["home", player.id] });
+    } catch {
+      setShowVitality(true);
+    } finally {
+      setVitalitySubmitting(false);
+    }
+  }, [markComplete, player.id, queryClient, sleepHours, sleepQuality, vitalityDone, vitalitySubmitting]);
 
   // Featured card tap — navigate to the correct standalone session,
   // or start an isolated single-activity flow for strength (no standalone page).
@@ -409,21 +485,35 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       setShowIntelligence(true);
       return;
     }
+    if (featuredCard?.id === "vitality") {
+      setShowVitality(true);
+      return;
+    }
     const aid = featuredCard?.activityId;
     if (!aid) return;
     startActivity(aid);
   };
   const handleAvatarPick = (icon: string) => { saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false); };
 
+  const openCharacterChoice = () => {
+    try { localStorage.setItem(STAT_INTRO_SEEN_KEY, "1"); } catch { /* noop */ }
+    setShowStatIntro(false);
+    navigate("/hunter-profile");
+  };
+
   // Featured vs supporting — Intel becomes featured once the body sequence is done.
   const intelligenceCard = DASH_CARDS.find(d => d.id === "intelligence")!;
+  const vitalityCard = DASH_CARDS.find(d => d.id === "vitality")!;
   const featuredCard = intelligencePending
     ? intelligenceCard
+    : vitalityPending
+      ? vitalityCard
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
 
   // Resolve the click action for a supporting card
   const resolveAction = (dc: (typeof DASH_CARDS)[number]): () => void => {
     if (dc.id === "intelligence") return () => setShowIntelligence(true);
+    if (dc.id === "vitality") return () => setShowVitality(true);
     const sessionRoute = activitySessionRoute(dc.activityId);
     if (sessionRoute) return () => navigate(sessionRoute);
     // Strength: no standalone session — run isolated single-activity flow if pending
@@ -623,11 +713,195 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     }}
                     data-testid="button-complete-intelligence"
                   >
-                    {intelligenceDone ? "Insight complete" : intelSecondsLeft > 0 ? "Reading..." : `Finish read · +${PHASE1_XP.vitality} XP`}
+                    {intelligenceDone ? "Insight complete" : intelSecondsLeft > 0 ? "Reading..." : `Finish read · +${PHASE1_XP.intelligence} XP`}
                     <ArrowRight size={18} />
                   </button>
                 )}
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showVitality && (
+          <motion.div
+            className="fixed inset-0 z-[80] flex items-center justify-center px-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ background: "rgba(2,6,18,0.82)", backdropFilter: "blur(18px)" }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="w-full max-w-sm rounded-3xl overflow-hidden"
+              style={{
+                background: "linear-gradient(145deg, rgba(24,15,8,0.96), rgba(8,12,24,0.98))",
+                border: "1px solid rgba(245,158,11,0.32)",
+                boxShadow: "0 24px 70px rgba(0,0,0,0.55), 0 0 42px rgba(245,158,11,0.16)",
+              }}
+              data-testid="vitality-quest-modal"
+            >
+              <div className="relative px-6 pt-6 pb-5">
+                <button
+                  type="button"
+                  onClick={() => setShowVitality(false)}
+                  className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full"
+                  style={{ background: "rgba(255,255,255,0.06)", color: "rgba(226,232,240,0.72)" }}
+                  aria-label="Close Vitality"
+                  data-testid="button-close-vitality"
+                >
+                  <X size={16} />
+                </button>
+                <div
+                  className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl"
+                  style={{
+                    background: "rgba(245,158,11,0.13)",
+                    border: "1px solid rgba(245,158,11,0.32)",
+                    color: "#f59e0b",
+                    boxShadow: "0 0 22px rgba(245,158,11,0.18)",
+                  }}
+                >
+                  <Moon size={22} />
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: "#f59e0b" }}>
+                  Vitality · Sleep Log
+                </p>
+                <h2 className="mt-2 text-[24px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
+                  Log your recovery.
+                </h2>
+                <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgba(203,213,225,0.72)" }}>
+                  Sleep powers HP, energy, and tomorrow's performance.
+                </p>
+
+                <div className="mt-5">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "rgba(251,191,36,0.78)" }}>
+                    Hours slept
+                  </label>
+                  <input
+                    value={sleepHours}
+                    onChange={(e) => setSleepHours(e.target.value)}
+                    inputMode="decimal"
+                    className="mt-2 w-full rounded-2xl px-4 py-3 text-[20px] font-black tabular-nums outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.055)",
+                      border: "1px solid rgba(245,158,11,0.18)",
+                      color: "rgba(248,250,252,0.96)",
+                    }}
+                    data-testid="input-sleep-hours"
+                  />
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  {([
+                    ["great", "Great"],
+                    ["ok", "Okay"],
+                    ["rough", "Rough"],
+                  ] as const).map(([quality, label]) => {
+                    const active = sleepQuality === quality;
+                    return (
+                      <button
+                        key={quality}
+                        type="button"
+                        onClick={() => setSleepQuality(quality)}
+                        className="rounded-2xl px-2 py-3 text-[12px] font-bold"
+                        style={{
+                          background: active ? "rgba(245,158,11,0.18)" : "rgba(255,255,255,0.045)",
+                          border: `1px solid ${active ? "rgba(245,158,11,0.42)" : "rgba(255,255,255,0.08)"}`,
+                          color: active ? "#fcd34d" : "rgba(226,232,240,0.74)",
+                        }}
+                        data-testid={`button-sleep-quality-${quality}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={completeVitalityMission}
+                  disabled={vitalitySubmitting}
+                  className="mt-5 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold disabled:opacity-60"
+                  style={{
+                    background: "linear-gradient(90deg, #d97706, #f59e0b, #7c3aed)",
+                    color: "#fff",
+                    boxShadow: "0 10px 30px rgba(245,158,11,0.22)",
+                  }}
+                  data-testid="button-complete-vitality"
+                >
+                  {vitalitySubmitting ? "Saving..." : `Log sleep · +${PHASE1_XP.vitality} XP`}
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showStatIntro && (
+          <motion.div
+            className="fixed inset-0 z-[90] flex items-center justify-center px-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ background: "rgba(2,6,18,0.88)", backdropFilter: "blur(18px)" }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="w-full max-w-sm rounded-3xl px-6 py-6"
+              style={{
+                background: "linear-gradient(145deg, rgba(8,14,32,0.97), rgba(4,9,24,0.99))",
+                border: `1px solid ${primary}44`,
+                boxShadow: `0 24px 70px rgba(0,0,0,0.58), 0 0 42px ${primary}18`,
+              }}
+              data-testid="stat-intro-modal"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: primary }}>
+                System Awakened
+              </p>
+              <h2 className="mt-2 text-[25px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
+                Your stats feed your hero.
+              </h2>
+              <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgba(203,213,225,0.72)" }}>
+                Real-world actions raise the system that powers your game character.
+              </p>
+              <div className="mt-5 grid gap-2">
+                {STAT_EXPLAINERS.map((stat) => (
+                  <div
+                    key={stat.key}
+                    className="grid grid-cols-[44px_1fr] gap-3 rounded-2xl px-3 py-2.5"
+                    style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    <div className="flex h-9 items-center justify-center rounded-xl text-[11px] font-black" style={{ background: `${primary}16`, color: primary }}>
+                      {stat.key}
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-bold leading-tight" style={{ color: "rgba(248,250,252,0.94)" }}>{stat.label}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug" style={{ color: "rgba(203,213,225,0.64)" }}>{stat.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={openCharacterChoice}
+                className="mt-5 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold"
+                style={{
+                  background: `linear-gradient(90deg, #2563eb, ${primary}, #7c3aed)`,
+                  color: "#fff",
+                  boxShadow: `0 10px 30px ${primary}24`,
+                }}
+                data-testid="button-choose-character"
+              >
+                Choose character
+                <ArrowRight size={18} />
+              </button>
             </motion.div>
           </motion.div>
         )}
@@ -691,8 +965,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             }} />
           <div className="relative z-10 flex items-center gap-3">
             {/* Avatar */}
-            <button onClick={() => setShowAvatar(true)} data-testid="button-avatar"
-              className="relative shrink-0 transition-transform duration-150 active:scale-90">
+            <button
+              onClick={() => (homeData.isOnboardingComplete || allDone) && setShowAvatar(true)}
+              disabled={!homeData.isOnboardingComplete && !allDone}
+              data-testid="button-avatar"
+              className="relative shrink-0 transition-transform duration-150 active:scale-90 disabled:active:scale-100">
               {hasStreak && (
                 <div className="absolute inset-[-5px] rounded-full pointer-events-none"
                   style={{
@@ -866,33 +1143,45 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
         {/* ── RITUAL QUEUE STRIP ───────────────────────────────────────── */}
         {activities.length > 0 && (() => {
+          const dashById = Object.fromEntries(DASH_CARDS.map(dc => [dc.id, dc])) as Record<(typeof DASH_CARDS)[number]["id"], (typeof DASH_CARDS)[number]>;
           const QUEUE_DEFS = [
-            { id: "phase1_meditation", label: "Sense",    dc: DASH_CARDS[0] },
-            { id: "phase1_agility",    label: "Agility",  dc: DASH_CARDS[3] },
-            { id: "phase1_strength",   label: "Strength", dc: DASH_CARDS[2] },
-            { id: INTELLIGENCE_ACTIVITY_ID, label: "Intel", dc: DASH_CARDS[1] },
+            { id: "phase1_meditation", label: "Sense",    dc: dashById.calm },
+            { id: "phase1_agility",    label: "Agility",  dc: dashById.agility },
+            { id: "phase1_strength",   label: "Strength", dc: dashById.strength },
+            { id: INTELLIGENCE_ACTIVITY_ID, label: "Intel", dc: dashById.intelligence },
+            { id: VITALITY_ACTIVITY_ID, label: "Vitality", dc: dashById.vitality },
           ] as const;
           const queueItems = QUEUE_DEFS.filter(q =>
-            q.id === INTELLIGENCE_ACTIVITY_ID ? true : activities.some(a => a.id === q.id)
+            q.id === INTELLIGENCE_ACTIVITY_ID || q.id === VITALITY_ACTIVITY_ID ? true : activities.some(a => a.id === q.id)
           );
           if (queueItems.length < 2) return null;
           return (
             <motion.div
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.28, delay: 0.09 }}
-              className="grid grid-cols-4 gap-2"
+              className="grid grid-cols-5 gap-1.5"
               data-testid="ritual-queue-strip"
             >
-              {queueItems.map((q, idx) => {
+              {queueItems.map((q) => {
                 const { dc } = q;
-                const done     = q.id === INTELLIGENCE_ACTIVITY_ID ? intelligenceDone : isActivityDone(q.id);
+                const done = q.id === INTELLIGENCE_ACTIVITY_ID
+                  ? intelligenceDone
+                  : q.id === VITALITY_ACTIVITY_ID
+                    ? vitalityDone
+                    : isActivityDone(q.id);
                 const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
                 const isActive = q.id === INTELLIGENCE_ACTIVITY_ID
-                  ? (seqAllDone && !intelligenceDone)
-                  : (q.id === currentAid && !allDone);
+                  ? intelligencePending
+                  : q.id === VITALITY_ACTIVITY_ID
+                    ? vitalityPending
+                    : (q.id === currentAid && !allDone);
                 const isUnlocked = !isFirstDayGuided || done || isActive;
                 const nodeColor = done ? "#22c55e" : isActive || isUnlocked ? dc.color : colors.textMuted;
-                const action = q.id === INTELLIGENCE_ACTIVITY_ID ? () => setShowIntelligence(true) : resolveAction(dc);
+                const action = q.id === INTELLIGENCE_ACTIVITY_ID
+                  ? () => setShowIntelligence(true)
+                  : q.id === VITALITY_ACTIVITY_ID
+                    ? () => setShowVitality(true)
+                    : resolveAction(dc);
                 const isTappable = isUnlocked;
                 return (
                   <motion.button
@@ -901,7 +1190,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     disabled={!isTappable}
                     onClick={isTappable ? action : undefined}
                     whileTap={isTappable ? { scale: 0.96 } : {}}
-                    className="relative flex min-h-[70px] flex-col items-center justify-center gap-1 rounded-2xl px-1.5 py-2 text-center disabled:cursor-default"
+                    className="relative flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-center disabled:cursor-default"
                     style={{
                       background: done
                         ? "rgba(34,197,94,0.09)"
@@ -926,7 +1215,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     <span className="text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: nodeColor }}>
                       {q.label}
                     </span>
-                    <span className="max-w-full truncate text-[7.5px] font-semibold leading-none" style={{ color: isUnlocked || done ? cardMutedCol : colors.textMuted, opacity: isUnlocked || done ? 0.76 : 0.35 }}>
+                    <span className="max-w-full truncate text-[7px] font-semibold leading-none" style={{ color: isUnlocked || done ? cardMutedCol : colors.textMuted, opacity: isUnlocked || done ? 0.76 : 0.35 }}>
                       {dc.sub}
                     </span>
                   </motion.button>
@@ -966,6 +1255,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           const dc    = featuredCard;
           const ctaText = intelligencePending
             ? `Complete insight · ${compactRewardLabel}`
+            : vitalityPending
+              ? `Log sleep · ${compactRewardLabel}`
             : currentAid === "phase1_strength"
               ? `Start circuit · ${compactRewardLabel}`
               : `Begin mission · ${compactRewardLabel}`;

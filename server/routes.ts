@@ -767,9 +767,7 @@ export async function registerRoutes(
       if (isDailyFlowSession) {
         guidedXP = DAILY_FLOW_SESSION_XP[parsed.data.sessionId];
       }
-      const playerXP = parsed.data.sessionId === "phase1_vitality"
-        ? guidedXP + PHASE1_XP.synthesisBonus
-        : guidedXP;
+      const playerXP = guidedXP;
 
       // Onboarding sessions skip stat XP and award a fixed amount on first completion.
       // quick-reflection is Day 3's paired second session — it's in onboarding but awards 0 XP
@@ -788,7 +786,9 @@ export async function registerRoutes(
 
       // Apply streak multiplier to awarded XP for non-onboarding sessions
       const streakMult = computeStreakMultiplier(player.streak || 0);
-      const finalPlayerXP = !isOnboardingSession && streakMult > 0
+      const finalPlayerXP = isDailyFlowSession
+        ? playerXP
+        : !isOnboardingSession && streakMult > 0
         ? Math.round(playerXP * (1 + streakMult))
         : playerXP;
 

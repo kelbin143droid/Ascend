@@ -377,7 +377,7 @@ export default function SectographPage() {
     },
     onSuccess: (data: { statXpEarned?: number; bonusXP?: number } | undefined) => {
       const vitalityXP = data?.statXpEarned ?? PHASE1_XP.vitality;
-      const bonusXP = data?.bonusXP ?? PHASE1_XP.synthesisBonus;
+      const bonusXP = data?.bonusXP ?? 0;
       addXP(vitalityXP, "vitality");
       if (bonusXP > 0 && !flowBonusAwarded) {
         addXP(bonusXP, "system");
@@ -404,8 +404,8 @@ export default function SectographPage() {
       });
       if (bonusXP > 0) {
         toast({
-          title: `🔥 +${bonusXP} System Completion Bonus`,
-          description: "Full onboarding sequence complete.",
+          title: `🔥 +${bonusXP} Bonus XP`,
+          description: "Vitality streak bonus applied.",
           duration: 3500,
         });
       }
@@ -3663,13 +3663,6 @@ export default function SectographPage() {
               >
                 <Zap size={14} style={{ color: "#f59e0b" }} />
                 <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+{PHASE1_XP.vitality} XP — Vitality awarded</p>
-              </div>
-              <div
-                className="flex items-center gap-3 p-3 rounded-xl"
-                style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}
-              >
-                <Zap size={14} style={{ color: "#f59e0b" }} />
-                <p className="text-xs font-medium" style={{ color: "#f59e0b" }}>+{PHASE1_XP.synthesisBonus} XP — System Synthesis Bonus</p>
               </div>
             </div>
 
