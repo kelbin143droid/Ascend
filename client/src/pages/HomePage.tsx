@@ -5,6 +5,36 @@ import { NotificationBanner } from "@/components/game/NotificationBanner";
 import { ReturnProtocolScreen } from "@/components/game/ReturnProtocolScreen";
 import { Day6Home } from "@/components/game/Day6Home";
 
+const RETURN_PROTOCOL_DONE_PREFIX = "ascend_return_protocol_done";
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function returnProtocolStorageKey(playerId: string | number | undefined) {
+  return playerId ? `${RETURN_PROTOCOL_DONE_PREFIX}_${playerId}` : null;
+}
+
+function wasReturnProtocolHandledToday(playerId: string | number | undefined) {
+  const key = returnProtocolStorageKey(playerId);
+  if (!key) return false;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    return JSON.parse(raw)?.date === todayKey();
+  } catch {
+    return false;
+  }
+}
+
+function markReturnProtocolHandledToday(playerId: string | number | undefined, tier?: string | null) {
+  const key = returnProtocolStorageKey(playerId);
+  if (!key) return;
+  try {
+    localStorage.setItem(key, JSON.stringify({ date: todayKey(), tier: tier ?? null }));
+  } catch {}
+}
+
 interface HomeData {
   phase: { number: number; name: string };
   stability: {
@@ -79,7 +109,9 @@ export default function HomePage() {
   const { player } = useGame();
 
   const [dismissedNotification, setDismissedNotification] = useState(false);
-  const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(false);
+  const [returnProtocolDismissed, setReturnProtocolDismissed] = useState(() =>
+    wasReturnProtocolHandledToday(player?.id)
+  );
   const { data: homeData, isLoading: homeLoading } = useQuery<HomeData>({
     queryKey: ["home", player?.id],
     queryFn: async () => {
@@ -117,6 +149,15 @@ export default function HomePage() {
     staleTime: 30000,
   });
 
+  useEffect(() => {
+    setReturnProtocolDismissed(wasReturnProtocolHandledToday(player?.id));
+  }, [player?.id]);
+
+  const handleReturnProtocolComplete = () => {
+    markReturnProtocolHandledToday(player?.id, homeData?.returnProtocol?.tier);
+    setReturnProtocolDismissed(true);
+  };
+
   if (!homeData || homeLoading) {
     return (
       <div
@@ -130,7 +171,7 @@ export default function HomePage() {
     return (
       <ReturnProtocolScreen
         data={homeData.returnProtocol}
-        onComplete={() => setReturnProtocolDismissed(true)}
+        onComplete={handleReturnProtocolComplete}
       />
     );
   }
