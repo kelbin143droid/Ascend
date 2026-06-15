@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -95,6 +95,48 @@ const ACTIVITY_XP: Record<string, number> = {
 };
 
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
+const INTELLIGENCE_READ_SECONDS = 180;
+
+type IntelReadMode = "recommended" | "custom";
+
+const DAILY_INTEL_READS = [
+  {
+    title: "The 2-Minute Start",
+    topic: "Action beats motivation.",
+    prompt: "Pick the smallest visible step. Do it before judging your energy.",
+  },
+  {
+    title: "Protect Your Attention",
+    topic: "Focus is trained by subtraction.",
+    prompt: "Remove one distraction before you begin. Less noise, better effort.",
+  },
+  {
+    title: "Identity Reps",
+    topic: "You become what you repeat.",
+    prompt: "One clean rep matters. Make the next action match the person you are building.",
+  },
+  {
+    title: "Recovery Is Strategy",
+    topic: "Rest keeps the system online.",
+    prompt: "Progress is not only push. Protect sleep, hydration, and calm.",
+  },
+  {
+    title: "Reduce the Friction",
+    topic: "Environment beats willpower.",
+    prompt: "Make the good action easier to start and the bad action harder to reach.",
+  },
+];
+
+function dailyIntelRead() {
+  const daySeed = Math.floor(new Date().getTime() / 86400000);
+  return DAILY_INTEL_READS[daySeed % DAILY_INTEL_READS.length];
+}
+
+function formatReadTimer(seconds: number) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
 
 function todayDateKey(): string {
   return new Date().toISOString().split("T")[0];
@@ -150,6 +192,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [flowActive,       setFlowActive]       = useState(false);
   const [singleActivityId, setSingleActivityId] = useState<string | null>(null);
   const [showIntelligence, setShowIntelligence] = useState(false);
+  const [intelReadMode, setIntelReadMode] = useState<IntelReadMode>("recommended");
+  const [customIntelTopic, setCustomIntelTopic] = useState("");
+  const [intelReadStarted, setIntelReadStarted] = useState(false);
+  const [intelSecondsLeft, setIntelSecondsLeft] = useState(INTELLIGENCE_READ_SECONDS);
   // Auto-start strength when navigated from agility completion (?autostart=strength)
   const [autoStartPending, setAutoStartPending] = useState(() =>
     typeof window !== "undefined" && window.location.search.includes("autostart=strength")
@@ -168,6 +214,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [wlevel]   = useState(() => getWorkoutLevel());
   const pathCfg    = getPathFlowConfig(wlevel);
   const pathRec    = getPathAwareRecommendation(wlevel);
+  const recommendedIntelRead = useMemo(() => dailyIntelRead(), []);
   const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers });
   const totalMins  = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
@@ -286,6 +333,32 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         onboardingCompleteRequestedRef.current = false;
       });
   }, [allDone, homeData.isOnboardingComplete, player.id, playerData?.totalExp, queryClient]);
+
+  useEffect(() => {
+    if (!showIntelligence || !intelReadStarted || intelSecondsLeft <= 0 || intelligenceDone) return;
+    const timer = window.setInterval(() => {
+      setIntelSecondsLeft((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [showIntelligence, intelReadStarted, intelSecondsLeft, intelligenceDone]);
+
+  const resetIntelReader = useCallback(() => {
+    setIntelReadMode("recommended");
+    setCustomIntelTopic("");
+    setIntelReadStarted(false);
+    setIntelSecondsLeft(INTELLIGENCE_READ_SECONDS);
+  }, []);
+
+  const closeIntelReader = useCallback(() => {
+    setShowIntelligence(false);
+    if (!intelReadStarted || intelligenceDone) resetIntelReader();
+  }, [intelReadStarted, intelligenceDone, resetIntelReader]);
+
+  const startIntelRead = useCallback(() => {
+    setIntelReadStarted(true);
+    setIntelSecondsLeft((s) => (s <= 0 ? INTELLIGENCE_READ_SECONDS : s));
+  }, []);
+
   const handleFlowDone = useCallback((ids: string[]) => {
     // Close the flow engine immediately so the home content is visible right away
     // (avoids a blank/loading flash while queries refetch in the background).
@@ -303,6 +376,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   }, [markComplete, queryClient, player.id]);
 
   const completeIntelligenceMission = useCallback(() => {
+    if (!intelReadStarted || intelSecondsLeft > 0) return;
     if (!intelligenceDone) {
       addXP(PHASE1_XP.vitality, "intelligence");
       addXP(PHASE1_XP.synthesisBonus, "system");
@@ -313,9 +387,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       }));
     }
     setShowIntelligence(false);
+    resetIntelReader();
     queryClient.invalidateQueries({ queryKey: ["/api/player", player.id] });
     queryClient.invalidateQueries({ queryKey: ["home", player.id] });
-  }, [intelligenceDone, markComplete, player.id, queryClient]);
+  }, [intelReadStarted, intelSecondsLeft, intelligenceDone, markComplete, player.id, queryClient, resetIntelReader]);
 
   // Featured card tap — navigate to the correct standalone session,
   // or start an isolated single-activity flow for strength (no standalone page).
@@ -396,7 +471,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
               transition={{ duration: 0.24, ease: "easeOut" }}
-              className="w-full max-w-sm rounded-3xl overflow-hidden"
+              className="w-full max-w-sm max-h-[92dvh] rounded-3xl overflow-y-auto"
               style={{
                 background: "linear-gradient(145deg, rgba(8,14,32,0.96), rgba(4,9,24,0.98))",
                 border: "1px solid rgba(56,189,248,0.32)",
@@ -407,7 +482,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               <div className="relative px-6 pt-6 pb-5">
                 <button
                   type="button"
-                  onClick={() => setShowIntelligence(false)}
+                  onClick={closeIntelReader}
                   className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full"
                   style={{ background: "rgba(255,255,255,0.06)", color: "rgba(226,232,240,0.72)" }}
                   aria-label="Close Daily Insight"
@@ -427,46 +502,131 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   <BookOpen size={22} />
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: "#38bdf8" }}>
-                  Daily Insight
+                  Intel · 3 min
                 </p>
-                <h2 className="mt-2 text-[28px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
-                  Start before it feels easy.
+                <h2 className="mt-2 text-[24px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
+                  Read one useful idea.
                 </h2>
-                <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "rgba(203,213,225,0.78)" }}>
-                  Momentum usually arrives after the first action, not before it. Make the first step so small that it is hard to refuse: open the page, write one line, stretch for one minute, or begin the first rep.
+                <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgba(203,213,225,0.72)" }}>
+                  Choose a topic. Start the timer. Finish the read.
                 </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  {([
+                    ["recommended", "Recommended"],
+                    ["custom", "Choose topic"],
+                  ] as const).map(([mode, label]) => {
+                    const active = intelReadMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => !intelReadStarted && setIntelReadMode(mode)}
+                        disabled={intelReadStarted}
+                        className="rounded-2xl px-3 py-3 text-[12px] font-bold disabled:opacity-70"
+                        style={{
+                          background: active ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.045)",
+                          border: `1px solid ${active ? "rgba(56,189,248,0.42)" : "rgba(255,255,255,0.08)"}`,
+                          color: active ? "#7dd3fc" : "rgba(226,232,240,0.74)",
+                        }}
+                        data-testid={`button-intel-mode-${mode}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div
-                  className="mt-5 rounded-2xl px-4 py-3"
+                  className="mt-4 rounded-2xl px-4 py-4"
                   style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
-                  <p className="text-[12px] font-semibold leading-relaxed" style={{ color: "rgba(226,232,240,0.88)" }}>
-                    Today: choose one task and reduce it to the smallest visible action. Complete that action before judging your energy.
+                  {intelReadMode === "recommended" ? (
+                    <>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "#38bdf8" }}>
+                        Recommended read
+                      </p>
+                      <h3 className="mt-2 text-[17px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.95)" }}>
+                        {recommendedIntelRead.title}
+                      </h3>
+                      <p className="mt-2 text-[12px] font-semibold leading-snug" style={{ color: "rgba(226,232,240,0.86)" }}>
+                        {recommendedIntelRead.topic}
+                      </p>
+                      {intelReadStarted && (
+                        <p className="mt-2 text-[12px] leading-snug" style={{ color: "rgba(203,213,225,0.68)" }}>
+                          {recommendedIntelRead.prompt}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "#38bdf8" }}>
+                        Your read
+                      </p>
+                      <input
+                        value={customIntelTopic}
+                        onChange={(e) => setCustomIntelTopic(e.target.value)}
+                        disabled={intelReadStarted}
+                        placeholder="Example: discipline, confidence, focus"
+                        className="mt-3 w-full rounded-xl px-3 py-3 text-[13px] outline-none disabled:opacity-80"
+                        style={{
+                          background: "rgba(2,6,18,0.42)",
+                          border: "1px solid rgba(148,163,184,0.18)",
+                          color: "rgba(248,250,252,0.94)",
+                        }}
+                        data-testid="input-custom-intel-topic"
+                      />
+                      <p className="mt-2 text-[12px] leading-snug" style={{ color: "rgba(203,213,225,0.64)" }}>
+                        Read anything useful on this topic until the timer ends.
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                <div
+                  className="mt-4 rounded-2xl px-4 py-3 text-center"
+                  style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.16)" }}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(125,211,252,0.70)" }}>
+                    Reading timer
+                  </p>
+                  <p className="mt-1 text-[32px] font-black tabular-nums leading-none" style={{ color: "#e0f2fe" }}>
+                    {formatReadTimer(intelSecondsLeft)}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={completeIntelligenceMission}
-                  disabled={intelligenceDone}
-                  className="mt-6 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold disabled:opacity-70"
-                  style={{
-                    background: "linear-gradient(90deg, #2563eb, #38bdf8, #7c3aed)",
-                    color: "#fff",
-                    boxShadow: "0 10px 30px rgba(56,189,248,0.24)",
-                  }}
-                  data-testid="button-complete-intelligence"
-                >
-                  {intelligenceDone ? "Insight complete" : `Mark read complete · +${PHASE1_XP.vitality} XP`}
-                  <ArrowRight size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate("/library")}
-                  className="mt-3 w-full py-2 text-[12px] font-semibold"
-                  style={{ color: "rgba(203,213,225,0.64)" }}
-                  data-testid="button-open-library"
-                >
-                  Open Library
-                </button>
+
+                {!intelReadStarted ? (
+                  <button
+                    type="button"
+                    onClick={startIntelRead}
+                    className="mt-5 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold"
+                    style={{
+                      background: "linear-gradient(90deg, #2563eb, #38bdf8, #7c3aed)",
+                      color: "#fff",
+                      boxShadow: "0 10px 30px rgba(56,189,248,0.24)",
+                    }}
+                    data-testid="button-start-intel-read"
+                  >
+                    Start read
+                    <ArrowRight size={18} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={completeIntelligenceMission}
+                    disabled={intelligenceDone || intelSecondsLeft > 0}
+                    className="mt-5 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold disabled:opacity-60"
+                    style={{
+                      background: intelSecondsLeft <= 0 ? "linear-gradient(90deg, #2563eb, #38bdf8, #7c3aed)" : "rgba(148,163,184,0.14)",
+                      color: "#fff",
+                      boxShadow: intelSecondsLeft <= 0 ? "0 10px 30px rgba(56,189,248,0.24)" : "none",
+                    }}
+                    data-testid="button-complete-intelligence"
+                  >
+                    {intelligenceDone ? "Insight complete" : intelSecondsLeft > 0 ? "Reading..." : `Finish read · +${PHASE1_XP.vitality} XP`}
+                    <ArrowRight size={18} />
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>
