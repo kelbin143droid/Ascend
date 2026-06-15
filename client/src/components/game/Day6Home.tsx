@@ -87,13 +87,6 @@ const DASH_CARDS = [
   },
 ] as const;
 
-const MISSION_CARD_ORDER = [
-  DASH_CARDS[0], // Calm
-  DASH_CARDS[3], // Agility
-  DASH_CARDS[2], // Strength
-  DASH_CARDS[1], // Intelligence
-] as const;
-
 // System card hint lines
 const SYSTEM_HINTS: Record<string, string> = {
   phase1_meditation: `Earn +${PHASE1_XP.sense} XP. Calm first, then movement unlocks.`,
@@ -246,6 +239,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   // System card
   const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
+  const isFirstDayGuided = !homeData.isOnboardingComplete && homeData.onboardingDay <= 1;
   const intelligencePending = seqAllDone && !intelligenceDone;
   const currentDashLabel = DASH_CARDS.find(d => d.activityId === currentAid)?.label ?? null;
   const firstResetCompleted = wasFirstResetCompletedToday();
@@ -370,9 +364,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const featuredCard = intelligencePending
     ? intelligenceCard
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
-  const supportCards = MISSION_CARD_ORDER.filter(d =>
-    d !== featuredCard && (d.id === "intelligence" || todayIds.has(d.activityId))
-  );
 
   // Resolve the click action for a supporting card
   const resolveAction = (dc: (typeof DASH_CARDS)[number]): () => void => {
@@ -788,9 +779,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 const isActive = q.id === INTELLIGENCE_ACTIVITY_ID
                   ? (seqAllDone && !intelligenceDone)
                   : (q.id === currentAid && !allDone);
-                const nodeColor = done ? "#22c55e" : isActive ? dc.color : colors.textMuted;
+                const isUnlocked = !isFirstDayGuided || done || isActive;
+                const nodeColor = done ? "#22c55e" : isActive || isUnlocked ? dc.color : colors.textMuted;
                 const action = q.id === INTELLIGENCE_ACTIVITY_ID ? () => setShowIntelligence(true) : resolveAction(dc);
-                const isTappable = done || isActive;
+                const isTappable = isUnlocked;
                 return (
                   <motion.button
                     key={q.id}
@@ -798,15 +790,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     disabled={!isTappable}
                     onClick={isTappable ? action : undefined}
                     whileTap={isTappable ? { scale: 0.96 } : {}}
-                    className="relative flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center disabled:cursor-default"
+                    className="relative flex min-h-[70px] flex-col items-center justify-center gap-1 rounded-2xl px-1.5 py-2 text-center disabled:cursor-default"
                     style={{
                       background: done
                         ? "rgba(34,197,94,0.09)"
-                        : isActive ? `${dc.color}18` : "rgba(255,255,255,0.035)",
-                      border: `1px solid ${done ? "rgba(34,197,94,0.28)" : isActive ? `${dc.color}66` : "rgba(255,255,255,0.07)"}`,
+                        : isActive ? `${dc.color}18`
+                        : isUnlocked ? `${dc.color}0e`
+                        : "rgba(255,255,255,0.035)",
+                      border: `1px solid ${done ? "rgba(34,197,94,0.28)" : isActive ? `${dc.color}66` : isUnlocked ? `${dc.color}28` : "rgba(255,255,255,0.07)"}`,
                       boxShadow: isActive ? `0 0 0 3px ${dc.color}12, 0 0 18px ${dc.color}20` : "none",
-                      opacity: done || isActive ? 1 : 0.48,
+                      opacity: done || isActive || isUnlocked ? 1 : 0.42,
                     }}
+                    aria-label={`${dc.label}: ${dc.sub}`}
                   >
                     {done && (
                       <span
@@ -819,6 +814,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     <dc.icon size={17} style={{ color: nodeColor }} />
                     <span className="text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: nodeColor }}>
                       {q.label}
+                    </span>
+                    <span className="max-w-full truncate text-[7.5px] font-semibold leading-none" style={{ color: isUnlocked || done ? cardMutedCol : colors.textMuted, opacity: isUnlocked || done ? 0.76 : 0.35 }}>
+                      {dc.sub}
                     </span>
                   </motion.button>
                 );
@@ -995,167 +993,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </motion.div>
           );
         })()}
-
-        {/* ── SUPPORTING CARDS ──────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.32, delay: allDone ? 0.12 : 0.24 }}
-          className="flex flex-col gap-3"
-          data-testid="stat-grid"
-        >
-          <p className="px-1 text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: mutedCol, opacity: 0.70 }}>
-            Other Activities
-          </p>
-          <div className={`grid gap-3 ${allDone ? "grid-cols-2" : "grid-cols-3"}`}>
-          {supportCards.map((dc, idx) => {
-            const isDone  = dc.id === "intelligence"
-              ? intelligenceDone
-              : isActivityDone(dc.activityId);
-            const inFlow  = dc.id !== "intelligence" && todayIds.has(dc.activityId);
-            const isLocked = !isDone;
-            const action  = resolveAction(dc);
-
-            const sl     = playerData?.statLevels?.[dc.statKey];
-            const sLvl   = sl?.level ?? 1;
-            const barPct = dc.barType === "mp" ? mpPct
-              : (sl ? Math.min(100, (sl.currentXP / sl.xpForNext) * 100) : 0);
-
-            const sublabel = dc.activityId === "phase1_meditation" && isDone
-              ? "30-sec reset complete"
-              : dc.id === "intelligence" && isDone
-              ? "Daily insight complete"
-              : dc.sub;
-            const description = dc.activityId === "phase1_meditation" && isDone
-              ? `+${PHASE1_XP.sense} XP earned`
-              : dc.desc;
-
-            const accentColor = isDone ? "#22c55e" : dc.color;
-            const borderCol   = isDone ? "rgba(34,197,94,0.22)" : `${dc.color}20`;
-            const statusLabel = isDone ? "Done" : dc.id === "intelligence" ? "Final" : inFlow ? "Queued" : "Open";
-
-            const restShadow   = `0 2px 14px rgba(0,0,0,0.42), 0 0 0 1px ${accentColor}0a`;
-            const hoverShadow  = `0 6px 24px rgba(0,0,0,0.55), 0 0 18px ${accentColor}20`;
-            const tapShadow    = `0 1px 6px rgba(0,0,0,0.35)`;
-
-            // Circular SVG progress ring
-            const RING_R    = 11;
-            const RING_CIRC = 2 * Math.PI * RING_R;
-            const ringOffset = RING_CIRC * (1 - barPct / 100);
-
-            return (
-              <motion.button
-                key={dc.id}
-                type="button"
-                disabled={isLocked}
-                onClick={isLocked ? undefined : action}
-                initial={{ opacity: 0, y: 8, boxShadow: restShadow }}
-                animate={{
-                  opacity: isLocked ? 0.58 : (!inFlow && dc.activityId !== "") ? 0.72 : 1,
-                  y: 0,
-                  boxShadow: restShadow,
-                }}
-                whileHover={isLocked ? {} : { scale: 1.034, y: -1, boxShadow: hoverShadow,
-                  transition: { duration: 0.18, ease: "easeOut" } }}
-                whileTap={isLocked ? {} : { scale: 0.955, y: 0, boxShadow: tapShadow,
-                  transition: { duration: 0.1, ease: "easeIn" } }}
-                transition={{ duration: 0.28, delay: 0.22 + idx * 0.06 }}
-                className="rounded-2xl relative overflow-hidden flex flex-col w-full text-left disabled:cursor-default"
-                style={{
-                  background: isDone
-                    ? `linear-gradient(145deg, rgba(4,20,8,0.96) 0%, rgba(4,14,6,0.92) 100%)`
-                    : isNeonEmp
-                      ? `linear-gradient(145deg, ${dc.color}12 0%, rgba(8,9,28,0.88) 42%, rgba(4,5,18,0.94) 100%)`
-                      : `linear-gradient(145deg, ${dc.color}0a 0%, rgba(5,6,20,0.94) 40%, rgba(3,4,16,0.96) 100%)`,
-                  border: `1px solid ${isNeonEmp && !isDone ? `${dc.color}36` : borderCol}`,
-                  backdropFilter: "blur(18px) saturate(1.16)",
-                  padding: "12px 10px",
-                  gap: "7px",
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.38)`,
-                  cursor: isLocked ? "default" : "pointer",
-                }}
-                data-testid={`mission-card-${dc.id}`}
-              >
-                <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
-                  style={{
-                    background: "linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.035) 48%, transparent)",
-                    opacity: isNeonEmp ? 0.66 : 0.38,
-                  }} />
-                <div className="absolute -top-10 -left-24 h-24 w-56 pointer-events-none"
-                  style={{
-                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)",
-                    filter: "blur(10px)",
-                    animation: `cardGlossDrift ${9 + idx}s ease-in-out ${idx * 0.45}s infinite`,
-                  }} />
-                {/* Top row: icon+level (left) · circular ring (right) */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-1">
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{
-                        background: `radial-gradient(circle at 35% 35%, ${accentColor}22 0%, ${accentColor}08 100%)`,
-                        border: `1px solid ${accentColor}28`,
-                        boxShadow: `0 0 8px ${accentColor}20, inset 0 1px 0 ${accentColor}18`,
-                      }}
-                    >
-                      {isDone
-                        ? <CheckCircle2 size={12} style={{ color: accentColor, filter: `drop-shadow(0 0 3px ${accentColor})` }} />
-                        : <dc.icon size={12} style={{ color: accentColor, filter: `drop-shadow(0 0 3px ${accentColor})` }} />}
-                    </div>
-                    <span className="text-[7px] font-semibold tabular-nums leading-none"
-                      style={{ color: accentColor, opacity: 0.60 }}>
-                      {sLvl}
-                    </span>
-                  </div>
-
-                  {/* SVG circular progress ring */}
-                  <svg width="28" height="28" className="shrink-0 -mt-[1px]">
-                    <circle cx="14" cy="14" r={RING_R} fill="none"
-                      stroke={`${accentColor}18`} strokeWidth="2" />
-                    <motion.circle cx="14" cy="14" r={RING_R} fill="none"
-                      stroke={accentColor} strokeWidth="2" strokeLinecap="round"
-                      transform="rotate(-90 14 14)"
-                      initial={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC }}
-                      animate={{ strokeDasharray: RING_CIRC, strokeDashoffset: ringOffset }}
-                      transition={{ duration: 1.0, ease: "easeOut", delay: 0.32 + idx * 0.08 }}
-                      style={{ filter: `drop-shadow(0 0 3px ${accentColor}80)` }}
-                    />
-                  </svg>
-                </div>
-
-                {/* Title + sublabel + desc */}
-                <div>
-                  <p className="text-[11px] font-bold leading-tight tracking-tight"
-                    style={{ color: isDone ? "#22c55e" : cardTextCol }}>
-                    {dc.label}
-                  </p>
-                  <p className="text-[8px] leading-snug mt-[2px]"
-                    style={{ color: cardMutedCol }}>
-                    {sublabel}
-                  </p>
-                  <p className="text-[7px] leading-snug mt-[1px]"
-                    style={{ color: isNeonEmp ? "rgba(205,216,238,0.54)" : "rgba(140,155,180,0.65)" }}>
-                    {description}
-                  </p>
-                </div>
-
-                {/* Status hint */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className="text-[7px] font-bold uppercase tracking-[0.16em]"
-                    style={{ color: accentColor, opacity: isDone ? 0.9 : 0.48 }}
-                  >
-                    {statusLabel}
-                  </span>
-                  <span className="text-[11px] leading-none"
-                    style={{ color: accentColor, opacity: isLocked ? 0.22 : 0.40 }}>
-                    {isLocked ? "•" : "›"}
-                  </span>
-                </div>
-              </motion.button>
-            );
-          })}
-          </div>
-        </motion.div>
 
       </div>
     </SystemLayout>
