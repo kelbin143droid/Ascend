@@ -1,23 +1,14 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link, useLocation } from "wouter";
-import { Home, User, Target, Brain, Film, ImageIcon } from "lucide-react";
+import { Home, User, Target, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
 import { SidebarMenu } from "./SidebarMenu";
 import { DevPanel } from "./DevPanel";
 import { StreakCelebrationOverlay } from "./StreakCelebration";
-import ironSovereignBg from "@/assets/themes/iron_sovereign_starfield.png";
-import neonEmpressBg from "@/assets/themes/neon_empress_pastel.png";
-const pixelForestBg = "/pixel-forest-bg.png";
 
-const ANIMATED_BG_KEY = "ascend_bg_animated";
-const safeGetBool = (key: string) => {
-  try { return localStorage.getItem(key) === "1"; } catch { return false; }
-};
-const safeSetBool = (key: string, val: boolean) => {
-  try { localStorage.setItem(key, val ? "1" : "0"); } catch { /* noop */ }
-};
+const onboardingTestBg = "/videos/onboarding-test-bg.mp4";
 
 interface NavItem {
   icon: typeof Home;
@@ -38,27 +29,15 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
   const { t } = useLanguage();
   const colors = backgroundTheme.colors;
   const hasCustomBg = !!customBackgroundImage;
-  const isIronSovereign = backgroundTheme.id === "male" && !hasCustomBg;
-  const isNeonEmpress = backgroundTheme.id === "female" && !hasCustomBg;
-  const isPixelForest = backgroundTheme.id === "pixel_forest" && !hasCustomBg;
-  const usingThemeImage = isIronSovereign || isNeonEmpress || isPixelForest;
+  const usingVideoBg = !hasCustomBg;
 
-  const [animatedBg, setAnimatedBg] = useState<boolean>(() => safeGetBool(ANIMATED_BG_KEY));
-
-  function toggleAnimatedBg() {
-    setAnimatedBg((prev) => {
-      const next = !prev;
-      safeSetBool(ANIMATED_BG_KEY, next);
-      return next;
-    });
-  }
   // When the user uploaded a background OR a baked-in theme image is active,
   // dial down the layout's own overlays so the underlying image stays visible
   // instead of being painted over.
   const darkOverlayOpacity =
-    hasCustomBg || usingThemeImage ? 0 : (backgroundTheme.darkOverlayOpacity ?? 0.15);
+    hasCustomBg || usingVideoBg ? 0 : (backgroundTheme.darkOverlayOpacity ?? 0.15);
   const gridOpacity =
-    hasCustomBg || usingThemeImage ? 0 : (backgroundTheme.gridOpacity ?? 0.20);
+    hasCustomBg || usingVideoBg ? 0 : (backgroundTheme.gridOpacity ?? 0.20);
 
   return (
     <div
@@ -77,19 +56,19 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
       `}</style>
 
       {/* Dark atmospheric overlay — extra depth on image backgrounds so UI cards read clearly */}
-      {(usingThemeImage || hasCustomBg) && (
+      {(usingVideoBg || hasCustomBg) && (
         <div
           className="fixed inset-0 z-[2] pointer-events-none"
           style={{ background: "rgba(2,3,14,0.52)" }}
         />
       )}
 
-      {/* Background layer — static image / animated video / gradient */}
-      {(isIronSovereign || isNeonEmpress) && animatedBg ? (
+      {/* Background layer — test animated video / custom image / gradient */}
+      {usingVideoBg ? (
         <video
-          key="animated-bg"
+          key="onboarding-test-bg"
           className="fixed z-0 object-cover"
-          src={isIronSovereign ? "/videos/male_bg_animated.mp4" : "/videos/female_bg_animated.mp4"}
+          src={onboardingTestBg}
           autoPlay
           loop
           muted
@@ -116,30 +95,6 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",
                 }
-              : isPixelForest
-              ? {
-                  backgroundImage: `url(${pixelForestBg})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
-                  backgroundColor: "#03090f",
-                }
-              : isIronSovereign
-              ? {
-                  backgroundImage: `url(${ironSovereignBg})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center bottom",
-                  backgroundRepeat: "no-repeat",
-                  backgroundColor: "#000000",
-                }
-              : isNeonEmpress
-              ? {
-                  backgroundImage: `url(${neonEmpressBg})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
-                  backgroundColor: "#dde8f5",
-                }
               : { background: colors.backgroundGradient }
           }
         />
@@ -147,7 +102,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
       {/* Female theme — soft dreamy blobs (skipped when the pastel image
           background is active so the baked-in flowers/sparkles read clean). */}
-      {backgroundTheme.id === "female" && !isNeonEmpress && (
+      {backgroundTheme.id === "female" && !usingVideoBg && (
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           {[
             { w: 220, h: 180, top: "5%",  left: "5%",  color: "rgba(255,210,230,0.55)" },
@@ -185,7 +140,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
       <div
         className="fixed inset-0 z-10 pointer-events-none"
-        style={{ display: (usingThemeImage || hasCustomBg) ? "none" : undefined }}
+          style={{ display: (usingVideoBg || hasCustomBg) ? "none" : undefined }}
       >
         <div
           className="absolute inset-2 rounded-lg"
@@ -244,25 +199,6 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
           transition: "opacity 0.6s ease",
         }}
       />
-
-      {/* Animated background toggle — shown for Iron Sovereign (male) and Neon Empress (female) themes */}
-      {(isIronSovereign || isNeonEmpress) && (
-        <button
-          data-testid="button-toggle-animated-bg"
-          onClick={toggleAnimatedBg}
-          title={animatedBg ? "Switch to static background" : "Switch to animated background"}
-          className="fixed top-3.5 right-4 z-30 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95"
-          style={{
-            backgroundColor: animatedBg ? `${colors.primary}25` : `${colors.primary}10`,
-            border: `1px solid ${animatedBg ? colors.primary : `${colors.primary}40`}`,
-            color: animatedBg ? colors.primary : `${colors.primary}90`,
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          {animatedBg ? <Film size={11} /> : <ImageIcon size={11} />}
-          {animatedBg ? "Live" : "Static"}
-        </button>
-      )}
 
       <SidebarMenu />
 
