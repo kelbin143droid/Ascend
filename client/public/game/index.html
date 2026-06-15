@@ -218,7 +218,10 @@ const engine = new Engine(GODOT_CONFIG);
 	<!-- Injected by deploy-to-ascend.sh: animated "Entering Gate" loading screen.
      The Godot game removes #gate-loader once it's ready (see game_manager._ready). -->
 <style>
-#gate-loader{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;
+/* Hide Godot's native engine loading screen entirely — the gate replaces it. */
+#status,#status-splash,#status-progress,#status-notice{
+ display:none !important;visibility:hidden !important;opacity:0 !important}
+#gate-loader{position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;
  align-items:center;justify-content:center;overflow:hidden;
  background:radial-gradient(circle at 50% 42%,#0c1330 0%,#06080f 58%,#000 100%);
  font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;color:#cdd6ff;
