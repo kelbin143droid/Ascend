@@ -1351,43 +1351,55 @@ export default function SectographPage() {
         )}
 
         {activeTab === "sectograph" && <>
-        {/* ── COACH CARD — step 1 (add Sleep block) ────────────────── */}
+        {/* ── SYSTEM CARD — step 1 (add Sleep block) ────────────────── */}
         {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 1 && (
           <div
-            className="w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
-            style={{ backgroundColor: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.25)" }}
+            className="relative w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
+            style={{
+              background: "linear-gradient(135deg, rgba(8,21,42,0.96), rgba(13,40,72,0.90))",
+              border: `1.5px solid ${colors.primary}`,
+              boxShadow: `0 0 22px ${colors.primaryGlow}, inset 0 1px 0 rgba(255,255,255,0.08)`,
+            }}
             data-testid="tutorial-card-step1"
           >
-            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(59,130,246,0.15)" }}>
-              <Brain size={15} style={{ color: "#3b82f6" }} />
+            <div className="absolute left-1/2 top-full h-5 w-px -translate-x-1/2" style={{ background: `linear-gradient(180deg, ${colors.primary}, transparent)` }} />
+            <div className="absolute left-1/2 top-[calc(100%+15px)] h-2.5 w-2.5 -translate-x-1/2 rotate-45" style={{ borderRight: `2px solid ${colors.primary}`, borderBottom: `2px solid ${colors.primary}` }} />
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${colors.primary}24`, border: `1px solid ${colors.primary}55` }}>
+              <Sparkles size={14} style={{ color: colors.primary }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] uppercase tracking-[0.18em] font-bold" style={{ color: "rgba(59,130,246,0.8)" }}>Coach · 1/2</p>
-              <p className="text-sm font-semibold leading-tight truncate" style={{ color: colors.text }}>
-                Sleep block · Tap + in the clock center
+              <p className="text-[9px] uppercase tracking-[0.2em] font-bold" style={{ color: colors.primary }}>System · 1/2</p>
+              <p className="text-[13px] font-semibold leading-tight" style={{ color: colors.text }}>
+                Tap ADD BLOCK to add Sleep to the Sectograph.
               </p>
             </div>
-            <Moon size={16} style={{ color: "#6b88b0" }} />
+            <Moon size={16} style={{ color: colors.primary }} />
           </div>
         )}
 
-        {/* ── COACH CARD — step 2 (add Daily Quest block) ──────────── */}
+        {/* ── SYSTEM CARD — step 2 (add Daily Quest block) ──────────── */}
         {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 2 && (
           <div
-            className="w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
-            style={{ backgroundColor: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)" }}
+            className="relative w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
+            style={{
+              background: "linear-gradient(135deg, rgba(22,13,48,0.96), rgba(50,22,84,0.90))",
+              border: "1.5px solid rgba(168,85,247,0.88)",
+              boxShadow: "0 0 22px rgba(168,85,247,0.42), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
             data-testid="tutorial-card-step2"
           >
-            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(168,85,247,0.15)" }}>
-              <Brain size={15} style={{ color: "#a855f7" }} />
+            <div className="absolute left-1/2 top-full h-5 w-px -translate-x-1/2" style={{ background: "linear-gradient(180deg, rgba(168,85,247,0.95), transparent)" }} />
+            <div className="absolute left-1/2 top-[calc(100%+15px)] h-2.5 w-2.5 -translate-x-1/2 rotate-45" style={{ borderRight: "2px solid rgba(168,85,247,0.95)", borderBottom: "2px solid rgba(168,85,247,0.95)" }} />
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(168,85,247,0.20)", border: "1px solid rgba(168,85,247,0.45)" }}>
+              <Sparkles size={14} style={{ color: "#c084fc" }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] uppercase tracking-[0.18em] font-bold" style={{ color: "rgba(168,85,247,0.8)" }}>Coach · 2/2</p>
-              <p className="text-sm font-semibold leading-tight truncate" style={{ color: colors.text }}>
-                Daily Quest · Tap + in the clock center
+              <p className="text-[9px] uppercase tracking-[0.2em] font-bold" style={{ color: "#c084fc" }}>System · 2/2</p>
+              <p className="text-[13px] font-semibold leading-tight" style={{ color: colors.text }}>
+                Tap ADD BLOCK to add Daily Quest to the Sectograph.
               </p>
             </div>
-            <Zap size={16} style={{ color: "#a855f7" }} />
+            <Zap size={16} style={{ color: "#c084fc" }} />
           </div>
         )}
 
@@ -1488,7 +1500,11 @@ export default function SectographPage() {
                 focusBlock={null}
                 rhythmWindows={rhythmWindows}
                 suggestedPlacements={placementSuggestions}
-                highlightCenter={day5Step === 1 || (isVitalityMode && vitalityIntroSeen && vitalityStep < 3)}
+                highlightCenter={
+                  day5Step === 1 ||
+                  (isVitalityMode && vitalityIntroSeen && vitalityStep < 3) ||
+                  (!isDay5Mode && !isVitalityMode && !tutorialDone && (tutorialStep === 1 || tutorialStep === 2))
+                }
                 currentBlockId={currentBlock?.id ?? null}
                 onCenterClick={() => {
                   if (!isDay5Mode && !tutorialDone && tutorialStep === 0) {
