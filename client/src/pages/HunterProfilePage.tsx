@@ -80,10 +80,20 @@ const CSS = `
 }
 .hp-root .phone {
   width:100%; max-width:470px;
-  background:linear-gradient(180deg,#060c1a 0%,#04070f 100%);
+  background:
+    linear-gradient(180deg, rgba(2,7,16,.1) 0%, rgba(2,7,16,.26) 42%, rgba(2,6,14,.82) 100%),
+    url("/hunter-profile-bg.jpg") center top / cover no-repeat,
+    #04070f;
   border:1px solid rgba(76,170,255,0.12);
   border-top:none; position:relative; overflow:hidden;
   box-shadow:0 40px 120px rgba(0,0,0,0.7),0 0 60px rgba(76,194,255,0.08);
+}
+.hp-root .phone::after {
+  content:""; position:absolute; inset:0;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(76,194,255,.12), transparent 34%),
+    linear-gradient(90deg, rgba(1,4,10,.72), transparent 24%, transparent 76%, rgba(1,4,10,.72));
+  pointer-events:none; z-index:0;
 }
 .hp-root .phone::before {
   content:""; position:absolute; inset:0;
