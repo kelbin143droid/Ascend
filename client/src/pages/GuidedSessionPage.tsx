@@ -638,7 +638,6 @@ export default function GuidedSessionPage() {
   // Light Movement uses the video-guided engine instead of the generic session page
   if (sessionId === "light-movement" && player?.id) {
     const pathCfg = getPathFlowConfig(getWorkoutLevel());
-    const tutorialSequenceActive = homeData?.isOnboardingComplete !== true;
     const handleLightMovementComplete = async (xpEarned: number = PHASE1_XP.agility) => {
       await queryClient.refetchQueries({ queryKey: ["home", player.id] });
       // Always write both IDs so the dashboard tracks Agility as complete
@@ -658,11 +657,11 @@ export default function GuidedSessionPage() {
           },
         }));
       } catch { /* noop */ }
-      if (pathCfg.includesStrength && !tutorialSequenceActive) {
-        // Build/Evolve/Ascend continue directly into their strength circuit.
+      if (pathCfg.includesStrength) {
+        // Continue into the physical circuit before returning home for Intel.
         setLocation("/?autostart=strength");
       } else {
-        // During onboarding, returning home makes Intel the next step.
+        // Foundation paths without strength return home so Intel becomes the next step.
         setLocation("/");
       }
     };
@@ -672,7 +671,7 @@ export default function GuidedSessionPage() {
         playerId={player.id}
         onComplete={handleLightMovementComplete}
         onCancel={() => setLocation("/")}
-        nextLabel={pathCfg.includesStrength && !tutorialSequenceActive ? "Physical Circuit" : "Intel"}
+        nextLabel={pathCfg.includesStrength ? "Physical Circuit" : "Intel"}
       />
     );
   }

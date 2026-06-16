@@ -190,7 +190,7 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
   const [xpClaimed, setXpClaimed] = useState(false);
   const [paused, setPaused] = useState(false);
   const [bowEnded, setBowEnded] = useState(false);
-  const [earnedXp, setEarnedXp] = useState<number>(15);
+  const [earnedXp, setEarnedXp] = useState<number>(XP_REWARD);
   const [saveError, setSaveError] = useState(false);
   const bowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasCompletedRef = useRef(false);
@@ -716,16 +716,16 @@ export function LightMovementEngine({ playerId, onComplete, onCancel, nextLabel,
             >
               <div className="flex items-center gap-2 mb-1">
                 <CheckCircle2 size={20} style={{ color: COLOR }} />
-                <span className="text-white font-bold text-lg">Circuit Complete</span>
+                <span className="text-white font-bold text-lg">Agility Complete</span>
               </div>
               <div className="text-white/90 text-sm font-medium">
-                All 8 exercises done. Your body thanks you.
+                Mobility flow complete. Your body is awake.
               </div>
               <div
                 className="text-center font-bold text-2xl tracking-wide"
                 style={{ color: COLOR }}
               >
-                +{earnedXp} XP
+                Agility earned +{earnedXp} XP
               </div>
               {saveError && (
                 <p className="text-center text-xs font-semibold text-red-300">

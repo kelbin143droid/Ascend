@@ -124,26 +124,56 @@ const DAILY_INTEL_READS = [
     title: "The 2-Minute Start",
     topic: "Action beats motivation.",
     prompt: "Pick the smallest visible step. Do it before judging your energy.",
+    body: [
+      "Motivation is useful, but it is unreliable. It rises after sleep, food, music, pressure, or a good mood, then disappears when life gets noisy. A stronger system does not wait for motivation first. It starts with a small action that is easy enough to do even when the mood is average.",
+      "The two-minute start works because it lowers the cost of beginning. You are not promising a perfect workout, a flawless study block, or a transformed life. You are only asking yourself to enter the room, open the page, put on the shoes, or complete the first clean rep.",
+      "Once the first action is done, your brain gets new evidence: I am moving. That evidence often creates the energy you were waiting for. Momentum is not something you find. Most days, it is something you trigger.",
+      "Today, choose one action so small it feels almost too easy. Do it before negotiating with yourself. The win is not the size of the action. The win is proving that your system can start on command.",
+    ],
   },
   {
     title: "Protect Your Attention",
     topic: "Focus is trained by subtraction.",
     prompt: "Remove one distraction before you begin. Less noise, better effort.",
+    body: [
+      "Most people try to focus by adding more pressure: more reminders, more discipline, more self-talk. But attention usually improves faster when you remove something. A quiet surface, a hidden phone, one closed tab, or a simple timer can do more than another motivational speech.",
+      "Your mind follows friction. If distraction is one tap away, your brain will keep checking for escape routes. If the next useful action is already visible, it becomes easier to stay with the work. The environment starts making the better choice feel normal.",
+      "Before a focus session, do a quick subtraction scan. What can you remove for the next few minutes? A notification, a messy object, a second screen, a song with lyrics, or an open app can all leak energy.",
+      "Focus is not a personality trait. It is a trained state. Protect the first few minutes, and the rest of the session has a better chance of becoming real.",
+    ],
   },
   {
     title: "Identity Reps",
     topic: "You become what you repeat.",
     prompt: "One clean rep matters. Make the next action match the person you are building.",
+    body: [
+      "Identity is built through repeated evidence. Every completed task becomes a small vote for the kind of person you believe you are. One vote will not change everything, but repeated votes become hard to ignore.",
+      "This is why tiny actions matter. A short reset, a mobility session, a logged sleep plan, or a few focused pages all create proof. The action tells your mind: I am someone who returns. I am someone who trains. I am someone who keeps promises at a realistic size.",
+      "The goal is not to pretend you are already perfect. The goal is to act in a way that makes the next version of you easier to believe in. Confidence grows when your behavior and your desired identity start matching.",
+      "For today, pick one clean rep. Do it with full attention. Then let that evidence count.",
+    ],
   },
   {
     title: "Recovery Is Strategy",
     topic: "Rest keeps the system online.",
     prompt: "Progress is not only push. Protect sleep, hydration, and calm.",
+    body: [
+      "Recovery is not the opposite of progress. It is part of the machinery that makes progress possible. A tired system can still force action for a while, but it becomes more expensive: more cravings, more avoidance, more emotional noise, and less patience.",
+      "Good recovery does not need to be dramatic. It can start with a sleep window, a water bottle, a calmer evening, or a short breath reset before the next decision. These actions protect the baseline that your future effort depends on.",
+      "When recovery is ignored, discipline has to carry too much weight. When recovery is planned, discipline gets support. You are no longer trying to win the day with willpower alone.",
+      "Today, treat one recovery action as training. Schedule it, complete it, and notice how much easier tomorrow becomes when the system is not running on fumes.",
+    ],
   },
   {
     title: "Reduce the Friction",
     topic: "Environment beats willpower.",
     prompt: "Make the good action easier to start and the bad action harder to reach.",
+    body: [
+      "Willpower is valuable, but it should not be your only tool. The better strategy is to design your surroundings so the right action is easier to begin. When the path is clear, you spend less energy convincing yourself.",
+      "Friction can be tiny and still powerful. Shoes by the door, a book on the desk, a pre-written task list, a prepared meal, or a blocked app can change what happens when your energy dips.",
+      "The reverse is also true. If the habit you want to avoid is effortless, it will keep winning when you are tired. Add a little distance. Put it out of sight. Add one extra step between impulse and action.",
+      "Today, change one piece of your environment. Do not rely on a future version of yourself to be stronger. Make the better choice easier for that version to find.",
+    ],
   },
 ];
 
@@ -159,20 +189,17 @@ function buildIntelReadCopy(mode: IntelReadMode, recommended: ReturnType<typeof 
       title: `Read on ${chosenTopic}`,
       eyebrow: "Your chosen topic",
       paragraphs: [
-        `For the next few minutes, look for one idea about ${chosenTopic} that you can test today.`,
-        "Do not try to master the whole subject. Your goal is to leave with one useful sentence, one practical action, or one sharper question.",
-        "When the timer ends, decide whether to keep reading or complete the Intel task and return to your system.",
+        `For the next few minutes, read with one target: find a single useful idea about ${chosenTopic} that you can test today.`,
+        "Start by looking for a principle, not a perfect answer. A principle is a sentence that changes what you do next: make it easier to start, protect your attention, recover before you crash, or repeat the behavior you want to become normal.",
+        `As you read, ask: what is one action that would make ${chosenTopic} visible in my day? It could be a two-minute start, a note to yourself, one avoided distraction, or a better evening setup.`,
+        "Do not try to master the whole subject in one sitting. Leave with one useful sentence, one practical action, or one sharper question. That is enough for today's Intel rep.",
       ],
     };
   }
   return {
     title: recommended.title,
     eyebrow: "Recommended read",
-    paragraphs: [
-      recommended.topic,
-      recommended.prompt,
-      "The point is not to collect more motivation. The point is to convert one idea into a visible action today.",
-    ],
+    paragraphs: recommended.body,
   };
 }
 
@@ -266,9 +293,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const pathCfg    = getPathFlowConfig(wlevel);
   const pathRec    = getPathAwareRecommendation(wlevel);
   const recommendedIntelRead = useMemo(() => dailyIntelRead(), []);
-  const tutorialSequenceActive = !homeData.isOnboardingComplete;
-  const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers })
-    .filter((activity) => !(tutorialSequenceActive && activity.id === "phase1_strength"));
+  const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers });
   const totalMins  = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
   // XP
