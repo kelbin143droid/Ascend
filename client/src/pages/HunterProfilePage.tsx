@@ -1,5 +1,6 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
 import { Canvas } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
@@ -557,6 +558,7 @@ CLASS_MODEL_PATHS.forEach((src) => useGLTF.preload(src));
 // ── Component ─────────────────────────────────────────────────────────────
 export default function HunterProfilePage() {
   const { player } = useGame();
+  const queryClient = useQueryClient();
   const [, navigate] = useLocation();
 
   const [data,            setData]            = useState<PlayerData | null>(null);
@@ -668,17 +670,28 @@ export default function HunterProfilePage() {
   // ── Class picker ─────────────────────────────────────────────────────────
   async function confirmClass() {
     if (pickedClass === null || !data || !player?.id) return;
+    const optimisticJob = data.classes[pickedClass]?.name ?? "WARRIOR";
     // Optimistically update UI immediately
     setChosenClass(pickedClass);
     setShowPicker(false);
     setShowStatIntro(true);
+    queryClient.setQueryData(["/api/player", player.id], (current: any) =>
+      current ? { ...current, job: optimisticJob } : current
+    );
     // Persist to server — idempotent, so safe to call even if already set
     try {
-      await fetch(`/api/player/${player.id}/choose-class`, {
+      const resp = await fetch(`/api/player/${player.id}/choose-class`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ classIndex: pickedClass }),
       });
+      const saved = await resp.json();
+      if (resp.ok && saved?.job) {
+        queryClient.setQueryData(["/api/player", player.id], (current: any) =>
+          current ? { ...current, job: saved.job } : current
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/player", player.id] });
     } catch {
       // UI already updated; failure is silent — next load will re-sync from server
     }

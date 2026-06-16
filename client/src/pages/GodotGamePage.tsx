@@ -16,8 +16,36 @@ import {
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
+type GameClassId = "warrior" | "mage" | "assassin" | "archer";
+type GameClassPayload = {
+  id: GameClassId;
+  name: string;
+  job: string;
+  index: number;
+};
 type GameStats = { STR: number; AGI: number; VIT: number; SEN: number; INT: number; DIS: number };
-type GameStatsPayload = GameStats & { items: ConsumableInventory };
+type GameStatsPayload = GameStats & {
+  items: ConsumableInventory;
+  classId: GameClassId;
+  characterClass: GameClassId;
+  className: string;
+  job: string;
+};
+
+const CLASS_BY_JOB: Record<string, GameClassPayload> = {
+  WARRIOR: { id: "warrior", name: "Warrior", job: "WARRIOR", index: 0 },
+  SAGE: { id: "mage", name: "Mage", job: "SAGE", index: 1 },
+  MAGE: { id: "mage", name: "Mage", job: "SAGE", index: 1 },
+  SHADOW: { id: "assassin", name: "Assassin", job: "SHADOW", index: 2 },
+  ASSASSIN: { id: "assassin", name: "Assassin", job: "SHADOW", index: 2 },
+  WARDEN: { id: "archer", name: "Archer", job: "WARDEN", index: 3 },
+  ARCHER: { id: "archer", name: "Archer", job: "WARDEN", index: 3 },
+};
+
+function buildPlayerClass(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameClassPayload {
+  const job = String(player.job || "").toUpperCase();
+  return CLASS_BY_JOB[job] ?? CLASS_BY_JOB.WARRIOR;
+}
 
 function buildStats(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameStats {
   const s = (player.stats ?? {}) as Record<string, number>;
@@ -58,12 +86,34 @@ function buildEquipment(player: NonNullable<ReturnType<typeof useGame>["player"]
 }
 
 function buildStatsPayload(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameStatsPayload {
-  return { ...buildStats(player), items: getOwnedConsumables() };
+  const playerClass = buildPlayerClass(player);
+  return {
+    ...buildStats(player),
+    items: getOwnedConsumables(),
+    classId: playerClass.id,
+    characterClass: playerClass.id,
+    className: playerClass.name,
+    job: playerClass.job,
+  };
 }
 
 function buildLoadoutEquipment(player: NonNullable<ReturnType<typeof useGame>["player"]>): GodotEquipment {
   const ownedGear = getOwnedGear();
   return Object.keys(ownedGear).length > 0 ? ownedGear : buildEquipment(player);
+}
+
+function buildDungeonConfig(config: ActiveDungeonConfig, player: NonNullable<ReturnType<typeof useGame>["player"]>) {
+  const playerClass = buildPlayerClass(player);
+  return {
+    dungeon: config.dungeon,
+    rank: config.rank,
+    waves: config.waves,
+    classId: playerClass.id,
+    characterClass: playerClass.id,
+    className: playerClass.name,
+    job: playerClass.job,
+    classIndex: playerClass.index,
+  };
 }
 
 // ── Dungeon config type (written to localStorage by WorldMapPage) ─────────────
@@ -226,6 +276,14 @@ export default function GodotGamePage() {
     return () => window.removeEventListener("ascend:equipment-updated", handler);
   }, []);
 
+  const sendPlayerClass = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow || !readyRef.current || !player) return;
+    iframe.contentWindow.postMessage({ type: "SET_CLASS", class: buildPlayerClass(player) }, "*");
+  }, [player]);
+
+  useEffect(() => { if (readyRef.current) sendPlayerClass(); }, [sendPlayerClass]);
+
   // ── postMessage handler (GODOT_READY / RUN_RESULT) ─────────────────────────
   useEffect(() => {
     if (!player?.id) return;
@@ -249,7 +307,8 @@ export default function GodotGamePage() {
         if (player && iframe?.contentWindow) {
           // 1. Power layer + consumables
           iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
-          // 2. Visual/loadout layer
+          // 2. Class + visual/loadout layer
+          iframe.contentWindow.postMessage({ type: "SET_CLASS", class: buildPlayerClass(player) }, "*");
           iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
           // 3. Dungeon config — if launched from the world map
           const raw = localStorage.getItem(ACTIVE_DUNGEON_KEY);
@@ -257,9 +316,10 @@ export default function GodotGamePage() {
             try {
               const config = JSON.parse(raw) as ActiveDungeonConfig;
               iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
+              iframe.contentWindow.postMessage({ type: "SET_CLASS", class: buildPlayerClass(player) }, "*");
               iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
               iframe.contentWindow.postMessage(
-                { type: "START_DUNGEON", config: { dungeon: config.dungeon, rank: config.rank, waves: config.waves } },
+                { type: "START_DUNGEON", config: buildDungeonConfig(config, player) },
                 "*",
               );
             } catch {/* malformed — ignore */}
