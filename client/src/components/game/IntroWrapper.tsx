@@ -332,16 +332,16 @@ function FirstResetScreen({
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/10 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#020711] to-transparent" />
 
-      <div className="relative z-10 flex max-h-full w-full max-w-[430px] flex-col overflow-y-auto text-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="relative z-10 flex max-h-full w-full max-w-[430px] flex-col overflow-hidden text-center">
         <motion.div
-          className="mx-auto mb-5 flex h-[86px] w-[86px] items-center justify-center rounded-full border border-cyan-100/45 bg-white/10 shadow-[inset_0_1px_18px_rgba(255,255,255,0.18)] backdrop-blur-xl"
+          className="mx-auto mb-3 flex h-[64px] w-[64px] items-center justify-center rounded-full border border-cyan-100/45 bg-white/10 shadow-[inset_0_1px_18px_rgba(255,255,255,0.18)] backdrop-blur-xl min-[390px]:h-[74px] min-[390px]:w-[74px]"
           animate={{ boxShadow: ["0 0 28px rgba(186,243,255,0.18), inset 0 1px 18px rgba(255,255,255,0.18)", "0 0 58px rgba(186,243,255,0.42), inset 0 1px 22px rgba(255,255,255,0.24)", "0 0 28px rgba(186,243,255,0.18), inset 0 1px 18px rgba(255,255,255,0.18)"] }}
           transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
         >
           {phase === "reward" ? <CheckCircle2 className="text-emerald-200 drop-shadow-[0_0_12px_rgba(110,231,183,0.65)]" size={36} /> : <Wind className="text-cyan-100 drop-shadow-[0_0_12px_rgba(186,243,255,0.7)]" size={36} />}
         </motion.div>
 
-        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.42em] text-cyan-100/70">
+        <p className="mb-2 text-[10px] font-black uppercase tracking-[0.38em] text-cyan-100/70">
           First Quest
         </p>
 
@@ -369,17 +369,17 @@ function FirstResetScreen({
           </>
         ) : (
           <>
-            <h1 className="mb-4 text-[38px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[44px]">
+            <h1 className="mb-3 text-[33px] font-black uppercase leading-[0.98] tracking-[0.06em] text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)] min-[390px]:text-[38px]">
               30-Second Reset
             </h1>
-            <p className="mx-auto mb-6 max-w-[350px] text-[17px] font-bold leading-6 text-yellow-200 drop-shadow-[0_0_12px_rgba(250,204,21,0.26)]">
+            <p className="mx-auto mb-4 max-w-[330px] text-[14px] font-bold leading-5 text-yellow-200 drop-shadow-[0_0_12px_rgba(250,204,21,0.26)] min-[390px]:text-[15px]">
               Press Start, then breathe with the pulse until the timer ends.
             </p>
 
-            <div className={`relative mb-6 overflow-hidden rounded-[30px] border border-white/10 bg-slate-200/[0.025] px-4 shadow-[0_18px_54px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-sm ${isActive ? "min-h-[380px] py-5" : "min-h-[280px] py-5"}`}>
+            <div className={`relative mb-4 overflow-hidden rounded-[28px] border border-white/10 bg-slate-200/[0.025] px-4 shadow-[0_18px_54px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-sm ${isActive ? "min-h-[350px] py-4" : "min-h-[230px] py-3.5 min-[390px]:min-h-[250px]"}`}>
               <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
 
-              <div className="absolute right-4 top-4 z-20 rounded-full border border-white/10 bg-slate-200/[0.035] px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+              <div className="absolute right-3 top-3 z-20 rounded-full border border-white/10 bg-slate-200/[0.035] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
                 Voice On
               </div>
 
@@ -395,8 +395,8 @@ function FirstResetScreen({
                 </motion.p>
               )}
 
-              <div className={`relative mx-auto flex w-full max-w-[290px] items-center justify-center ${isActive ? "mb-2 mt-0 h-[158px]" : "mt-8 h-[220px]"}`}>
-                <svg className={`absolute overflow-visible ${isActive ? "h-[188px] w-[188px]" : "h-[226px] w-[226px]"}`} viewBox="0 0 250 250" aria-hidden="true">
+              <div className={`relative mx-auto flex w-full max-w-[260px] items-center justify-center ${isActive ? "mb-2 mt-0 h-[150px]" : "mt-6 h-[178px] min-[390px]:h-[198px]"}`}>
+                <svg className={`absolute overflow-visible ${isActive ? "h-[188px] w-[188px]" : "h-[190px] w-[190px] min-[390px]:h-[208px] min-[390px]:w-[208px]"}`} viewBox="0 0 250 250" aria-hidden="true">
                   <defs>
                     <linearGradient id="first-reset-ring" x1="0" y1="0" x2="1" y2="1">
                       <stop offset="0%" stopColor="#cffafe" />
@@ -448,8 +448,8 @@ function FirstResetScreen({
                   animate={{ scale: isActive ? breathState.scale : 0.82 }}
                   transition={{ duration: 0.75, ease: [0.22, 0.61, 0.36, 1] }}
                   style={{
-                    width: isActive ? 126 : 148,
-                    height: isActive ? 126 : 148,
+                    width: isActive ? 126 : 132,
+                    height: isActive ? 126 : 132,
                     background: `radial-gradient(circle at 50% 28%, rgba(255,255,255,0.24) 0%, ${phaseColor}38 28%, ${phaseColor}16 56%, rgba(2,7,17,0.44) 100%)`,
                     border: `2px solid ${phaseColor}55`,
                     boxShadow: `0 0 62px ${phaseColor}2b, inset 0 0 38px ${phaseColor}19, inset 0 1px 22px rgba(255,255,255,0.14)`,
@@ -466,10 +466,10 @@ function FirstResetScreen({
                   >
                     {isActive ? breathLabel : "Ready"}
                   </motion.span>
-                  <span className={`${isActive ? "mt-1 text-[54px]" : "mt-2 text-[64px]"} font-black leading-none tabular-nums text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)]`}>
+                  <span className={`${isActive ? "mt-1 text-[54px]" : "mt-1.5 text-[56px]"} font-black leading-none tabular-nums text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.18)]`}>
                     {isActive ? breathState.secondsLeft : remaining}
                   </span>
-                  <span className={`${isActive ? "mt-2 text-[10px]" : "mt-3 text-[12px]"} font-black uppercase tracking-[0.28em] text-white/36`}>
+                  <span className={`${isActive ? "mt-2 text-[10px]" : "mt-2 text-[10px]"} font-black uppercase tracking-[0.28em] text-white/36`}>
                     {isActive ? "phase" : "seconds"}
                   </span>
                 </div>
@@ -498,9 +498,9 @@ function FirstResetScreen({
             <button
               onClick={startReset}
               disabled={isActive}
-              className="group relative flex min-h-[68px] w-full items-center justify-center overflow-hidden rounded-[34px] border-2 border-cyan-100/44 bg-slate-200/[0.035] px-5 py-4 text-[12px] font-black uppercase tracking-[0.28em] text-white shadow-[0_0_24px_rgba(186,243,255,0.15),inset_0_0_12px_rgba(186,243,255,0.04)] backdrop-blur-sm transition hover:border-cyan-100/62 hover:bg-slate-200/[0.06] hover:shadow-[0_0_34px_rgba(186,243,255,0.22),inset_0_0_16px_rgba(186,243,255,0.06)] disabled:cursor-default"
+              className="group relative flex min-h-[54px] w-full items-center justify-center overflow-hidden rounded-[28px] border-2 border-cyan-100/44 bg-slate-200/[0.035] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white shadow-[0_0_24px_rgba(186,243,255,0.15),inset_0_0_12px_rgba(186,243,255,0.04)] backdrop-blur-sm transition hover:border-cyan-100/62 hover:bg-slate-200/[0.06] hover:shadow-[0_0_34px_rgba(186,243,255,0.22),inset_0_0_16px_rgba(186,243,255,0.06)] disabled:cursor-default"
             >
-              <span className="pointer-events-none absolute inset-[7px] rounded-[26px] border border-cyan-100/20" />
+              <span className="pointer-events-none absolute inset-[6px] rounded-[22px] border border-cyan-100/20" />
               <span className="pointer-events-none absolute inset-x-4 top-3 h-5 rounded-full bg-gradient-to-b from-white/8 to-transparent blur-[1px]" />
               <span className="pointer-events-none absolute -left-12 top-0 h-full w-32 rotate-[-18deg] bg-gradient-to-r from-transparent via-white/5 to-transparent transition group-hover:translate-x-8" />
               <span className="pointer-events-none absolute inset-x-14 top-1/2 h-10 -translate-y-1/2 rounded-full bg-cyan-100/6 blur-xl" />

@@ -112,12 +112,12 @@ type SleepQuality = "great" | "ok" | "rough";
 
 const DAILY_INTEL_READS = [
   {
-    title: "The 2-Minute Start",
+    title: "The 1-Minute Start",
     topic: "Action beats motivation.",
     prompt: "Pick the smallest visible step. Do it before judging your energy.",
     body: [
       "Motivation is useful, but it is unreliable. It rises after sleep, food, music, pressure, or a good mood, then disappears when life gets noisy. A stronger system does not wait for motivation first. It starts with a small action that is easy enough to do even when the mood is average.",
-      "The two-minute start works because it lowers the cost of beginning. You are not promising a perfect workout, a flawless study block, or a transformed life. You are only asking yourself to enter the room, open the page, put on the shoes, or complete the first clean rep.",
+      "The one-minute start works because it lowers the cost of beginning. You are not promising a perfect workout, a flawless study block, or a transformed life. You are only asking yourself to enter the room, open the page, put on the shoes, or complete the first clean rep.",
       "Once the first action is done, your brain gets new evidence: I am moving. That evidence often creates the energy you were waiting for. Momentum is not something you find. Most days, it is something you trigger.",
       "Today, choose one action so small it feels almost too easy. Do it before negotiating with yourself. The win is not the size of the action. The win is proving that your system can start on command.",
     ],
@@ -182,7 +182,7 @@ function buildIntelReadCopy(mode: IntelReadMode, recommended: ReturnType<typeof 
       paragraphs: [
         `For the next few minutes, read with one target: find a single useful idea about ${chosenTopic} that you can test today.`,
         "Start by looking for a principle, not a perfect answer. A principle is a sentence that changes what you do next: make it easier to start, protect your attention, recover before you crash, or repeat the behavior you want to become normal.",
-        `As you read, ask: what is one action that would make ${chosenTopic} visible in my day? It could be a two-minute start, a note to yourself, one avoided distraction, or a better evening setup.`,
+        `As you read, ask: what is one action that would make ${chosenTopic} visible in my day? It could be a one-minute start, a note to yourself, one avoided distraction, or a better evening setup.`,
         "Do not try to master the whole subject in one sitting. Leave with one useful sentence, one practical action, or one sharper question. That is enough for today's Intel rep.",
       ],
     };
@@ -617,7 +617,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               }}
               data-testid="intelligence-quest-modal"
             >
-              <div className="relative px-6 pt-6 pb-5">
+              <div className="relative px-5 pt-5 pb-4">
                 <button
                   type="button"
                   onClick={closeIntelReader}
@@ -629,7 +629,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   <X size={16} />
                 </button>
                 <div
-                  className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl"
+                  className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl"
                   style={{
                     background: "rgba(56,189,248,0.14)",
                     border: "1px solid rgba(56,189,248,0.32)",
@@ -637,33 +637,33 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     boxShadow: "0 0 22px rgba(56,189,248,0.20)",
                   }}
                 >
-                  <BookOpen size={22} />
+                  <BookOpen size={19} />
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: "#38bdf8" }}>
                   Intel · 1 min
                 </p>
-                <h2 className="mt-2 text-[24px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
+                <h2 className="mt-2 text-[21px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
                   {intelReadingView ? intelReadCopy.title : "Read one useful idea."}
                 </h2>
-                <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgba(203,213,225,0.72)" }}>
+                <p className="mt-1.5 text-[12px] leading-snug" style={{ color: "rgba(203,213,225,0.72)" }}>
                   {intelReadingView ? "Read until the timer ends. Then continue reading or complete the task." : "Choose a topic. Start the read. Finish with one useful idea."}
                 </p>
 
                 <div
-                  className="mt-4 rounded-2xl px-4 py-3 text-center"
+                  className="mt-3 rounded-2xl px-4 py-2.5 text-center"
                   style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.16)" }}
                 >
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(125,211,252,0.70)" }}>
                     Reading timer
                   </p>
-                  <p className="mt-1 text-[32px] font-black tabular-nums leading-none" style={{ color: "#e0f2fe" }}>
+                  <p className="mt-1 text-[28px] font-black tabular-nums leading-none" style={{ color: "#e0f2fe" }}>
                     {formatReadTimer(intelSecondsLeft)}
                   </p>
                 </div>
 
                 {!intelReadingView ? (
                   <>
-                    <div className="mt-5 grid grid-cols-2 gap-2">
+                    <div className="mt-3 grid grid-cols-2 gap-2">
                       {([
                         ["recommended", "Recommended"],
                         ["custom", "Choose topic"],
@@ -675,7 +675,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                             type="button"
                             onClick={() => !intelReadStarted && setIntelReadMode(mode)}
                             disabled={intelReadStarted}
-                            className="rounded-2xl px-3 py-3 text-[12px] font-bold disabled:opacity-70"
+                            className="rounded-2xl px-3 py-2.5 text-[12px] font-bold disabled:opacity-70"
                             style={{
                               background: active ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.045)",
                               border: `1px solid ${active ? "rgba(56,189,248,0.42)" : "rgba(255,255,255,0.08)"}`,
@@ -690,7 +690,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     </div>
 
                     <div
-                      className="mt-4 rounded-2xl px-4 py-4"
+                      className="mt-3 rounded-2xl px-4 py-3"
                       style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}
                     >
                       {intelReadMode === "recommended" ? (
@@ -698,10 +698,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                           <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: "#38bdf8" }}>
                             Recommended read
                           </p>
-                          <h3 className="mt-2 text-[17px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.95)" }}>
+                          <h3 className="mt-1.5 text-[15px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.95)" }}>
                             {recommendedIntelRead.title}
                           </h3>
-                          <p className="mt-2 text-[12px] font-semibold leading-snug" style={{ color: "rgba(226,232,240,0.86)" }}>
+                          <p className="mt-1 text-[11px] font-semibold leading-snug" style={{ color: "rgba(226,232,240,0.86)" }}>
                             {recommendedIntelRead.topic}
                           </p>
                         </>
@@ -715,7 +715,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                             onChange={(e) => setCustomIntelTopic(e.target.value)}
                             disabled={intelReadStarted}
                             placeholder="Example: discipline, confidence, focus"
-                            className="mt-3 w-full rounded-xl px-3 py-3 text-[13px] outline-none disabled:opacity-80"
+                            className="mt-2 w-full rounded-xl px-3 py-2.5 text-[13px] outline-none disabled:opacity-80"
                             style={{
                               background: "rgba(2,6,18,0.42)",
                               border: "1px solid rgba(148,163,184,0.18)",
@@ -723,7 +723,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                             }}
                             data-testid="input-custom-intel-topic"
                           />
-                          <p className="mt-2 text-[12px] leading-snug" style={{ color: "rgba(203,213,225,0.64)" }}>
+                          <p className="mt-1.5 text-[11px] leading-snug" style={{ color: "rgba(203,213,225,0.64)" }}>
                             Read anything useful on this topic until the timer ends.
                           </p>
                         </>
@@ -753,7 +753,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   <button
                     type="button"
                     onClick={startIntelRead}
-                    className="mt-5 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold"
+                    className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold"
                     style={{
                       background: "linear-gradient(90deg, #2563eb, #38bdf8, #7c3aed)",
                       color: "#fff",
