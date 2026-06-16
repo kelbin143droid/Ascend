@@ -201,6 +201,7 @@ interface SectographProps {
   rhythmWindows?: RhythmWindowVisual[];
   suggestedPlacements?: SuggestedPlacement[];
   highlightCenter?: boolean;
+  tutorialFocusCenter?: boolean;
   currentBlockId?: string | null;
   onCenterClick?: () => void;
   onBlockClick?: (block: ScheduleBlock) => void;
@@ -217,6 +218,7 @@ export function Sectograph({
   rhythmWindows = [],
   suggestedPlacements = [],
   highlightCenter = false,
+  tutorialFocusCenter = false,
   currentBlockId = null,
   onCenterClick,
   onBlockClick,
@@ -710,7 +712,7 @@ export function Sectograph({
 
       {/* Center "Add Block" button */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        {highlightCenter && (
+        {(highlightCenter || tutorialFocusCenter) && (
           <>
             <style>{`
               @keyframes sectoCenterPulse1-${uid} {
@@ -721,8 +723,10 @@ export function Sectograph({
             <div
               className="absolute rounded-full pointer-events-none"
               style={{
-                width: 64, height: 64,
-                border: "2px solid #6366f1",
+                width: tutorialFocusCenter ? 112 : 64,
+                height: tutorialFocusCenter ? 112 : 64,
+                border: tutorialFocusCenter ? "3px solid #38bdf8" : "2px solid #6366f1",
+                boxShadow: tutorialFocusCenter ? "0 0 28px rgba(56,189,248,0.65)" : undefined,
                 animation: `sectoCenterPulse1-${uid} 1.4s ease-out infinite`,
               }}
             />
@@ -733,16 +737,20 @@ export function Sectograph({
           onClick={onCenterClick}
           className="pointer-events-auto rounded-full flex items-center justify-center gap-1.5 transition-transform duration-200 cursor-pointer hover:scale-105 active:scale-95"
           style={{
-            backgroundColor: colors.surface,
-            border: `1.5px solid ${colors.primary}`,
+            position: "relative",
+            zIndex: tutorialFocusCenter ? 90 : undefined,
+            backgroundColor: tutorialFocusCenter ? "#061827" : colors.surface,
+            border: tutorialFocusCenter ? `2px solid ${colors.primary}` : `1.5px solid ${colors.primary}`,
             color: colors.primary,
             fontFamily: "var(--font-mono)",
-            fontSize: 10,
-            fontWeight: 700,
+            fontSize: tutorialFocusCenter ? 11 : 10,
+            fontWeight: 800,
             letterSpacing: "0.1em",
-            padding: "8px 12px",
-            minWidth: 86,
-            boxShadow: `0 0 12px ${colors.primaryGlow}`,
+            padding: tutorialFocusCenter ? "10px 15px" : "8px 12px",
+            minWidth: tutorialFocusCenter ? 108 : 86,
+            boxShadow: tutorialFocusCenter
+              ? `0 0 32px ${colors.primaryGlow}, 0 0 12px ${colors.primary}88 inset`
+              : `0 0 12px ${colors.primaryGlow}`,
           }}
           title="Add time block"
         >

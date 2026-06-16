@@ -1101,6 +1101,26 @@ export default function SectographPage() {
     { id: "calendar", label: "Calendar" },
     { id: "plan", label: "Plan" },
   ];
+  const baseTutorialTarget =
+    !isDay5Mode && !isVitalityMode && !tutorialDone && activeTab === "sectograph" && tutorialStep === 1
+      ? "sleep"
+      : !isDay5Mode && !isVitalityMode && !tutorialDone && activeTab === "sectograph" && tutorialStep === 2
+      ? "daily-flow"
+      : null;
+  const day5TutorialTarget =
+    isDay5Mode && activeTab === "sectograph" && day5Step === 1
+      ? "sleep"
+      : isDay5Mode && activeTab === "sectograph" && day5Step === 2
+      ? "daily-flow"
+      : null;
+  const vitalityTutorialTarget =
+    isVitalityMode && vitalityIntroSeen && activeTab === "sectograph" && vitalityStep === 1
+      ? "sleep"
+      : isVitalityMode && vitalityIntroSeen && activeTab === "sectograph" && vitalityStep === 2
+      ? "daily-flow"
+      : null;
+  const guidedPresetTarget = baseTutorialTarget ?? day5TutorialTarget ?? vitalityTutorialTarget;
+  const showSectographFocusOverlay = Boolean(guidedPresetTarget) && !showAddBlock && !editingBlock && !showVitalitySleepPresets;
 
   const usedSegments = useMemo(() => {
     const segs = new Set<string>();
@@ -1114,6 +1134,17 @@ export default function SectographPage() {
   return (
     <SystemLayout>
       <div className="flex flex-col gap-1.5 pt-0 pb-20">
+        {showSectographFocusOverlay && (
+          <div
+            className="fixed inset-0 pointer-events-none"
+            style={{
+              zIndex: 65,
+              background:
+                "radial-gradient(circle at 50% 57%, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.38) 22%, rgba(0,0,0,0.78) 58%, rgba(0,0,0,0.88) 100%)",
+            }}
+            data-testid="sectograph-tutorial-focus-overlay"
+          />
+        )}
         <div className="flex items-center justify-between gap-2">
           <h1 className="sr-only">Sectograph</h1>
           <button
@@ -1166,7 +1197,7 @@ export default function SectographPage() {
         {/* ── DAY 5 SETUP GUIDE ──────────────────────────────────────── */}
         {isDay5Mode && day5Step >= 1 && day5Step < 3 && (
           <div
-            className="w-full rounded-2xl p-4 space-y-3"
+            className="relative z-[80] w-full rounded-2xl p-4 space-y-3"
             style={{
               background: "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.06))",
               border: "1px solid rgba(99,102,241,0.25)",
@@ -1243,7 +1274,7 @@ export default function SectographPage() {
         {/* ── Vitality mode: SYSTEM instruction card ─────────────────────── */}
         {isVitalityMode && vitalityIntroSeen && vitalityStep >= 1 && vitalityStep < 3 && (
           <div
-            className="relative w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
+            className="relative z-[80] w-full rounded-2xl px-4 py-3.5 flex items-center gap-3"
             style={{
               background: vitalitySleepDone
                 ? "linear-gradient(135deg, rgba(35,22,4,0.96), rgba(78,47,8,0.88))"
@@ -1290,12 +1321,12 @@ export default function SectographPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p
-                className="text-[9px] uppercase tracking-[0.18em] font-bold"
+                className="text-[10px] uppercase tracking-[0.2em] font-bold"
                 style={{ color: vitalitySleepDone ? "rgba(245,158,11,0.85)" : "rgba(96,165,250,0.85)" }}
               >
                 System Directive
               </p>
-              <p className="text-[13px] font-semibold leading-tight" style={{ color: "rgba(245,245,255,0.97)" }}>
+              <p className="text-[15px] font-semibold leading-snug" style={{ color: "rgba(245,245,255,0.97)" }}>
                 {vitalitySleepDone
                   ? "Tap ADD BLOCK to add Daily Quest to the Sectograph."
                   : "Tap ADD BLOCK to add Sleep to the Sectograph."}
@@ -1369,17 +1400,21 @@ export default function SectographPage() {
         {/* ── COACH CARD — step 1 (add Sleep block) ────────────────── */}
         {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 1 && (
           <div
-            className="w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
-            style={{ backgroundColor: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.25)" }}
+            className="relative z-[80] w-full rounded-2xl px-4 py-3.5 flex items-center gap-3"
+            style={{
+              background: "linear-gradient(135deg, rgba(8,21,42,0.98), rgba(13,40,72,0.94))",
+              border: `1.5px solid ${colors.primary}`,
+              boxShadow: `0 0 24px ${colors.primaryGlow}, inset 0 1px 0 rgba(255,255,255,0.08)`,
+            }}
             data-testid="tutorial-card-step1"
           >
-            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(59,130,246,0.15)" }}>
-              <Brain size={15} style={{ color: "#3b82f6" }} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(59,130,246,0.20)", border: "1px solid rgba(59,130,246,0.35)" }}>
+              <Brain size={18} style={{ color: "#60a5fa" }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] uppercase tracking-[0.18em] font-bold" style={{ color: "rgba(59,130,246,0.8)" }}>Coach · 1/2</p>
-              <p className="text-sm font-semibold leading-tight truncate" style={{ color: colors.text }}>
-                Sleep block · Tap + in the clock center
+              <p className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: "rgba(96,165,250,0.9)" }}>System Directive · 1/2</p>
+              <p className="text-[15px] font-semibold leading-snug" style={{ color: colors.text }}>
+                Tap ADD BLOCK in the clock center. Choose Sleep.
               </p>
             </div>
             <Moon size={16} style={{ color: "#6b88b0" }} />
@@ -1389,17 +1424,21 @@ export default function SectographPage() {
         {/* ── COACH CARD — step 2 (add Daily Quest block) ──────────── */}
         {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 2 && (
           <div
-            className="w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
-            style={{ backgroundColor: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)" }}
+            className="relative z-[80] w-full rounded-2xl px-4 py-3.5 flex items-center gap-3"
+            style={{
+              background: "linear-gradient(135deg, rgba(35,22,4,0.98), rgba(78,47,8,0.92))",
+              border: "1.5px solid rgba(245,158,11,0.88)",
+              boxShadow: "0 0 24px rgba(245,158,11,0.34), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
             data-testid="tutorial-card-step2"
           >
-            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(168,85,247,0.15)" }}>
-              <Brain size={15} style={{ color: "#a855f7" }} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(245,158,11,0.20)", border: "1px solid rgba(245,158,11,0.35)" }}>
+              <Brain size={18} style={{ color: "#f59e0b" }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] uppercase tracking-[0.18em] font-bold" style={{ color: "rgba(168,85,247,0.8)" }}>Coach · 2/2</p>
-              <p className="text-sm font-semibold leading-tight truncate" style={{ color: colors.text }}>
-                Daily Quest · Tap + in the clock center
+              <p className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: "rgba(245,158,11,0.9)" }}>System Directive · 2/2</p>
+              <p className="text-[15px] font-semibold leading-snug" style={{ color: colors.text }}>
+                Tap ADD BLOCK again. Choose Daily Quest.
               </p>
             </div>
             <Zap size={16} style={{ color: "#a855f7" }} />
@@ -1504,9 +1543,11 @@ export default function SectographPage() {
                 rhythmWindows={rhythmWindows}
                 suggestedPlacements={placementSuggestions}
                 highlightCenter={
+                  Boolean(guidedPresetTarget) ||
                   day5Step === 1 ||
                   (isVitalityMode && vitalityIntroSeen && vitalityStep < 3)
                 }
+                tutorialFocusCenter={Boolean(guidedPresetTarget)}
                 currentBlockId={currentBlock?.id ?? null}
                 onCenterClick={() => {
                   if (!isDay5Mode && !tutorialDone && tutorialStep === 0) {
@@ -2819,9 +2860,9 @@ export default function SectographPage() {
                 ADD TIME BLOCK
               </DialogTitle>
               <DialogDescription className="text-xs" style={{ color: colors.textMuted }}>
-                {isVitalityMode && vitalityStep === 2
-                  ? "Choose Daily Quest to schedule tomorrow's first mission window."
-                  : isVitalityMode
+                {guidedPresetTarget === "daily-flow"
+                  ? "Choose Daily Quest to schedule your training window."
+                  : guidedPresetTarget === "sleep"
                   ? "Choose Sleep to set your recovery window."
                   : "Choose the block you want to add to your day."}
               </DialogDescription>
@@ -2830,12 +2871,14 @@ export default function SectographPage() {
               {BLOCK_PRESETS.map((preset) => {
                 const Icon = preset.icon;
                 const isHighlighted =
+                  guidedPresetTarget === preset.id ||
                   (isDay5Mode &&
                     ((day5Step === 1 && preset.id === "sleep") ||
                      (day5Step === 2 && preset.id === "daily-flow"))) ||
                   (isVitalityMode &&
                     ((vitalityStep === 1 && preset.id === "sleep") ||
                      (vitalityStep === 2 && preset.id === "daily-flow")));
+                const isGuidedPicker = Boolean(guidedPresetTarget);
                 const vivid = preset.color;
                 return (
                   <button
@@ -2845,12 +2888,14 @@ export default function SectographPage() {
                     className="relative flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all active:scale-[0.97]"
                     style={{
                       background: isHighlighted
-                        ? `linear-gradient(135deg, ${vivid}40, ${vivid}18)`
+                        ? `linear-gradient(135deg, ${vivid}55, ${vivid}20)`
                         : `linear-gradient(135deg, ${vivid}28, ${vivid}0a)`,
                       border: isHighlighted ? `2px solid ${vivid}` : `1px solid ${vivid}55`,
                       boxShadow: isHighlighted
-                        ? `0 0 20px ${vivid}70, 0 0 6px ${vivid}30 inset`
+                        ? `0 0 28px ${vivid}88, 0 0 10px ${vivid}36 inset`
                         : `0 0 8px ${vivid}22`,
+                      opacity: isGuidedPicker && !isHighlighted ? 0.34 : 1,
+                      transform: isHighlighted ? "scale(1.02)" : "scale(1)",
                     }}
                   >
                     <div
@@ -2869,11 +2914,6 @@ export default function SectographPage() {
                       >
                         {preset.name}
                       </p>
-                      {isHighlighted && (
-                        <p className="text-[10px] mt-0.5 font-medium" style={{ color: `${vivid}cc` }}>
-                          Recommended first
-                        </p>
-                      )}
                     </div>
                     {isHighlighted && (
                       <div
