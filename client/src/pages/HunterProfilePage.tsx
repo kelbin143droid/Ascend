@@ -209,54 +209,112 @@ const CSS = `
 
 /* class picker overlay */
 .hp-root .classpick {
-  position:absolute; inset:0; z-index:50; display:flex; align-items:flex-start; justify-content:center;
-  padding:10px 18px 14px; background:rgba(4,7,15,0.85); backdrop-filter:blur(4px);
-  overflow-y:auto;
+  position:absolute; inset:0; z-index:50; display:flex; align-items:stretch; justify-content:center;
+  padding:12px 14px 14px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(76,194,255,.24), transparent 30%),
+    linear-gradient(180deg, rgba(8,28,52,.92), rgba(3,7,16,.96) 52%, rgba(4,7,15,.98));
+  backdrop-filter:blur(4px);
+  overflow:hidden;
 }
-.hp-root .classpick-inner { width:100%; max-height:100%; animation:hp-rise .4s cubic-bezier(.2,.8,.2,1); }
+.hp-root .classpick-inner {
+  width:100%; height:100%; max-width:430px; min-height:0;
+  display:grid; grid-template-rows:auto minmax(0, 1fr) auto auto;
+  gap:10px; animation:hp-rise .4s cubic-bezier(.2,.8,.2,1);
+}
 @keyframes hp-rise { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
-.hp-root .classpick h2 {
-  font-family:'Chakra Petch'; font-weight:700; font-size:23px; letter-spacing:2px;
-  color:var(--ink); text-align:center; text-shadow:0 0 18px var(--cyan-glow);
+.hp-root .pickhud {
+  position:relative; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:10px; align-items:center;
+  padding:10px 12px; border:1px solid rgba(164,219,255,.42); border-radius:11px;
+  background:linear-gradient(180deg, rgba(96,188,255,.24), rgba(16,48,88,.42));
+  box-shadow:0 0 24px rgba(76,194,255,.22), inset 0 0 18px rgba(255,255,255,.06);
 }
-.hp-root .classpick .sub { text-align:center; color:var(--ink-dim); font-size:12px; margin:3px 0 8px; }
+.hp-root .pickhud:before,
+.hp-root .pickhud:after {
+  content:""; position:absolute; top:50%; width:18px; height:1px; background:rgba(245,197,66,.75);
+}
+.hp-root .pickhud:before { left:8px; transform:translate(-100%,-50%); }
+.hp-root .pickhud:after { right:8px; transform:translate(100%,-50%); }
+.hp-root .pickrank {
+  width:42px; height:42px; display:grid; place-items:center; border-radius:10px;
+  color:#bdeaff; font-family:'Orbitron'; font-weight:900; font-size:18px;
+  border:1px solid rgba(137,214,255,.55); background:rgba(9,29,55,.82);
+  box-shadow:inset 0 0 14px rgba(76,194,255,.18);
+}
+.hp-root .pickhud-main { min-width:0; }
+.hp-root .pickhunter {
+  font-family:'Chakra Petch'; font-weight:800; color:var(--ink); font-size:18px; letter-spacing:1px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.hp-root .pickrole {
+  margin-top:2px; font-family:'Chakra Petch'; color:#b6d7ed; font-size:11px; letter-spacing:1px;
+  text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.hp-root .pickhud-xp { display:flex; flex-direction:column; align-items:flex-end; gap:5px; min-width:100px; }
+.hp-root .pickhud-level { color:#f5c542; font-family:'Chakra Petch'; font-weight:800; font-size:12px; letter-spacing:1px; }
+.hp-root .pickhud-track {
+  width:96px; height:9px; border:1px solid rgba(255,255,255,.25); border-radius:999px; overflow:hidden;
+  background:rgba(2,7,15,.72);
+}
+.hp-root .pickhud-fill {
+  height:100%; border-radius:999px; background:linear-gradient(90deg,#279dff,#73d9ff,#f5c542);
+  box-shadow:0 0 12px rgba(76,194,255,.55);
+}
+.hp-root .pickhud-label { font-size:10px; color:#c7d8e6; font-family:'Chakra Petch'; font-weight:700; letter-spacing:.5px; }
 .hp-root .pickpreview {
-  position:relative; width:100%; height:clamp(210px, 38vh, 300px);
-  display:flex; align-items:flex-end; justify-content:center; margin-bottom:2px;
+  position:relative; width:100%; min-height:0; height:100%;
+  display:flex; align-items:flex-end; justify-content:center; overflow:hidden;
 }
 .hp-root .pickaura {
-  position:absolute; bottom:6%; left:50%; transform:translateX(-50%);
-  width:58%; aspect-ratio:1; border-radius:50%; filter:blur(22px); opacity:.4; transition:background .3s;
+  position:absolute; bottom:8%; left:50%; transform:translateX(-50%);
+  width:min(72%, 290px); aspect-ratio:1; border-radius:50%; filter:blur(26px); opacity:.45; transition:background .3s;
 }
-.hp-root .pickpreview .platform { width:54%; }
+.hp-root .pickpreview .platform { width:min(68%, 250px); bottom:0; }
 .hp-root .pickmodel { position:absolute; inset:0; z-index:2; pointer-events:none; }
-.hp-root .pickname { text-align:center; font-family:'Chakra Petch'; font-weight:700; font-size:18px; letter-spacing:2px; }
-.hp-root .pickdesc { text-align:center; color:var(--ink-dim); font-size:11px; margin:1px 0 8px; }
-.hp-root .pickrow { display:flex; gap:6px; }
+.hp-root .pickrow { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
 .hp-root .pickopt {
-  flex:1; background:var(--panel); border:1px solid rgba(76,170,255,0.14); border-radius:10px;
-  padding:8px 2px; cursor:pointer; transition:.2s; display:flex; flex-direction:column; align-items:center; gap:3px;
+  min-height:48px; background:linear-gradient(180deg, rgba(20,32,55,.86), rgba(8,13,27,.92));
+  border:1px solid rgba(76,170,255,0.18); border-radius:9px; padding:9px 10px; cursor:pointer; transition:.2s;
+  display:flex; align-items:center; justify-content:center; gap:9px; position:relative; overflow:hidden;
+  box-shadow:inset 0 0 12px rgba(255,255,255,.03);
 }
-.hp-root .pickopt svg { width:24px; height:24px; }
-.hp-root .pickopt span { font-family:'Chakra Petch'; font-weight:700; font-size:9px; letter-spacing:1px; color:var(--ink-dim); }
-.hp-root .pickopt:hover { border-color:rgba(76,170,255,0.4); }
-.hp-root .pickopt.sel { border-color:var(--cyan); box-shadow:0 0 14px rgba(76,194,255,0.25); }
+.hp-root .pickopt:before {
+  content:""; position:absolute; inset:0; opacity:0; transition:.2s;
+  background:linear-gradient(90deg, rgba(76,194,255,.22), transparent 62%);
+}
+.hp-root .pickopt svg { width:22px; height:22px; flex:0 0 auto; position:relative; z-index:1; }
+.hp-root .pickopt span {
+  font-family:'Chakra Petch'; font-weight:800; font-size:13px; letter-spacing:1.4px; color:var(--ink-dim);
+  position:relative; z-index:1; text-transform:uppercase;
+}
+.hp-root .pickopt:hover { border-color:rgba(76,170,255,0.45); }
+.hp-root .pickopt.sel { border-color:var(--cyan); box-shadow:0 0 16px rgba(76,194,255,0.25), inset 0 0 18px rgba(76,194,255,0.12); }
+.hp-root .pickopt.sel:before { opacity:1; }
 .hp-root .pickopt.sel span { color:var(--ink); }
 .hp-root .pickconfirm {
-  width:100%; margin-top:10px; border-radius:12px; padding:12px; cursor:pointer; transition:.2s;
-  background:linear-gradient(180deg,rgba(76,194,255,0.3),rgba(20,60,110,0.6));
-  border:1.5px solid var(--cyan); color:var(--ink);
-  font-family:'Chakra Petch'; font-weight:700; font-size:15px; letter-spacing:2px;
-  box-shadow:0 0 18px rgba(76,194,255,0.3);
+  width:100%; border-radius:12px; padding:13px; cursor:pointer; transition:.2s;
+  background:linear-gradient(180deg,rgba(88,196,255,0.42),rgba(18,66,126,0.82));
+  border:1.5px solid rgba(174,228,255,.86); color:var(--ink);
+  font-family:'Chakra Petch'; font-weight:800; font-size:16px; letter-spacing:2px;
+  box-shadow:0 0 22px rgba(76,194,255,0.32), inset 0 0 18px rgba(255,255,255,.08);
 }
 .hp-root .pickconfirm:hover { box-shadow:0 0 28px var(--cyan-glow); }
 .hp-root .pickconfirm.disabled { opacity:.35; pointer-events:none; box-shadow:none; }
 @media (max-height: 740px) {
-  .hp-root .classpick h2 { font-size:20px; }
-  .hp-root .pickpreview { height:clamp(170px, 34vh, 240px); }
-  .hp-root .pickopt { padding:6px 2px; }
-  .hp-root .pickopt svg { width:20px; height:20px; }
-  .hp-root .pickconfirm { margin-top:8px; padding:10px; }
+  .hp-root .classpick { padding:9px 14px 12px; }
+  .hp-root .classpick-inner { gap:8px; }
+  .hp-root .pickhud { padding:8px 10px; }
+  .hp-root .pickrank { width:36px; height:36px; font-size:16px; }
+  .hp-root .pickhunter { font-size:16px; }
+  .hp-root .pickrole { font-size:10px; }
+  .hp-root .pickhud-xp { min-width:86px; }
+  .hp-root .pickhud-track { width:82px; height:8px; }
+  .hp-root .pickhud-label { display:none; }
+  .hp-root .pickrow { gap:7px; }
+  .hp-root .pickopt { min-height:43px; padding:7px 8px; gap:7px; }
+  .hp-root .pickopt svg { width:19px; height:19px; }
+  .hp-root .pickopt span { font-size:11px; letter-spacing:1px; }
+  .hp-root .pickconfirm { padding:11px; font-size:14px; }
 }
 
 /* stage / character */
@@ -646,6 +704,8 @@ export default function HunterProfilePage() {
   }
 
   const pickedData = pickedClass !== null ? data.classes[pickedClass] : null;
+  const pickedName = pickedClass !== null && pickedData ? classDisplayName(pickedClass, pickedData.name) : "";
+  const pickerXpPercent = data.xpMax > 0 ? Math.min(100, Math.max(0, (data.xp / data.xpMax) * 100)) : 0;
   const activeClassIndex = previewClass ?? chosenClass ?? 0;
   const activeClassSrc = classModelSrc(activeClassIndex);
 
@@ -884,8 +944,20 @@ export default function HunterProfilePage() {
         {showPicker && (
           <div className="classpick">
             <div className="classpick-inner">
-              <h2>CHOOSE YOUR CLASS</h2>
-              <div className="sub">This becomes your main class.</div>
+              <div className="pickhud" aria-label="Hunter level">
+                <div className="pickrank">{data.rank}</div>
+                <div className="pickhud-main">
+                  <div className="pickhunter">{data.name}</div>
+                  <div className="pickrole">{data.rank} Rank - {pickedName || data.role}</div>
+                </div>
+                <div className="pickhud-xp">
+                  <div className="pickhud-level">Lv {data.level}</div>
+                  <div className="pickhud-track">
+                    <div className="pickhud-fill" style={{ width: `${pickerXpPercent}%` }} />
+                  </div>
+                  <div className="pickhud-label">{data.xp.toLocaleString()} / {data.xpMax.toLocaleString()} XP</div>
+                </div>
+              </div>
               <div className="pickpreview">
                 {pickedData && (
                   <div className="pickaura" style={{
@@ -902,10 +974,6 @@ export default function HunterProfilePage() {
                   </div>
                 )}
               </div>
-              <div className="pickname" style={{ color: pickedData?.color ?? "var(--ink)" }}>
-                {pickedClass !== null && pickedData ? classDisplayName(pickedClass, pickedData.name) : ""}
-              </div>
-              <div className="pickdesc">{pickedData?.desc ?? ""}</div>
               <div className="pickrow">
                 {data.classes.map((c, i) => (
                   <button key={c.name} className={`pickopt${pickedClass === i ? " sel" : ""}`}
@@ -919,7 +987,7 @@ export default function HunterProfilePage() {
               <button
                 className={`pickconfirm${pickedClass === null ? " disabled" : ""}`}
                 onClick={confirmClass}>
-                CONFIRM CLASS
+                {pickedName ? `BECOME ${pickedName.toUpperCase()}` : "BECOME CLASS"}
               </button>
             </div>
           </div>
