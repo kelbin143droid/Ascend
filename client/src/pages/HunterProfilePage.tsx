@@ -4,6 +4,7 @@ import { useGame } from "@/context/GameContext";
 import { Canvas } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
+import { StatIntroModal } from "@/components/game/StatIntroModal";
 
 // ── Types ────────────────────────────────────────────────────────────────
 interface WalletEntry { type: "gem" | "coin" | "diamond"; value: number }
@@ -459,6 +460,7 @@ export default function HunterProfilePage() {
   const [activeTab,       setActiveTab]       = useState<"inventory" | "skills" | "stats">("inventory");
   const [otherOpen,       setOtherOpen]       = useState(false);
   const [showPicker,      setShowPicker]      = useState(false);
+  const [showStatIntro,   setShowStatIntro]   = useState(false);
   const [pickedClass,     setPickedClass]     = useState<number | null>(null);
   const [chosenClass,     setChosenClass]     = useState<number | null>(null);
   const [previewClass,    setPreviewClass]    = useState<number | null>(null);
@@ -580,6 +582,7 @@ export default function HunterProfilePage() {
     setChosenClass(pickedClass);
     setPreviewClass(pickedClass);
     setShowPicker(false);
+    setShowStatIntro(true);
     // Persist to server — idempotent, so safe to call even if already set
     try {
       await fetch(`/api/player/${player.id}/choose-class`, {
@@ -649,6 +652,13 @@ export default function HunterProfilePage() {
   return (
     <div className="hp-root" data-testid="hunter-profile-page">
       <style>{CSS}</style>
+      <StatIntroModal
+        open={showStatIntro}
+        onClose={() => setShowStatIntro(false)}
+        onPrimary={() => setShowStatIntro(false)}
+        primaryColor="#4cc2ff"
+        primaryLabel="Continue"
+      />
 
       <div className="phone">
         {/* Energy streaks */}

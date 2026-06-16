@@ -181,14 +181,6 @@ export function LevelUpAnimation({ newLevel, motivationalPhrase, maxHp, maxMana,
     return () => clearInterval(xpInterval);
   }, []);
 
-  useEffect(() => {
-    const autoCloseTimer = setTimeout(() => {
-      handleDismiss();
-    }, 2200);
-
-    return () => clearTimeout(autoCloseTimer);
-  }, [handleDismiss]);
-
   return (
     <AnimatePresence>
       {isVisible && (
@@ -198,7 +190,6 @@ export function LevelUpAnimation({ newLevel, motivationalPhrase, maxHp, maxMana,
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           className="fixed inset-0 z-[100] flex items-center justify-center"
-          onClick={handleDismiss}
           style={{ backgroundColor: "rgba(0, 0, 0, 0.85)" }}
         >
           <div 
@@ -322,14 +313,22 @@ export function LevelUpAnimation({ newLevel, motivationalPhrase, maxHp, maxMana,
               </motion.div>
             )}
 
-            <motion.div
+            <motion.button
+              type="button"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
+              animate={{ opacity: 1 }}
               transition={{ delay: 1.5, duration: 0.5 }}
-              className="text-[10px] text-gray-500 tracking-wider uppercase mt-4"
+              onClick={handleDismiss}
+              className="mt-4 min-h-[46px] rounded-2xl px-8 text-[12px] font-bold uppercase tracking-[0.18em] transition-all active:scale-95"
+              style={{
+                background: "linear-gradient(90deg, #0891b2, #00c8ff, #7c3aed)",
+                color: "#fff",
+                boxShadow: "0 10px 30px rgba(0,200,255,0.25)",
+              }}
+              data-testid="button-dismiss-level-up"
             >
-              Tap to continue
-            </motion.div>
+              Continue
+            </motion.button>
           </motion.div>
         </motion.div>
       )}

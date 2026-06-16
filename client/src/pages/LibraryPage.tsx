@@ -8,6 +8,7 @@ import { useRoles } from "@/context/RolesContext";
 import { WeeklyGoalForm } from "@/components/game/WeeklyGoalForm";
 import { OnboardingFlow } from "@/components/game/OnboardingFlow";
 import { GameIntroModal } from "@/components/game/GameIntroModal";
+import { StatIntroModal } from "@/components/game/StatIntroModal";
 import { BookOpen, Lock, Target, ChevronDown, ChevronUp, Trash2, CheckCircle, Calendar, ChevronRight, Swords, Wind, Eye, Heart, Play, ExternalLink, RotateCcw, Compass, Map, Sparkles, Layers } from "lucide-react";
 
 const PLANNING_UNLOCK_PHASE = 3;
@@ -23,6 +24,7 @@ export default function LibraryPage() {
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showGameIntro, setShowGameIntro] = useState(false);
+  const [showStatsGuide, setShowStatsGuide] = useState(false);
   const [showTutorialList, setShowTutorialList] = useState(false);
 
   type TutorialItem = {
@@ -50,6 +52,14 @@ export default function LibraryPage() {
       icon: Sparkles,
       color: "#a855f7",
       onPlay: () => setShowGameIntro(true),
+    },
+    {
+      id: "stats-guide",
+      title: "Stats Guide",
+      description: "How Sense, Agility, Strength, Intel, and Vitality power your hero",
+      icon: Eye,
+      color: "#38bdf8",
+      onPlay: () => setShowStatsGuide(true),
     },
     {
       id: "app-tour",
@@ -504,6 +514,14 @@ export default function LibraryPage() {
             playerName={player?.name?.split(" ")[0] || ""}
           />
         )}
+
+        <StatIntroModal
+          open={showStatsGuide}
+          onClose={() => setShowStatsGuide(false)}
+          onPrimary={() => setShowStatsGuide(false)}
+          primaryColor={colors.primary}
+          primaryLabel="Close"
+        />
 
         <div
           className="rounded-lg overflow-hidden"

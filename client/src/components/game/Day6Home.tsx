@@ -61,7 +61,6 @@ interface Props {
 
 const INTELLIGENCE_ACTIVITY_ID = "phase1_intelligence";
 const VITALITY_ACTIVITY_ID = "phase1_vitality";
-const STAT_INTRO_SEEN_KEY = "ascend_stat_intro_seen";
 const FIRST_MISSION_GUIDE_SEEN_KEY = "ascend_first_mission_guide_seen";
 
 const DASH_CARDS = [
@@ -106,18 +105,10 @@ const ACTIVITY_XP: Record<string, number> = {
 };
 
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
-const INTELLIGENCE_READ_SECONDS = 180;
+const INTELLIGENCE_READ_SECONDS = 60;
 
 type IntelReadMode = "recommended" | "custom";
 type SleepQuality = "great" | "ok" | "rough";
-
-const STAT_EXPLAINERS = [
-  { key: "SEN", label: "Sense", text: "Calm, focus, and MP recovery." },
-  { key: "AGI", label: "Agility", text: "Mobility, speed, and movement control." },
-  { key: "STR", label: "Strength", text: "Power, discipline, and battle readiness." },
-  { key: "INT", label: "Intel", text: "Learning, strategy, and smarter choices." },
-  { key: "VIT", label: "Vitality", text: "Sleep, recovery, and HP stability." },
-];
 
 const DAILY_INTEL_READS = [
   {
@@ -272,7 +263,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [sleepHours, setSleepHours] = useState("7");
   const [sleepQuality, setSleepQuality] = useState<SleepQuality>("ok");
   const [vitalitySubmitting, setVitalitySubmitting] = useState(false);
-  const [showStatIntro, setShowStatIntro] = useState(false);
   const [showMissionGuide, setShowMissionGuide] = useState(false);
   // Auto-start strength when navigated from agility completion (?autostart=strength)
   const [autoStartPending, setAutoStartPending] = useState(() =>
@@ -425,15 +415,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   }, [showIntelligence, intelReadStarted, intelSecondsLeft, intelligenceDone]);
 
   useEffect(() => {
-    if (!allDone) return;
-    try {
-      if (localStorage.getItem(STAT_INTRO_SEEN_KEY) !== "1") setShowStatIntro(true);
-    } catch {
-      setShowStatIntro(true);
-    }
-  }, [allDone]);
-
-  useEffect(() => {
     if (!firstResetJustUnlockedMovement || flowActive || showIntelligence || showVitality) return;
     try {
       if (localStorage.getItem(FIRST_MISSION_GUIDE_SEEN_KEY) === "1") return;
@@ -562,12 +543,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
   const handleAvatarPick = (icon: string) => { saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false); };
 
-  const openCharacterChoice = () => {
-    try { localStorage.setItem(STAT_INTRO_SEEN_KEY, "1"); } catch { /* noop */ }
-    setShowStatIntro(false);
-    navigate("/hunter-profile");
-  };
-
   const dismissMissionGuide = () => {
     try { localStorage.setItem(FIRST_MISSION_GUIDE_SEEN_KEY, "1"); } catch { /* noop */ }
     setShowMissionGuide(false);
@@ -665,7 +640,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   <BookOpen size={22} />
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: "#38bdf8" }}>
-                  Intel · 3 min
+                  Intel · 1 min
                 </p>
                 <h2 className="mt-2 text-[24px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
                   {intelReadingView ? intelReadCopy.title : "Read one useful idea."}
@@ -673,6 +648,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgba(203,213,225,0.72)" }}>
                   {intelReadingView ? "Read until the timer ends. Then continue reading or complete the task." : "Choose a topic. Start the read. Finish with one useful idea."}
                 </p>
+
+                <div
+                  className="mt-4 rounded-2xl px-4 py-3 text-center"
+                  style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.16)" }}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(125,211,252,0.70)" }}>
+                    Reading timer
+                  </p>
+                  <p className="mt-1 text-[32px] font-black tabular-nums leading-none" style={{ color: "#e0f2fe" }}>
+                    {formatReadTimer(intelSecondsLeft)}
+                  </p>
+                </div>
 
                 {!intelReadingView ? (
                   <>
@@ -761,18 +748,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     </div>
                   </div>
                 )}
-
-                <div
-                  className="mt-4 rounded-2xl px-4 py-3 text-center"
-                  style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.16)" }}
-                >
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(125,211,252,0.70)" }}>
-                    Reading timer
-                  </p>
-                  <p className="mt-1 text-[32px] font-black tabular-nums leading-none" style={{ color: "#e0f2fe" }}>
-                    {formatReadTimer(intelSecondsLeft)}
-                  </p>
-                </div>
 
                 {!intelReadStarted ? (
                   <button
@@ -938,72 +913,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   <ArrowRight size={18} />
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {showStatIntro && (
-          <motion.div
-            className="fixed inset-0 z-[90] flex items-center justify-center px-5"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ background: "rgba(2,6,18,0.88)", backdropFilter: "blur(18px)" }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 18, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.98 }}
-              transition={{ duration: 0.24, ease: "easeOut" }}
-              className="w-full max-w-sm rounded-3xl px-6 py-6"
-              style={{
-                background: "linear-gradient(145deg, rgba(8,14,32,0.97), rgba(4,9,24,0.99))",
-                border: `1px solid ${primary}44`,
-                boxShadow: `0 24px 70px rgba(0,0,0,0.58), 0 0 42px ${primary}18`,
-              }}
-              data-testid="stat-intro-modal"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: primary }}>
-                System Awakened
-              </p>
-              <h2 className="mt-2 text-[25px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
-                Your stats feed your hero.
-              </h2>
-              <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgba(203,213,225,0.72)" }}>
-                Real-world actions raise the system that powers your game character.
-              </p>
-              <div className="mt-5 grid gap-2">
-                {STAT_EXPLAINERS.map((stat) => (
-                  <div
-                    key={stat.key}
-                    className="grid grid-cols-[44px_1fr] gap-3 rounded-2xl px-3 py-2.5"
-                    style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}
-                  >
-                    <div className="flex h-9 items-center justify-center rounded-xl text-[11px] font-black" style={{ background: `${primary}16`, color: primary }}>
-                      {stat.key}
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-bold leading-tight" style={{ color: "rgba(248,250,252,0.94)" }}>{stat.label}</p>
-                      <p className="mt-0.5 text-[11px] leading-snug" style={{ color: "rgba(203,213,225,0.64)" }}>{stat.text}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={openCharacterChoice}
-                className="mt-5 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold"
-                style={{
-                  background: `linear-gradient(90deg, #2563eb, ${primary}, #7c3aed)`,
-                  color: "#fff",
-                  boxShadow: `0 10px 30px ${primary}24`,
-                }}
-                data-testid="button-choose-character"
-              >
-                Choose character
-                <ArrowRight size={18} />
-              </button>
             </motion.div>
           </motion.div>
         )}
