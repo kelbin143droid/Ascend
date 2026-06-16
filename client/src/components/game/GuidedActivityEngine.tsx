@@ -70,6 +70,11 @@ function stepIdToExerciseName(stepId: string): string | null {
   return null;
 }
 
+function isRestStep(step?: ActivityStep): boolean {
+  return !!step && step.type === "timer" &&
+    (step.label === "Rest" || step.id.startsWith("rest") || step.id === "set_break");
+}
+
 const EXERCISE_ANIMATIONS: Record<string, { emoji: string; movementHint: string }> = {
   pushups: { emoji: "💪", movementHint: "Push up · Hold · Lower down" },
   cardio: { emoji: "🏃", movementHint: "Jog in place · Knees up · Stay light" },
@@ -321,7 +326,7 @@ function GetReadyCountdown({
   exerciseName: string;
   videoSrc?: string;
 }) {
-  const [count, setCount] = useState(6);
+  const [count, setCount] = useState(5);
   const beep = useBeepSound();
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
@@ -1005,11 +1010,15 @@ export function GuidedActivityEngine({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const step = activity.steps[currentStepIdx];
+  const previousStep = currentStepIdx > 0 ? activity.steps[currentStepIdx - 1] : undefined;
   const isCompletionStep = step?.type === "completion";
   const isTimerStep = step?.type === "timer";
   const isBreathStep = step?.type === "breath";
   const isCheckStep = step?.type === "check";
   const isRepStep = step?.type === "rep";
+  const previousWasRest = isRestStep(previousStep);
+  const currentIsRest = isRestStep(step);
+  const showPostRestTimerStart = activity.autoflow && previousWasRest && isTimerStep && !currentIsRest;
   const [showCheckInfo, setShowCheckInfo] = useState(false);
   // Per-step rep counter (resets every time the active step changes).
   const [currentReps, setCurrentReps] = useState(0);
@@ -1136,9 +1145,6 @@ export function GuidedActivityEngine({
     if (nextIdx < activity.steps.length) {
       const currentStep = activity.steps[currentStepIdx];
       const nextStep = activity.steps[nextIdx];
-      const isRestStep = (s?: ActivityStep) =>
-        !!s && s.type === "timer" &&
-        (s.label === "Rest" || s.id.startsWith("rest") || s.id === "set_break");
       const currentIsRest = isRestStep(currentStep);
       const nextIsRest = isRestStep(nextStep);
       if (
@@ -1170,7 +1176,7 @@ export function GuidedActivityEngine({
         }, 400);
       } else if (activity.autoflow && currentStep?.type === "rep" && nextStep?.type === "timer") {
         // Coming off active rep work into a timed hold (e.g. situps → plank)
-        // or a rest break. For an active timer, run the 6s "Get Ready"
+        // or a rest break. For an active timer, run the 5s "Get Ready"
         // countdown then auto-start the timer; for a rest, skip the
         // countdown and let the auto-start hook take over.
         setTimeout(() => {
@@ -1328,8 +1334,8 @@ export function GuidedActivityEngine({
     }
   }, [currentStepIdx, stepPhase]);
 
-  // Auto-start the next timer in autoflow mode (no extra "Get Ready" overlay)
-  // — kicks in only when the engine just chained from a previous rest step.
+  // Auto-start rest breaks in autoflow mode. When leaving a rest for an
+  // active timer such as Plank, surface the normal Start card first.
   useEffect(() => {
     if (
       activity.autoflow &&
@@ -1346,7 +1352,7 @@ export function GuidedActivityEngine({
       const currentIsRest =
         current?.type === "timer" &&
         (current.label === "Rest" || current.id.startsWith("rest") || current.id === "set_break");
-      if (prevWasRest || currentIsRest) {
+      if (currentIsRest) {
         const t = setTimeout(() => startTimer(), 200);
         return () => clearTimeout(t);
       }
@@ -1841,7 +1847,7 @@ export function GuidedActivityEngine({
                 //  • A session was restored mid-activity — always surface an
                 //    escape-hatch "Resume" button so the user isn't soft-locked
                 //    on a step that autoflow would normally skip-over
-                (!activity.autoflow || currentStepIdx === 0 || isRepStep || !!savedSession) && (
+                (!activity.autoflow || currentStepIdx === 0 || isRepStep || showPostRestTimerStart || !!savedSession) && (
                 <button
                   className="px-8 py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
                   style={{ backgroundColor: activity.color, color: "#fff" }}

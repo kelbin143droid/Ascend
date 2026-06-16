@@ -418,22 +418,40 @@ const CSS = `
 .hp-root .points b { font-family:'Chakra Petch'; font-weight:700; font-size:22px; color:var(--ink); text-shadow:0 0 12px var(--cyan-glow); }
 .hp-root .points.empty { border-color:rgba(76,170,255,0.15); box-shadow:none; opacity:.6; }
 .hp-root .pointguide {
-  position:relative; margin:-2px 0 10px; padding:10px 36px 10px 12px;
-  border-radius:12px; border:1px solid rgba(245,197,66,0.32);
-  background:linear-gradient(135deg, rgba(245,197,66,0.14), rgba(76,194,255,0.08));
-  box-shadow:0 0 16px rgba(245,197,66,0.10);
+  position:relative; margin:0 0 12px; padding:13px 40px 13px 14px;
+  border-radius:14px; border:1.5px solid rgba(245,197,66,0.72);
+  background:linear-gradient(135deg, rgba(55,35,5,0.92), rgba(12,34,52,0.76));
+  box-shadow:0 0 26px rgba(245,197,66,0.28), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 .hp-root .pointguide p {
-  color:#f5c542; font-family:'Chakra Petch'; font-size:12px; font-weight:800;
-  letter-spacing:1.4px; text-transform:uppercase;
+  color:#f5c542; font-family:'Chakra Petch'; font-size:13px; font-weight:900;
+  letter-spacing:1.6px; text-transform:uppercase;
 }
 .hp-root .pointguide span {
-  display:block; margin-top:3px; color:rgba(232,244,255,0.72); font-size:11px; line-height:1.25;
+  display:block; margin-top:5px; color:rgba(232,244,255,0.84); font-size:12px; line-height:1.3;
 }
 .hp-root .pointguide-close {
-  position:absolute; right:9px; top:8px; width:22px; height:22px; border-radius:999px;
-  border:1px solid rgba(245,197,66,0.24); background:rgba(0,0,0,0.22);
+  position:absolute; right:10px; top:10px; width:24px; height:24px; border-radius:999px;
+  border:1px solid rgba(245,197,66,0.42); background:rgba(0,0,0,0.28);
   color:rgba(245,197,66,0.82); font-size:16px; line-height:1; cursor:pointer;
+}
+.hp-root .worldguide {
+  position:relative; margin:12px 0 0; padding:12px 40px 12px 14px;
+  border-radius:14px; border:1.5px solid rgba(76,194,255,0.58);
+  background:linear-gradient(135deg, rgba(6,23,43,0.94), rgba(18,52,86,0.78));
+  box-shadow:0 0 24px rgba(76,194,255,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.hp-root .worldguide p {
+  color:var(--cyan); font-family:'Chakra Petch'; font-size:12px; font-weight:900;
+  letter-spacing:1.6px; text-transform:uppercase;
+}
+.hp-root .worldguide span {
+  display:block; margin-top:5px; color:rgba(232,244,255,0.82); font-size:12px; line-height:1.3;
+}
+.hp-root .worldguide-close {
+  position:absolute; right:10px; top:10px; width:24px; height:24px; border-radius:999px;
+  border:1px solid rgba(76,194,255,0.38); background:rgba(0,0,0,0.28);
+  color:rgba(125,211,252,0.86); font-size:16px; line-height:1; cursor:pointer;
 }
 .hp-root .detailbtn, .hp-root .vieweq {
   width:100%; background:var(--panel); border:1px solid rgba(76,170,255,0.2);
@@ -445,6 +463,7 @@ const CSS = `
 
 /* equipment */
 .hp-root .equip { margin-top:18px; background:var(--panel); border:1px solid rgba(76,170,255,0.12); border-radius:14px; padding:10px; }
+.hp-root .equip.collapsed { padding-bottom:8px; }
 .hp-root .equip .slots { display:flex; gap:7px; margin:8px 0 9px; }
 .hp-root .slot {
   flex:1; aspect-ratio:1; border-radius:10px; position:relative;
@@ -477,7 +496,7 @@ const CSS = `
 .hp-root .enter small { color:var(--cyan-soft); letter-spacing:4px; font-size:10px; font-weight:600; }
 
 /* tabs */
-.hp-root .tabs { display:flex; gap:6px; margin-bottom:8px; border-bottom:1px solid rgba(76,170,255,0.12); }
+.hp-root .tabs { display:flex; gap:6px; margin-bottom:8px; border-bottom:1px solid rgba(76,170,255,0.12); align-items:flex-start; }
 .hp-root .tab {
   flex:1; background:transparent; border:none; border-bottom:2px solid transparent;
   color:var(--ink-dim); font-family:'Chakra Petch'; font-weight:700; font-size:12px;
@@ -485,6 +504,17 @@ const CSS = `
 }
 .hp-root .tab.on { color:var(--cyan); border-bottom-color:var(--cyan); text-shadow:0 0 10px var(--cyan-glow); }
 .hp-root .tab:hover { color:var(--cyan-soft); }
+.hp-root .tabtoggle {
+  width:34px; height:28px; flex:none; border-radius:9px; cursor:pointer;
+  border:1px solid rgba(76,170,255,0.22); background:rgba(8,14,26,0.72);
+  color:var(--cyan-soft); font-family:'Chakra Petch'; font-size:13px; font-weight:900;
+  line-height:1; transition:.2s;
+}
+.hp-root .tabtoggle:hover { border-color:var(--cyan); box-shadow:0 0 14px rgba(76,194,255,0.18); }
+.hp-root .tabhint {
+  padding:4px 0 2px; text-align:center; color:rgba(125,147,179,0.72);
+  font-family:'Chakra Petch'; font-size:10px; letter-spacing:1.6px; text-transform:uppercase;
+}
 .hp-root #pane-stats .statgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
 .hp-root #pane-stats .statgrid .statcard { margin-bottom:0; }
 
@@ -585,6 +615,8 @@ export default function HunterProfilePage() {
   const [showPicker,      setShowPicker]      = useState(false);
   const [showStatIntro,   setShowStatIntro]   = useState(false);
   const [showPointGuide,  setShowPointGuide]  = useState(false);
+  const [showWorldGuide,  setShowWorldGuide]  = useState(true);
+  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
   const [pickedClass,     setPickedClass]     = useState<number | null>(null);
   const [chosenClass,     setChosenClass]     = useState<number | null>(null);
   const [localStats,      setLocalStats]      = useState<StatEntry[]>([]);
@@ -812,7 +844,7 @@ export default function HunterProfilePage() {
           </div>
 
           {/* Equipment / Skills / Stats */}
-          <div className="equip">
+          <div className={`equip${detailsCollapsed ? " collapsed" : ""}`}>
             <div className="tabs">
               {(["inventory", "skills", "stats"] as const).map(t => (
                 <button key={t} className={`tab${activeTab === t ? " on" : ""}`}
@@ -820,10 +852,24 @@ export default function HunterProfilePage() {
                   {t.toUpperCase()}
                 </button>
               ))}
+              <button
+                type="button"
+                className="tabtoggle"
+                onClick={() => setDetailsCollapsed((v) => !v)}
+                aria-label={detailsCollapsed ? "Show profile details" : "Hide profile details"}
+                data-testid="button-toggle-profile-details"
+              >
+                {detailsCollapsed ? "v" : "^"}
+              </button>
             </div>
+            {detailsCollapsed && (
+              <div className="tabhint" data-testid="text-profile-details-collapsed">
+                Details hidden
+              </div>
+            )}
 
             {/* ── Inventory ── */}
-            {activeTab === "inventory" && (
+            {!detailsCollapsed && activeTab === "inventory" && (
               <div>
                 <div className="slots">
                   {data.equipment.map((e, i) => {
@@ -848,7 +894,7 @@ export default function HunterProfilePage() {
             )}
 
             {/* ── Skills ── */}
-            {activeTab === "skills" && (
+            {!detailsCollapsed && activeTab === "skills" && (
               <div>
                 <div className="skilllist">
                   {data.skills.map((s, i) => s.locked ? (
@@ -873,7 +919,7 @@ export default function HunterProfilePage() {
             )}
 
             {/* ── Stats ── */}
-            {activeTab === "stats" && (
+            {!detailsCollapsed && activeTab === "stats" && (
               <div id="pane-stats">
                 <div className={`points${remaining <= 0 ? " empty" : ""}`}>
                   <span>AVAILABLE POINTS</span>
@@ -945,6 +991,21 @@ export default function HunterProfilePage() {
               </div>
             )}
           </div>
+
+          {showWorldGuide && (
+            <div className="worldguide" data-testid="enter-world-guide">
+              <button
+                type="button"
+                className="worldguide-close"
+                onClick={() => setShowWorldGuide(false)}
+                aria-label="Dismiss enter world guide"
+              >
+                ×
+              </button>
+              <p>Enter Gates</p>
+              <span>Battle enemies, test your build, and bring rewards back to your system.</span>
+            </div>
+          )}
 
           {/* Enter World */}
           <div className="enter" onClick={() => navigate("/world-map")} data-testid="button-enter-world">
