@@ -26,7 +26,7 @@ import {
 import { Moon as MoonIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Quadrant } from "@shared/schema";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -449,6 +449,10 @@ export default function SectographPage() {
       awardVitalityCompletion();
     }
   }, [awardVitalityCompletion, vitalityStep]);
+
+  const openAddBlockPicker = useCallback(() => {
+    setShowAddBlock(true);
+  }, []);
 
   // Weekly planning state
   const { roles } = useRoles();
@@ -1228,8 +1232,8 @@ export default function SectographPage() {
               className="text-[10px] text-center leading-relaxed"
               style={{ color: "rgba(245,245,255,0.35)" }}
             >
-              {!day5SleepDone
-                ? "Tap + in the clock center → choose Sleep to get started"
+                {!day5SleepDone
+                ? "Tap ADD BLOCK in the clock center → choose Sleep"
                 : "Sleep scheduled. Now add your Daily Quest time window"}
             </p>
           </div>
@@ -1277,13 +1281,13 @@ export default function SectographPage() {
               </p>
               <p className="text-base font-semibold leading-snug" style={{ color: "rgba(245,245,255,0.97)" }}>
                 {vitalitySleepDone
-                  ? "Tap + to schedule your Daily Quest window."
-                  : "Tap + to create your Sleep block."}
+                  ? "Tap ADD BLOCK to schedule your Daily Quest window."
+                  : "Tap ADD BLOCK to create your Sleep block."}
               </p>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: vitalitySleepDone ? "rgba(245,158,11,0.65)" : "rgba(96,165,250,0.65)" }}>
                 {vitalitySleepDone
                   ? "Step 2 of 2 — last step before XP is awarded"
-                  : "Step 1 of 2 — tap the + button in the clock center"}
+                  : "Step 1 of 2 — add your Sleep block first"}
               </p>
             </div>
           </div>
@@ -1491,7 +1495,7 @@ export default function SectographPage() {
                     setSectographTutorialStep(1);
                     setTutorialStep(1);
                   }
-                  setShowAddBlock(true);
+                  openAddBlockPicker();
                 }}
                 onBlockClick={(block) => {
                   const blk = block as any;
@@ -1516,7 +1520,7 @@ export default function SectographPage() {
               <CurrentMissionCard
                 currentBlock={currentBlock ?? null}
                 nextBlock={nextBlock ?? null}
-                onAddBlock={() => setShowAddBlock(true)}
+                onAddBlock={openAddBlockPicker}
                 onStartFocus={(block) => {
                   setEditingBlock({
                     id: block.id,
@@ -2796,6 +2800,13 @@ export default function SectographPage() {
               <DialogTitle className="text-base font-display font-bold tracking-wider" style={{ color: colors.primary }}>
                 ADD TIME BLOCK
               </DialogTitle>
+              <DialogDescription className="text-xs" style={{ color: colors.textMuted }}>
+                {isVitalityMode && vitalityStep === 2
+                  ? "Choose Daily Quest to schedule tomorrow's first mission window."
+                  : isVitalityMode
+                  ? "Choose Sleep to set your recovery window."
+                  : "Choose the block you want to add to your day."}
+              </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-3 mt-1">
               {BLOCK_PRESETS.map((preset) => {

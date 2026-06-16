@@ -259,6 +259,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [intelReadStarted, setIntelReadStarted] = useState(false);
   const [intelReadingView, setIntelReadingView] = useState(false);
   const [intelSecondsLeft, setIntelSecondsLeft] = useState(INTELLIGENCE_READ_SECONDS);
+  const [intelSubmitting, setIntelSubmitting] = useState(false);
   const [showVitality, setShowVitality] = useState(false);
   const [sleepHours, setSleepHours] = useState("7");
   const [sleepQuality, setSleepQuality] = useState<SleepQuality>("ok");
@@ -346,7 +347,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
   // System card
   const seqAllDone = pendingSeq.length === 0 && seqCards.length > 0;
-  const isFirstDayGuided = !homeData.isOnboardingComplete && homeData.onboardingDay <= 1;
+  const shouldLockDailyQuestSequence = !homeData.isOnboardingComplete && !allDone;
   const intelligencePending = seqAllDone && !intelligenceDone;
   const vitalityPending = seqAllDone && intelligenceDone && !vitalityDone;
   const currentDashLabel = DASH_CARDS.find(d => d.activityId === currentAid)?.label ?? null;
@@ -459,21 +460,42 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     queryClient.invalidateQueries({ queryKey: ["home", player.id] });
   }, [markComplete, queryClient, player.id]);
 
-  const completeIntelligenceMission = useCallback(() => {
-    if (!intelReadStarted || intelSecondsLeft > 0) return;
+  const completeIntelligenceMission = useCallback(async () => {
+    if (!intelReadStarted || intelSecondsLeft > 0 || intelSubmitting) return;
     if (!intelligenceDone) {
-      addXP(PHASE1_XP.intelligence, "intelligence");
-      completeTask(INTELLIGENCE_ACTIVITY_ID);
-      markComplete(INTELLIGENCE_ACTIVITY_ID);
-      window.dispatchEvent(new CustomEvent("ascend:activity-completed", {
-        detail: { activityId: INTELLIGENCE_ACTIVITY_ID },
-      }));
+      setIntelSubmitting(true);
+      try {
+        const res = await fetch(`/api/player/${player.id}/complete-guided-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: INTELLIGENCE_ACTIVITY_ID,
+            stat: "sense",
+            durationMinutes: 1,
+            category: "meditation",
+            xpMultiplier: 1.0,
+          }),
+        });
+        if (!res.ok) throw new Error("Intel sync failed");
+        const data = await res.json();
+        const earned = data?.xpEarned ?? PHASE1_XP.intelligence;
+        addXP(earned, "intelligence");
+        completeTask(INTELLIGENCE_ACTIVITY_ID);
+        markComplete(INTELLIGENCE_ACTIVITY_ID);
+        window.dispatchEvent(new CustomEvent("ascend:activity-completed", {
+          detail: { activityId: INTELLIGENCE_ACTIVITY_ID },
+        }));
+      } catch {
+        setIntelSubmitting(false);
+        return;
+      }
     }
+    setIntelSubmitting(false);
     setShowIntelligence(false);
     resetIntelReader();
     queryClient.invalidateQueries({ queryKey: ["/api/player", player.id] });
     queryClient.invalidateQueries({ queryKey: ["home", player.id] });
-  }, [intelReadStarted, intelSecondsLeft, intelligenceDone, markComplete, player.id, queryClient, resetIntelReader]);
+  }, [intelReadStarted, intelSecondsLeft, intelSubmitting, intelligenceDone, markComplete, player.id, queryClient, resetIntelReader]);
 
   const completeVitalityMission = useCallback(async () => {
     if (vitalityDone || vitalitySubmitting) return;
@@ -769,7 +791,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     <button
                       type="button"
                       onClick={completeIntelligenceMission}
-                      disabled={intelligenceDone || intelSecondsLeft > 0}
+                      disabled={intelligenceDone || intelSecondsLeft > 0 || intelSubmitting}
                       className="flex min-h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold disabled:opacity-60"
                       style={{
                         background: intelSecondsLeft <= 0 ? "linear-gradient(90deg, #2563eb, #38bdf8, #7c3aed)" : "rgba(148,163,184,0.14)",
@@ -778,7 +800,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       }}
                       data-testid="button-complete-intelligence"
                     >
-                      {intelligenceDone ? "Insight complete" : intelSecondsLeft > 0 ? "Reading..." : `Complete task · +${PHASE1_XP.intelligence} XP`}
+                      {intelligenceDone ? "Insight complete" : intelSubmitting ? "Saving..." : intelSecondsLeft > 0 ? "Reading..." : `Complete task · +${PHASE1_XP.intelligence} XP`}
                       <ArrowRight size={18} />
                     </button>
                     {intelSecondsLeft <= 0 && !intelligenceDone && (
@@ -1225,7 +1247,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   : q.id === VITALITY_ACTIVITY_ID
                     ? vitalityPending
                     : (q.id === currentAid && !allDone);
-                const isUnlocked = !isFirstDayGuided || done || isActive;
+                const isUnlocked = !shouldLockDailyQuestSequence || done || isActive;
                 const nodeColor = done ? "#22c55e" : isActive || isUnlocked ? dc.color : colors.textMuted;
                 const action = q.id === INTELLIGENCE_ACTIVITY_ID
                   ? () => setShowIntelligence(true)

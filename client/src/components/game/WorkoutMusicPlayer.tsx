@@ -133,6 +133,7 @@ export function WorkoutMusicPlayer({
         ? "Your YouTube playlist"
         : "Your playlist — tap play"
       : "Paste a YouTube playlist URL";
+  const toggleExpanded = () => setExpanded((v) => !v);
 
   return (
     <div
@@ -144,9 +145,16 @@ export function WorkoutMusicPlayer({
       }}
     >
       {/* ── Collapsed header ─────────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={toggleExpanded}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggleExpanded();
+          }
+        }}
         className="w-full flex items-center gap-3 px-4 py-2.5"
         data-testid="button-music-toggle-panel"
       >
@@ -199,7 +207,7 @@ export function WorkoutMusicPlayer({
         <span style={{ color: "#475569" }}>
           {expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </span>
-      </button>
+      </div>
 
       {/* ── Expanded panel ───────────────────────────────── */}
       <AnimatePresence initial={false}>

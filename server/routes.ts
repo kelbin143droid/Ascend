@@ -760,6 +760,7 @@ export async function registerRoutes(
         phase1_meditation: PHASE1_XP.sense,
         phase1_agility:    PHASE1_XP.agility,
         "light-movement":  PHASE1_XP.agility,
+        phase1_intelligence: PHASE1_XP.intelligence,
         phase1_vitality:   PHASE1_XP.vitality,
         phase1_strength:   PHASE1_XP.strength,
       };

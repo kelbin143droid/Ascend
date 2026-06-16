@@ -59,6 +59,7 @@ export function DailyFlowEngine({
 
   const currentActivity = activities[currentActivityIdx];
   const allCompleted = completedIds.size === activities.length;
+  const anySkipped = skippedIds.size > 0;
 
   const didComplete = (id: string) => completedIds.has(id);
   const strengthCompleted = didComplete("phase1_strength");
@@ -249,10 +250,10 @@ export function DailyFlowEngine({
 
         <div className="text-center mb-6">
           <div className="text-xl font-bold mb-2" style={{ color: colors.text }}>
-            Daily flow complete.
+            {allCompleted ? "Daily flow complete." : anySkipped ? "Circuit skipped." : "Flow paused."}
           </div>
           <div className="text-sm" style={{ color: colors.textMuted }}>
-            Your rhythm is strengthening.
+            {allCompleted ? "Your rhythm is strengthening." : "Return home when you are ready to continue."}
           </div>
         </div>
 
