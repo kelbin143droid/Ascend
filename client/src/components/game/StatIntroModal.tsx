@@ -4,11 +4,12 @@ import { ArrowRight, X } from "lucide-react";
 export const STAT_INTRO_SEEN_KEY = "ascend_stat_intro_seen";
 
 export const STAT_EXPLAINERS = [
-  { key: "SEN", label: "Sense", text: "Calm, focus, and MP recovery." },
-  { key: "AGI", label: "Agility", text: "Mobility, speed, and movement control." },
-  { key: "STR", label: "Strength", text: "Power, discipline, and battle readiness." },
-  { key: "INT", label: "Intel", text: "Learning, strategy, and smarter choices." },
-  { key: "VIT", label: "Vitality", text: "Sleep, recovery, and HP stability." },
+  { key: "STR", label: "Strength", text: "Attack damage and stamina." },
+  { key: "AGI", label: "Agility", text: "Attack speed and movement speed." },
+  { key: "SEN", label: "Sense", text: "Mana regeneration and cooldown reduction." },
+  { key: "INT", label: "Intel", text: "Crit chance and dodge chance." },
+  { key: "VIT", label: "Vitality", text: "Defense and HP regeneration." },
+  { key: "DIS", label: "Discipline", text: "Dungeon energy and reward chance." },
 ];
 
 export function markStatIntroSeen() {
@@ -49,7 +50,7 @@ export function StatIntroModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[9999] flex items-center justify-center px-5"
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -61,11 +62,12 @@ export function StatIntroModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.24, ease: "easeOut" }}
-            className="relative max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-3xl px-6 py-6"
+            className="relative max-h-[92dvh] w-[calc(100vw-32px)] max-w-sm overflow-y-auto rounded-3xl"
             style={{
               background: "linear-gradient(145deg, rgba(8,14,32,0.97), rgba(4,9,24,0.99))",
               border: `1px solid ${primaryColor}44`,
               boxShadow: `0 24px 70px rgba(0,0,0,0.58), 0 0 42px ${primaryColor}18`,
+              padding: "22px",
             }}
           >
             <button
@@ -82,19 +84,19 @@ export function StatIntroModal({
             <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: primaryColor }}>
               System Awakened
             </p>
-            <h2 className="mt-2 pr-8 text-[25px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)" }}>
-              Your stats feed your hero.
+            <h2 className="mt-2 pr-8 text-[23px] font-black leading-tight" style={{ color: "rgba(248,250,252,0.98)", marginTop: "8px", paddingRight: "36px" }}>
+              Stats power your hero.
             </h2>
-            <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgba(203,213,225,0.72)" }}>
-              Real-world actions raise the system that powers your game character.
+            <p className="mt-2 text-[13px] leading-snug" style={{ color: "rgba(203,213,225,0.72)", marginTop: "8px" }}>
+              Each stat maps to a combat advantage for your character.
             </p>
 
-            <div className="mt-5 grid gap-2">
+            <div className="mt-5 grid gap-2" style={{ marginTop: "18px" }}>
               {STAT_EXPLAINERS.map((stat) => (
                 <div
                   key={stat.key}
                   className="grid grid-cols-[44px_1fr] gap-3 rounded-2xl px-3 py-2.5"
-                  style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)", padding: "10px 12px" }}
                 >
                   <div
                     className="flex h-9 items-center justify-center rounded-xl text-[11px] font-black"
@@ -122,6 +124,8 @@ export function StatIntroModal({
                 background: `linear-gradient(90deg, #2563eb, ${primaryColor}, #7c3aed)`,
                 color: "#fff",
                 boxShadow: `0 10px 30px ${primaryColor}24`,
+                marginTop: "18px",
+                padding: "0 16px",
               }}
               data-testid="button-stat-intro-primary"
             >
