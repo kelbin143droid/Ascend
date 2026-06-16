@@ -1113,53 +1113,56 @@ export default function SectographPage() {
 
   return (
     <SystemLayout>
-      <div className="flex flex-col gap-4 pt-4 pb-20">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2.5 pt-2 pb-20">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
+            className="h-9 w-9 shrink-0 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors"
             style={{ color: colors.primary }}
             data-testid="button-back-sectograph"
+            aria-label="Back"
           >
-            <ChevronLeft size={14} />
-            Back
+            <ChevronLeft size={18} />
           </button>
-          <h1 className="text-lg font-display font-black tracking-wider" style={{ color: colors.text }}>
+          <h1 className="flex-1 text-center text-lg font-display font-black tracking-wider" style={{ color: colors.text }}>
             SECTOGRAPH
           </h1>
-          <div className="w-14" />
+          {!isDay5Mode ? (
+            <div
+              className="flex shrink-0 rounded-xl p-1 gap-1"
+              style={{
+                backgroundColor: `${colors.surface}80`,
+                border: `1px solid ${colors.surfaceBorder}`,
+              }}
+              data-testid="sectograph-tabs"
+              aria-label="Sectograph view"
+            >
+              {tabs.filter(t => t.id !== "plan").map((tab) => {
+                const isActive = activeTab === tab.id;
+                const Icon = tab.id === "calendar" ? CalendarDays : Clock;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className="h-8 w-10 rounded-lg flex items-center justify-center transition-all"
+                    style={{
+                      backgroundColor: isActive ? colors.primary : "transparent",
+                      color: isActive ? "#05070f" : colors.textMuted,
+                      boxShadow: isActive ? `0 0 12px ${colors.primaryGlow}` : "none",
+                    }}
+                    data-testid={`tab-${tab.id}`}
+                    aria-label={tab.label}
+                    title={tab.label}
+                  >
+                    <Icon size={15} />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="w-20" />
+          )}
         </div>
-
-        {/* ── VIEW TABS (Timeline / Calendar) ──────────────────────── */}
-        {!isDay5Mode && (
-          <div
-            className="flex rounded-xl p-1 gap-1"
-            style={{
-              backgroundColor: `${colors.surface}80`,
-              border: `1px solid ${colors.surfaceBorder}`,
-            }}
-            data-testid="sectograph-tabs"
-          >
-            {tabs.filter(t => t.id !== "plan").map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className="flex-1 py-2 rounded-lg text-sm font-semibold tracking-wide transition-all"
-                  style={{
-                    backgroundColor: isActive ? colors.primary : "transparent",
-                    color: isActive ? "#05070f" : colors.textMuted,
-                    boxShadow: isActive ? `0 0 12px ${colors.primaryGlow}` : "none",
-                  }}
-                  data-testid={`tab-${tab.id}`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
 
 
         {/* ── DAY 5 SETUP GUIDE ──────────────────────────────────────── */}
@@ -1242,7 +1245,7 @@ export default function SectographPage() {
         {/* ── Vitality mode: SYSTEM instruction card ─────────────────────── */}
         {isVitalityMode && vitalityIntroSeen && vitalityStep >= 1 && vitalityStep < 3 && (
           <div
-            className="w-full rounded-2xl px-5 py-4 flex items-start gap-4"
+            className="w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
             style={{
               background: vitalitySleepDone
                 ? "linear-gradient(135deg, rgba(245,158,11,0.14) 0%, rgba(251,191,36,0.08) 100%)"
@@ -1257,7 +1260,7 @@ export default function SectographPage() {
             data-testid="vitality-coach-tooltip"
           >
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
               style={{
                 background: vitalitySleepDone
                   ? "linear-gradient(135deg, rgba(245,158,11,0.28), rgba(251,191,36,0.14))"
@@ -1274,22 +1277,27 @@ export default function SectographPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p
-                className="text-[10px] uppercase tracking-widest font-bold mb-1"
+                className="text-[9px] uppercase tracking-[0.18em] font-bold"
                 style={{ color: vitalitySleepDone ? "rgba(245,158,11,0.85)" : "rgba(96,165,250,0.85)" }}
               >
-                ⚡ System Directive
+                System Directive
               </p>
-              <p className="text-base font-semibold leading-snug" style={{ color: "rgba(245,245,255,0.97)" }}>
+              <p className="text-sm font-semibold leading-tight truncate" style={{ color: "rgba(245,245,255,0.97)" }}>
                 {vitalitySleepDone
-                  ? "Tap ADD BLOCK to schedule your Daily Quest window."
-                  : "Tap ADD BLOCK to create your Sleep block."}
-              </p>
-              <p className="text-xs mt-1 leading-relaxed" style={{ color: vitalitySleepDone ? "rgba(245,158,11,0.65)" : "rgba(96,165,250,0.65)" }}>
-                {vitalitySleepDone
-                  ? "Step 2 of 2 — last step before XP is awarded"
-                  : "Step 1 of 2 — add your Sleep block first"}
+                  ? "Daily Quest window · Tap + in the clock center"
+                  : "Sleep block needed · Tap + in the clock center"}
               </p>
             </div>
+            <span
+              className="shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wider"
+              style={{
+                color: vitalitySleepDone ? "#fbbf24" : "#93c5fd",
+                background: vitalitySleepDone ? "rgba(245,158,11,0.12)" : "rgba(59,130,246,0.12)",
+                border: vitalitySleepDone ? "1px solid rgba(245,158,11,0.24)" : "1px solid rgba(59,130,246,0.24)",
+              }}
+            >
+              {vitalitySleepDone ? "2/2" : "1/2"}
+            </span>
           </div>
         )}
 
@@ -1406,7 +1414,7 @@ export default function SectographPage() {
           </div>
         )}
 
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-2">
             {/* ── DATE NAV STRIP ─────────────────────────────────── */}
             {!isDay5Mode && (() => {
               const viewDate = selectedDay ?? new Date();
@@ -1434,7 +1442,7 @@ export default function SectographPage() {
               });
               return (
                 <div
-                  className="w-full flex items-center justify-between rounded-xl px-2 py-1.5"
+                  className="w-full flex items-center justify-between rounded-xl px-1.5 py-1"
                   style={{
                     backgroundColor: `${colors.surface}80`,
                     border: `1px solid ${colors.surfaceBorder}`,
@@ -1443,7 +1451,7 @@ export default function SectographPage() {
                 >
                   <button
                     onClick={() => shiftDay(-1)}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
                     data-testid="button-prev-day"
                     aria-label="Previous day"
                   >
@@ -1451,17 +1459,17 @@ export default function SectographPage() {
                   </button>
                   <button
                     onClick={goToday}
-                    className="flex-1 mx-2 flex flex-col items-center justify-center py-1 rounded-lg hover:bg-white/5 transition-colors"
+                    className="flex-1 mx-1.5 flex items-center justify-center gap-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
                     data-testid="button-current-date"
                   >
                     <span
-                      className="text-[10px] uppercase tracking-[0.2em] font-bold"
+                      className="text-[9px] uppercase tracking-[0.18em] font-bold"
                       style={{ color: isToday ? colors.primary : colors.textMuted }}
                     >
-                      {isToday ? "Today" : "Tap to return to today"}
+                      {isToday ? "Today" : "Return"}
                     </span>
                     <span
-                      className="text-base font-display font-bold"
+                      className="text-sm font-display font-bold"
                       style={{ color: colors.text }}
                     >
                       {dateLabel}
@@ -1469,7 +1477,7 @@ export default function SectographPage() {
                   </button>
                   <button
                     onClick={() => shiftDay(1)}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
                     data-testid="button-next-day"
                     aria-label="Next day"
                   >
@@ -1479,7 +1487,7 @@ export default function SectographPage() {
               );
             })()}
 
-            <div className="flex justify-center pt-2">
+            <div className="flex justify-center pt-0">
               <Sectograph
                 schedule={activeSchedule}
                 size={300}
