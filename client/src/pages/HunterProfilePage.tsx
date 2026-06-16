@@ -325,10 +325,10 @@ const CSS = `
 /* stage / character */
 .hp-root .stage { position:relative; display:flex; flex-direction:column; align-items:center; min-height:0; }
 .hp-root .charwrap {
-  position:relative; width:100%; height:clamp(270px, 46vh, 390px);
+  position:relative; width:100%; height:clamp(330px, 54vh, 460px);
   display:flex; align-items:flex-end; justify-content:center;
 }
-.hp-root .platform { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:80%; aspect-ratio:3/1; }
+.hp-root .platform { position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:86%; aspect-ratio:3/1; }
 .hp-root .platform .ring {
   position:absolute; inset:0; border-radius:50%;
   border:1.5px solid var(--cyan); opacity:0.5;
@@ -344,10 +344,10 @@ const CSS = `
   filter:blur(2px); opacity:.8;
 }
 @keyframes hp-pulse { 0%,100%{transform:scale(1);opacity:.5} 50%{transform:scale(1.04);opacity:.8} }
-.hp-root .charimg { position:relative; height:92%; z-index:2; filter:drop-shadow(0 8px 26px rgba(76,194,255,0.4)); }
+.hp-root .charimg { position:relative; height:108%; z-index:2; filter:drop-shadow(0 8px 26px rgba(76,194,255,0.4)); }
 .hp-root .cp {
-  margin-top:-4px; background:var(--panel); border:1px solid rgba(76,170,255,0.18);
-  border-radius:12px; padding:7px 16px; text-align:center; min-width:150px;
+  margin-top:-8px; background:var(--panel); border:1px solid rgba(76,170,255,0.18);
+  border-radius:11px; padding:6px 14px; text-align:center; min-width:140px;
 }
 .hp-root .cp .val {
   font-family:'Chakra Petch'; font-size:22px; font-weight:700; color:var(--cyan-soft);
@@ -408,15 +408,15 @@ const CSS = `
 .hp-root .points.empty { border-color:rgba(76,170,255,0.15); box-shadow:none; opacity:.6; }
 .hp-root .detailbtn, .hp-root .vieweq {
   width:100%; background:var(--panel); border:1px solid rgba(76,170,255,0.2);
-  border-radius:12px; padding:10px; color:var(--cyan-soft); font-family:'Chakra Petch';
+  border-radius:10px; padding:8px; color:var(--cyan-soft); font-family:'Chakra Petch';
   font-weight:600; font-size:12px; letter-spacing:1px; cursor:pointer;
   display:flex; align-items:center; justify-content:center; gap:8px; transition:.2s;
 }
 .hp-root .detailbtn:hover, .hp-root .vieweq:hover { border-color:var(--cyan); background:rgba(76,194,255,0.08); }
 
 /* equipment */
-.hp-root .equip { margin-top:14px; background:var(--panel); border:1px solid rgba(76,170,255,0.12); border-radius:16px; padding:12px; }
-.hp-root .equip .slots { display:flex; gap:8px; margin:10px 0 12px; }
+.hp-root .equip { margin-top:18px; background:var(--panel); border:1px solid rgba(76,170,255,0.12); border-radius:14px; padding:10px; }
+.hp-root .equip .slots { display:flex; gap:7px; margin:8px 0 9px; }
 .hp-root .slot {
   flex:1; aspect-ratio:1; border-radius:10px; position:relative;
   background:rgba(8,14,26,0.8); border:1px solid rgba(76,170,255,0.14);
@@ -432,11 +432,11 @@ const CSS = `
 
 /* enter world */
 .hp-root .enter {
-  margin:16px 0; width:100%; cursor:pointer; position:relative;
+  margin:12px 0 14px; width:100%; cursor:pointer; position:relative;
   background:linear-gradient(180deg,rgba(76,194,255,0.22),rgba(20,60,110,0.5));
   border:1.5px solid var(--cyan);
   clip-path:polygon(4% 0,96% 0,100% 50%,96% 100%,4% 100%,0 50%);
-  padding:18px; text-align:center;
+  padding:14px; text-align:center;
   box-shadow:0 0 30px rgba(76,194,255,0.35),inset 0 0 22px rgba(76,194,255,0.18);
   animation:hp-breathe 2.6s ease-in-out infinite;
 }
@@ -444,15 +444,15 @@ const CSS = `
   0%,100%{box-shadow:0 0 24px rgba(76,194,255,0.3),inset 0 0 22px rgba(76,194,255,0.16)}
   50%{box-shadow:0 0 44px rgba(76,194,255,0.55),inset 0 0 28px rgba(76,194,255,0.25)}
 }
-.hp-root .enter b { display:block; font-family:'Chakra Petch'; font-weight:700; font-size:30px; letter-spacing:3px; color:var(--ink); text-shadow:0 0 18px var(--cyan-glow); }
-.hp-root .enter small { color:var(--cyan-soft); letter-spacing:5px; font-size:11px; font-weight:600; }
+.hp-root .enter b { display:block; font-family:'Chakra Petch'; font-weight:700; font-size:26px; letter-spacing:3px; color:var(--ink); text-shadow:0 0 18px var(--cyan-glow); }
+.hp-root .enter small { color:var(--cyan-soft); letter-spacing:4px; font-size:10px; font-weight:600; }
 
 /* tabs */
-.hp-root .tabs { display:flex; gap:6px; margin-bottom:12px; border-bottom:1px solid rgba(76,170,255,0.12); }
+.hp-root .tabs { display:flex; gap:6px; margin-bottom:8px; border-bottom:1px solid rgba(76,170,255,0.12); }
 .hp-root .tab {
   flex:1; background:transparent; border:none; border-bottom:2px solid transparent;
-  color:var(--ink-dim); font-family:'Chakra Petch'; font-weight:700; font-size:13px;
-  letter-spacing:3px; padding:4px 0 8px; cursor:pointer; transition:.2s;
+  color:var(--ink-dim); font-family:'Chakra Petch'; font-weight:700; font-size:12px;
+  letter-spacing:2.5px; padding:3px 0 7px; cursor:pointer; transition:.2s;
 }
 .hp-root .tab.on { color:var(--cyan); border-bottom-color:var(--cyan); text-shadow:0 0 10px var(--cyan-glow); }
 .hp-root .tab:hover { color:var(--cyan-soft); }
@@ -489,7 +489,7 @@ const CSS = `
   .hp-root .profilehud .pickhud-label { display:none; }
   .hp-root .back-btn { width:34px; height:34px; }
   .hp-root .main { margin-top:6px; }
-  .hp-root .charwrap { height:clamp(230px, 42vh, 330px); }
+  .hp-root .charwrap { height:clamp(290px, 48vh, 390px); }
   .hp-root .cp { padding:6px 14px; }
   .hp-root .cp .val { font-size:20px; }
   .hp-root .equip { margin-top:10px; padding:10px; }
@@ -500,7 +500,7 @@ const CSS = `
   .hp-root .enter small { font-size:10px; letter-spacing:4px; }
 }
 @media (max-height: 650px) {
-  .hp-root .charwrap { height:210px; }
+  .hp-root .charwrap { height:250px; }
   .hp-root .cp .lbl { display:none; }
   .hp-root .equip .slots { margin-bottom:8px; }
   .hp-root .vieweq { padding:8px; }
@@ -513,7 +513,7 @@ const CSS = `
 function ClassModel({ src, scale }: { src: string; scale: number }) {
   const { scene } = useGLTF(src);
   const model = useMemo(() => cloneSkeleton(scene), [scene]);
-  return <primitive object={model} position={[0, -1, 0]} scale={scale} />;
+  return <primitive object={model} position={[0, -1.05, 0]} scale={scale} />;
 }
 
 function ClassViewer({ src, compact = false }: { src: string; compact?: boolean }) {
@@ -521,14 +521,14 @@ function ClassViewer({ src, compact = false }: { src: string; compact?: boolean 
     <Canvas
       style={{ position: "absolute", inset: 0, zIndex: 2 }}
       gl={{ alpha: true, antialias: true }}
-      camera={{ position: [0, compact ? 0.9 : 1.0, compact ? 3.0 : 3.2], fov: compact ? 38 : 42 }}
+      camera={{ position: [0, compact ? 0.9 : 1.0, compact ? 3.0 : 2.85], fov: compact ? 38 : 38 }}
     >
       <ambientLight intensity={0.55} />
       <directionalLight position={[2, 4, 3]}  intensity={1.5} color="#7dd3fc" />
       <directionalLight position={[-2, 2, -2]} intensity={0.5} color="#c084fc" />
       <pointLight position={[0, -1, 2]} intensity={0.3} color="#4cc2ff" />
       <Suspense fallback={null}>
-        <ClassModel src={src} scale={compact ? 0.62 : 0.55} />
+        <ClassModel src={src} scale={compact ? 0.62 : 0.72} />
       </Suspense>
       <OrbitControls
         enablePan={false}
