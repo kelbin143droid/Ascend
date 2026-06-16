@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useGame } from "@/context/GameContext";
 import { Canvas } from "@react-three/fiber";
@@ -36,11 +36,6 @@ const EQICON: Record<string, string> = {
   chest:  '<path d="M5 7l4-2 3 2 3-2 4 2-1 12H6z" stroke="#9fc4e6" fill="none" strokeWidth="1.5"/>',
   gloves: '<path d="M8 7v6M16 7v6a5 5 0 01-8 0M8 13l-2 2v3h12v-3l-2-2" stroke="#9fc4e6" fill="none" strokeWidth="1.5"/>',
   boots:  '<path d="M8 4v9l-3 3v3h10v-3a4 4 0 00-4-4V4z" stroke="#9fc4e6" fill="none" strokeWidth="1.5"/>',
-};
-const WALLETICON: Record<string, string> = {
-  gem:     '<path d="M6 3h12l3 5-9 11L3 8z" fill="#4cc2ff"/>',
-  coin:    '<circle cx="12" cy="12" r="9" fill="#f5c542"/><circle cx="12" cy="12" r="5" fill="none" stroke="#9a7714" strokeWidth="1.5"/>',
-  diamond: '<path d="M12 3l7 7-7 11-7-11z" fill="#c77dff"/>',
 };
 const EMBLEM = '<path d="M12 2l3 5 5 1-3.5 4 1 5L12 19l-5.5 3 1-5L4 8l5-1z"/>';
 const CLASS_DISPLAY_NAMES = ["Warrior", "Mage", "Assassin", "Archer"];
@@ -104,15 +99,13 @@ const CSS = `
   opacity:0.25; animation:hp-fall linear infinite;
 }
 @keyframes hp-fall { to { transform:translateY(360%); } }
-.hp-root .screen { position:relative; z-index:1; padding:18px 16px 0; }
+.hp-root .screen { position:relative; z-index:1; padding:14px 16px 0; }
 .hp-root .back-btn {
-  position:sticky; top:0; z-index:20;
-  display:flex; align-items:center; gap:6px;
-  padding:10px 16px;
-  background:rgba(4,6,13,0.92); border-bottom:1px solid rgba(76,170,255,0.1);
+  width:36px; height:36px; flex:none; display:grid; place-items:center;
+  background:rgba(4,6,13,0.52); border:1px solid rgba(76,170,255,0.24); border-radius:10px;
   color:var(--cyan-soft); font-family:'Chakra Petch',sans-serif;
-  font-weight:700; font-size:12px; letter-spacing:1px;
-  cursor:pointer; border:none; width:100%; text-align:left;
+  font-weight:700; font-size:18px;
+  cursor:pointer;
 }
 .hp-root .back-btn:hover { color:var(--ink); }
 
@@ -173,7 +166,7 @@ const CSS = `
 .hp-root .xplabel { text-align:right; color:var(--ink-dim); font-size:12px; font-weight:600; margin-top:5px; }
 
 /* main grid */
-.hp-root .main { display:grid; grid-template-columns:92px 1fr; gap:12px; margin-top:14px; }
+.hp-root .main { margin-top:10px; }
 .hp-root .coltitle { color:var(--ink-dim); font-size:12px; letter-spacing:3px; font-weight:700; margin-bottom:8px; }
 
 /* class cards */
@@ -261,6 +254,18 @@ const CSS = `
   box-shadow:0 0 12px rgba(76,194,255,.55);
 }
 .hp-root .pickhud-label { font-size:10px; color:#c7d8e6; font-family:'Chakra Petch'; font-weight:700; letter-spacing:.5px; }
+.hp-root .profilehud {
+  position:relative; display:grid; grid-template-columns:auto auto minmax(0,1fr) auto; gap:9px; align-items:center;
+  padding:9px 10px; border:1px solid rgba(164,219,255,.38); border-radius:12px;
+  background:linear-gradient(180deg, rgba(96,188,255,.2), rgba(16,48,88,.36));
+  box-shadow:0 0 22px rgba(76,194,255,.2), inset 0 0 18px rgba(255,255,255,.05);
+}
+.hp-root .profilehud .pickrank { width:38px; height:38px; font-size:17px; }
+.hp-root .profilehud .pickhunter { font-size:17px; }
+.hp-root .profilehud .pickrole { font-size:10px; }
+.hp-root .profilehud .pickhud-xp { min-width:92px; }
+.hp-root .profilehud .pickhud-track { width:88px; }
+.hp-root .profilehud .pickhud-label { font-size:9px; }
 .hp-root .pickpreview {
   position:relative; width:100%; min-height:0; height:100%;
   display:flex; align-items:flex-end; justify-content:center; overflow:hidden;
@@ -318,8 +323,11 @@ const CSS = `
 }
 
 /* stage / character */
-.hp-root .stage { position:relative; display:flex; flex-direction:column; align-items:center; }
-.hp-root .charwrap { position:relative; width:100%; aspect-ratio:3/5; display:flex; align-items:flex-end; justify-content:center; }
+.hp-root .stage { position:relative; display:flex; flex-direction:column; align-items:center; min-height:0; }
+.hp-root .charwrap {
+  position:relative; width:100%; height:clamp(270px, 46vh, 390px);
+  display:flex; align-items:flex-end; justify-content:center;
+}
 .hp-root .platform { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:80%; aspect-ratio:3/1; }
 .hp-root .platform .ring {
   position:absolute; inset:0; border-radius:50%;
@@ -338,8 +346,8 @@ const CSS = `
 @keyframes hp-pulse { 0%,100%{transform:scale(1);opacity:.5} 50%{transform:scale(1.04);opacity:.8} }
 .hp-root .charimg { position:relative; height:92%; z-index:2; filter:drop-shadow(0 8px 26px rgba(76,194,255,0.4)); }
 .hp-root .cp {
-  margin-top:6px; background:var(--panel); border:1px solid rgba(76,170,255,0.18);
-  border-radius:12px; padding:8px 16px; text-align:center; min-width:150px;
+  margin-top:-4px; background:var(--panel); border:1px solid rgba(76,170,255,0.18);
+  border-radius:12px; padding:7px 16px; text-align:center; min-width:150px;
 }
 .hp-root .cp .val {
   font-family:'Chakra Petch'; font-size:22px; font-weight:700; color:var(--cyan-soft);
@@ -471,6 +479,34 @@ const CSS = `
   background:rgba(76,194,255,0.12); border:1px solid rgba(76,170,255,0.2);
   border-radius:20px; padding:2px 9px;
 }
+@media (max-height: 740px) {
+  .hp-root .screen { padding:10px 14px 0; }
+  .hp-root .profilehud { gap:7px; padding:8px; }
+  .hp-root .profilehud .pickrank { width:34px; height:34px; font-size:15px; }
+  .hp-root .profilehud .pickhunter { font-size:15px; }
+  .hp-root .profilehud .pickhud-xp { min-width:80px; }
+  .hp-root .profilehud .pickhud-track { width:78px; height:8px; }
+  .hp-root .profilehud .pickhud-label { display:none; }
+  .hp-root .back-btn { width:34px; height:34px; }
+  .hp-root .main { margin-top:6px; }
+  .hp-root .charwrap { height:clamp(230px, 42vh, 330px); }
+  .hp-root .cp { padding:6px 14px; }
+  .hp-root .cp .val { font-size:20px; }
+  .hp-root .equip { margin-top:10px; padding:10px; }
+  .hp-root .equip .slots { margin:8px 0 10px; gap:7px; }
+  .hp-root .tab { font-size:12px; letter-spacing:2px; padding:3px 0 7px; }
+  .hp-root .enter { margin:12px 0; padding:14px; }
+  .hp-root .enter b { font-size:25px; }
+  .hp-root .enter small { font-size:10px; letter-spacing:4px; }
+}
+@media (max-height: 650px) {
+  .hp-root .charwrap { height:210px; }
+  .hp-root .cp .lbl { display:none; }
+  .hp-root .equip .slots { margin-bottom:8px; }
+  .hp-root .vieweq { padding:8px; }
+  .hp-root .enter { padding:12px; }
+  .hp-root .enter b { font-size:22px; }
+}
 `;
 
 // ── 3-D Class Viewer ──────────────────────────────────────────────────────
@@ -516,18 +552,15 @@ export default function HunterProfilePage() {
   const [data,            setData]            = useState<PlayerData | null>(null);
   const [loading,         setLoading]         = useState(true);
   const [activeTab,       setActiveTab]       = useState<"inventory" | "skills" | "stats">("inventory");
-  const [otherOpen,       setOtherOpen]       = useState(false);
   const [showPicker,      setShowPicker]      = useState(false);
   const [showStatIntro,   setShowStatIntro]   = useState(false);
   const [pickedClass,     setPickedClass]     = useState<number | null>(null);
   const [chosenClass,     setChosenClass]     = useState<number | null>(null);
-  const [previewClass,    setPreviewClass]    = useState<number | null>(null);
   const [localStats,      setLocalStats]      = useState<StatEntry[]>([]);
   const [availPts,        setAvailPts]        = useState(0);
   const [cp,              setCp]              = useState(0);
   const [allocError,      setAllocError]      = useState<string | null>(null);
   const [allocating,      setAllocating]      = useState(false);
-  const xpRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!player?.id) return;
@@ -539,23 +572,12 @@ export default function HunterProfilePage() {
         setAvailPts(d.availablePoints);
         setCp(d.combatPower);
         setChosenClass(d.chosenClass);
-        setPreviewClass(d.chosenClass ?? 0);
         setShowPicker(d.chosenClass === null);
         setPickedClass(d.chosenClass === null ? 0 : null);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [player?.id]);
-
-  // Animate XP bar after data loads
-  useEffect(() => {
-    if (!data || !xpRef.current) return;
-    requestAnimationFrame(() => {
-      if (xpRef.current) {
-        xpRef.current.style.width = `${Math.min(100, (data.xp / data.xpMax) * 100)}%`;
-      }
-    });
-  }, [data]);
 
   // ── Stat allocation (local-only; server wiring is a future step) ────────
   const totalPending = () => localStats.reduce((a, s) => a + s.pending, 0);
@@ -638,7 +660,6 @@ export default function HunterProfilePage() {
     if (pickedClass === null || !data || !player?.id) return;
     // Optimistically update UI immediately
     setChosenClass(pickedClass);
-    setPreviewClass(pickedClass);
     setShowPicker(false);
     setShowStatIntro(true);
     // Persist to server — idempotent, so safe to call even if already set
@@ -667,46 +688,12 @@ export default function HunterProfilePage() {
   const pending   = totalPending();
   const remaining = availPts - pending;
 
-  // ── Class column rendering ───────────────────────────────────────────────
-  function renderClassColumn() {
-    if (chosenClass === null) return null;
-    const main   = data!.classes[chosenClass];
-    const others = data!.classes
-      .map((entry, index) => ({ entry, index }))
-      .filter(({ index }) => index !== chosenClass);
-    return (
-      <>
-        <button type="button" className={`classcard active${previewClass === chosenClass ? " preview" : ""}`} onClick={() => setPreviewClass(chosenClass)}>
-          <svg className="emblem" viewBox="0 0 24 24" fill="none" stroke={main.color} strokeWidth="1.6"
-            dangerouslySetInnerHTML={{ __html: EMBLEM }} />
-          <div className="cname">{classDisplayName(chosenClass, main.name)}</div>
-          <div className="clv">Lv. {main.lv}</div>
-        </button>
-        <button className={`otherstoggle${otherOpen ? " open" : ""}`} onClick={() => setOtherOpen(o => !o)}>
-          OTHER CLASSES <span className="chev">›</span>
-        </button>
-        {otherOpen && others.map(({ entry, index }) => (
-          <button
-            key={entry.name}
-            type="button"
-            className={`classcard${previewClass === index ? " preview" : ""}`}
-            onClick={() => setPreviewClass(index)}
-          >
-            <svg className="emblem" viewBox="0 0 24 24" fill="none" stroke={entry.color} strokeWidth="1.6"
-              dangerouslySetInnerHTML={{ __html: EMBLEM }} />
-            <div className="cname">{classDisplayName(index, entry.name)}</div>
-            <div className="clv">Lv. {entry.lv}</div>
-          </button>
-        ))}
-        <div className="classnote">Tap a class to preview it.</div>
-      </>
-    );
-  }
-
   const pickedData = pickedClass !== null ? data.classes[pickedClass] : null;
   const pickedName = pickedClass !== null && pickedData ? classDisplayName(pickedClass, pickedData.name) : "";
   const pickerXpPercent = data.xpMax > 0 ? Math.min(100, Math.max(0, (data.xp / data.xpMax) * 100)) : 0;
-  const activeClassIndex = previewClass ?? chosenClass ?? 0;
+  const activeClassIndex = chosenClass ?? 0;
+  const activeClassData = data.classes[activeClassIndex];
+  const activeClassName = activeClassData ? classDisplayName(activeClassIndex, activeClassData.name) : data.role;
   const activeClassSrc = classModelSrc(activeClassIndex);
 
   return (
@@ -729,64 +716,29 @@ export default function HunterProfilePage() {
         </div>
 
         <div className="screen">
-          {/* Top bar */}
-          <div className="topbar">
+          <div className="profilehud" aria-label="Hunter profile">
             <button
               className="back-btn"
               onClick={() => window.history.back()}
               data-testid="button-hunter-profile-back"
               aria-label="Go back"
             >←</button>
-            <div className="logo"><b>HUNTER</b><small>SYSTEM</small></div>
-            <div className="wallet">
-              {data.wallet.map((w, i) => (
-                <div key={i} className="coinpill">
-                  <svg viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: WALLETICON[w.type] }} />
-                  {w.value.toLocaleString()}
-                </div>
-              ))}
-              <button className="addbtn">+</button>
+            <div className="pickrank">{data.rank}</div>
+            <div className="pickhud-main">
+              <div className="pickhunter">{data.name}</div>
+              <div className="pickrole">{data.rank} Rank - {activeClassName}</div>
             </div>
-          </div>
-
-          {/* Identity */}
-          <div className="identity">
-            <div className="rankbadge">
-              <div className="hex" />
-              <div className="hex inner" />
-              <b>{data.rank}</b>
-            </div>
-            <div className="who">
-              <h1>{data.name}</h1>
-              <div className="rank">{data.rank}-RANK HUNTER</div>
-              <div className="role">
-                <svg viewBox="0 0 24 24" width="13" fill="none" stroke="#7d93b3" strokeWidth="2">
-                  <path d="M5 3l6 6M19 3l-6 6M9 13l-6 8M15 13l6 8" />
-                </svg>
-                <span>{data.role}</span>
+            <div className="pickhud-xp">
+              <div className="pickhud-level">Lv {data.level}</div>
+              <div className="pickhud-track">
+                <div className="pickhud-fill" style={{ width: `${pickerXpPercent}%` }} />
               </div>
-            </div>
-            <div className="lvhex">
-              <small>Lv.</small>
-              <b>{data.level}</b>
+              <div className="pickhud-label">{data.xp.toLocaleString()} / {data.xpMax.toLocaleString()} XP</div>
             </div>
           </div>
 
-          {/* XP bar */}
-          <div className="xp">
-            <div className="xptrack">
-              <div className="xpfill" ref={xpRef} />
-            </div>
-            <div className="xplabel">{data.xp.toLocaleString()} / {data.xpMax.toLocaleString()} XP</div>
-          </div>
-
-          {/* Main grid: class column + character stage */}
+          {/* Character stage */}
           <div className="main">
-            <div className="classes">
-              <div className="coltitle">CLASS</div>
-              {renderClassColumn()}
-            </div>
-
             <div className="stage">
               <div className="charwrap">
                 <div className="platform">
