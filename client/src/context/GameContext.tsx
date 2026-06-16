@@ -107,7 +107,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         maxHp: 100,
         mp: 10,
         maxMp: 10,
-        stats: { strength: 1, agility: 1, sense: 1, vitality: 1 },
+        stats: { strength: 1, agility: 1, sense: 1, vitality: 1, intelligence: 0, discipline: 0 },
         gold: 0,
         phase: 1,
         rank: "E",

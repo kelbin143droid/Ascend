@@ -98,6 +98,7 @@ function attachDerivedStats(player: Player, systemMessage?: string): PlayerWithD
     agility:    player.stats.agility    + (bonusStats.agility    ?? 0),
     sense:      player.stats.sense      + (bonusStats.sense      ?? 0),
     vitality:   player.stats.vitality   + (bonusStats.vitality   ?? 0),
+    intelligence: ((player.stats as any).intelligence ?? 0) + ((bonusStats as any).intelligence ?? 0),
     discipline: (player.stats.discipline ?? 0) + ((bonusStats as any).discipline ?? 0),
   };
   const displayStats = getDisplayStats(totalStats);
@@ -162,8 +163,7 @@ export async function registerRoutes(
       const vit = Math.floor(rawStats.vitality  || 1) + (bonuses.vitality  || 0);
       const sen = Math.floor(rawStats.sense     || 1) + (bonuses.sense     || 0);
 
-      // INT: no learning-activity tracking yet — starts at 0
-      const intVal = 0;
+      const intVal = Math.floor((rawStats as any).intelligence ?? 0) + ((bonuses as any).intelligence || 0);
 
       // DIS: permanent stat stored in player.stats, grown via streak milestones
       const disVal = Math.floor((rawStats as any).discipline ?? 0) + (bonuses.discipline || 0);
@@ -289,7 +289,6 @@ export async function registerRoutes(
         _meta: {
           placeholders: [
             "wallet.gem / wallet.diamond — no currency system yet, showing 0",
-            "INT — no learning-activity tracking yet, showing 0",
             "equipment.helmet / equipment.boots — not tracked in DB, showing empty",
             "characterImage — no character art stored, showing silhouette",
             "skills — using class defaults (DB skills mapped when present)",
@@ -339,6 +338,7 @@ export async function registerRoutes(
           agi: z.number().int().min(0).default(0),
           vit: z.number().int().min(0).default(0),
           sen: z.number().int().min(0).default(0),
+          int: z.number().int().min(0).default(0),
           dis: z.number().int().min(0).default(0),
         }),
       });
@@ -347,7 +347,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid allocation payload" });
       }
       const { deltas } = parsed.data;
-      const total = deltas.str + deltas.agi + deltas.vit + deltas.sen + deltas.dis;
+      const total = deltas.str + deltas.agi + deltas.vit + deltas.sen + deltas.int + deltas.dis;
       if (total === 0) {
         return res.status(400).json({ error: "No points to allocate" });
       }
@@ -362,6 +362,7 @@ export async function registerRoutes(
       if (deltas.agi > 0) stats.agility    = (stats.agility    || 0) + deltas.agi;
       if (deltas.vit > 0) stats.vitality   = (stats.vitality   || 0) + deltas.vit;
       if (deltas.sen > 0) stats.sense      = (stats.sense      || 0) + deltas.sen;
+      if (deltas.int > 0) stats.intelligence = ((stats as any).intelligence || 0) + deltas.int;
       if (deltas.dis > 0) stats.discipline = (stats.discipline || 0) + deltas.dis;
       const updated = await storage.updatePlayer(req.params.id, {
         stats: stats as any,
@@ -1071,6 +1072,7 @@ export async function registerRoutes(
         agility:    getStatLevel(result.newStatXP.agility).level,
         sense:      getStatLevel(result.newStatXP.sense).level,
         vitality:   getStatLevel(result.newStatXP.vitality).level,
+        intelligence: (player.stats as any).intelligence ?? 0,
         discipline: (player.stats as any).discipline ?? 0,
       };
 

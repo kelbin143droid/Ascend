@@ -214,7 +214,7 @@ const CSS = `
 /* class picker overlay */
 .hp-root .classpick {
   position:absolute; inset:0; z-index:50; display:flex; align-items:stretch; justify-content:center;
-  padding:12px 14px 14px;
+  padding:max(24px, calc(env(safe-area-inset-top, 0px) + 18px)) 14px 14px;
   background:
     radial-gradient(circle at 50% 18%, rgba(76,194,255,.24), transparent 30%),
     linear-gradient(180deg, rgba(8,28,52,.92), rgba(3,7,16,.96) 52%, rgba(4,7,15,.98));
@@ -317,7 +317,7 @@ const CSS = `
 .hp-root .pickconfirm:hover { box-shadow:0 0 28px var(--cyan-glow); }
 .hp-root .pickconfirm.disabled { opacity:.35; pointer-events:none; box-shadow:none; }
 @media (max-height: 740px) {
-  .hp-root .classpick { padding:9px 14px 12px; }
+  .hp-root .classpick { padding:max(16px, calc(env(safe-area-inset-top, 0px) + 12px)) 14px 12px; }
   .hp-root .classpick-inner { gap:8px; }
   .hp-root .pickhud { padding:8px 10px; }
   .hp-root .pickrank { width:36px; height:36px; font-size:16px; }
@@ -417,6 +417,24 @@ const CSS = `
 .hp-root .points span { font-family:'Chakra Petch'; font-weight:600; font-size:12px; letter-spacing:2px; color:var(--cyan-soft); }
 .hp-root .points b { font-family:'Chakra Petch'; font-weight:700; font-size:22px; color:var(--ink); text-shadow:0 0 12px var(--cyan-glow); }
 .hp-root .points.empty { border-color:rgba(76,170,255,0.15); box-shadow:none; opacity:.6; }
+.hp-root .pointguide {
+  position:relative; margin:-2px 0 10px; padding:10px 36px 10px 12px;
+  border-radius:12px; border:1px solid rgba(245,197,66,0.32);
+  background:linear-gradient(135deg, rgba(245,197,66,0.14), rgba(76,194,255,0.08));
+  box-shadow:0 0 16px rgba(245,197,66,0.10);
+}
+.hp-root .pointguide p {
+  color:#f5c542; font-family:'Chakra Petch'; font-size:12px; font-weight:800;
+  letter-spacing:1.4px; text-transform:uppercase;
+}
+.hp-root .pointguide span {
+  display:block; margin-top:3px; color:rgba(232,244,255,0.72); font-size:11px; line-height:1.25;
+}
+.hp-root .pointguide-close {
+  position:absolute; right:9px; top:8px; width:22px; height:22px; border-radius:999px;
+  border:1px solid rgba(245,197,66,0.24); background:rgba(0,0,0,0.22);
+  color:rgba(245,197,66,0.82); font-size:16px; line-height:1; cursor:pointer;
+}
 .hp-root .detailbtn, .hp-root .vieweq {
   width:100%; background:var(--panel); border:1px solid rgba(76,170,255,0.2);
   border-radius:10px; padding:8px; color:var(--cyan-soft); font-family:'Chakra Petch';
@@ -566,6 +584,7 @@ export default function HunterProfilePage() {
   const [activeTab,       setActiveTab]       = useState<"inventory" | "skills" | "stats">("inventory");
   const [showPicker,      setShowPicker]      = useState(false);
   const [showStatIntro,   setShowStatIntro]   = useState(false);
+  const [showPointGuide,  setShowPointGuide]  = useState(false);
   const [pickedClass,     setPickedClass]     = useState<number | null>(null);
   const [chosenClass,     setChosenClass]     = useState<number | null>(null);
   const [localStats,      setLocalStats]      = useState<StatEntry[]>([]);
@@ -626,8 +645,8 @@ export default function HunterProfilePage() {
     const spent = totalPending();
     if (spent <= 0 || allocating) return;
 
-    const KEY_MAP: Record<string, string> = { STR: "str", AGI: "agi", VIT: "vit", SEN: "sen", DIS: "dis" };
-    const deltas: Record<string, number> = { str: 0, agi: 0, vit: 0, sen: 0, dis: 0 };
+    const KEY_MAP: Record<string, string> = { STR: "str", AGI: "agi", VIT: "vit", SEN: "sen", INT: "int", DIS: "dis" };
+    const deltas: Record<string, number> = { str: 0, agi: 0, vit: 0, sen: 0, int: 0, dis: 0 };
     for (const s of localStats) {
       if (s.pending > 0) deltas[KEY_MAP[s.key] ?? s.key.toLowerCase()] = s.pending;
     }
@@ -650,7 +669,7 @@ export default function HunterProfilePage() {
       // Replace stat values from authoritative server response
       const SERVER_KEY: Record<string, string> = {
         STR: "strength", AGI: "agility", VIT: "vitality",
-        SEN: "sense",   DIS: "discipline",
+        SEN: "sense",   INT: "intelligence", DIS: "discipline",
       };
       const serverStats = json.stats as Record<string, number>;
       const updatedStats = localStats.map(s => {
@@ -697,6 +716,12 @@ export default function HunterProfilePage() {
     }
   }
 
+  function openStatsAfterGuide() {
+    setShowStatIntro(false);
+    setActiveTab("stats");
+    setShowPointGuide(true);
+  }
+
   if (loading || !data) {
     return (
       <div className="hp-root" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -724,10 +749,10 @@ export default function HunterProfilePage() {
       <style>{CSS}</style>
       <StatIntroModal
         open={showStatIntro}
-        onClose={() => setShowStatIntro(false)}
-        onPrimary={() => setShowStatIntro(false)}
+        onClose={openStatsAfterGuide}
+        onPrimary={openStatsAfterGuide}
         primaryColor="#4cc2ff"
-        primaryLabel="Continue"
+        primaryLabel="View Stat Points"
       />
 
       <div className="phone">
@@ -854,6 +879,20 @@ export default function HunterProfilePage() {
                   <span>AVAILABLE POINTS</span>
                   <b>{remaining}</b>
                 </div>
+                {showPointGuide && (
+                  <div className="pointguide" data-testid="stat-points-guide">
+                    <button
+                      type="button"
+                      className="pointguide-close"
+                      onClick={() => setShowPointGuide(false)}
+                      aria-label="Dismiss stat points guide"
+                    >
+                      ×
+                    </button>
+                    <p>Level up to earn points.</p>
+                    <span>Spend them here to shape your hero before entering dungeons.</span>
+                  </div>
+                )}
                 {(data.streakMultiplier ?? 0) > 0 && (
                   <div style={{
                     display: "flex", alignItems: "center", gap: "8px",
@@ -878,10 +917,9 @@ export default function HunterProfilePage() {
                             ? <><span className="base">{s.val}</span><span className="arrow">→</span><span className="staged">{s.val + s.pending}</span></>
                             : s.val}
                         </span>
-                        <button className={`minusbtn${s.pending <= 0 || s.key === "INT" ? " disabled" : ""}`} onClick={() => adjust(i, -1)}>−</button>
-                        <button className={`plusbtn${remaining <= 0 || s.key === "INT" ? " disabled" : ""}`}
-                          onClick={() => adjust(i, 1)}
-                          title={s.key === "INT" ? "INT unlocks with learning activities" : undefined}>+</button>
+                        <button className={`minusbtn${s.pending <= 0 ? " disabled" : ""}`} onClick={() => adjust(i, -1)}>−</button>
+                        <button className={`plusbtn${remaining <= 0 ? " disabled" : ""}`}
+                          onClick={() => adjust(i, 1)}>+</button>
                       </div>
                     </div>
                   ))}

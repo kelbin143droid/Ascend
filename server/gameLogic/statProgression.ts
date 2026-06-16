@@ -240,6 +240,7 @@ export function floorStats(stats: Stats): Stats {
     agility:    Math.floor(stats.agility),
     sense:      Math.floor(stats.sense),
     vitality:   Math.floor(stats.vitality),
+    intelligence: Math.floor((stats as any).intelligence ?? 0),
     discipline: Math.floor(stats.discipline ?? 0),
   };
 }

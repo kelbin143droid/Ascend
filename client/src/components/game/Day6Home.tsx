@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, CheckCircle2, Sparkles, X, Palette,
   ArrowRight, BookOpen, Zap, Shield, Flame,
+  ChevronLeft, ChevronRight,
   Heart, Moon,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
@@ -258,6 +259,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [customIntelTopic, setCustomIntelTopic] = useState("");
   const [intelReadStarted, setIntelReadStarted] = useState(false);
   const [intelReadingView, setIntelReadingView] = useState(false);
+  const [intelReadPage, setIntelReadPage] = useState(0);
   const [intelSecondsLeft, setIntelSecondsLeft] = useState(INTELLIGENCE_READ_SECONDS);
   const [intelSubmitting, setIntelSubmitting] = useState(false);
   const [showVitality, setShowVitality] = useState(false);
@@ -430,6 +432,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     setCustomIntelTopic("");
     setIntelReadStarted(false);
     setIntelReadingView(false);
+    setIntelReadPage(0);
     setIntelSecondsLeft(INTELLIGENCE_READ_SECONDS);
   }, []);
 
@@ -441,6 +444,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const startIntelRead = useCallback(() => {
     setIntelReadStarted(true);
     setIntelReadingView(true);
+    setIntelReadPage(0);
     setIntelSecondsLeft((s) => (s <= 0 ? INTELLIGENCE_READ_SECONDS : s));
   }, []);
 
@@ -579,6 +583,15 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       ? vitalityCard
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
   const intelReadCopy = buildIntelReadCopy(intelReadMode, recommendedIntelRead, customIntelTopic);
+  const intelReadPages = useMemo(() => {
+    const pages: string[][] = [];
+    for (let i = 0; i < intelReadCopy.paragraphs.length; i += 2) {
+      pages.push(intelReadCopy.paragraphs.slice(i, i + 2));
+    }
+    return pages.length > 0 ? pages : [[]];
+  }, [intelReadCopy.paragraphs]);
+  const currentIntelReadPage = Math.min(intelReadPage, intelReadPages.length - 1);
+  const visibleIntelParagraphs = intelReadPages[currentIntelReadPage] ?? [];
 
   // Resolve the click action for a supporting card
   const resolveAction = (dc: (typeof DASH_CARDS)[number]): () => void => {
@@ -620,7 +633,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       <AnimatePresence>
         {showIntelligence && (
           <motion.div
-            className="fixed inset-0 z-[80] flex items-center justify-center px-5"
+            className="fixed inset-0 z-[10000] flex items-center justify-center px-5"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -631,7 +644,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
               transition={{ duration: 0.24, ease: "easeOut" }}
-              className="w-full max-w-sm max-h-[92dvh] rounded-3xl overflow-y-auto"
+              className="w-full max-w-sm max-h-[calc(100dvh-28px)] rounded-3xl overflow-y-auto"
               style={{
                 background: "linear-gradient(145deg, rgba(8,14,32,0.96), rgba(4,9,24,0.98))",
                 border: "1px solid rgba(56,189,248,0.32)",
@@ -762,12 +775,41 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                       {intelReadCopy.eyebrow}
                     </p>
                     <div className="mt-3 space-y-3">
-                      {intelReadCopy.paragraphs.map((paragraph) => (
+                      {visibleIntelParagraphs.map((paragraph) => (
                         <p key={paragraph} className="text-[14px] leading-relaxed" style={{ color: "rgba(226,232,240,0.88)" }}>
                           {paragraph}
                         </p>
                       ))}
                     </div>
+                    {intelReadPages.length > 1 && (
+                      <div className="mt-4 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIntelReadPage((p) => Math.max(0, p - 1))}
+                          disabled={currentIntelReadPage === 0}
+                          className="flex min-h-[38px] flex-1 items-center justify-center gap-1 rounded-xl text-[12px] font-bold disabled:opacity-40"
+                          style={{ background: "rgba(255,255,255,0.055)", color: "rgba(226,232,240,0.78)", border: "1px solid rgba(255,255,255,0.08)" }}
+                          data-testid="button-intel-prev-page"
+                        >
+                          <ChevronLeft size={15} />
+                          Previous
+                        </button>
+                        <span className="min-w-[46px] text-center text-[11px] font-bold" style={{ color: "rgba(125,211,252,0.72)" }}>
+                          {currentIntelReadPage + 1}/{intelReadPages.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIntelReadPage((p) => Math.min(intelReadPages.length - 1, p + 1))}
+                          disabled={currentIntelReadPage >= intelReadPages.length - 1}
+                          className="flex min-h-[38px] flex-1 items-center justify-center gap-1 rounded-xl text-[12px] font-bold disabled:opacity-40"
+                          style={{ background: "rgba(56,189,248,0.12)", color: "#7dd3fc", border: "1px solid rgba(56,189,248,0.22)" }}
+                          data-testid="button-intel-next-page"
+                        >
+                          Next
+                          <ChevronRight size={15} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -787,7 +829,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                     <ArrowRight size={18} />
                   </button>
                 ) : (
-                  <div className="mt-5 grid gap-2">
+                  <div
+                    className="sticky bottom-0 -mx-5 mt-5 grid gap-2 px-5 pb-4 pt-3"
+                    style={{ background: "linear-gradient(180deg, rgba(4,9,24,0.72), rgba(4,9,24,0.99) 32%, rgba(4,9,24,1))" }}
+                  >
                     <button
                       type="button"
                       onClick={completeIntelligenceMission}

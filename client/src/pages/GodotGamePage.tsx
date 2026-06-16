@@ -24,12 +24,30 @@ type GameClassPayload = {
   index: number;
 };
 type GameStats = { STR: number; AGI: number; VIT: number; SEN: number; INT: number; DIS: number };
+type CombatStats = {
+  attackDamage: number;
+  staminaMax: number;
+  defense: number;
+  hpRegen: number;
+  maxHp: number;
+  attackSpeed: number;
+  movementSpeed: number;
+  manaRegen: number;
+  cooldownReduction: number;
+  maxMp: number;
+  critChance: number;
+  dodgeChance: number;
+  dungeonEnergy: number;
+  rewardChance: number;
+};
 type GameStatsPayload = GameStats & {
   items: ConsumableInventory;
   classId: GameClassId;
   characterClass: GameClassId;
   className: string;
   job: string;
+  combat: CombatStats;
+  derived: CombatStats;
 };
 
 const CLASS_BY_JOB: Record<string, GameClassPayload> = {
@@ -55,8 +73,27 @@ function buildStats(player: NonNullable<ReturnType<typeof useGame>["player"]>): 
     AGI: (s.agility    ?? 0) + (b.agility    ?? 0),
     VIT: (s.vitality   ?? 0) + (b.vitality   ?? 0),
     SEN: (s.sense      ?? 0) + (b.sense      ?? 0),
-    INT: 0,
+    INT: (s.intelligence ?? 0) + (b.intelligence ?? 0),
     DIS: (s.discipline ?? 0) + (b.discipline ?? 0),
+  };
+}
+
+function buildCombatStats(stats: GameStats): CombatStats {
+  return {
+    attackDamage: 10 + stats.STR * 4,
+    staminaMax: 100 + stats.STR * 12 + stats.DIS * 4,
+    defense: stats.VIT * 3,
+    hpRegen: Number((stats.VIT * 0.25).toFixed(2)),
+    maxHp: 100 + stats.VIT * 10,
+    attackSpeed: Number((1 + stats.AGI * 0.025).toFixed(3)),
+    movementSpeed: Number((1 + stats.AGI * 0.025).toFixed(3)),
+    manaRegen: Number((stats.SEN * 0.3).toFixed(2)),
+    cooldownReduction: Math.min(0.45, Number((stats.SEN * 0.012).toFixed(3))),
+    maxMp: 50 + stats.SEN * 6,
+    critChance: Math.min(0.5, Number((stats.INT * 0.015).toFixed(3))),
+    dodgeChance: Math.min(0.45, Number((stats.INT * 0.012).toFixed(3))),
+    dungeonEnergy: 100 + stats.DIS * 4,
+    rewardChance: Math.min(0.5, Number((stats.DIS * 0.01).toFixed(3))),
   };
 }
 
@@ -87,13 +124,17 @@ function buildEquipment(player: NonNullable<ReturnType<typeof useGame>["player"]
 
 function buildStatsPayload(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameStatsPayload {
   const playerClass = buildPlayerClass(player);
+  const stats = buildStats(player);
+  const combat = buildCombatStats(stats);
   return {
-    ...buildStats(player),
+    ...stats,
     items: getOwnedConsumables(),
     classId: playerClass.id,
     characterClass: playerClass.id,
     className: playerClass.name,
     job: playerClass.job,
+    combat,
+    derived: combat,
   };
 }
 

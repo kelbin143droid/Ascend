@@ -14,6 +14,6 @@ export function calculateDerivedStats(stats: Stats): DerivedStats {
     xpMultiplier,
     staminaMax: 100 + stats.vitality * 5,
     streakForgiveness: Math.floor(stats.agility / 10),
-    powerRating: stats.strength * 1.5,
+    powerRating: stats.strength * 1.5 + (stats.intelligence ?? 0) * 0.8,
   };
 }

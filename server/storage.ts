@@ -99,9 +99,17 @@ export class DatabaseStorage implements IStorage {
     if (!player.stability) {
       player.stability = { ...DEFAULT_STABILITY_DATA };
     }
-    // Safe backfill: ensure discipline exists for legacy players
+    // Safe backfill: ensure newer JSON stats exist for legacy players.
+    let statsChanged = false;
     if ((player.stats as any).discipline === undefined) {
       (player.stats as any).discipline = 0;
+      statsChanged = true;
+    }
+    if ((player.stats as any).intelligence === undefined) {
+      (player.stats as any).intelligence = 0;
+      statsChanged = true;
+    }
+    if (statsChanged) {
       // Best-effort async persist — don't await to avoid blocking reads
       db.update(players)
         .set({ stats: player.stats })
@@ -632,7 +640,7 @@ export class DatabaseStorage implements IStorage {
       consecutiveMissedDays: 0,
       onboardingCompleted: 0,
       statXP: { strength: 0, agility: 0, sense: 0, vitality: 0 },
-      stats: { strength: 1, agility: 1, sense: 1, vitality: 1, discipline: 0 },
+      stats: { strength: 1, agility: 1, sense: 1, vitality: 1, intelligence: 0, discipline: 0 },
       statProgress: DEFAULT_STAT_PROGRESS,
       trainingScaling: {
         strength: { tier: 1, completionStreak: 0, missedDays: 0, sessionsCompleted: 0, lastSessionDate: null },
