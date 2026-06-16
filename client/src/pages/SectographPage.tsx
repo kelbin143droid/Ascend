@@ -1113,8 +1113,9 @@ export default function SectographPage() {
 
   return (
     <SystemLayout>
-      <div className="flex flex-col gap-2.5 pt-2 pb-20">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-1.5 pt-0 pb-20">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="sr-only">Sectograph</h1>
           <button
             onClick={() => navigate("/")}
             className="h-9 w-9 shrink-0 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors"
@@ -1124,9 +1125,6 @@ export default function SectographPage() {
           >
             <ChevronLeft size={18} />
           </button>
-          <h1 className="flex-1 text-center text-lg font-display font-black tracking-wider" style={{ color: colors.text }}>
-            SECTOGRAPH
-          </h1>
           {!isDay5Mode ? (
             <div
               className="flex shrink-0 rounded-xl p-1 gap-1"
@@ -1356,46 +1354,40 @@ export default function SectographPage() {
         {/* ── COACH CARD — step 1 (add Sleep block) ────────────────── */}
         {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 1 && (
           <div
-            className="w-full rounded-xl p-4 flex items-start gap-3"
+            className="w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
             style={{ backgroundColor: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.25)" }}
             data-testid="tutorial-card-step1"
           >
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(59,130,246,0.15)" }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(59,130,246,0.15)" }}>
               <Brain size={15} style={{ color: "#3b82f6" }} />
             </div>
-            <div className="flex-1">
-              <p className="text-xs uppercase tracking-wider font-bold mb-0.5" style={{ color: "rgba(59,130,246,0.8)" }}>Coach · Step 1 of 2</p>
-              <p className="text-base font-medium leading-snug" style={{ color: colors.text }}>
-                Start with your <span style={{ color: "#6b88b0", fontWeight: 700 }}>Sleep</span> block
-              </p>
-              <p className="text-sm mt-1.5 leading-relaxed" style={{ color: colors.textMuted }}>
-                Tap the <strong style={{ color: colors.primary }}>+</strong> in the center of the clock, choose <strong>Sleep</strong>, and set your hours.
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] uppercase tracking-[0.18em] font-bold" style={{ color: "rgba(59,130,246,0.8)" }}>Coach · 1/2</p>
+              <p className="text-sm font-semibold leading-tight truncate" style={{ color: colors.text }}>
+                Sleep block · Tap + in the clock center
               </p>
             </div>
-            <Moon size={16} style={{ color: "#6b88b0", marginTop: 2 }} />
+            <Moon size={16} style={{ color: "#6b88b0" }} />
           </div>
         )}
 
         {/* ── COACH CARD — step 2 (add Daily Quest block) ──────────── */}
         {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 2 && (
           <div
-            className="w-full rounded-xl p-4 flex items-start gap-3"
+            className="w-full rounded-xl px-3 py-2.5 flex items-center gap-3"
             style={{ backgroundColor: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)" }}
             data-testid="tutorial-card-step2"
           >
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(168,85,247,0.15)" }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(168,85,247,0.15)" }}>
               <Brain size={15} style={{ color: "#a855f7" }} />
             </div>
-            <div className="flex-1">
-              <p className="text-xs uppercase tracking-wider font-bold mb-0.5" style={{ color: "rgba(168,85,247,0.8)" }}>Coach · Step 2 of 2</p>
-              <p className="text-base font-medium leading-snug" style={{ color: colors.text }}>
-                Now add your <span style={{ color: "#a855f7", fontWeight: 700 }}>Daily Quest</span> window
-              </p>
-              <p className="text-sm mt-1.5 leading-relaxed" style={{ color: colors.textMuted }}>
-                Tap <strong style={{ color: colors.primary }}>+</strong> again, choose <strong>Daily Quest</strong>, and pick a time for your daily training session.
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] uppercase tracking-[0.18em] font-bold" style={{ color: "rgba(168,85,247,0.8)" }}>Coach · 2/2</p>
+              <p className="text-sm font-semibold leading-tight truncate" style={{ color: colors.text }}>
+                Daily Quest · Tap + in the clock center
               </p>
             </div>
-            <Zap size={16} style={{ color: "#a855f7", marginTop: 2 }} />
+            <Zap size={16} style={{ color: "#a855f7" }} />
           </div>
         )}
 
