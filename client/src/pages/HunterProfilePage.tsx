@@ -54,6 +54,7 @@ const STAT_TOOLTIP_TEXT: Record<string, string> = {
   VIT: "Defense and HP regeneration.",
   DIS: "Dungeon energy and reward chance.",
 };
+const SELECTED_GAME_CLASS_KEY = "ascend_selected_game_class";
 
 function classDisplayName(index: number, fallback: string) {
   return CLASS_DISPLAY_NAMES[index] ?? fallback;
@@ -816,6 +817,11 @@ export default function HunterProfilePage() {
     const optimisticJob = data.classes[pickedClass]?.name ?? "WARRIOR";
     // Optimistically update UI immediately
     setChosenClass(pickedClass);
+    try {
+      localStorage.setItem(SELECTED_GAME_CLASS_KEY, String(pickedClass));
+    } catch {
+      /* noop */
+    }
     setShowPicker(false);
     setActiveTab("stats");
     setDetailsCollapsed(true);

@@ -22,6 +22,10 @@ type GameClassPayload = {
   name: string;
   job: string;
   index: number;
+  classId: GameClassId;
+  characterClass: GameClassId;
+  className: string;
+  classIndex: number;
 };
 type GameStats = { STR: number; AGI: number; VIT: number; SEN: number; INT: number; DIS: number };
 type CombatStats = {
@@ -50,19 +54,50 @@ type GameStatsPayload = GameStats & {
   derived: CombatStats;
 };
 
+const SELECTED_GAME_CLASS_KEY = "ascend_selected_game_class";
+
+function makeClassPayload(id: GameClassId, name: string, job: string, index: number): GameClassPayload {
+  return {
+    id,
+    name,
+    job,
+    index,
+    classId: id,
+    characterClass: id,
+    className: name,
+    classIndex: index,
+  };
+}
+
+const CLASS_BY_INDEX: GameClassPayload[] = [
+  makeClassPayload("warrior", "Warrior", "WARRIOR", 0),
+  makeClassPayload("mage", "Mage", "SAGE", 1),
+  makeClassPayload("assassin", "Assassin", "SHADOW", 2),
+  makeClassPayload("archer", "Archer", "WARDEN", 3),
+];
+
 const CLASS_BY_JOB: Record<string, GameClassPayload> = {
-  WARRIOR: { id: "warrior", name: "Warrior", job: "WARRIOR", index: 0 },
-  SAGE: { id: "mage", name: "Mage", job: "SAGE", index: 1 },
-  MAGE: { id: "mage", name: "Mage", job: "SAGE", index: 1 },
-  SHADOW: { id: "assassin", name: "Assassin", job: "SHADOW", index: 2 },
-  ASSASSIN: { id: "assassin", name: "Assassin", job: "SHADOW", index: 2 },
-  WARDEN: { id: "archer", name: "Archer", job: "WARDEN", index: 3 },
-  ARCHER: { id: "archer", name: "Archer", job: "WARDEN", index: 3 },
+  WARRIOR: CLASS_BY_INDEX[0],
+  SAGE: CLASS_BY_INDEX[1],
+  MAGE: CLASS_BY_INDEX[1],
+  SHADOW: CLASS_BY_INDEX[2],
+  ASSASSIN: CLASS_BY_INDEX[2],
+  WARDEN: CLASS_BY_INDEX[3],
+  ARCHER: CLASS_BY_INDEX[3],
 };
 
 function buildPlayerClass(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameClassPayload {
+  try {
+    const raw = localStorage.getItem(SELECTED_GAME_CLASS_KEY);
+    if (raw !== null) {
+      const index = Number(raw);
+      if (Number.isInteger(index) && CLASS_BY_INDEX[index]) return CLASS_BY_INDEX[index];
+    }
+  } catch {
+    /* noop */
+  }
   const job = String(player.job || "").toUpperCase();
-  return CLASS_BY_JOB[job] ?? CLASS_BY_JOB.WARRIOR;
+  return CLASS_BY_JOB[job] ?? CLASS_BY_INDEX[0];
 }
 
 function buildStats(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameStats {
@@ -320,7 +355,9 @@ export default function GodotGamePage() {
   const sendPlayerClass = useCallback(() => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow || !readyRef.current || !player) return;
-    iframe.contentWindow.postMessage({ type: "SET_CLASS", class: buildPlayerClass(player) }, "*");
+    const playerClass = buildPlayerClass(player);
+    iframe.contentWindow.postMessage({ type: "SET_CLASS", class: playerClass }, "*");
+    iframe.contentWindow.postMessage({ type: "SET_CHARACTER_CLASS", classId: playerClass.id, characterClass: playerClass.id, class: playerClass }, "*");
   }, [player]);
 
   useEffect(() => { if (readyRef.current) sendPlayerClass(); }, [sendPlayerClass]);
@@ -349,7 +386,9 @@ export default function GodotGamePage() {
           // 1. Power layer + consumables
           iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
           // 2. Class + visual/loadout layer
-          iframe.contentWindow.postMessage({ type: "SET_CLASS", class: buildPlayerClass(player) }, "*");
+          const playerClass = buildPlayerClass(player);
+          iframe.contentWindow.postMessage({ type: "SET_CLASS", class: playerClass }, "*");
+          iframe.contentWindow.postMessage({ type: "SET_CHARACTER_CLASS", classId: playerClass.id, characterClass: playerClass.id, class: playerClass }, "*");
           iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
           // 3. Dungeon config — if launched from the world map
           const raw = localStorage.getItem(ACTIVE_DUNGEON_KEY);
@@ -357,7 +396,8 @@ export default function GodotGamePage() {
             try {
               const config = JSON.parse(raw) as ActiveDungeonConfig;
               iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
-              iframe.contentWindow.postMessage({ type: "SET_CLASS", class: buildPlayerClass(player) }, "*");
+              iframe.contentWindow.postMessage({ type: "SET_CLASS", class: playerClass }, "*");
+              iframe.contentWindow.postMessage({ type: "SET_CHARACTER_CLASS", classId: playerClass.id, characterClass: playerClass.id, class: playerClass }, "*");
               iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
               iframe.contentWindow.postMessage(
                 { type: "START_DUNGEON", config: buildDungeonConfig(config, player) },
