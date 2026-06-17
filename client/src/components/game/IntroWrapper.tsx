@@ -29,6 +29,7 @@ const FIRST_RESET_XP = 15;
 const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
 const GOAL_STORAGE_KEY = "ascend_primary_goal";
+const DEFAULT_ONBOARDING_THEME_ID = "pixel_forest";
 const INHALE_AUDIO_URL = "/audio/inhale.mp3";
 const HOLD_AUDIO_URL = "/audio/hold.mp3";
 const EXHALE_AUDIO_URL = "/audio/exhale.mp3";
@@ -521,22 +522,17 @@ function FirstResetScreen({
 }
 
 function WelcomeScreen({
-  gender,
   firstName,
 }: {
-  gender: "male" | "female";
   firstName: string;
 }) {
-  const isFemale = gender === "female";
-  const color = isFemale ? "#d946ef" : "#0ea5e9";
-  const colorAlt = isFemale ? "#8b5cf6" : "#38bdf8";
-  const glow = isFemale ? "rgba(217,70,239,0.38)" : "rgba(14,165,233,0.38)";
-  const glowAlt = isFemale ? "rgba(139,92,246,0.22)" : "rgba(56,189,248,0.22)";
-  const badge = isFemale ? "NEON EMPRESS" : "IRON SOVEREIGN";
-  const titleText = isFemale ? `Rise, Empress ${firstName}` : `Rise, Sovereign ${firstName}`;
-  const subtitle = isFemale
-    ? "The Neon Empress awakens. Your ascension begins."
-    : "The Iron Sovereign awakens. Your ascension begins.";
+  const color = "#0ea5e9";
+  const colorAlt = "#38bdf8";
+  const glow = "rgba(14,165,233,0.38)";
+  const glowAlt = "rgba(56,189,248,0.22)";
+  const badge = "SYSTEM AWAKENED";
+  const titleText = `Rise, ${firstName}`;
+  const subtitle = "Your ascension begins.";
   const words = titleText.split(" ");
 
   const stars = useRef(
@@ -561,9 +557,7 @@ function WelcomeScreen({
     <motion.div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
       style={{
-        background: isFemale
-          ? "linear-gradient(145deg, #04000e 0%, #080018 50%, #05000f 100%)"
-          : "linear-gradient(145deg, #020810 0%, #03101e 50%, #020810 100%)",
+        background: "linear-gradient(145deg, #020810 0%, #03101e 50%, #020810 100%)",
       }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -799,6 +793,11 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   const initialCheckDone = useRef(false);
   const firstResetAwarded = useRef(false);
 
+  const applyDefaultOnboardingTheme = () => {
+    setBackgroundTheme(DEFAULT_ONBOARDING_THEME_ID);
+    setClockTheme(DEFAULT_ONBOARDING_THEME_ID);
+  };
+
   useEffect(() => {
     if (!isLoading && player && !initialCheckDone.current) {
       initialCheckDone.current = true;
@@ -807,6 +806,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
       const hasGender = !!localStorage.getItem("ascend_gender");
       const hasCalibration = !!localStorage.getItem("ascend_calibration");
       const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
+      if (!firstResetDone) applyDefaultOnboardingTheme();
       if (!hasName) {
         setStep("intro");
       } else if (!hasGoal) {
@@ -836,9 +836,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   const handleGenderSelect = (gender: "male" | "female") => {
     setPlayerGender(gender);
     localStorage.setItem("ascend_gender", gender);
-    const themeId = gender === "male" ? "pixel_forest" : gender;
-    setBackgroundTheme(themeId);
-    setClockTheme(themeId);
+    applyDefaultOnboardingTheme();
     if (player?.name && player.name.trim() !== "") {
       setPlayerName(player.name);
       setStep("welcome");
@@ -968,7 +966,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   }
 
   if (step === "welcome") {
-    return <WelcomeScreen gender={playerGender} firstName={getFirstName()} />;
+    return <WelcomeScreen firstName={getFirstName()} />;
   }
 
   if (step === "calibration") {
