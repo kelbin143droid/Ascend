@@ -189,6 +189,7 @@ export function CalmBreathingEngine({
   silentCompletionSeconds?: number;
 }) {
   const [phase, setPhase] = useState<DisplayPhase>("Inhale");
+  const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(VOICE_DURATIONS.Inhale / 1000);
   const onDoneRef = useRef(onDone);
   const pausedRef = useRef(paused);
 
@@ -233,6 +234,7 @@ export function CalmBreathingEngine({
     let inSilentCompletion = false;
     let lastTick = performance.now();
     setPhase("Inhale");
+    setPhaseSecondsLeft(VOICE_DURATIONS.Inhale / 1000);
     speakPhase("Inhale");
 
     const tickId = setInterval(() => {
@@ -259,6 +261,7 @@ export function CalmBreathingEngine({
 
       phaseElapsedMs += delta;
       sessionElapsedMs += delta;
+      setPhaseSecondsLeft(Math.max(1, Math.ceil((VOICE_DURATIONS[curPhase] - phaseElapsedMs) / 1000)));
 
       if (phaseElapsedMs >= VOICE_DURATIONS[curPhase]) {
         const elapsedSec = sessionElapsedMs / 1000;
@@ -271,6 +274,7 @@ export function CalmBreathingEngine({
             inSilentCompletion = true;
             silentElapsedMs = 0;
             setPhase("Quiet");
+            setPhaseSecondsLeft(0);
           } else {
             alive = false;
             clearInterval(tickId);
@@ -281,6 +285,7 @@ export function CalmBreathingEngine({
         curPhase = VOICE_NEXT[curPhase];
         phaseElapsedMs = 0;
         setPhase(curPhase);
+        setPhaseSecondsLeft(VOICE_DURATIONS[curPhase] / 1000);
         speakPhase(curPhase);
       }
     }, 100);
@@ -300,11 +305,7 @@ export function CalmBreathingEngine({
     phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
     : phase === "Hold" ? "0.2s"
     : `${VOICE_DURATIONS.Exhale / 1000}s`;
-  const phaseHint =
-    phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
-    : phase === "Hold" ? `${VOICE_DURATIONS.Hold / 1000}s`
-    : phase === "Exhale" ? `${VOICE_DURATIONS.Exhale / 1000}s`
-    : "";
+  const phaseHint = phase === "Quiet" ? "" : `${phaseSecondsLeft}s`;
 
   return (
     <div className="calm-engine">

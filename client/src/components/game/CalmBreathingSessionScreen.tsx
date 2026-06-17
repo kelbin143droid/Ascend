@@ -6,13 +6,6 @@ const INHALE_URL = "/audio/inhale.mp3";
 const HOLD_URL = "/audio/hold.mp3";
 const EXHALE_URL = "/audio/exhale.mp3";
 
-function formatSeconds(seconds: number): string {
-  const safeSeconds = Math.max(0, seconds);
-  const minutes = Math.floor(safeSeconds / 60);
-  const remainder = safeSeconds % 60;
-  return `${minutes}:${String(remainder).padStart(2, "0")}`;
-}
-
 export function CalmBreathingSessionScreen({
   targetSeconds = 30,
   guidanceSeconds = 28,
@@ -108,7 +101,6 @@ export function CalmBreathingSessionScreen({
   }, [state, targetSeconds]);
 
   const progress = targetSeconds > 0 ? Math.min(elapsed / targetSeconds, 1) : 0;
-  const remainingSeconds = Math.max(0, targetSeconds - elapsed);
 
   return (
     <div
@@ -195,21 +187,6 @@ export function CalmBreathingSessionScreen({
           background:linear-gradient(90deg, transparent, rgba(210,250,255,.8), transparent);
           animation:calmFlow 3.2s ease-in-out infinite;
         }
-        .calm-timer-pill {
-          display:flex; align-items:center; justify-content:center; gap:7px;
-          min-width:92px; padding:7px 12px; border-radius:18px;
-          border:1px solid rgba(178,240,255,.32);
-          background:linear-gradient(180deg, rgba(126,211,252,.22), rgba(12,31,48,.88));
-          box-shadow:0 0 24px rgba(76,194,255,.24), inset 0 0 18px rgba(255,255,255,.08);
-          color:rgba(235,252,255,.94); font-family:'Chakra Petch', monospace; font-size:18px; font-weight:800;
-          text-shadow:0 0 14px rgba(126,211,252,.72);
-        }
-        .calm-chevron {
-          width:24px; height:19px; opacity:.85;
-          background:repeating-linear-gradient(90deg, rgba(126,211,252,.75) 0 5px, transparent 5px 8px);
-          clip-path:polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%, 26% 50%);
-        }
-        .calm-chevron.left { transform:scaleX(-1); }
         .calm-control {
           position:relative; overflow:hidden; min-height:50px;
           border-radius:18px; font-family:'Chakra Petch', monospace; font-weight:800; letter-spacing:.6px;
@@ -299,18 +276,6 @@ export function CalmBreathingSessionScreen({
             }}
           />
         </div>
-        {state === "active" && (
-          <div className="mt-5 flex justify-center">
-            <div
-              data-testid="session-countdown-timer"
-              className="calm-timer-pill tabular-nums"
-            >
-              <span className="calm-chevron left" />
-              {formatSeconds(remainingSeconds)}
-              <span className="calm-chevron" />
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="relative z-10 flex flex-1 items-center justify-center px-6" style={{ animation: "gsFadeIn 0.5s ease-out" }}>
