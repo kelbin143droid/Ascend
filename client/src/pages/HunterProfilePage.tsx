@@ -5,7 +5,6 @@ import { useGame } from "@/context/GameContext";
 import { Canvas } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { StatIntroModal } from "@/components/game/StatIntroModal";
 
 // ── Types ────────────────────────────────────────────────────────────────
 interface WalletEntry { type: "gem" | "coin" | "diamond"; value: number }
@@ -213,8 +212,9 @@ const CSS = `
 
 /* class picker overlay */
 .hp-root .classpick {
-  position:absolute; inset:0; z-index:50; display:flex; align-items:stretch; justify-content:center;
-  padding:max(24px, calc(env(safe-area-inset-top, 0px) + 18px)) 14px 14px;
+  position:fixed; top:0; bottom:0; left:50%; right:auto; transform:translateX(-50%);
+  width:min(100%,470px); z-index:50; display:flex; align-items:stretch; justify-content:center;
+  padding:max(10px, calc(env(safe-area-inset-top, 0px) + 8px)) 14px max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px));
   background:
     radial-gradient(circle at 50% 18%, rgba(76,194,255,.24), transparent 30%),
     linear-gradient(180deg, rgba(8,28,52,.92), rgba(3,7,16,.96) 52%, rgba(4,7,15,.98));
@@ -224,12 +224,12 @@ const CSS = `
 .hp-root .classpick-inner {
   width:100%; height:100%; max-width:430px; min-height:0;
   display:grid; grid-template-rows:auto minmax(0, 1fr) auto auto;
-  gap:10px; animation:hp-rise .4s cubic-bezier(.2,.8,.2,1);
+  gap:8px; animation:hp-rise .4s cubic-bezier(.2,.8,.2,1);
 }
 @keyframes hp-rise { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
 .hp-root .pickhud {
   position:relative; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:10px; align-items:center;
-  padding:10px 12px; border:1px solid rgba(164,219,255,.42); border-radius:11px;
+  padding:8px 10px; border:1px solid rgba(164,219,255,.42); border-radius:11px;
   background:linear-gradient(180deg, rgba(96,188,255,.24), rgba(16,48,88,.42));
   box-shadow:0 0 24px rgba(76,194,255,.22), inset 0 0 18px rgba(255,255,255,.06);
 }
@@ -240,14 +240,14 @@ const CSS = `
 .hp-root .pickhud:before { left:8px; transform:translate(-100%,-50%); }
 .hp-root .pickhud:after { right:8px; transform:translate(100%,-50%); }
 .hp-root .pickrank {
-  width:42px; height:42px; display:grid; place-items:center; border-radius:10px;
+  width:38px; height:38px; display:grid; place-items:center; border-radius:10px;
   color:#bdeaff; font-family:'Orbitron'; font-weight:900; font-size:18px;
   border:1px solid rgba(137,214,255,.55); background:rgba(9,29,55,.82);
   box-shadow:inset 0 0 14px rgba(76,194,255,.18);
 }
 .hp-root .pickhud-main { min-width:0; }
 .hp-root .pickhunter {
-  font-family:'Chakra Petch'; font-weight:800; color:var(--ink); font-size:18px; letter-spacing:1px;
+  font-family:'Chakra Petch'; font-weight:800; color:var(--ink); font-size:17px; letter-spacing:1px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .hp-root .pickrole {
@@ -257,7 +257,7 @@ const CSS = `
 .hp-root .pickhud-xp { display:flex; flex-direction:column; align-items:flex-end; gap:5px; min-width:100px; }
 .hp-root .pickhud-level { color:#f5c542; font-family:'Chakra Petch'; font-weight:800; font-size:12px; letter-spacing:1px; }
 .hp-root .pickhud-track {
-  width:96px; height:9px; border:1px solid rgba(255,255,255,.25); border-radius:999px; overflow:hidden;
+  width:88px; height:8px; border:1px solid rgba(255,255,255,.25); border-radius:999px; overflow:hidden;
   background:rgba(2,7,15,.72);
 }
 .hp-root .pickhud-fill {
@@ -279,14 +279,14 @@ const CSS = `
 .hp-root .profilehud .pickhud-label { font-size:9px; }
 .hp-root .pickpreview {
   position:relative; width:100%; min-height:0; height:100%;
-  display:flex; align-items:flex-end; justify-content:center; overflow:hidden;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
 }
 .hp-root .pickaura {
-  position:absolute; bottom:8%; left:50%; transform:translateX(-50%);
-  width:min(72%, 290px); aspect-ratio:1; border-radius:50%; filter:blur(26px); opacity:.45; transition:background .3s;
+  position:absolute; bottom:11%; left:50%; transform:translateX(-50%);
+  width:min(62%, 245px); aspect-ratio:1; border-radius:50%; filter:blur(24px); opacity:.42; transition:background .3s;
 }
-.hp-root .pickpreview .platform { width:min(68%, 250px); bottom:0; }
-.hp-root .pickmodel { position:absolute; inset:0; z-index:2; pointer-events:none; }
+.hp-root .pickpreview .platform { width:min(58%, 215px); bottom:6%; }
+.hp-root .pickmodel { position:absolute; inset:-2% 0 3%; z-index:2; pointer-events:none; }
 .hp-root .pickrow { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
 .hp-root .pickopt {
   min-height:48px; background:linear-gradient(180deg, rgba(20,32,55,.86), rgba(8,13,27,.92));
@@ -308,7 +308,7 @@ const CSS = `
 .hp-root .pickopt.sel:before { opacity:1; }
 .hp-root .pickopt.sel span { color:var(--ink); }
 .hp-root .pickconfirm {
-  width:100%; border-radius:12px; padding:13px; cursor:pointer; transition:.2s;
+  width:100%; border-radius:12px; padding:12px; cursor:pointer; transition:.2s;
   background:linear-gradient(180deg,rgba(88,196,255,0.42),rgba(18,66,126,0.82));
   border:1.5px solid rgba(174,228,255,.86); color:var(--ink);
   font-family:'Chakra Petch'; font-weight:800; font-size:16px; letter-spacing:2px;
@@ -317,11 +317,11 @@ const CSS = `
 .hp-root .pickconfirm:hover { box-shadow:0 0 28px var(--cyan-glow); }
 .hp-root .pickconfirm.disabled { opacity:.35; pointer-events:none; box-shadow:none; }
 @media (max-height: 740px) {
-  .hp-root .classpick { padding:max(16px, calc(env(safe-area-inset-top, 0px) + 12px)) 14px 12px; }
-  .hp-root .classpick-inner { gap:8px; }
-  .hp-root .pickhud { padding:8px 10px; }
-  .hp-root .pickrank { width:36px; height:36px; font-size:16px; }
-  .hp-root .pickhunter { font-size:16px; }
+  .hp-root .classpick { padding:max(8px, calc(env(safe-area-inset-top, 0px) + 6px)) 14px max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px)); }
+  .hp-root .classpick-inner { gap:7px; }
+  .hp-root .pickhud { padding:7px 9px; }
+  .hp-root .pickrank { width:34px; height:34px; font-size:15px; }
+  .hp-root .pickhunter { font-size:15px; }
   .hp-root .pickrole { font-size:10px; }
   .hp-root .pickhud-xp { min-width:86px; }
   .hp-root .pickhud-track { width:82px; height:8px; }
@@ -330,7 +330,16 @@ const CSS = `
   .hp-root .pickopt { min-height:43px; padding:7px 8px; gap:7px; }
   .hp-root .pickopt svg { width:19px; height:19px; }
   .hp-root .pickopt span { font-size:11px; letter-spacing:1px; }
-  .hp-root .pickconfirm { padding:11px; font-size:14px; }
+  .hp-root .pickconfirm { padding:10px; font-size:14px; }
+  .hp-root .pickpreview .platform { width:min(52%, 190px); bottom:5%; }
+  .hp-root .pickaura { width:min(56%, 215px); bottom:10%; }
+}
+@media (max-height: 650px) {
+  .hp-root .pickhud-label { display:none; }
+  .hp-root .pickhud { padding:6px 8px; }
+  .hp-root .pickrow { gap:6px; }
+  .hp-root .pickopt { min-height:38px; padding:6px 8px; }
+  .hp-root .pickconfirm { padding:9px; font-size:13px; }
 }
 
 /* stage / character */
@@ -452,6 +461,52 @@ const CSS = `
   position:absolute; right:10px; top:10px; width:24px; height:24px; border-radius:999px;
   border:1px solid rgba(76,194,255,0.38); background:rgba(0,0,0,0.28);
   color:rgba(125,211,252,0.86); font-size:16px; line-height:1; cursor:pointer;
+}
+.hp-root .profile-guide-dim {
+  position:fixed; inset:0; z-index:60; pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 70%, rgba(0,0,0,0.20) 0%, rgba(0,0,0,0.46) 26%, rgba(0,0,0,0.82) 68%, rgba(0,0,0,0.92) 100%);
+}
+.hp-root .profile-guide-card {
+  position:relative; z-index:90; margin:10px 0 10px; padding:14px 15px;
+  border-radius:16px; border:1.5px solid rgba(76,194,255,0.74);
+  background:linear-gradient(135deg, rgba(5,18,34,0.98), rgba(12,43,72,0.94));
+  box-shadow:0 0 30px rgba(76,194,255,0.34), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.hp-root .profile-guide-card.gold {
+  border-color:rgba(245,197,66,0.74);
+  background:linear-gradient(135deg, rgba(45,28,6,0.98), rgba(16,38,58,0.94));
+  box-shadow:0 0 30px rgba(245,197,66,0.28), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.hp-root .profile-guide-card p {
+  color:var(--cyan); font-family:'Chakra Petch'; font-size:10px; font-weight:900;
+  letter-spacing:2px; text-transform:uppercase;
+}
+.hp-root .profile-guide-card.gold p { color:#f5c542; }
+.hp-root .profile-guide-card span {
+  display:block; margin-top:6px; color:rgba(232,244,255,0.92);
+  font-size:15px; font-weight:700; line-height:1.25;
+}
+.hp-root .profile-guide-card small {
+  display:block; margin-top:6px; color:rgba(232,244,255,0.62);
+  font-size:12px; line-height:1.25;
+}
+.hp-root .profile-guide-focus {
+  position:relative; z-index:85;
+  box-shadow:0 0 32px rgba(76,194,255,0.42), 0 0 0 1px rgba(76,194,255,0.46);
+}
+.hp-root .profile-guide-focus-gold {
+  position:relative; z-index:85;
+  box-shadow:0 0 32px rgba(245,197,66,0.34), 0 0 0 1px rgba(245,197,66,0.54);
+}
+.hp-root .tabtoggle.profile-guide-focus {
+  border-color:var(--cyan); color:#dff6ff; background:rgba(7,30,52,0.98);
+  transform:scale(1.1);
+}
+.hp-root .enter.profile-guide-focus {
+  z-index:85;
+  transform:translateZ(0);
+  box-shadow:0 0 42px rgba(76,194,255,0.62), inset 0 0 24px rgba(76,194,255,0.25);
 }
 .hp-root .detailbtn, .hp-root .vieweq {
   width:100%; background:var(--panel); border:1px solid rgba(76,170,255,0.2);
@@ -587,7 +642,7 @@ function ClassViewer({ src, compact = false }: { src: string; compact?: boolean 
       <directionalLight position={[-2, 2, -2]} intensity={0.5} color="#c084fc" />
       <pointLight position={[0, -1, 2]} intensity={0.3} color="#4cc2ff" />
       <Suspense fallback={null}>
-        <ClassModel src={src} scale={compact ? 0.62 : 0.72} />
+        <ClassModel src={src} scale={compact ? 0.54 : 0.72} />
       </Suspense>
       <OrbitControls
         enablePan={false}
@@ -611,12 +666,10 @@ export default function HunterProfilePage() {
 
   const [data,            setData]            = useState<PlayerData | null>(null);
   const [loading,         setLoading]         = useState(true);
-  const [activeTab,       setActiveTab]       = useState<"inventory" | "skills" | "stats">("inventory");
+  const [activeTab,       setActiveTab]       = useState<"inventory" | "skills" | "stats">("stats");
   const [showPicker,      setShowPicker]      = useState(false);
-  const [showStatIntro,   setShowStatIntro]   = useState(false);
-  const [showPointGuide,  setShowPointGuide]  = useState(false);
-  const [showWorldGuide,  setShowWorldGuide]  = useState(true);
-  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
+  const [profileGuideStep, setProfileGuideStep] = useState<0 | 1 | 2 | 3>(0);
+  const [detailsCollapsed, setDetailsCollapsed] = useState(true);
   const [pickedClass,     setPickedClass]     = useState<number | null>(null);
   const [chosenClass,     setChosenClass]     = useState<number | null>(null);
   const [localStats,      setLocalStats]      = useState<StatEntry[]>([]);
@@ -711,6 +764,7 @@ export default function HunterProfilePage() {
       setLocalStats(updatedStats);
       dispatchStatsToGame(updatedStats);
       setCp(c => c + spent * (data.cpPerPoint ?? 12));
+      if (profileGuideStep === 2) setProfileGuideStep(3);
     } catch {
       setAllocError("Network error — please try again");
     } finally {
@@ -725,7 +779,9 @@ export default function HunterProfilePage() {
     // Optimistically update UI immediately
     setChosenClass(pickedClass);
     setShowPicker(false);
-    setShowStatIntro(true);
+    setActiveTab("stats");
+    setDetailsCollapsed(true);
+    setProfileGuideStep(1);
     queryClient.setQueryData(["/api/player", player.id], (current: any) =>
       current ? { ...current, job: optimisticJob } : current
     );
@@ -748,10 +804,13 @@ export default function HunterProfilePage() {
     }
   }
 
-  function openStatsAfterGuide() {
-    setShowStatIntro(false);
+  function toggleDetails() {
     setActiveTab("stats");
-    setShowPointGuide(true);
+    setDetailsCollapsed((v) => {
+      const next = !v;
+      if (profileGuideStep === 1 && !next) setProfileGuideStep(2);
+      return next;
+    });
   }
 
   if (loading || !data) {
@@ -775,17 +834,34 @@ export default function HunterProfilePage() {
   const activeClassData = data.classes[activeClassIndex];
   const activeClassName = activeClassData ? classDisplayName(activeClassIndex, activeClassData.name) : data.role;
   const activeClassSrc = classModelSrc(activeClassIndex);
+  const showProfileGuide = profileGuideStep > 0 && !showPicker;
+  const profileGuideCopy =
+    profileGuideStep === 1
+      ? {
+          tone: "blue",
+          label: "System Tutorial · Stats",
+          title: "Tap the arrow to expand your Stats tab.",
+          body: "Your tabs start closed so the profile stays clean.",
+        }
+      : profileGuideStep === 2
+      ? {
+          tone: "gold",
+          label: "System Tutorial · Points",
+          title: "Use + to allocate your level-up points.",
+          body: "Confirm changes to lock in your build before entering gates.",
+        }
+      : profileGuideStep === 3
+      ? {
+          tone: "blue",
+          label: "System Tutorial · Gates",
+          title: "Enter World opens gates, battles, and rewards.",
+          body: "Try your first gate when your build is ready.",
+        }
+      : null;
 
   return (
     <div className="hp-root" data-testid="hunter-profile-page">
       <style>{CSS}</style>
-      <StatIntroModal
-        open={showStatIntro}
-        onClose={openStatsAfterGuide}
-        onPrimary={openStatsAfterGuide}
-        primaryColor="#4cc2ff"
-        primaryLabel="View Stat Points"
-      />
 
       <div className="phone">
         {/* Energy streaks */}
@@ -796,6 +872,7 @@ export default function HunterProfilePage() {
         </div>
 
         <div className="screen">
+          {showProfileGuide && <div className="profile-guide-dim" data-testid="hunter-profile-guide-dim" />}
           <div className="profilehud" aria-label="Hunter profile">
             <button
               className="back-btn"
@@ -843,8 +920,19 @@ export default function HunterProfilePage() {
             </div>
           </div>
 
+          {profileGuideCopy && (
+            <div
+              className={`profile-guide-card${profileGuideCopy.tone === "gold" ? " gold" : ""}`}
+              data-testid={`hunter-profile-guide-step-${profileGuideStep}`}
+            >
+              <p>{profileGuideCopy.label}</p>
+              <span>{profileGuideCopy.title}</span>
+              <small>{profileGuideCopy.body}</small>
+            </div>
+          )}
+
           {/* Equipment / Skills / Stats */}
-          <div className={`equip${detailsCollapsed ? " collapsed" : ""}`}>
+          <div className={`equip${detailsCollapsed ? " collapsed" : ""}${profileGuideStep === 1 ? " profile-guide-focus" : ""}${profileGuideStep === 2 ? " profile-guide-focus-gold" : ""}`}>
             <div className="tabs">
               {(["inventory", "skills", "stats"] as const).map(t => (
                 <button key={t} className={`tab${activeTab === t ? " on" : ""}`}
@@ -854,8 +942,8 @@ export default function HunterProfilePage() {
               ))}
               <button
                 type="button"
-                className="tabtoggle"
-                onClick={() => setDetailsCollapsed((v) => !v)}
+                className={`tabtoggle${profileGuideStep === 1 ? " profile-guide-focus" : ""}`}
+                onClick={toggleDetails}
                 aria-label={detailsCollapsed ? "Show profile details" : "Hide profile details"}
                 data-testid="button-toggle-profile-details"
               >
@@ -925,20 +1013,6 @@ export default function HunterProfilePage() {
                   <span>AVAILABLE POINTS</span>
                   <b>{remaining}</b>
                 </div>
-                {showPointGuide && (
-                  <div className="pointguide" data-testid="stat-points-guide">
-                    <button
-                      type="button"
-                      className="pointguide-close"
-                      onClick={() => setShowPointGuide(false)}
-                      aria-label="Dismiss stat points guide"
-                    >
-                      ×
-                    </button>
-                    <p>Level up to earn points.</p>
-                    <span>Spend them here to shape your hero before entering dungeons.</span>
-                  </div>
-                )}
                 {(data.streakMultiplier ?? 0) > 0 && (
                   <div style={{
                     display: "flex", alignItems: "center", gap: "8px",
@@ -992,23 +1066,15 @@ export default function HunterProfilePage() {
             )}
           </div>
 
-          {showWorldGuide && (
-            <div className="worldguide" data-testid="enter-world-guide">
-              <button
-                type="button"
-                className="worldguide-close"
-                onClick={() => setShowWorldGuide(false)}
-                aria-label="Dismiss enter world guide"
-              >
-                ×
-              </button>
-              <p>Enter Gates</p>
-              <span>Battle enemies, test your build, and bring rewards back to your system.</span>
-            </div>
-          )}
-
           {/* Enter World */}
-          <div className="enter" onClick={() => navigate("/world-map")} data-testid="button-enter-world">
+          <div
+            className={`enter${profileGuideStep === 3 ? " profile-guide-focus" : ""}`}
+            onClick={() => {
+              setProfileGuideStep(0);
+              navigate("/world-map");
+            }}
+            data-testid="button-enter-world"
+          >
             <b>ENTER WORLD</b>
             <small>BEGIN YOUR ADVENTURE</small>
           </div>
