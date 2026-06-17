@@ -5,6 +5,7 @@ import { useGame } from "@/context/GameContext";
 import { Canvas } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
+import { StatIntroModal } from "@/components/game/StatIntroModal";
 
 // ── Types ────────────────────────────────────────────────────────────────
 interface WalletEntry { type: "gem" | "coin" | "diamond"; value: number }
@@ -45,6 +46,14 @@ const CLASS_MODEL_PATHS = [
   "/assets/models/rogue.glb",
   "/assets/models/rogue_hooded.glb",
 ];
+const STAT_TOOLTIP_TEXT: Record<string, string> = {
+  STR: "Damage and stamina.",
+  AGI: "Attack speed and movement speed.",
+  SEN: "Mana regeneration and cooldown reduction.",
+  INT: "Crit chance and dodge chance.",
+  VIT: "Defense and HP regeneration.",
+  DIS: "Dungeon energy and reward chance.",
+};
 
 function classDisplayName(index: number, fallback: string) {
   return CLASS_DISPLAY_NAMES[index] ?? fallback;
@@ -377,9 +386,28 @@ const CSS = `
 
 /* stats */
 .hp-root .statcard { background:var(--panel); border:1px solid rgba(76,170,255,0.12); border-radius:12px; padding:8px 10px; margin-bottom:8px; }
+.hp-root .statcard { position:relative; overflow:visible; }
 .hp-root .statcard .row { display:flex; align-items:center; gap:5px; }
 .hp-root .statcard .row svg { width:16px; height:16px; flex:none; }
-.hp-root .statcard .nm { font-family:'Chakra Petch'; font-weight:700; font-size:13px; letter-spacing:1px; flex:1; }
+.hp-root .statcard .nm {
+  font-family:'Chakra Petch'; font-weight:700; font-size:13px; letter-spacing:1px; flex:1;
+  border:0; background:transparent; text-align:left; padding:0; cursor:pointer;
+}
+.hp-root .statcard .nm:hover { text-shadow:0 0 10px currentColor; }
+.hp-root .stattip {
+  position:absolute; left:8px; right:8px; bottom:calc(100% + 6px); z-index:110;
+  padding:7px 9px; border-radius:9px; text-align:center;
+  background:rgba(3,10,24,0.96); border:1px solid rgba(76,194,255,0.42);
+  box-shadow:0 0 18px rgba(76,194,255,0.26);
+  color:rgba(232,244,255,0.94); font-size:11px; font-weight:800; letter-spacing:.5px;
+}
+.hp-root .stathelp {
+  margin-bottom:10px; padding:9px 11px; border-radius:12px;
+  background:linear-gradient(135deg, rgba(76,194,255,0.12), rgba(12,22,42,0.34));
+  border:1px solid rgba(76,194,255,0.24);
+  color:rgba(232,244,255,0.78); font-size:12px; line-height:1.25;
+}
+.hp-root .stathelp b { color:var(--cyan); font-family:'Chakra Petch'; letter-spacing:1px; }
 .hp-root .statcard .num { font-family:'Chakra Petch'; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:3px; font-size:17px; }
 .hp-root .statcard .num .base   { font-size:12px; color:var(--ink-dim); }
 .hp-root .statcard .num .arrow  { font-size:11px; color:var(--ink-dim); }
@@ -491,6 +519,14 @@ const CSS = `
   display:block; margin-top:6px; color:rgba(232,244,255,0.62);
   font-size:12px; line-height:1.25;
 }
+.hp-root .profile-guide-actions { margin-top:10px; display:flex; justify-content:flex-end; }
+.hp-root .profile-guide-dismiss {
+  border-radius:10px; border:1px solid rgba(76,194,255,0.34);
+  background:rgba(8,14,26,0.82); color:var(--cyan-soft);
+  font-family:'Chakra Petch'; font-size:12px; font-weight:800; letter-spacing:1px;
+  padding:8px 12px; cursor:pointer;
+}
+.hp-root .profile-guide-dismiss:hover { border-color:var(--cyan); box-shadow:0 0 14px rgba(76,194,255,0.18); }
 .hp-root .profile-guide-focus {
   position:relative; z-index:85;
   box-shadow:0 0 32px rgba(76,194,255,0.42), 0 0 0 1px rgba(76,194,255,0.46);
@@ -668,8 +704,10 @@ export default function HunterProfilePage() {
   const [loading,         setLoading]         = useState(true);
   const [activeTab,       setActiveTab]       = useState<"inventory" | "skills" | "stats">("stats");
   const [showPicker,      setShowPicker]      = useState(false);
+  const [showStatIntro,   setShowStatIntro]   = useState(false);
   const [profileGuideStep, setProfileGuideStep] = useState<0 | 1 | 2 | 3>(0);
   const [detailsCollapsed, setDetailsCollapsed] = useState(true);
+  const [selectedStatKey, setSelectedStatKey] = useState<string | null>(null);
   const [pickedClass,     setPickedClass]     = useState<number | null>(null);
   const [chosenClass,     setChosenClass]     = useState<number | null>(null);
   const [localStats,      setLocalStats]      = useState<StatEntry[]>([]);
@@ -781,7 +819,8 @@ export default function HunterProfilePage() {
     setShowPicker(false);
     setActiveTab("stats");
     setDetailsCollapsed(true);
-    setProfileGuideStep(1);
+    setProfileGuideStep(0);
+    setShowStatIntro(true);
     queryClient.setQueryData(["/api/player", player.id], (current: any) =>
       current ? { ...current, job: optimisticJob } : current
     );
@@ -813,6 +852,13 @@ export default function HunterProfilePage() {
     });
   }
 
+  function beginProfileGuide() {
+    setShowStatIntro(false);
+    setActiveTab("stats");
+    setDetailsCollapsed(true);
+    setProfileGuideStep(1);
+  }
+
   if (loading || !data) {
     return (
       <div className="hp-root" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -834,7 +880,7 @@ export default function HunterProfilePage() {
   const activeClassData = data.classes[activeClassIndex];
   const activeClassName = activeClassData ? classDisplayName(activeClassIndex, activeClassData.name) : data.role;
   const activeClassSrc = classModelSrc(activeClassIndex);
-  const showProfileGuide = profileGuideStep > 0 && !showPicker;
+  const showProfileGuide = profileGuideStep > 0 && !showPicker && !showStatIntro;
   const profileGuideCopy =
     profileGuideStep === 1
       ? {
@@ -855,13 +901,20 @@ export default function HunterProfilePage() {
           tone: "blue",
           label: "System Tutorial · Gates",
           title: "Enter World opens gates, battles, and rewards.",
-          body: "Try your first gate when your build is ready.",
+          body: "You can explore it when you feel ready.",
         }
       : null;
 
   return (
     <div className="hp-root" data-testid="hunter-profile-page">
       <style>{CSS}</style>
+      <StatIntroModal
+        open={showStatIntro}
+        onClose={beginProfileGuide}
+        onPrimary={beginProfileGuide}
+        primaryColor="#4cc2ff"
+        primaryLabel="Continue"
+      />
 
       <div className="phone">
         {/* Energy streaks */}
@@ -928,6 +981,18 @@ export default function HunterProfilePage() {
               <p>{profileGuideCopy.label}</p>
               <span>{profileGuideCopy.title}</span>
               <small>{profileGuideCopy.body}</small>
+              {profileGuideStep === 3 && (
+                <div className="profile-guide-actions">
+                  <button
+                    type="button"
+                    className="profile-guide-dismiss"
+                    onClick={() => setProfileGuideStep(0)}
+                    data-testid="button-dismiss-enter-world-guide"
+                  >
+                    Not now
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1013,6 +1078,9 @@ export default function HunterProfilePage() {
                   <span>AVAILABLE POINTS</span>
                   <b>{remaining}</b>
                 </div>
+                <div className="stathelp" data-testid="stat-initials-help">
+                  <b>Tip:</b> Tap a stat label like STR or AGI to see what it powers.
+                </div>
                 {(data.streakMultiplier ?? 0) > 0 && (
                   <div style={{
                     display: "flex", alignItems: "center", gap: "8px",
@@ -1028,10 +1096,23 @@ export default function HunterProfilePage() {
                 <div className="statgrid">
                   {localStats.map((s, i) => (
                     <div key={s.key} className="statcard">
+                      {selectedStatKey === s.key && (
+                        <div className="stattip" data-testid={`stat-tip-${s.key}`}>
+                          {STAT_TOOLTIP_TEXT[s.key] ?? "This stat powers your hero."}
+                        </div>
+                      )}
                       <div className="row">
                         <svg viewBox="0 0 24 24" fill="none" stroke={s.color} strokeWidth="2"
                           dangerouslySetInnerHTML={{ __html: ICONS[s.icon] }} />
-                        <span className="nm" style={{ color: s.color }}>{s.key}</span>
+                        <button
+                          type="button"
+                          className="nm"
+                          style={{ color: s.color }}
+                          onClick={() => setSelectedStatKey((current) => current === s.key ? null : s.key)}
+                          data-testid={`button-stat-tip-${s.key}`}
+                        >
+                          {s.key}
+                        </button>
                         <span className="num">
                           {s.pending > 0
                             ? <><span className="base">{s.val}</span><span className="arrow">→</span><span className="staged">{s.val + s.pending}</span></>
