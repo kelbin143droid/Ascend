@@ -20,6 +20,22 @@ const VOICE_NEXT: Record<BreathPhase, BreathPhase> = {
 };
 
 const CALM_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
+const SPARKS = [
+  { left: "48%", top: "22%", delay: "0s", size: 5 },
+  { left: "34%", top: "29%", delay: "-.9s", size: 4 },
+  { left: "64%", top: "30%", delay: "-1.6s", size: 5 },
+  { left: "28%", top: "48%", delay: "-2.2s", size: 3 },
+  { left: "72%", top: "48%", delay: "-.4s", size: 4 },
+  { left: "40%", top: "66%", delay: "-2.9s", size: 3 },
+  { left: "60%", top: "68%", delay: "-1.2s", size: 4 },
+  { left: "52%", top: "78%", delay: "-2.5s", size: 3 },
+];
+const DUST = Array.from({ length: 28 }, (_, index) => ({
+  angle: index * 13.4,
+  radius: 48 + (index % 5) * 7,
+  size: 2 + (index % 3),
+  opacity: 0.45 + (index % 4) * 0.12,
+}));
 
 function createPadOscillator(ctx: AudioContext, freq: number, detuneCents: number, gainValue: number, destination: AudioNode) {
   const osc = ctx.createOscillator();
@@ -279,7 +295,7 @@ export function CalmBreathingEngine({
     };
   }, [targetSeconds, silentCompletionSeconds]);
 
-  const scale = phase === "Inhale" ? 1.08 : phase === "Hold" ? 1.08 : 0.68;
+  const scale = phase === "Inhale" ? 1.08 : phase === "Hold" ? 1.08 : 0.72;
   const transitionDuration =
     phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
     : phase === "Hold" ? "0.2s"
@@ -291,44 +307,83 @@ export function CalmBreathingEngine({
     : "";
 
   return (
-    <div className="flex flex-col items-center gap-6">
-      <div className="relative flex h-[230px] w-[230px] items-center justify-center sm:h-[260px] sm:w-[260px]">
+    <div className="calm-engine">
+      <div
+        className="calm-orb-stage"
+        style={{
+          transform: `scale(${scale})`,
+          transition: `transform ${transitionDuration} ease-in-out`,
+        }}
+      >
+        <div className="calm-swirl s1" />
+        <div className="calm-swirl s2" />
+        <div className="calm-swirl s3" />
         <div
-          className="absolute h-[168px] w-[168px] rounded-full sm:h-[190px] sm:w-[190px]"
+          className="absolute inset-[9%] rounded-full"
           style={{
-            transform: `scale(${scale})`,
-            transition: `transform ${transitionDuration} ease-in-out, box-shadow 0.6s ease`,
-            background: `radial-gradient(circle at 50% 44%, rgba(255,255,255,0.13) 0%, ${accentColor}66 24%, ${accentColor}22 62%, transparent 100%)`,
-            border: `1.5px solid ${accentColor}aa`,
+            border: `1px solid ${accentColor}33`,
+            boxShadow: `0 0 36px ${accentColor}24, inset 0 0 42px ${accentColor}18`,
+          }}
+        />
+        <div
+          className="absolute inset-[17%] rounded-full"
+          style={{
+            border: `1px solid ${accentColor}22`,
+            boxShadow: `inset 0 0 30px ${accentColor}12`,
+          }}
+        />
+        {DUST.map((dot, index) => (
+          <span
+            key={index}
+            className="calm-dust"
+            style={{
+              width: dot.size,
+              height: dot.size,
+              opacity: dot.opacity,
+              transform: `rotate(${dot.angle}deg) translate(${dot.radius}px)`,
+            }}
+          />
+        ))}
+        {SPARKS.map((spark, index) => (
+          <span
+            key={index}
+            className="calm-spark"
+            style={{
+              left: spark.left,
+              top: spark.top,
+              width: spark.size,
+              height: spark.size,
+              animationDelay: spark.delay,
+            }}
+          />
+        ))}
+        <div
+          className="calm-core"
+          style={{
+            border: `1.5px solid ${accentColor}bb`,
             boxShadow: phase === "Hold"
-              ? `0 0 72px ${accentColor}55, 0 0 22px ${accentColor}36, inset 0 0 34px rgba(255,255,255,0.08)`
-              : `0 0 52px ${accentColor}44, 0 0 14px ${accentColor}28, inset 0 0 30px rgba(255,255,255,0.06)`,
-          }}
-        />
-        <div
-          className="absolute h-[214px] w-[214px] rounded-full sm:h-[242px] sm:w-[242px]"
-          style={{
-            border: `1px solid ${accentColor}30`,
-            boxShadow: `inset 0 0 46px ${accentColor}12`,
-          }}
-        />
-        <div
-          className="absolute h-[190px] w-[190px] rounded-full sm:h-[216px] sm:w-[216px]"
-          style={{
-            border: `1px solid ${accentColor}18`,
+              ? `0 0 88px ${accentColor}66, 0 0 28px ${accentColor}42, inset 0 0 34px rgba(255,255,255,0.12)`
+              : `0 0 60px ${accentColor}52, 0 0 18px ${accentColor}30, inset 0 0 30px rgba(255,255,255,0.08)`,
           }}
         />
       </div>
       <div className="flex min-h-[54px] flex-col items-center gap-1">
         <p
           data-testid="breathing-phase-label"
-          className="text-2xl font-display font-medium tracking-wide"
-          style={{ color: `${accentColor}ff` }}
+          className="calm-phase-label text-4xl font-display font-medium tracking-wide"
         >
           {phase === "Quiet" ? "" : phase}
         </p>
         {phaseHint && (
-          <p className="text-sm tabular-nums" style={{ color: `${accentColor}cc` }}>
+          <p
+            className="rounded-full border px-3 py-1 text-base font-display tabular-nums"
+            style={{
+              color: `${accentColor}ee`,
+              borderColor: `${accentColor}38`,
+              backgroundColor: `${accentColor}12`,
+              boxShadow: `0 0 18px ${accentColor}22`,
+            }}
+          >
             {phaseHint}
           </p>
         )}

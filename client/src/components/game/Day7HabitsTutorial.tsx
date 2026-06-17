@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Brain, Target, TrendingUp, Shield, Zap, ChevronRight, ChevronLeft,
+  Brain, Target, TrendingUp, ChevronRight, ChevronLeft,
   ArrowRight, RotateCcw, Sparkles, CheckCircle2, X
 } from "lucide-react";
 import { markHabitsTutorialDone } from "@/lib/progressionService";
@@ -15,51 +15,30 @@ const STEPS = [
     id: "welcome",
     icon: Target,
     iconColor: "#a78bfa",
-    title: "Habit System",
-    subtitle: "Build intentionally",
-    body: "Design the habits that shape who you're becoming. Every action you take consistently becomes part of your identity — and your stats.",
-    coachNote: "Start small. One or two strong habits beats scattered effort. Let's walk through the system.",
+    title: "Habits Build Your System",
+    subtitle: "Recurring actions",
+    body: "Habits are repeatable actions. Complete them to build streaks and raise the stat you choose.",
+    coachNote: "Start with one habit you can do on a normal day.",
     visual: "unlock",
   },
   {
-    id: "habit-loop",
-    icon: RotateCcw,
-    iconColor: "#3b82f6",
-    title: "The Habit Loop",
-    subtitle: "How every habit works",
-    body: "Every habit — good or bad — runs on the same four-part loop. Understanding this loop is how you rewire your brain deliberately.",
-    coachNote: "The loop doesn't care if it's a good habit or bad one. Use this knowledge to your advantage.",
-    visual: "loop",
-  },
-  {
-    id: "build",
+    id: "build-break",
     icon: TrendingUp,
     iconColor: "#22c55e",
-    title: "Building Good Habits",
-    subtitle: "XP, stats, and progression",
-    body: "Each habit you complete earns XP toward specific stats. Strength habits grow STR. Meditation grows SEN. Choose habits that match who you want to become.",
-    coachNote: "Consistency with a few beats scattered effort across many.",
-    visual: "stats",
-  },
-  {
-    id: "break",
-    icon: X,
-    iconColor: "#ef4444",
-    title: "Breaking Bad Habits",
-    subtitle: "Replace, don't erase",
-    body: "You can't remove a habit — you can only replace it. Identify the trigger and craving behind the pattern, then choose a healthier response that meets the same need.",
-    coachNote: "Every day you avoid a bad habit builds a streak. The streak itself becomes a reward.",
-    visual: "replace",
-  },
-  {
-    id: "ready",
-    icon: Sparkles,
-    iconColor: "#a78bfa",
-    title: "You're Ready",
-    subtitle: "Build your first habit",
-    body: "Head to the Build tab to create your first good habit. Then check out Break to start tracking a pattern you want to leave behind.",
-    coachNote: "The system works when you do. Let's begin.",
+    title: "Build And Break",
+    subtitle: "Two tools",
+    body: "Use Build for habits you want more of. Use Break to track patterns you want to avoid.",
+    coachNote: "You do not need a full plan here. Pick the next behavior that matters.",
     visual: "cta",
+  },
+  {
+    icon: Sparkles,
+    iconColor: "#3b82f6",
+    title: "Start Small",
+    subtitle: "One clean habit",
+    body: "Create one habit, choose its stat, and add a schedule if timing helps. Complete it when the action is done.",
+    coachNote: "Small enough to repeat is better than impressive once.",
+    visual: "stats",
   },
 ];
 

@@ -853,7 +853,15 @@ export default function HunterProfilePage() {
     setActiveTab("stats");
     setDetailsCollapsed((v) => {
       const next = !v;
-      if (profileGuideStep === 1 && !next) setProfileGuideStep(2);
+      if (profileGuideStep === 1 && !next) {
+        setProfileGuideStep(2);
+        window.setTimeout(() => {
+          document.getElementById("pane-stats")?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }, 80);
+      }
       return next;
     });
   }
@@ -995,7 +1003,7 @@ export default function HunterProfilePage() {
                     onClick={() => setProfileGuideStep(0)}
                     data-testid="button-dismiss-enter-world-guide"
                   >
-                    Not now
+                    Continue
                   </button>
                 </div>
               )}
