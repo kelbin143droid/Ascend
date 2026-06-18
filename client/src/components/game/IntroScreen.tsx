@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap } from "lucide-react";
 
@@ -7,7 +7,7 @@ interface IntroScreenProps {
 }
 
 export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
-  const [isActivating, setIsActivating]   = useState(false);
+  const [isActivating, setIsActivating]     = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleBegin = () => {
@@ -19,16 +19,6 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
     }, 650);
   };
 
-  // Subtle floating particles over the background
-  const particles = useRef(
-    Array.from({ length: 28 }, (_, i) => ({
-      id: i, x: 3 + Math.random() * 94, y: 3 + Math.random() * 94,
-      size: 0.8 + Math.random() * 1.8, dur: 11 + Math.random() * 14,
-      delay: Math.random() * 10, dy: -(8 + Math.random() * 40),
-      op: 0.10 + Math.random() * 0.30, c: i % 3,
-    }))
-  ).current;
-
   return (
     <AnimatePresence>
       <motion.div
@@ -38,7 +28,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
         animate={{ opacity: isTransitioning ? 0 : 1 }}
         transition={{ duration: 0.9, ease: "easeInOut" }}
       >
-        {/* ── BACKGROUND NEBULA IMAGE ── */}
+        {/* ── BACKGROUND ── */}
         <div style={{
           position: "absolute", inset: 0,
           background: "radial-gradient(ellipse at 50% 40%, #04122a 0%, #020812 50%, #010408 100%)",
@@ -50,21 +40,11 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
           backgroundRepeat: "no-repeat", opacity: 0.88,
         }} />
 
-        {/* Vignette overlay — deeper at edges */}
+        {/* Vignette */}
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
-          background: "radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.55) 100%)",
+          background: "radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.60) 100%)",
         }} />
-
-        {/* Subtle particle field */}
-        {particles.map(p => (
-          <motion.div key={p.id} style={{
-            position: "absolute", borderRadius: "50%", pointerEvents: "none",
-            width: p.size, height: p.size, left: `${p.x}%`, top: `${p.y}%`,
-            background: p.c === 0 ? "rgba(6,182,212,0.9)" : p.c === 1 ? "rgba(167,139,250,0.7)" : "rgba(34,211,238,0.8)",
-          }} animate={{ y: [0, p.dy, 0], opacity: [0, p.op, 0] }}
-            transition={{ duration: p.dur, repeat: Infinity, delay: p.delay, ease: "easeInOut" }} />
-        ))}
 
         {/* ── HUD CORNER BRACKETS ── */}
         {[
@@ -76,194 +56,217 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
           <motion.div key={i} style={{
             position: "fixed", width: 22, height: 22, pointerEvents: "none", zIndex: 20,
             ...s as React.CSSProperties,
-            borderColor: isActivating ? "rgba(34,211,238,0.95)" : "rgba(6,182,212,0.50)",
+            borderColor: isActivating ? "rgba(34,211,238,0.95)" : "rgba(6,182,212,0.45)",
             transition: "border-color 0.3s",
           }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 + i * 0.08, duration: 0.5 }} />
+            transition={{ delay: 0.5 + i * 0.08, duration: 0.6 }} />
         ))}
 
-        {/* ── MAIN LAYOUT — flex column, full height ── */}
+        {/* ── MAIN LAYOUT ── */}
         <div style={{
           position: "relative", zIndex: 10,
           height: "100%", display: "flex", flexDirection: "column",
           alignItems: "center",
-          paddingTop: "clamp(40px, 7vh, 72px)",
-          paddingBottom: "clamp(28px, 5vh, 52px)",
+          paddingTop: "clamp(44px, 8vh, 80px)",
+          paddingBottom: "clamp(36px, 6vh, 60px)",
         }}>
 
-          {/* ── SIGIL — top, smaller ── */}
+          {/* ── SIGIL — single clean ring, no clutter ── */}
           <motion.div style={{
             position: "relative", display: "flex", alignItems: "center",
-            justifyContent: "center", width: 110, height: 110, flexShrink: 0,
-          }} initial={{ opacity: 0, y: -20, scale: 0.6 }}
+            justifyContent: "center", width: 96, height: 96, flexShrink: 0,
+          }} initial={{ opacity: 0, y: -18, scale: 0.65 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.15, duration: 0.85, type: "spring", stiffness: 90 }}>
+            transition={{ delay: 0.2, duration: 0.9, type: "spring", stiffness: 80 }}>
 
-            {/* Outer slow ring */}
+            {/* Single outer ring — slow, confident */}
             <motion.div style={{
-              position: "absolute", width: 104, height: 104, borderRadius: "50%",
-              border: "1px solid rgba(6,182,212,0.35)",
-            }} animate={{ rotate: 360 }} transition={{ duration: 28, repeat: Infinity, ease: "linear" }} />
+              position: "absolute", width: 92, height: 92, borderRadius: "50%",
+              border: "1px solid rgba(6,182,212,0.40)",
+            }} animate={{ rotate: 360 }}
+              transition={{ duration: 32, repeat: Infinity, ease: "linear" }} />
 
-            {/* Tick dots */}
-            {[0, 60, 120, 180, 240, 300].map((deg, i) => (
-              <div key={i} style={{
-                position: "absolute",
-                width: i % 2 === 0 ? 4 : 3, height: i % 2 === 0 ? 4 : 3,
-                borderRadius: "50%",
-                background: i % 2 === 0 ? "rgba(6,182,212,0.85)" : "rgba(139,92,246,0.65)",
-                transformOrigin: "55px 55px",
-                transform: `rotate(${deg}deg) translateY(-51px)`,
-                boxShadow: i % 2 === 0 ? "0 0 5px rgba(6,182,212,1)" : "0 0 4px rgba(139,92,246,0.8)",
-              }} />
-            ))}
-
-            {/* Mid counter-rotate dashed */}
+            {/* Subtle ambient glow */}
             <motion.div style={{
-              position: "absolute", width: 84, height: 84, borderRadius: "50%",
-              border: "1px dashed rgba(139,92,246,0.38)",
-            }} animate={{ rotate: -360 }} transition={{ duration: 18, repeat: Infinity, ease: "linear" }} />
+              position: "absolute", width: 62, height: 62, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(6,182,212,0.25) 0%, transparent 70%)",
+              filter: "blur(10px)",
+            }} animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.9, 0.5] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
 
-            {/* Ambient glow */}
+            {/* Core icon tile */}
             <motion.div style={{
-              position: "absolute", width: 58, height: 58, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(6,182,212,0.28) 0%, rgba(139,92,246,0.18) 50%, transparent 70%)",
-              filter: "blur(8px)",
-            }} animate={{ scale: [1, 1.25, 1], opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }} />
-
-            {/* Core icon */}
-            <motion.div style={{
-              width: 48, height: 48, borderRadius: "12px",
+              width: 46, height: 46, borderRadius: "11px",
               display: "flex", alignItems: "center", justifyContent: "center",
-              background: "linear-gradient(135deg, rgba(6,182,212,0.18) 0%, rgba(139,92,246,0.22) 100%)",
-              border: "1.5px solid rgba(6,182,212,0.55)",
-              backdropFilter: "blur(8px)",
+              background: "linear-gradient(135deg, rgba(6,182,212,0.15) 0%, rgba(139,92,246,0.20) 100%)",
+              border: "1.5px solid rgba(6,182,212,0.50)",
+              backdropFilter: "blur(10px)",
             }} animate={{
               boxShadow: [
-                "0 0 14px rgba(6,182,212,0.35), inset 0 0 8px rgba(6,182,212,0.10)",
-                "0 0 36px rgba(6,182,212,0.65), 0 0 60px rgba(139,92,246,0.22), inset 0 0 16px rgba(6,182,212,0.16)",
-                "0 0 14px rgba(6,182,212,0.35), inset 0 0 8px rgba(6,182,212,0.10)",
+                "0 0 12px rgba(6,182,212,0.30), inset 0 0 6px rgba(6,182,212,0.08)",
+                "0 0 32px rgba(6,182,212,0.60), 0 0 55px rgba(139,92,246,0.18), inset 0 0 14px rgba(6,182,212,0.14)",
+                "0 0 12px rgba(6,182,212,0.30), inset 0 0 6px rgba(6,182,212,0.08)",
               ],
-            }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
-              <Zap size={24} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 8px rgba(6,182,212,1))" }} />
+            }} transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}>
+              <Zap size={22} style={{ color: "#22d3ee", filter: "drop-shadow(0 0 7px rgba(6,182,212,1))" }} />
             </motion.div>
           </motion.div>
 
-          {/* ── TITLE "ASCEND" — 3-D layered text ── */}
+          {/* ── TITLE "ASCEND" ── */}
           <motion.div style={{
-            marginTop: "clamp(14px, 2.5vh, 28px)",
+            marginTop: "clamp(18px, 3vh, 32px)",
             position: "relative", flexShrink: 0,
-          }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55, duration: 0.8, ease: "easeOut" }}>
+          }} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55, duration: 0.85, ease: "easeOut" }}>
 
             {/* Bloom behind title */}
-            <motion.div style={{
-              position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-              width: 380, height: 90,
-              background: "radial-gradient(ellipse, rgba(6,182,212,0.22) 0%, rgba(0,100,200,0.15) 45%, transparent 72%)",
-              filter: "blur(22px)", pointerEvents: "none",
-            }} animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 3.5, repeat: Infinity }} />
+            <div style={{
+              position: "absolute", top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 340, height: 80,
+              background: "radial-gradient(ellipse, rgba(6,182,212,0.20) 0%, rgba(0,100,200,0.12) 50%, transparent 72%)",
+              filter: "blur(24px)", pointerEvents: "none",
+            }} />
 
             <h1 style={{
               margin: 0, padding: 0,
-              fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              fontSize: "clamp(3.2rem, 13vw, 5rem)",
+              fontFamily: "'Orbitron', sans-serif",
+              fontSize: "clamp(3rem, 12vw, 4.8rem)",
               fontWeight: 900,
-              letterSpacing: "0.18em",
-              color: "#a8f0ff",
+              letterSpacing: "0.15em",
+              color: "#b8f4ff",
               position: "relative",
               textShadow: [
-                "0 1px 0 rgba(0,220,255,0.95)",
-                "0 2px 0 rgba(0,190,240,0.85)",
-                "0 3px 0 rgba(0,160,220,0.75)",
+                "0 1px 0 rgba(0,225,255,0.95)",
+                "0 2px 0 rgba(0,195,245,0.85)",
+                "0 3px 0 rgba(0,165,225,0.75)",
                 "0 4px 0 rgba(0,130,200,0.65)",
-                "0 5px 0 rgba(0,100,170,0.55)",
-                "0 6px 0 rgba(0,70,140,0.45)",
-                "0 8px 12px rgba(0,0,0,0.65)",
-                "0 0 30px rgba(6,210,255,0.75)",
-                "0 0 70px rgba(6,182,212,0.45)",
+                "0 5px 0 rgba(0,95,165,0.55)",
+                "0 6px 0 rgba(0,65,130,0.45)",
+                "0 9px 14px rgba(0,0,0,0.70)",
+                "0 0 28px rgba(6,215,255,0.70)",
+                "0 0 65px rgba(6,182,212,0.40)",
               ].join(", "),
             }}>
               ASCEND
             </h1>
           </motion.div>
 
-          {/* ── SUBTITLE ── */}
+          {/* ── SUBTITLE — lighter weight, fixed line ── */}
           <motion.p style={{
-            marginTop: "clamp(8px, 1.5vh, 16px)", marginBottom: 0,
+            marginTop: "clamp(10px, 1.8vh, 18px)", marginBottom: 0,
             textAlign: "center",
-            fontSize: "clamp(14px, 4vw, 18px)",
-            fontWeight: 700,
-            color: "rgba(255,255,255,0.92)",
-            textShadow: "0 0 20px rgba(6,182,212,0.50), 0 1px 3px rgba(0,0,0,0.70)",
+            fontSize: "clamp(13px, 3.8vw, 17px)",
+            fontWeight: 400,
+            color: "rgba(255,255,255,0.80)",
+            textShadow: "0 0 18px rgba(6,182,212,0.40), 0 1px 3px rgba(0,0,0,0.65)",
             fontFamily: "'Rajdhani', sans-serif",
-            letterSpacing: "0.02em",
-            maxWidth: 340, paddingLeft: 24, paddingRight: 24,
-            flexShrink: 0,
+            letterSpacing: "0.04em",
+            maxWidth: 320, paddingLeft: 24, paddingRight: 24,
+            flexShrink: 0, lineHeight: 1.55,
           }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            transition={{ delay: 0.85, duration: 0.7 }}>
-            Reach Your Potential. One Small Win at a Time.
+            transition={{ delay: 0.85, duration: 0.75 }}>
+            Reach Your Potential.<br />One Small Win at a Time.
           </motion.p>
 
-          {/* Spacer to push button toward bottom */}
-          <div style={{ flex: 1 }} />
-
-          {/* ── TAP TO BEGIN BUTTON ── */}
-          <motion.button
-            onClick={handleBegin}
-            style={{
-              flexShrink: 0,
-              width: "min(76vw, 300px)",
-              padding: "13px 32px",
-              borderRadius: "10px",
-              background: "rgba(1,12,28,0.72)",
-              border: "1.5px solid rgba(6,182,212,0.60)",
-              color: "rgba(255,255,255,0.92)",
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "clamp(15px, 4.5vw, 19px)",
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              cursor: "pointer",
-              backdropFilter: "blur(8px)",
-              position: "relative", overflow: "hidden",
-            }}
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.4, duration: 0.8 }}
-            whileHover={{ scale: 1.025 }} whileTap={{ scale: 0.96 }}
-            data-testid="button-begin-ascension"
-          >
-            {/* Top edge highlight */}
-            <div style={{
-              position: "absolute", top: 0, left: "12%", right: "12%", height: "1px",
-              background: "linear-gradient(90deg, transparent, rgba(6,182,212,0.70), rgba(34,211,238,0.85), rgba(6,182,212,0.70), transparent)",
-              pointerEvents: "none",
-            }} />
-            {/* Glow pulse */}
-            <motion.div style={{
-              position: "absolute", inset: 0, borderRadius: "10px", pointerEvents: "none",
-              boxShadow: "inset 0 0 0px rgba(6,182,212,0)",
-            }} animate={{
-              boxShadow: [
-                "0 0 18px rgba(6,182,212,0.25), 0 0 40px rgba(6,182,212,0.10)",
-                "0 0 34px rgba(6,182,212,0.50), 0 0 70px rgba(6,182,212,0.22)",
-                "0 0 18px rgba(6,182,212,0.25), 0 0 40px rgba(6,182,212,0.10)",
-              ],
-            }} transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }} />
-
-            <span style={{ position: "relative", zIndex: 1 }}>Tap to Begin</span>
-          </motion.button>
-
-          {/* ── BOTTOM-RIGHT STAR ── */}
+          {/* ── CENTER ANCHOR — ambient glow orb + scan line ── */}
           <motion.div style={{
-            position: "fixed", bottom: 26, right: 26, zIndex: 20,
-            color: "rgba(6,182,212,0.70)",
-            fontSize: 18,
-            textShadow: "0 0 10px rgba(6,182,212,0.9)",
+            flex: 1, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            width: "100%", minHeight: 0,
+            position: "relative",
           }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            transition={{ delay: 1.6, duration: 0.6 }}>
-            ✦
+            transition={{ delay: 1.1, duration: 1.2 }}>
+
+            {/* Large ambient orb — purely atmospheric */}
+            <motion.div style={{
+              width: "min(70vw, 260px)", height: "min(70vw, 260px)",
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(6,182,212,0.09) 0%, rgba(99,102,241,0.06) 45%, transparent 72%)",
+              filter: "blur(38px)",
+              pointerEvents: "none",
+            }} animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} />
+
+            {/* Horizontal scan line with system data */}
+            <div style={{
+              position: "absolute",
+              display: "flex", alignItems: "center", gap: 10,
+              pointerEvents: "none",
+            }}>
+              <div style={{ width: "clamp(30px, 8vw, 52px)", height: "1px", background: "linear-gradient(90deg, transparent, rgba(6,182,212,0.50))" }} />
+              <motion.span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "clamp(9px, 2.2vw, 11px)",
+                letterSpacing: "0.14em",
+                color: "rgba(6,182,212,0.55)",
+                whiteSpace: "nowrap",
+              }} animate={{ opacity: [0.45, 0.80, 0.45] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}>
+                SYSTEM · ONLINE · PROTOCOL ACTIVE
+              </motion.span>
+              <div style={{ width: "clamp(30px, 8vw, 52px)", height: "1px", background: "linear-gradient(90deg, rgba(6,182,212,0.50), transparent)" }} />
+            </div>
           </motion.div>
+
+          {/* ── BUTTON AREA ── */}
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+
+            {/* Small version label above button */}
+            <motion.span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "clamp(8px, 2vw, 10px)",
+              letterSpacing: "0.18em",
+              color: "rgba(6,182,212,0.45)",
+              textTransform: "uppercase",
+            }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={{ delay: 1.5, duration: 0.7 }}>
+              v1.0 · AWAKENED SYSTEM
+            </motion.span>
+
+            {/* CTA button */}
+            <motion.button
+              onClick={handleBegin}
+              style={{
+                width: "min(74vw, 290px)",
+                padding: "14px 32px",
+                borderRadius: "10px",
+                background: "rgba(1,10,24,0.75)",
+                border: "1.5px solid rgba(6,182,212,0.55)",
+                color: "rgba(255,255,255,0.90)",
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "clamp(15px, 4.2vw, 18px)",
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                cursor: "pointer",
+                backdropFilter: "blur(10px)",
+                position: "relative", overflow: "hidden",
+              }}
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.65, duration: 0.75 }}
+              whileHover={{ scale: 1.022 }} whileTap={{ scale: 0.965 }}
+              data-testid="button-begin-ascension"
+            >
+              {/* Top edge highlight */}
+              <div style={{
+                position: "absolute", top: 0, left: "14%", right: "14%", height: "1px",
+                background: "linear-gradient(90deg, transparent, rgba(6,182,212,0.65), rgba(34,211,238,0.90), rgba(6,182,212,0.65), transparent)",
+                pointerEvents: "none",
+              }} />
+              {/* Breathing glow */}
+              <motion.div style={{
+                position: "absolute", inset: 0, borderRadius: "10px", pointerEvents: "none",
+              }} animate={{
+                boxShadow: [
+                  "0 0 16px rgba(6,182,212,0.20), 0 0 36px rgba(6,182,212,0.08)",
+                  "0 0 30px rgba(6,182,212,0.45), 0 0 65px rgba(6,182,212,0.18)",
+                  "0 0 16px rgba(6,182,212,0.20), 0 0 36px rgba(6,182,212,0.08)",
+                ],
+              }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} />
+
+              <span style={{ position: "relative", zIndex: 1 }}>Tap to Begin</span>
+            </motion.button>
+          </div>
         </div>
 
         {/* ── ACTIVATION FLASH ── */}
@@ -272,11 +275,11 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             <motion.div
               style={{
                 position: "absolute", inset: 0, zIndex: 30, pointerEvents: "none",
-                background: "radial-gradient(ellipse at 50% 55%, rgba(6,182,212,0.65) 0%, rgba(139,92,246,0.35) 40%, transparent 70%)",
+                background: "radial-gradient(ellipse at 50% 50%, rgba(6,182,212,0.55) 0%, rgba(139,92,246,0.28) 45%, transparent 72%)",
               }}
               initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.22, 0] }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
+              animate={{ opacity: [0, 0.25, 0] }}
+              transition={{ duration: 0.65, ease: "easeOut" }}
             />
           )}
         </AnimatePresence>
