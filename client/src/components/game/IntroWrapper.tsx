@@ -3,21 +3,10 @@ import { useGame } from "@/context/GameContext";
 import { IntroScreen } from "./IntroScreen";
 import { PlayerInfoScreen } from "./PlayerInfoScreen";
 import { GenderSelectScreen } from "./GenderSelectScreen";
-import { GoalSelectScreen, type AscendGoal } from "./GoalSelectScreen";
-import { CalibrationFlow } from "./CalibrationFlow";
-import { RecommendedPathScreen } from "./RecommendedPathScreen";
 import { CalmBreathingSessionScreen } from "./CalmBreathingSessionScreen";
 import { motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 import { ArrowRight, CheckCircle2, Wind, Zap } from "lucide-react";
-import {
-  deriveCalibrationLevel,
-  saveCalibrationProfile,
-  type CalibrationAnswers,
-  type CalibrationProfile,
-} from "@/lib/calibrationEngine";
-import { setWorkoutLevel } from "@/lib/workoutProgressStore";
-import type { WorkoutLevel } from "@/lib/workoutPlans";
 
 interface IntroWrapperProps {
   children: React.ReactNode;
@@ -28,7 +17,6 @@ const FIRST_RESET_GUIDANCE_SECONDS = 28;
 const FIRST_RESET_XP = 15;
 const FIRST_RESET_STORAGE_KEY = "ascend_first_reset_done";
 const FIRST_RESET_COMPLETED_DATE_KEY = "ascend_first_reset_completed_date";
-const GOAL_STORAGE_KEY = "ascend_primary_goal";
 const DEFAULT_ONBOARDING_THEME_ID = "pixel_forest";
 const INHALE_AUDIO_URL = "/audio/inhale.mp3";
 const HOLD_AUDIO_URL = "/audio/hold.mp3";
@@ -80,7 +68,7 @@ function getFirstResetBreathState(elapsedSeconds: number) {
   };
 }
 
-type IntroStep = "loading" | "intro" | "info" | "goal" | "first-reset" | "gender" | "welcome" | "calibration" | "recommendation" | "complete";
+type IntroStep = "loading" | "intro" | "info" | "first-reset" | "gender" | "welcome" | "complete";
 
 function todayCompletedIdsKey(): string {
   return `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
@@ -788,8 +776,6 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   const { setBackgroundTheme, setClockTheme } = useTheme();
   const [step, setStep] = useState<IntroStep>("loading");
   const [playerName, setPlayerName] = useState("");
-  const [playerGender, setPlayerGender] = useState<"male" | "female">("male");
-  const [pendingProfile, setPendingProfile] = useState<CalibrationProfile | null>(null);
   const initialCheckDone = useRef(false);
   const firstResetAwarded = useRef(false);
 
@@ -802,26 +788,16 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     if (!isLoading && player && !initialCheckDone.current) {
       initialCheckDone.current = true;
       const hasName = player.name && player.name.trim() !== "";
-      const hasGoal = !!localStorage.getItem(GOAL_STORAGE_KEY);
       const hasGender = !!localStorage.getItem("ascend_gender");
-      const hasCalibration = !!localStorage.getItem("ascend_calibration");
       const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
       if (!firstResetDone) applyDefaultOnboardingTheme();
       if (!hasName) {
         setStep("intro");
-      } else if (!hasGoal) {
-        setPlayerName(player.name || "");
-        setStep("goal");
       } else if (!hasGender) {
         setPlayerName(player.name || "");
         setStep("gender");
-      } else if (!hasCalibration) {
-        setPlayerName(player.name || "");
-        setPlayerGender(localStorage.getItem("ascend_gender") === "female" ? "female" : "male");
-        setStep("calibration");
       } else if (!firstResetDone) {
         setPlayerName(player.name || "");
-        setPlayerGender(localStorage.getItem("ascend_gender") === "female" ? "female" : "male");
         setStep("first-reset");
       } else {
         setStep("complete");
@@ -834,16 +810,14 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   };
 
   const handleGenderSelect = (gender: "male" | "female") => {
-    setPlayerGender(gender);
     localStorage.setItem("ascend_gender", gender);
     applyDefaultOnboardingTheme();
     if (player?.name && player.name.trim() !== "") {
       setPlayerName(player.name);
       setStep("welcome");
       setTimeout(() => {
-        const alreadyCalibrated = !!localStorage.getItem("ascend_calibration");
         const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
-        setStep(alreadyCalibrated ? (firstResetDone ? "complete" : "first-reset") : "calibration");
+        setStep(firstResetDone ? "complete" : "first-reset");
       }, 4200);
     } else {
       setStep("info");
@@ -853,22 +827,7 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
   const handleInfoComplete = (data: { name: string }) => {
     setPlayerName(data.name);
     updatePlayer({ name: data.name, onboardingCompleted: 1 });
-    setStep("goal");
-  };
-
-  const handleGoalSelect = (goal: AscendGoal) => {
-    localStorage.setItem(GOAL_STORAGE_KEY, goal);
-    const hasGender = !!localStorage.getItem("ascend_gender");
-    const hasCalibration = !!localStorage.getItem("ascend_calibration");
-    const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
-    if (!hasGender) {
-      setStep("gender");
-    } else if (!hasCalibration) {
-      setPlayerGender(localStorage.getItem("ascend_gender") === "female" ? "female" : "male");
-      setStep("calibration");
-    } else {
-      setStep(firstResetDone ? "complete" : "first-reset");
-    }
+    setStep("gender");
   };
 
   const handleFirstResetComplete = () => {
@@ -880,26 +839,6 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
       gainExp(FIRST_RESET_XP);
     }
     setStep("complete");
-  };
-
-  const handleCalibrationComplete = (answers: CalibrationAnswers) => {
-    const derivedLevel = deriveCalibrationLevel(answers);
-    const profile: CalibrationProfile = {
-      ...answers,
-      derivedLevel,
-      completedAt: new Date().toISOString(),
-    };
-    setPendingProfile(profile);
-    setStep("recommendation");
-  };
-
-  const handleRecommendationConfirm = (chosenLevel: WorkoutLevel) => {
-    const profile = pendingProfile!;
-    const finalProfile: CalibrationProfile = { ...profile, derivedLevel: chosenLevel };
-    saveCalibrationProfile(finalProfile);
-    setWorkoutLevel(chosenLevel);
-    const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
-    setStep(firstResetDone ? "complete" : "first-reset");
   };
 
   const getFirstName = () => {
@@ -952,10 +891,6 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     return <PlayerInfoScreen onComplete={handleInfoComplete} />;
   }
 
-  if (step === "goal") {
-    return <GoalSelectScreen firstName={getFirstName()} onSelect={handleGoalSelect} />;
-  }
-
   if (step === "first-reset") {
     return (
       <FirstResetScreen
@@ -967,25 +902,6 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
 
   if (step === "welcome") {
     return <WelcomeScreen firstName={getFirstName()} />;
-  }
-
-  if (step === "calibration") {
-    return (
-      <CalibrationFlow
-        gender={playerGender}
-        onComplete={handleCalibrationComplete}
-      />
-    );
-  }
-
-  if (step === "recommendation" && pendingProfile) {
-    return (
-      <RecommendedPathScreen
-        gender={playerGender}
-        profile={pendingProfile}
-        onConfirm={handleRecommendationConfirm}
-      />
-    );
   }
 
   return <>{children}</>;
