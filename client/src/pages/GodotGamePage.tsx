@@ -452,21 +452,22 @@ export default function GodotGamePage() {
       if (data?.type === "GODOT_READY") {
         readyRef.current = true;
         const iframe = iframeRef.current;
+        // Focus the iframe so browser doesn't throttle it
+        iframe?.focus();
         if (player && iframe?.contentWindow) {
-          // 1. Power layer + consumables
-          iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
-          // 2. Class + visual/loadout layer
           const playerClass = buildPlayerClass(player);
+          const statsPayload = buildStatsPayload(player);
+          const equipment    = buildLoadoutEquipment(player);
+          // 1. Power layer + consumables
+          iframe.contentWindow.postMessage({ type: "SET_STATS", stats: statsPayload }, "*");
+          // 2. Class + visual/loadout layer
           postPlayerClassToGame(iframe.contentWindow, playerClass);
-          iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
-          // 3. Dungeon config — if launched from the world map
+          iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment }, "*");
+          // 3. Dungeon config — if launched from the world map (no duplicate sends)
           const raw = localStorage.getItem(ACTIVE_DUNGEON_KEY);
           if (raw) {
             try {
               const config = JSON.parse(raw) as ActiveDungeonConfig;
-              iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
-              postPlayerClassToGame(iframe.contentWindow, playerClass);
-              iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
               iframe.contentWindow.postMessage(
                 { type: "START_DUNGEON", config: buildDungeonConfig(config, player) },
                 "*",
