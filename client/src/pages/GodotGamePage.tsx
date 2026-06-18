@@ -17,11 +17,14 @@ import {
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 type GameClassId = "warrior" | "mage" | "assassin" | "archer";
+type GameArchetypeId = "warrior" | "sage" | "shadow" | "warden";
 type GameClassPayload = {
   id: GameClassId;
   name: string;
   job: string;
   index: number;
+  archetype: GameArchetypeId;
+  godotClass: GameArchetypeId;
   classId: GameClassId;
   characterClass: GameClassId;
   className: string;
@@ -50,18 +53,30 @@ type GameStatsPayload = GameStats & {
   characterClass: GameClassId;
   className: string;
   job: string;
+  archetype: GameArchetypeId;
+  godotClass: GameArchetypeId;
   combat: CombatStats;
   derived: CombatStats;
 };
 
 const SELECTED_GAME_CLASS_KEY = "ascend_selected_game_class";
+const SELECTED_GAME_CLASS_ID_KEY = "ascend_selected_game_class_id";
+const SELECTED_GAME_ARCHETYPE_KEY = "ascend_avatar_archetype";
 
-function makeClassPayload(id: GameClassId, name: string, job: string, index: number): GameClassPayload {
+function makeClassPayload(
+  id: GameClassId,
+  name: string,
+  job: string,
+  index: number,
+  archetype: GameArchetypeId,
+): GameClassPayload {
   return {
     id,
     name,
     job,
     index,
+    archetype,
+    godotClass: archetype,
     classId: id,
     characterClass: id,
     className: name,
@@ -70,10 +85,10 @@ function makeClassPayload(id: GameClassId, name: string, job: string, index: num
 }
 
 const CLASS_BY_INDEX: GameClassPayload[] = [
-  makeClassPayload("warrior", "Warrior", "WARRIOR", 0),
-  makeClassPayload("mage", "Mage", "SAGE", 1),
-  makeClassPayload("assassin", "Assassin", "SHADOW", 2),
-  makeClassPayload("archer", "Archer", "WARDEN", 3),
+  makeClassPayload("warrior", "Warrior", "WARRIOR", 0, "warrior"),
+  makeClassPayload("mage", "Mage", "SAGE", 1, "sage"),
+  makeClassPayload("assassin", "Assassin", "SHADOW", 2, "shadow"),
+  makeClassPayload("archer", "Archer", "WARDEN", 3, "warden"),
 ];
 
 const CLASS_BY_JOB: Record<string, GameClassPayload> = {
@@ -98,6 +113,47 @@ function buildPlayerClass(player: NonNullable<ReturnType<typeof useGame>["player
   }
   const job = String(player.job || "").toUpperCase();
   return CLASS_BY_JOB[job] ?? CLASS_BY_INDEX[0];
+}
+
+function persistPlayerClassBridge(playerClass: GameClassPayload) {
+  try {
+    localStorage.setItem(SELECTED_GAME_CLASS_KEY, String(playerClass.index));
+    localStorage.setItem(SELECTED_GAME_CLASS_ID_KEY, playerClass.id);
+    localStorage.setItem(SELECTED_GAME_ARCHETYPE_KEY, playerClass.archetype);
+    localStorage.setItem("ascend_game_class", playerClass.id);
+    localStorage.setItem("ascend_game_archetype", playerClass.archetype);
+  } catch {
+    /* noop */
+  }
+  (window as any).__ASCEND_PLAYER_CLASS__ = playerClass;
+}
+
+function buildClassBridgeMessages(playerClass: GameClassPayload) {
+  const base = {
+    classId: playerClass.id,
+    characterClass: playerClass.id,
+    className: playerClass.name,
+    classIndex: playerClass.index,
+    job: playerClass.job,
+    archetype: playerClass.archetype,
+    godotClass: playerClass.godotClass,
+    playerClass,
+    class: playerClass,
+  };
+  return [
+    { type: "SET_CLASS", ...base },
+    { type: "SET_PLAYER_CLASS", ...base },
+    { type: "SET_CHARACTER_CLASS", ...base },
+    { type: "SET_ARCHETYPE", ...base },
+    { type: "SELECT_CLASS", ...base },
+  ];
+}
+
+function postPlayerClassToGame(target: Window, playerClass: GameClassPayload) {
+  persistPlayerClassBridge(playerClass);
+  for (const message of buildClassBridgeMessages(playerClass)) {
+    target.postMessage(message, "*");
+  }
 }
 
 function buildStats(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameStats {
@@ -168,6 +224,8 @@ function buildStatsPayload(player: NonNullable<ReturnType<typeof useGame>["playe
     characterClass: playerClass.id,
     className: playerClass.name,
     job: playerClass.job,
+    archetype: playerClass.archetype,
+    godotClass: playerClass.godotClass,
     combat,
     derived: combat,
   };
@@ -189,6 +247,9 @@ function buildDungeonConfig(config: ActiveDungeonConfig, player: NonNullable<Ret
     className: playerClass.name,
     job: playerClass.job,
     classIndex: playerClass.index,
+    archetype: playerClass.archetype,
+    godotClass: playerClass.godotClass,
+    playerClass,
   };
 }
 
@@ -208,6 +269,11 @@ function isGateRank(rank: string): rank is GateRank {
   return rank in GATE_CONFIG;
 }
 
+function normalizeGateRank(rank: ActiveDungeonConfig["rank"] | undefined): GateRank {
+  const normalized = String(rank ?? "E").toUpperCase();
+  return isGateRank(normalized) ? normalized : "E";
+}
+
 function readActiveDungeonConfig(): ActiveDungeonConfig | null {
   try {
     const raw = localStorage.getItem(ACTIVE_DUNGEON_KEY);
@@ -218,8 +284,8 @@ function readActiveDungeonConfig(): ActiveDungeonConfig | null {
 }
 
 function GateLoadingOverlay({ config }: { config: ActiveDungeonConfig | null }) {
-  const rank = config?.rank ?? "A";
-  const rankColor = isGateRank(rank) ? GATE_CONFIG[rank].color : "#a855f7";
+  const rank = normalizeGateRank(config?.rank);
+  const rankColor = GATE_CONFIG[rank].color;
   const dungeonName = config?.dungeon ?? "Unknown Gate";
 
   return (
@@ -238,7 +304,7 @@ function GateLoadingOverlay({ config }: { config: ActiveDungeonConfig | null }) 
       />
       <div className="gate-loading-vignette" />
       <div className="gate-loading-copy">
-        <div className="gate-loading-emblem">A</div>
+        <div className="gate-loading-emblem">{rank}</div>
         <div className="gate-loading-rule" />
         <div className="gate-loading-rank">
           GATE LEVEL: RANK <span>{rank}</span> (INSTANCED)
@@ -274,6 +340,11 @@ export default function GodotGamePage() {
   const [activeDungeon] = useState<ActiveDungeonConfig | null>(() => readActiveDungeonConfig());
   const [showGateLoading, setShowGateLoading] = useState(() => !!readActiveDungeonConfig());
   const loadingStartedAtRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (!player) return;
+    persistPlayerClassBridge(buildPlayerClass(player));
+  }, [player]);
 
   // ── Fullscreen + orientation lock ─────────────────────────────────────────
   useEffect(() => {
@@ -356,8 +427,7 @@ export default function GodotGamePage() {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow || !readyRef.current || !player) return;
     const playerClass = buildPlayerClass(player);
-    iframe.contentWindow.postMessage({ type: "SET_CLASS", class: playerClass }, "*");
-    iframe.contentWindow.postMessage({ type: "SET_CHARACTER_CLASS", classId: playerClass.id, characterClass: playerClass.id, class: playerClass }, "*");
+    postPlayerClassToGame(iframe.contentWindow, playerClass);
   }, [player]);
 
   useEffect(() => { if (readyRef.current) sendPlayerClass(); }, [sendPlayerClass]);
@@ -387,8 +457,7 @@ export default function GodotGamePage() {
           iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
           // 2. Class + visual/loadout layer
           const playerClass = buildPlayerClass(player);
-          iframe.contentWindow.postMessage({ type: "SET_CLASS", class: playerClass }, "*");
-          iframe.contentWindow.postMessage({ type: "SET_CHARACTER_CLASS", classId: playerClass.id, characterClass: playerClass.id, class: playerClass }, "*");
+          postPlayerClassToGame(iframe.contentWindow, playerClass);
           iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
           // 3. Dungeon config — if launched from the world map
           const raw = localStorage.getItem(ACTIVE_DUNGEON_KEY);
@@ -396,8 +465,7 @@ export default function GodotGamePage() {
             try {
               const config = JSON.parse(raw) as ActiveDungeonConfig;
               iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
-              iframe.contentWindow.postMessage({ type: "SET_CLASS", class: playerClass }, "*");
-              iframe.contentWindow.postMessage({ type: "SET_CHARACTER_CLASS", classId: playerClass.id, characterClass: playerClass.id, class: playerClass }, "*");
+              postPlayerClassToGame(iframe.contentWindow, playerClass);
               iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
               iframe.contentWindow.postMessage(
                 { type: "START_DUNGEON", config: buildDungeonConfig(config, player) },
@@ -440,6 +508,27 @@ export default function GodotGamePage() {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [player?.id, navigate]);
+
+  if (!player?.id) {
+    return (
+      <div style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 10,
+        display: "grid",
+        placeItems: "center",
+        background: "#020510",
+        color: "#dbeafe",
+        fontFamily: "'Chakra Petch', sans-serif",
+        letterSpacing: "0.18em",
+      }}>
+        PREPARING HUNTER DATA...
+      </div>
+    );
+  }
+
+  const iframeClass = buildPlayerClass(player);
+  const iframeSrc = `/game/index.html?class=${iframeClass.archetype}&classId=${iframeClass.id}&classIndex=${iframeClass.index}`;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 10 }}>
@@ -601,7 +690,7 @@ export default function GodotGamePage() {
       <iframe
         id="game-frame"
         ref={iframeRef}
-        src="/game/index.html"
+        src={iframeSrc}
         style={{ width: "100%", height: "100%", border: "none", display: "block" }}
         allow="pointer-lock; fullscreen; autoplay"
         allowFullScreen
