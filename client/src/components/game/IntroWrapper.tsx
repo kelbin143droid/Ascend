@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useGame } from "@/context/GameContext";
 import { IntroScreen } from "./IntroScreen";
 import { PlayerInfoScreen } from "./PlayerInfoScreen";
-import { GenderSelectScreen } from "./GenderSelectScreen";
 import { CalmBreathingSessionScreen } from "./CalmBreathingSessionScreen";
 import { motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
@@ -68,7 +67,7 @@ function getFirstResetBreathState(elapsedSeconds: number) {
   };
 }
 
-type IntroStep = "loading" | "intro" | "info" | "first-reset" | "gender" | "welcome" | "complete";
+type IntroStep = "loading" | "intro" | "info" | "first-reset" | "welcome" | "complete";
 
 function todayCompletedIdsKey(): string {
   return `ascend_completed_ids_${new Date().toISOString().split("T")[0]}`;
@@ -788,14 +787,10 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     if (!isLoading && player && !initialCheckDone.current) {
       initialCheckDone.current = true;
       const hasName = player.name && player.name.trim() !== "";
-      const hasGender = !!localStorage.getItem("ascend_gender");
       const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
       if (!firstResetDone) applyDefaultOnboardingTheme();
       if (!hasName) {
         setStep("intro");
-      } else if (!hasGender) {
-        setPlayerName(player.name || "");
-        setStep("gender");
       } else if (!firstResetDone) {
         setPlayerName(player.name || "");
         setStep("first-reset");
@@ -809,25 +804,15 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     setStep("info");
   };
 
-  const handleGenderSelect = (gender: "male" | "female") => {
-    localStorage.setItem("ascend_gender", gender);
-    applyDefaultOnboardingTheme();
-    if (player?.name && player.name.trim() !== "") {
-      setPlayerName(player.name);
-      setStep("welcome");
-      setTimeout(() => {
-        const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
-        setStep(firstResetDone ? "complete" : "first-reset");
-      }, 4200);
-    } else {
-      setStep("info");
-    }
-  };
-
   const handleInfoComplete = (data: { name: string }) => {
     setPlayerName(data.name);
     updatePlayer({ name: data.name, onboardingCompleted: 1 });
-    setStep("gender");
+    applyDefaultOnboardingTheme();
+    setStep("welcome");
+    setTimeout(() => {
+      const firstResetDone = localStorage.getItem(FIRST_RESET_STORAGE_KEY) === "true";
+      setStep(firstResetDone ? "complete" : "first-reset");
+    }, 4200);
   };
 
   const handleFirstResetComplete = () => {
@@ -881,10 +866,6 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
 
   if (step === "intro") {
     return <IntroScreen onBeginAscension={handleBeginAscension} />;
-  }
-
-  if (step === "gender") {
-    return <GenderSelectScreen onSelect={handleGenderSelect} />;
   }
 
   if (step === "info") {

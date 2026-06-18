@@ -103,7 +103,7 @@ const APP_KNOWLEDGE: Record<string, string> = {
   trials: "Trials are multi-day, focused challenges that unlock at Phase 4. They test sustained consistency and reward you with rare badges and XP boosts.",
   planning: "Two planning modes: Basic (free quest creation) and Advanced (quests must tie to weekly missions). Switch in the Library at Phase 3+. Advanced is for people who want a tighter weekly compass.",
   visuals: "Your in-game environment, avatar aura, and color palette evolve with your phase and stability. Deeper consistency unlocks richer visual layers — your inner work becoming visible.",
-  theme: "Two themes set on first load by gender choice: Iron Sovereign (electric blue + gold) for Male, Neon Empress (magenta + purple + cyan) for Female. You can override the theme any time via the theme picker.",
+  theme: "Onboarding starts with the default visual system to reduce setup friction. Users can customize themes later from the app's customization controls.",
   identity: "The Identity Engine reflects your behavior back to you in 4 stages — from 'Beginner' to 'Embodied'. It uses your completion patterns and rhythms to mirror who you're becoming, never who you 'should' be.",
   return: "The Return Protocol kicks in after extended absence. It uses tiered, guilt-free language and starts you with the smallest possible session. You're never 'behind' — you're returning.",
   flow: "Flow State is triggered by high momentum, strong completion ratios, and bonus actions. While in flow, XP is amplified and the visuals intensify slightly.",
