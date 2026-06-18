@@ -6,6 +6,10 @@ import { GuidedActivityEngine } from "./GuidedActivityEngine";
 import { BreathingFeedbackModal } from "./BreathingFeedbackModal";
 import { apiRequest } from "@/lib/queryClient";
 import type { ActivityDefinition } from "@/lib/activityEngine";
+import {
+  applyPhysicalCircuitFeedback,
+  type PhysicalCircuitLimiter,
+} from "@/lib/physicalCircuitProgressStore";
 import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Dumbbell, ChevronRight } from "lucide-react";
 import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
@@ -13,6 +17,7 @@ type FeedbackValue = "easy" | "same" | "challenging" | null;
 
 interface FeedbackState {
   strength: FeedbackValue;
+  limiter: PhysicalCircuitLimiter | null;
 }
 
 interface DailyFlowEngineProps {
@@ -27,6 +32,14 @@ const FEEDBACK_OPTIONS: { value: FeedbackValue; label: string; emoji: string }[]
   { value: "easy",        label: "Easy",       emoji: "😌" },
   { value: "same",        label: "Just Right", emoji: "👌" },
   { value: "challenging", label: "Hard",       emoji: "💪" },
+];
+
+const LIMITER_OPTIONS: { value: PhysicalCircuitLimiter; label: string }[] = [
+  { value: "push", label: "Push exercise" },
+  { value: "legs", label: "Legs" },
+  { value: "core", label: "Core" },
+  { value: "cardio", label: "Cardio" },
+  { value: "everything", label: "Everything" },
 ];
 
 export function DailyFlowEngine({
@@ -51,7 +64,8 @@ export function DailyFlowEngine({
   const [showTransition, setShowTransition] = useState(false);
   const [flowFinished, setFlowFinished] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [feedback, setFeedback] = useState<FeedbackState>({ strength: null });
+  const [feedback, setFeedback] = useState<FeedbackState>({ strength: null, limiter: null });
+  const [feedbackStep, setFeedbackStep] = useState<"difficulty" | "limiter">("difficulty");
   const [runningActivity, setRunningActivity] = useState(false);
   const [showBreathingFeedback, setShowBreathingFeedback] = useState(false);
   const [pendingAdvanceIdx, setPendingAdvanceIdx] = useState<number | null>(null);
@@ -184,13 +198,24 @@ export function DailyFlowEngine({
   }, [flowFinished]);
 
   const handleFeedbackSubmit = useCallback(() => {
+    if (feedback.strength === "challenging" && !feedback.limiter) {
+      setFeedbackStep("limiter");
+      return;
+    }
     const payload: { strength?: string } = {};
     if (strengthCompleted && feedback.strength) payload.strength = feedback.strength;
     if (Object.keys(payload).length > 0) {
       feedbackMutation.mutate(payload);
     }
+    if (isOnboardingComplete && strengthCompleted && feedback.strength) {
+      applyPhysicalCircuitFeedback({
+        difficulty: feedback.strength,
+        limiter: feedback.limiter,
+      });
+    }
     setShowFeedback(false);
-  }, [feedback, strengthCompleted, feedbackMutation]);
+    setFeedbackStep("difficulty");
+  }, [feedback, strengthCompleted, feedbackMutation, isOnboardingComplete]);
 
   const hasFinishedRef = useRef(false);
   const handleFlowFinish = useCallback(() => {
@@ -330,14 +355,16 @@ export function DailyFlowEngine({
 
               <div className="text-center mb-5">
                 <div className="text-base font-bold mb-1" style={{ color: colors.text }}>
-                  How did it go?
+                  {feedbackStep === "limiter" ? "What felt hardest?" : "How did it go?"}
                 </div>
                 <div className="text-xs" style={{ color: colors.textMuted }}>
-                  Your answer adjusts tomorrow's difficulty.
+                  {feedbackStep === "limiter"
+                    ? "The system will adjust the smallest part it needs to."
+                    : "Your answer adjusts tomorrow's difficulty."}
                 </div>
               </div>
 
-              {strengthCompleted && (
+              {strengthCompleted && feedbackStep === "difficulty" && (
                 <div className="mb-5">
                   <div
                     className="flex items-center gap-2 mb-2.5 text-sm font-semibold"
@@ -353,7 +380,11 @@ export function DailyFlowEngine({
                         <button
                           key={opt.value}
                           data-testid={`feedback-strength-${opt.value}`}
-                          onClick={() => setFeedback((f) => ({ ...f, strength: opt.value }))}
+                          onClick={() => setFeedback((f) => ({
+                            ...f,
+                            strength: opt.value,
+                            limiter: opt.value === "challenging" ? f.limiter : null,
+                          }))}
                           className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all active:scale-95"
                           style={{
                             backgroundColor: selected ? `#ef444420` : `${colors.textMuted}10`,
@@ -370,19 +401,59 @@ export function DailyFlowEngine({
                 </div>
               )}
 
+              {strengthCompleted && feedbackStep === "limiter" && (
+                <div className="mb-5">
+                  <div className="grid grid-cols-2 gap-2">
+                    {LIMITER_OPTIONS.map((opt) => {
+                      const selected = feedback.limiter === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          data-testid={`feedback-limiter-${opt.value}`}
+                          onClick={() => setFeedback((f) => ({ ...f, limiter: opt.value }))}
+                          className="py-3 rounded-xl text-xs font-semibold transition-all active:scale-95"
+                          style={{
+                            backgroundColor: selected ? `#ef444420` : `${colors.textMuted}10`,
+                            border: `1.5px solid ${selected ? "#ef4444" : `${colors.textMuted}20`}`,
+                            color: selected ? "#ef4444" : colors.textMuted,
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <button
                 data-testid="button-submit-feedback"
                 onClick={handleFeedbackSubmit}
+                disabled={
+                  !feedback.strength ||
+                  (feedbackStep === "limiter" && !feedback.limiter)
+                }
                 className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
-                style={{ backgroundColor: colors.primary, color: "#fff" }}
+                style={{
+                  backgroundColor:
+                    !feedback.strength || (feedbackStep === "limiter" && !feedback.limiter)
+                      ? `${colors.textMuted}40`
+                      : colors.primary,
+                  color: "#fff",
+                }}
               >
-                Save & Continue
+                {feedback.strength === "challenging" && feedbackStep === "difficulty"
+                  ? "Next"
+                  : "Save & Continue"}
                 <ChevronRight size={16} />
               </button>
 
               <button
                 data-testid="button-skip-feedback"
-                onClick={() => setShowFeedback(false)}
+                onClick={() => {
+                  setShowFeedback(false);
+                  setFeedbackStep("difficulty");
+                }}
                 className="w-full mt-2 py-2 text-xs text-center"
                 style={{ color: colors.textMuted }}
               >

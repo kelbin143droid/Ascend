@@ -35,12 +35,17 @@ import {
   type ActivityStep,
 } from "./activityEngine";
 import { type WorkoutLevel } from "./workoutPlans";
+import {
+  getPhysicalCircuitProfile,
+  PUSH_VARIATION_COPY,
+} from "./physicalCircuitProgressStore";
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export interface DailyFlowBuildOptions {
   dayNumber: number;
   tiers?: CategoryTiers;
+  isOnboardingComplete?: boolean;
 }
 
 /**
@@ -287,6 +292,149 @@ function buildStarterStrengthActivity(tier: number): ActivityDefinition {
   };
 }
 
+function buildAdaptiveStarterStrengthActivity(tier: number): ActivityDefinition {
+  const profile = getPhysicalCircuitProfile();
+  const xpMultiplier = TIER_XP_MULTIPLIERS[tier] ?? 1.0;
+  const push = PUSH_VARIATION_COPY[profile.pushVariation];
+
+  const tierBonus = Math.min(tier - 1, 4) * 2;
+  const pushReps = Math.max(4, 6 + tierBonus + profile.repsBonus);
+  const squatReps = Math.max(6, 8 + tierBonus + profile.repsBonus);
+  const situpReps = Math.max(6, 8 + tierBonus + profile.repsBonus);
+  const plankSeconds = Math.max(10, 15 + Math.min(tier - 1, 4) * 5 + profile.plankBonusSeconds);
+  const restSeconds = Math.min(25, Math.max(10, 15 + profile.restBonusSeconds));
+  const SECS_PER_REP = 3;
+
+  const cardioLabel =
+    profile.cardioMode === "march" ? "March in Place" :
+    profile.cardioMode === "step_jacks" ? "Step Jacks" :
+    "Jog in Place";
+  const cardioVideo =
+    profile.cardioMode === "step_jacks"
+      ? "/videos/jumpingjacks_loop.mp4"
+      : "/videos/joginplace_loop.mp4";
+
+  const duration =
+    10 +
+    (profile.cardioSeconds > 0 ? profile.cardioSeconds + 5 : 0) +
+    (pushReps + squatReps + situpReps) * SECS_PER_REP +
+    3 * restSeconds +
+    plankSeconds +
+    5;
+
+  const steps: ActivityStep[] = [
+    {
+      id: "adaptive_intro",
+      type: "instruction",
+      label: "Get Ready — Physical Circuit",
+      instruction:
+        `${push.label} → Squats → Sit-ups → Plank. The system will adjust after your feedback.`,
+      voiceText:
+        `Get ready. ${push.label}, squats, sit-ups, then a plank hold.`,
+    },
+  ];
+
+  if (profile.cardioSeconds > 0) {
+    steps.push({
+      id: "adaptive_cardio",
+      type: "timer",
+      label: cardioLabel,
+      instruction: `${cardioLabel} for ${profile.cardioSeconds} seconds. Keep it smooth and controlled.`,
+      durationSeconds: profile.cardioSeconds,
+      voiceText: `${cardioLabel}. ${profile.cardioSeconds} seconds.`,
+      videoSrc: cardioVideo,
+    });
+  }
+
+  steps.push(
+    {
+      id: "adaptive_pushups",
+      type: "rep",
+      label: push.label,
+      instruction: `${pushReps} ${push.instructionNoun}. Move with control. Stop if form breaks.`,
+      repCount: pushReps,
+      repLabel: "reps",
+      voiceText: `${push.label}. ${pushReps} reps.`,
+      videoSrc: push.videoSrc,
+    },
+    {
+      id: "adaptive_rest_1",
+      type: "timer",
+      label: "Rest",
+      instruction: `Rest ${restSeconds} seconds. Squats next.`,
+      durationSeconds: restSeconds,
+      voiceText: `Rest ${restSeconds} seconds.`,
+    },
+    {
+      id: "adaptive_squats",
+      type: "rep",
+      label: "Squats",
+      instruction: `${squatReps} squats. Chest up, knees tracking over toes.`,
+      repCount: squatReps,
+      repLabel: "reps",
+      voiceText: `Squats. ${squatReps} reps.`,
+      videoSrc: "/videos/squats_loop.mp4",
+    },
+    {
+      id: "adaptive_rest_2",
+      type: "timer",
+      label: "Rest",
+      instruction: `Rest ${restSeconds} seconds. Core next.`,
+      durationSeconds: restSeconds,
+      voiceText: `Rest ${restSeconds} seconds.`,
+    },
+    {
+      id: "adaptive_situps",
+      type: "rep",
+      label: "Sit-ups",
+      instruction: `${situpReps} sit-ups. Controlled on the way down.`,
+      repCount: situpReps,
+      repLabel: "reps",
+      voiceText: `Sit-ups. ${situpReps} reps.`,
+      videoSrc: "/videos/abs_crunch_loop.mp4",
+    },
+    {
+      id: "adaptive_rest_3",
+      type: "timer",
+      label: "Rest",
+      instruction: `Rest ${restSeconds} seconds. Plank next.`,
+      durationSeconds: restSeconds,
+      voiceText: `Rest ${restSeconds} seconds.`,
+    },
+    {
+      id: "adaptive_plank",
+      type: "timer",
+      label: "Plank Hold",
+      instruction: `Hold a plank for ${plankSeconds} seconds. Knees down is fine. Breathe steadily.`,
+      durationSeconds: plankSeconds,
+      voiceText: `Plank hold. ${plankSeconds} seconds.`,
+      videoSrc: "/videos/plank_hold_loop.mp4",
+      loop: false,
+    },
+    {
+      id: "adaptive_done",
+      type: "completion",
+      label: "Physical Circuit Complete",
+      instruction: "Physical circuit complete. Your next answer tunes the next session.",
+      voiceText: "Physical circuit complete. Great work.",
+    },
+  );
+
+  return {
+    id: "phase1_strength",
+    activityName: "Physical Circuit",
+    category: "strength",
+    stat: "strength",
+    duration,
+    xpReward: 0,
+    color: CATEGORY_COLORS.strength,
+    tier,
+    xpMultiplier,
+    autoflow: true,
+    steps,
+  };
+}
+
 /**
  * Returns the ordered ActivityDefinition array for the given path.
  *
@@ -318,7 +466,9 @@ export function buildDailyFlowActivities(
     const base = buildPhase1Activities(options.dayNumber, options.tiers);
     return base.map((a): ActivityDefinition =>
       a.id === "phase1_strength"
-        ? buildStarterStrengthActivity(strengthTier)
+        ? options.isOnboardingComplete
+          ? buildAdaptiveStarterStrengthActivity(strengthTier)
+          : buildStarterStrengthActivity(strengthTier)
         : a
     );
   }

@@ -54,6 +54,12 @@ import {
   type ExerciseDef,
 } from "@/lib/workoutPlans";
 import {
+  initializePhysicalCircuitProfile,
+  isPhysicalCircuitProfileInitialized,
+  PUSH_VARIATION_COPY,
+  type PushVariation,
+} from "@/lib/physicalCircuitProgressStore";
+import {
   Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield,
   Zap, ListChecks, PlayCircle, Flame, RotateCcw, Star, X, ChevronRight,
   ArrowRight, Activity,
@@ -300,6 +306,89 @@ function WorkoutFeedbackModal({
         >
           Skip feedback
         </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function PushSetupModal({
+  colors,
+  onChoose,
+  onClose,
+}: {
+  colors: ReturnType<typeof useTheme>["backgroundTheme"]["colors"];
+  onChoose: (variation: PushVariation) => void;
+  onClose: () => void;
+}) {
+  const options: Array<{ value: PushVariation; detail: string }> = [
+    { value: "wall", detail: "Best for rebuilding or joint-friendly starts." },
+    { value: "knee", detail: "Moderate start with less bodyweight." },
+    { value: "standard", detail: "Full pushups with clean form." },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.78)", backdropFilter: "blur(6px)" }}
+    >
+      <motion.div
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", damping: 22, stiffness: 300 }}
+        className="w-full max-w-md rounded-t-3xl p-6 pb-10"
+        style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
+        data-testid="push-setup-modal"
+      >
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] font-bold mb-2" style={{ color: colors.primary }}>
+              Physical Circuit
+            </div>
+            <div className="text-lg font-bold" style={{ color: colors.text }}>
+              Choose your push level
+            </div>
+            <div className="text-xs mt-1 leading-relaxed" style={{ color: colors.textMuted }}>
+              Pick the version you can do with good form today.
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl grid place-items-center"
+            style={{ backgroundColor: `${colors.textMuted}15`, color: colors.textMuted }}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="space-y-2.5">
+          {options.map((opt) => {
+            const copy = PUSH_VARIATION_COPY[opt.value];
+            return (
+              <button
+                key={opt.value}
+                data-testid={`button-push-setup-${opt.value}`}
+                onClick={() => onChoose(opt.value)}
+                className="w-full rounded-xl p-4 text-left transition-all active:scale-[0.98]"
+                style={{
+                  backgroundColor: `${colors.primary}10`,
+                  border: `1.5px solid ${colors.primary}25`,
+                }}
+              >
+                <div className="text-sm font-bold mb-1" style={{ color: colors.text }}>
+                  {copy.label}
+                </div>
+                <div className="text-xs" style={{ color: colors.textMuted }}>
+                  {opt.detail}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -611,6 +700,8 @@ export default function TrainPage() {
   const [activeActivity, setActiveActivity] = useState<ActivityDefinition | null>(null);
   const [completedToday, setCompletedToday] = useState<Set<string>>(new Set());
   const [flowActive, setFlowActive] = useState(false);
+  const [showPushSetup, setShowPushSetup] = useState(false);
+  const [, setPhysicalProfileRevision] = useState(0);
 
   // ── Builder selections
   const [workoutLevel, setWorkoutLevelState] = useState<WorkoutLevel>(() => getWorkoutLevel());
@@ -809,7 +900,11 @@ export default function TrainPage() {
   };
 
   const dayNumber = homeData?.onboardingDay ?? 1;
-  const activities = buildDailyFlowActivities(workoutLevel, { dayNumber, tiers });
+  const activities = buildDailyFlowActivities(workoutLevel, {
+    dayNumber,
+    tiers,
+    isOnboardingComplete: !!homeData?.isOnboardingComplete,
+  });
   const totalTime = activities.reduce((sum, a) => sum + a.duration, 0);
   const totalMins = Math.ceil(totalTime / 60);
 
@@ -839,6 +934,26 @@ export default function TrainPage() {
     // Defer unmount so DailyFlowEngine can complete its cleanup / exit animation.
     setTimeout(() => setFlowActive(false), 200);
   };
+
+  const startDailyFlow = useCallback(() => {
+    const hasStrength = activities.some((activity) => activity.id === "phase1_strength");
+    if (homeData?.isOnboardingComplete && hasStrength && !isPhysicalCircuitProfileInitialized()) {
+      setShowPushSetup(true);
+      return;
+    }
+    clearFlow();
+    clearSession();
+    setFlowActive(true);
+  }, [activities, homeData?.isOnboardingComplete]);
+
+  const handlePushSetupChoice = useCallback((variation: PushVariation) => {
+    initializePhysicalCircuitProfile(variation);
+    setPhysicalProfileRevision((v) => v + 1);
+    setShowPushSetup(false);
+    clearFlow();
+    clearSession();
+    setFlowActive(true);
+  }, []);
 
   const allComplete = completedToday.size === activities.length;
 
@@ -901,6 +1016,15 @@ export default function TrainPage() {
               nextLevel={nextLevel}
               prevLevel={prevLevel}
               planColor={planColor}
+            />
+          )}
+
+          {showPushSetup && (
+            <PushSetupModal
+              key="push-setup"
+              colors={colors}
+              onChoose={handlePushSetupChoice}
+              onClose={() => setShowPushSetup(false)}
             />
           )}
         </AnimatePresence>,
@@ -992,7 +1116,7 @@ export default function TrainPage() {
                   background: `linear-gradient(135deg, ${colors.primary}20, ${colors.primary}08)`,
                   border: `1px solid ${colors.primary}30`,
                 }}
-                onClick={() => { clearFlow(); clearSession(); setFlowActive(true); }}
+                onClick={startDailyFlow}
                 data-testid="button-start-daily-flow"
               >
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
@@ -1047,7 +1171,18 @@ export default function TrainPage() {
                     data-testid={`card-activity-${activity.id}`}>
                     <button
                       className="w-full p-4 flex items-center gap-4 transition-all"
-                      onClick={() => !isDone && setActiveActivity(activity)}
+                      onClick={() => {
+                        if (isDone) return;
+                        if (
+                          activity.id === "phase1_strength" &&
+                          homeData?.isOnboardingComplete &&
+                          !isPhysicalCircuitProfileInitialized()
+                        ) {
+                          startDailyFlow();
+                          return;
+                        }
+                        setActiveActivity(activity);
+                      }}
                       disabled={isDone}
                       data-testid={`button-start-${activity.id}`}>
                       <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
