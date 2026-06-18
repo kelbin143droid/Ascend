@@ -156,17 +156,24 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
           <motion.p style={{
             marginTop: "clamp(10px, 1.8vh, 18px)", marginBottom: 0,
             textAlign: "center",
-            fontSize: "clamp(13px, 3.8vw, 17px)",
-            fontWeight: 400,
-            color: "rgba(255,255,255,0.80)",
-            textShadow: "0 0 18px rgba(6,182,212,0.40), 0 1px 3px rgba(0,0,0,0.65)",
+            fontSize: "clamp(16px, 4.6vw, 20px)",
+            fontWeight: 600,
             fontFamily: "'Rajdhani', sans-serif",
             letterSpacing: "0.04em",
             maxWidth: 320, paddingLeft: 24, paddingRight: 24,
-            flexShrink: 0, lineHeight: 1.55,
+            flexShrink: 0, lineHeight: 1.6,
+            margin: 0,
           }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ delay: 0.85, duration: 0.75 }}>
-            Reach Your Potential.<br />One Small Win at a Time.
+            <span style={{
+              color: "#ffd47a",
+              textShadow: "0 0 22px rgba(255,180,60,0.55), 0 1px 3px rgba(0,0,0,0.70)",
+            }}>Reach Your Potential.</span>
+            <br />
+            <span style={{
+              color: "rgba(255,255,255,0.90)",
+              textShadow: "0 0 18px rgba(6,182,212,0.40), 0 1px 3px rgba(0,0,0,0.65)",
+            }}>One Small Win at a Time.</span>
           </motion.p>
 
           {/* ── CENTER ANCHOR — ambient glow orb + scan line ── */}
@@ -197,11 +204,12 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
               <div style={{ width: "clamp(30px, 8vw, 52px)", height: "1px", background: "linear-gradient(90deg, transparent, rgba(6,182,212,0.50))" }} />
               <motion.span style={{
                 fontFamily: "'JetBrains Mono', monospace",
-                fontSize: "clamp(9px, 2.2vw, 11px)",
+                fontSize: "clamp(11px, 2.8vw, 13px)",
+                fontWeight: 700,
                 letterSpacing: "0.14em",
-                color: "rgba(6,182,212,0.55)",
+                color: "rgba(6,182,212,0.75)",
                 whiteSpace: "nowrap",
-              }} animate={{ opacity: [0.45, 0.80, 0.45] }}
+              }} animate={{ opacity: [0.55, 0.95, 0.55] }}
                 transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}>
                 SYSTEM · ONLINE · PROTOCOL ACTIVE
               </motion.span>
