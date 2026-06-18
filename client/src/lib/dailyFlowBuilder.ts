@@ -39,6 +39,11 @@ import {
   getPhysicalCircuitProfile,
   PUSH_VARIATION_COPY,
 } from "./physicalCircuitProgressStore";
+import {
+  AGILITY_STAGE_LABELS,
+  getAgilityProgressProfile,
+  type AgilityLimiter,
+} from "./agilityProgressStore";
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -435,6 +440,157 @@ function buildAdaptiveStarterStrengthActivity(tier: number): ActivityDefinition 
   };
 }
 
+function makeMobilityStep(
+  id: string,
+  label: string,
+  seconds: number,
+  instruction: string,
+  videoSrc?: string,
+): ActivityStep {
+  return {
+    id,
+    type: "timer",
+    label,
+    instruction,
+    durationSeconds: seconds,
+    voiceText: `${label}. ${seconds} seconds.`,
+    ...(videoSrc ? { videoSrc } : {}),
+    loop: !!videoSrc,
+  };
+}
+
+function focusSteps(focus: AgilityLimiter, seconds: number): ActivityStep[] {
+  switch (focus) {
+    case "shoulders":
+      return [
+        makeMobilityStep("focus_neck_release", "Neck Release", seconds, "Slowly release tension through the neck. Move gently, no forcing."),
+        makeMobilityStep("focus_chest_opener", "Chest Opener", seconds, "Open your chest and pull the shoulders back softly."),
+      ];
+    case "back":
+      return [
+        makeMobilityStep("focus_cat_cow", "Cat-Cow", seconds, "Round and arch your back with slow breathing."),
+        makeMobilityStep("focus_child_pose", "Child's Pose", seconds, "Sink back and let the spine lengthen."),
+      ];
+    case "hips":
+      return [
+        makeMobilityStep("focus_figure_four", "Figure-Four Stretch", seconds, "Cross one ankle over the opposite knee and breathe into the hip."),
+        makeMobilityStep("focus_low_lunge", "Low Lunge", seconds, "Step one foot forward and open the front of the hip."),
+      ];
+    case "hamstrings":
+      return [
+        makeMobilityStep("focus_forward_fold", "Forward Fold", seconds, "Hinge forward with soft knees. Let the hamstrings open gradually."),
+        makeMobilityStep("focus_hamstring_reach", "Hamstring Reach", seconds, "Reach toward one foot with control, then breathe."),
+      ];
+    case "ankles":
+      return [
+        makeMobilityStep("focus_calf_stretch", "Calf Stretch", seconds, "Press through the heel and stretch the calf."),
+        makeMobilityStep("focus_ankle_rocks", "Ankle Rocks", seconds, "Rock the knee forward over the toes while keeping the heel down."),
+      ];
+    default:
+      return [];
+  }
+}
+
+function buildAdaptiveAgilityActivity(tier: number): ActivityDefinition {
+  const profile = getAgilityProgressProfile();
+  const stage = profile.stage;
+  const stageLabel = AGILITY_STAGE_LABELS[stage];
+  const baseSeconds = 16 + Math.min(tier - 1, 4) * 2 + profile.holdBonusSeconds;
+  const seconds = Math.max(10, baseSeconds);
+  const longSeconds = Math.max(15, seconds + 6);
+  const xpMultiplier = TIER_XP_MULTIPLIERS[tier] ?? 1.0;
+
+  const stageSteps: Record<number, ActivityStep[]> = {
+    1: [
+      makeMobilityStep("mobility_shoulder_forward", "Shoulder Rolls", seconds, "Roll both shoulders forward in slow circles.", "/videos/shoulder-roll-forward.mp4"),
+      makeMobilityStep("mobility_shoulder_backward", "Reverse Shoulder Rolls", seconds, "Reverse the circles and open the chest.", "/videos/shoulder-roll-backward.mp4"),
+      makeMobilityStep("mobility_arm_circles", "Arm Circles", seconds, "Extend your arms and draw smooth circles.", "/videos/arm_circles_forward_loop.mp4"),
+      makeMobilityStep("mobility_cross_arm", "Cross Arm Stretch", seconds, "Bring one arm across your chest and hold gently.", "/videos/cross_arm_left.mp4"),
+      makeMobilityStep("mobility_toe_touch", "Toe Touch Hold", longSeconds, "Reach toward your toes with soft knees. No bouncing.", "/videos/toe_hold.mp4"),
+      makeMobilityStep("mobility_hip_opener", "Hip Opener", longSeconds, "Open the hips with an easy lunge or butterfly stretch.", "/videos/holderstretch.mp4"),
+      makeMobilityStep("mobility_calf_stretch", "Calf Stretch", seconds, "Press the heel down and breathe into the calf."),
+    ],
+    2: [
+      makeMobilityStep("flow_cat_cow", "Cat-Cow", seconds, "Move the spine slowly between round and arched positions."),
+      makeMobilityStep("flow_side_bends", "Side Bends", seconds, "Reach overhead and bend gently side to side."),
+      makeMobilityStep("flow_seated_twist", "Seated Twist", seconds, "Rotate through the upper back. Keep the breath steady."),
+      makeMobilityStep("flow_low_lunge", "Low Lunge", longSeconds, "Step forward and open the hip. Switch sides halfway."),
+      makeMobilityStep("flow_down_dog_prep", "Downward Dog Prep", longSeconds, "Press the hips back and lengthen the spine."),
+    ],
+    3: [
+      makeMobilityStep("flex_forward_fold", "Forward Fold", longSeconds, "Fold forward with soft knees and a long spine."),
+      makeMobilityStep("flex_deep_lunge", "Deep Lunge Stretch", longSeconds, "Open the front hip and breathe low."),
+      makeMobilityStep("flex_figure_four", "Figure-Four Stretch", longSeconds, "Cross the ankle over the knee and release the hip."),
+      makeMobilityStep("flex_cobra", "Cobra", seconds, "Lift the chest gently and keep the low back comfortable."),
+      makeMobilityStep("flex_child_pose", "Child's Pose", longSeconds, "Sink back and let the back soften."),
+    ],
+    4: [
+      makeMobilityStep("yoga_cat_cow", "Cat-Cow", seconds, "Match breath to movement."),
+      makeMobilityStep("yoga_down_dog", "Downward Dog", longSeconds, "Press hips back, lengthen arms, soften knees."),
+      makeMobilityStep("yoga_low_lunge", "Low Lunge Flow", longSeconds, "Step forward, open the hip, then switch sides."),
+      makeMobilityStep("yoga_warrior_one", "Warrior 1", seconds, "Ground your feet and reach tall."),
+      makeMobilityStep("yoga_warrior_two", "Warrior 2", seconds, "Open the hips and reach through both arms."),
+      makeMobilityStep("yoga_cobra", "Cobra", seconds, "Lift the chest with control."),
+      makeMobilityStep("yoga_child_pose", "Child's Pose", longSeconds, "Reset your breath and release."),
+    ],
+    5: [
+      makeMobilityStep("athletic_deep_squat", "Deep Squat Hold", longSeconds, "Sink into a controlled squat and keep the chest lifted."),
+      makeMobilityStep("athletic_cossack_left", "Cossack Squat — Left", seconds, "Shift into the left leg and keep the opposite leg long."),
+      makeMobilityStep("athletic_cossack_right", "Cossack Squat — Right", seconds, "Shift into the right leg and control the range."),
+      makeMobilityStep("athletic_lizard", "Lizard Stretch", longSeconds, "Step forward wide and open the hips."),
+      makeMobilityStep("athletic_hamstring_pulses", "Hamstring Pulses", seconds, "Pulse gently through the hamstrings with control."),
+      makeMobilityStep("athletic_balance_reach", "Balance Reach", seconds, "Stand tall, reach forward, and control your balance."),
+    ],
+  };
+
+  const extraFocus = profile.focus === "everything" ? [] : focusSteps(profile.focus, seconds);
+  const steps: ActivityStep[] = [
+    {
+      id: "adaptive_agility_intro",
+      type: "instruction",
+      label: stageLabel,
+      instruction: `${stageLabel}. Move smoothly and stop before sharp pain. Your feedback tunes the next flow.`,
+      voiceText: `${stageLabel}. Move smoothly and breathe.`,
+    },
+    ...stageSteps[stage],
+    ...extraFocus,
+    {
+      id: "adaptive_agility_done",
+      type: "completion",
+      label: "Flow Complete",
+      instruction: "Agility flow complete. Your next answer tunes the next session.",
+      voiceText: "Agility flow complete. Well done.",
+    },
+  ];
+
+  const duration = steps.reduce((sum, step) => sum + (step.durationSeconds ?? 6), 0);
+
+  return {
+    id: "phase1_agility",
+    activityName: stageLabel,
+    category: "agility",
+    stat: "agility",
+    duration,
+    xpReward: 0,
+    color: CATEGORY_COLORS.agility,
+    tier,
+    xpMultiplier,
+    autoflow: true,
+    steps,
+  };
+}
+
+function applyAdaptiveAgility(
+  activities: ActivityDefinition[],
+  tier: number,
+  enabled?: boolean,
+): ActivityDefinition[] {
+  if (!enabled) return activities;
+  return activities.map((activity) =>
+    activity.id === "phase1_agility" ? buildAdaptiveAgilityActivity(tier) : activity
+  );
+}
+
 /**
  * Returns the ordered ActivityDefinition array for the given path.
  *
@@ -450,12 +606,13 @@ export function buildDailyFlowActivities(
   // Short physical circuit after Agility, tuned much lighter than Build.
   if (workoutLevel === "entry") {
     const strengthTier = options.tiers?.strength ?? 1;
+    const agilityTier = options.tiers?.agility ?? 1;
     const base = buildPhase1Activities(options.dayNumber, options.tiers);
-    return base.map((a): ActivityDefinition => {
+    return applyAdaptiveAgility(base.map((a): ActivityDefinition => {
       if (a.id === "phase1_agility") return { ...a, activityName: "Light Movement" };
       if (a.id === "phase1_strength") return buildFoundationStrengthActivity(strengthTier);
       return a;
-    });
+    }), agilityTier, options.isOnboardingComplete);
   }
 
   // ── Build / beginner ────────────────────────────────────────────────────────
@@ -463,14 +620,15 @@ export function buildDailyFlowActivities(
   // activity (wall push-ups → assisted squats → glute bridges → plank).
   if (workoutLevel === "beginner") {
     const strengthTier = options.tiers?.strength ?? 1;
+    const agilityTier = options.tiers?.agility ?? 1;
     const base = buildPhase1Activities(options.dayNumber, options.tiers);
-    return base.map((a): ActivityDefinition =>
+    return applyAdaptiveAgility(base.map((a): ActivityDefinition =>
       a.id === "phase1_strength"
         ? options.isOnboardingComplete
           ? buildAdaptiveStarterStrengthActivity(strengthTier)
           : buildStarterStrengthActivity(strengthTier)
         : a
-    );
+    ), agilityTier, options.isOnboardingComplete);
   }
 
   // ── Ascend / advanced ───────────────────────────────────────────────────────
@@ -485,11 +643,19 @@ export function buildDailyFlowActivities(
       meditation: options.tiers?.meditation ?? 1,
       vitality:  options.tiers?.vitality  ?? 1,
     };
-    return buildPhase1Activities(options.dayNumber, ascendTiers);
+    return applyAdaptiveAgility(
+      buildPhase1Activities(options.dayNumber, ascendTiers),
+      ascendTiers.agility,
+      options.isOnboardingComplete,
+    );
   }
 
   // ── Evolve / intermediate ───────────────────────────────────────────────────
   // Standard 2-round Physical Circuit at the user's current adaptive tier.
   // Warm-up cardio → Jog → Round 1 → Rest → Round 2.
-  return buildPhase1Activities(options.dayNumber, options.tiers);
+  return applyAdaptiveAgility(
+    buildPhase1Activities(options.dayNumber, options.tiers),
+    options.tiers?.agility ?? 1,
+    options.isOnboardingComplete,
+  );
 }

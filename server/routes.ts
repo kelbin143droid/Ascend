@@ -931,9 +931,10 @@ export async function registerRoutes(
     try {
       const schema = z.object({
         meditation: z.enum(["easy", "same", "challenging"]).optional(),
+        agility: z.enum(["easy", "same", "challenging"]).optional(),
         strength: z.enum(["easy", "same", "challenging"]).optional(),
       });
-      const { meditation, strength } = schema.parse(req.body);
+      const { meditation, agility, strength } = schema.parse(req.body);
       const player = await storage.getPlayer(req.params.id);
       if (!player) return res.status(404).json({ error: "Player not found" });
 
@@ -942,6 +943,7 @@ export async function registerRoutes(
       const phase = (player as any).currentPhase ?? 1;
 
       if (meditation) scaling = applyUserFeedback(scaling, "meditation", meditation, phase);
+      if (agility)    scaling = applyUserFeedback(scaling, "agility",    agility,    phase);
       if (strength)   scaling = applyUserFeedback(scaling, "strength",   strength,   phase);
 
       await storage.updatePlayer(req.params.id, { trainingScaling: scaling });

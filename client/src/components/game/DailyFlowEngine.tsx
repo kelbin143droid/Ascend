@@ -10,12 +10,18 @@ import {
   applyPhysicalCircuitFeedback,
   type PhysicalCircuitLimiter,
 } from "@/lib/physicalCircuitProgressStore";
+import {
+  applyAgilityFeedback,
+  type AgilityLimiter,
+} from "@/lib/agilityProgressStore";
 import { Sparkles, CheckCircle2, SkipForward, Play, Zap, Dumbbell, ChevronRight } from "lucide-react";
 import { saveFlow, loadFlow, clearFlow } from "@/lib/sessionPersistenceStore";
 
 type FeedbackValue = "easy" | "same" | "challenging" | null;
 
 interface FeedbackState {
+  agility: FeedbackValue;
+  agilityLimiter: AgilityLimiter | null;
   strength: FeedbackValue;
   limiter: PhysicalCircuitLimiter | null;
 }
@@ -42,6 +48,15 @@ const LIMITER_OPTIONS: { value: PhysicalCircuitLimiter; label: string }[] = [
   { value: "everything", label: "Everything" },
 ];
 
+const AGILITY_LIMITER_OPTIONS: { value: AgilityLimiter; label: string }[] = [
+  { value: "shoulders", label: "Shoulders / neck" },
+  { value: "back", label: "Back" },
+  { value: "hips", label: "Hips" },
+  { value: "hamstrings", label: "Hamstrings" },
+  { value: "ankles", label: "Ankles / calves" },
+  { value: "everything", label: "Everything" },
+];
+
 export function DailyFlowEngine({
   activities,
   playerId,
@@ -64,8 +79,13 @@ export function DailyFlowEngine({
   const [showTransition, setShowTransition] = useState(false);
   const [flowFinished, setFlowFinished] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [feedback, setFeedback] = useState<FeedbackState>({ strength: null, limiter: null });
-  const [feedbackStep, setFeedbackStep] = useState<"difficulty" | "limiter">("difficulty");
+  const [feedback, setFeedback] = useState<FeedbackState>({
+    agility: null,
+    agilityLimiter: null,
+    strength: null,
+    limiter: null,
+  });
+  const [feedbackStep, setFeedbackStep] = useState<"difficulty" | "agilityLimiter" | "limiter">("difficulty");
   const [runningActivity, setRunningActivity] = useState(false);
   const [showBreathingFeedback, setShowBreathingFeedback] = useState(false);
   const [pendingAdvanceIdx, setPendingAdvanceIdx] = useState<number | null>(null);
@@ -76,11 +96,12 @@ export function DailyFlowEngine({
   const anySkipped = skippedIds.size > 0;
 
   const didComplete = (id: string) => completedIds.has(id);
+  const agilityCompleted = didComplete("phase1_agility");
   const strengthCompleted = didComplete("phase1_strength");
-  const hasFeedbackQuestions = strengthCompleted;
+  const hasFeedbackQuestions = agilityCompleted || strengthCompleted;
 
   const feedbackMutation = useMutation({
-    mutationFn: async (fb: { strength?: string }) => {
+    mutationFn: async (fb: { agility?: string; strength?: string }) => {
       const res = await apiRequest(
         "POST",
         `/api/player/${playerId}/training-feedback`,
@@ -198,14 +219,27 @@ export function DailyFlowEngine({
   }, [flowFinished]);
 
   const handleFeedbackSubmit = useCallback(() => {
+    if (agilityCompleted && !feedback.agility) return;
+    if (strengthCompleted && !feedback.strength) return;
+    if (feedback.agility === "challenging" && !feedback.agilityLimiter) {
+      setFeedbackStep("agilityLimiter");
+      return;
+    }
     if (feedback.strength === "challenging" && !feedback.limiter) {
       setFeedbackStep("limiter");
       return;
     }
-    const payload: { strength?: string } = {};
+    const payload: { agility?: string; strength?: string } = {};
+    if (agilityCompleted && feedback.agility) payload.agility = feedback.agility;
     if (strengthCompleted && feedback.strength) payload.strength = feedback.strength;
     if (Object.keys(payload).length > 0) {
       feedbackMutation.mutate(payload);
+    }
+    if (isOnboardingComplete && agilityCompleted && feedback.agility) {
+      applyAgilityFeedback({
+        difficulty: feedback.agility,
+        limiter: feedback.agilityLimiter,
+      });
     }
     if (isOnboardingComplete && strengthCompleted && feedback.strength) {
       applyPhysicalCircuitFeedback({
@@ -215,7 +249,7 @@ export function DailyFlowEngine({
     }
     setShowFeedback(false);
     setFeedbackStep("difficulty");
-  }, [feedback, strengthCompleted, feedbackMutation, isOnboardingComplete]);
+  }, [agilityCompleted, feedback, strengthCompleted, feedbackMutation, isOnboardingComplete]);
 
   const hasFinishedRef = useRef(false);
   const handleFlowFinish = useCallback(() => {
@@ -355,14 +389,55 @@ export function DailyFlowEngine({
 
               <div className="text-center mb-5">
                 <div className="text-base font-bold mb-1" style={{ color: colors.text }}>
-                  {feedbackStep === "limiter" ? "What felt hardest?" : "How did it go?"}
+                  {feedbackStep === "agilityLimiter"
+                    ? "Where did you feel stiff?"
+                    : feedbackStep === "limiter"
+                    ? "What felt hardest?"
+                    : "How did it go?"}
                 </div>
                 <div className="text-xs" style={{ color: colors.textMuted }}>
-                  {feedbackStep === "limiter"
+                  {feedbackStep === "agilityLimiter" || feedbackStep === "limiter"
                     ? "The system will adjust the smallest part it needs to."
                     : "Your answer adjusts tomorrow's difficulty."}
                 </div>
               </div>
+
+              {agilityCompleted && feedbackStep === "difficulty" && (
+                <div className="mb-5">
+                  <div
+                    className="flex items-center gap-2 mb-2.5 text-sm font-semibold"
+                    style={{ color: colors.text }}
+                  >
+                    <Sparkles size={15} style={{ color: "#22c55e" }} />
+                    Agility Flow
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {FEEDBACK_OPTIONS.map((opt) => {
+                      const selected = feedback.agility === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          data-testid={`feedback-agility-${opt.value}`}
+                          onClick={() => setFeedback((f) => ({
+                            ...f,
+                            agility: opt.value,
+                            agilityLimiter: opt.value === "challenging" ? f.agilityLimiter : null,
+                          }))}
+                          className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all active:scale-95"
+                          style={{
+                            backgroundColor: selected ? `#22c55e20` : `${colors.textMuted}10`,
+                            border: `1.5px solid ${selected ? "#22c55e" : `${colors.textMuted}20`}`,
+                            color: selected ? "#22c55e" : colors.textMuted,
+                          }}
+                        >
+                          <span className="text-base leading-none">{opt.emoji}</span>
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {strengthCompleted && feedbackStep === "difficulty" && (
                 <div className="mb-5">
@@ -401,6 +476,31 @@ export function DailyFlowEngine({
                 </div>
               )}
 
+              {agilityCompleted && feedbackStep === "agilityLimiter" && (
+                <div className="mb-5">
+                  <div className="grid grid-cols-2 gap-2">
+                    {AGILITY_LIMITER_OPTIONS.map((opt) => {
+                      const selected = feedback.agilityLimiter === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          data-testid={`feedback-agility-limiter-${opt.value}`}
+                          onClick={() => setFeedback((f) => ({ ...f, agilityLimiter: opt.value }))}
+                          className="py-3 rounded-xl text-xs font-semibold transition-all active:scale-95"
+                          style={{
+                            backgroundColor: selected ? `#22c55e20` : `${colors.textMuted}10`,
+                            border: `1.5px solid ${selected ? "#22c55e" : `${colors.textMuted}20`}`,
+                            color: selected ? "#22c55e" : colors.textMuted,
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {strengthCompleted && feedbackStep === "limiter" && (
                 <div className="mb-5">
                   <div className="grid grid-cols-2 gap-2">
@@ -430,19 +530,25 @@ export function DailyFlowEngine({
                 data-testid="button-submit-feedback"
                 onClick={handleFeedbackSubmit}
                 disabled={
-                  !feedback.strength ||
+                  (agilityCompleted && !feedback.agility) ||
+                  (strengthCompleted && !feedback.strength) ||
+                  (feedbackStep === "agilityLimiter" && !feedback.agilityLimiter) ||
                   (feedbackStep === "limiter" && !feedback.limiter)
                 }
                 className="w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
                 style={{
                   backgroundColor:
-                    !feedback.strength || (feedbackStep === "limiter" && !feedback.limiter)
+                    (agilityCompleted && !feedback.agility) ||
+                    (strengthCompleted && !feedback.strength) ||
+                    (feedbackStep === "agilityLimiter" && !feedback.agilityLimiter) ||
+                    (feedbackStep === "limiter" && !feedback.limiter)
                       ? `${colors.textMuted}40`
                       : colors.primary,
                   color: "#fff",
                 }}
               >
-                {feedback.strength === "challenging" && feedbackStep === "difficulty"
+                {((feedback.agility === "challenging" && feedbackStep === "difficulty") ||
+                  (feedback.strength === "challenging" && feedbackStep !== "limiter" && !feedback.limiter))
                   ? "Next"
                   : "Save & Continue"}
                 <ChevronRight size={16} />
