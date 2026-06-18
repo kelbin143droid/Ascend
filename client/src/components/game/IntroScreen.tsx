@@ -206,49 +206,8 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
             Reach Your Potential. One Small Win at a Time.
           </motion.p>
 
-          {/* ── PORTAL IMAGE — grows to fill remaining space ── */}
-          <motion.div style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-            width: "100%", minHeight: 0,
-            marginTop: "clamp(8px, 1.5vh, 18px)",
-            marginBottom: "clamp(8px, 1.5vh, 18px)",
-            position: "relative",
-          }} initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1.0, duration: 1.1, ease: [0.25, 0.46, 0.45, 0.94] }}>
-
-            {/* Portal outer glow ring */}
-            <motion.div style={{
-              position: "absolute",
-              width: "min(88vw, 380px)", height: "min(88vw, 380px)",
-              borderRadius: "50%",
-              boxShadow: "0 0 60px rgba(6,182,212,0.35), 0 0 120px rgba(6,182,212,0.18)",
-              pointerEvents: "none",
-            }} animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
-
-            <img
-              src="/assets/images/intro-portal.png"
-              alt="portal"
-              style={{
-                width: "min(88vw, 380px)", height: "min(88vw, 380px)",
-                objectFit: "cover", borderRadius: "50%",
-                filter: "drop-shadow(0 0 32px rgba(6,182,212,0.55)) drop-shadow(0 0 8px rgba(0,0,0,0.80))",
-              }}
-            />
-
-            {/* Activation burst rings */}
-            <AnimatePresence>
-              {isActivating && [140, 260, 400].map((sz, i) => (
-                <motion.div key={i} style={{
-                  position: "absolute", borderRadius: "50%",
-                  width: sz, height: sz,
-                  border: "1.5px solid rgba(6,182,212,0.85)",
-                  top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-                }} initial={{ scale: 0.3, opacity: 0.9 }}
-                  animate={{ scale: 2.2, opacity: 0 }}
-                  transition={{ duration: 0.55 + i * 0.12, delay: i * 0.10, ease: "easeOut" }} />
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          {/* Spacer to push button toward bottom */}
+          <div style={{ flex: 1 }} />
 
           {/* ── TAP TO BEGIN BUTTON ── */}
           <motion.button
