@@ -147,10 +147,10 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
                 fontSize: "clamp(9px, 2.6vw, 12px)",
                 fontWeight: 700,
                 letterSpacing: "0.16em",
-                color: "rgba(6,210,240,0.95)",
+                color: "#f5c842",
                 whiteSpace: "nowrap",
                 display: "block",
-                textShadow: "0 0 12px rgba(6,182,212,0.75)",
+                textShadow: "0 0 14px rgba(245,180,30,0.70), 0 1px 2px rgba(0,0,0,0.60)",
               }} animate={{ opacity: [0.75, 1, 0.75] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}>
                 GAMIFIED LEVELING LIFE SYSTEM
