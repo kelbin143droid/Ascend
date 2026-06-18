@@ -211,7 +211,7 @@ export function IntroScreen({ onBeginAscension }: IntroScreenProps) {
                 whiteSpace: "nowrap",
               }} animate={{ opacity: [0.55, 0.95, 0.55] }}
                 transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}>
-                SYSTEM · ONLINE · PROTOCOL ACTIVE
+                GAMIFIED LIFE SYSTEM
               </motion.span>
               <div style={{ width: "clamp(30px, 8vw, 52px)", height: "1px", background: "linear-gradient(90deg, rgba(6,182,212,0.50), transparent)" }} />
             </div>
