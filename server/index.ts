@@ -36,13 +36,6 @@ app.use((req, res, next) => {
   );
   res.setHeader("Access-Control-Max-Age", "86400");
 
-  // Cross-Origin Isolation — required for SharedArrayBuffer / Godot threading.
-  // COOP: same-origin isolates the browsing context.
-  // COEP: credentialless allows cross-origin fonts/images without CORP headers
-  // while still enabling SharedArrayBuffer in Chrome 96+ / Edge 96+.
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-  res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
-
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
