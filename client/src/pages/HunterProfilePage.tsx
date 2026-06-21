@@ -2,7 +2,7 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGame } from "@/context/GameContext";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { StatIntroModal } from "@/components/game/StatIntroModal";
@@ -660,6 +660,22 @@ const CSS = `
 }
 `;
 
+// ── WebGL context explicit disposal on unmount ─────────────────────────────
+function GLDisposer() {
+  const { gl } = useThree();
+  useEffect(() => {
+    return () => {
+      gl.dispose();
+      const ctx = gl.getContext() as WebGLRenderingContext | null;
+      if (ctx) {
+        const ext = ctx.getExtension("WEBGL_lose_context");
+        if (ext) ext.loseContext();
+      }
+    };
+  }, [gl]);
+  return null;
+}
+
 // ── 3-D Class Viewer ──────────────────────────────────────────────────────
 function ClassModel({ src, scale }: { src: string; scale: number }) {
   const { scene } = useGLTF(src);
@@ -671,13 +687,15 @@ function ClassViewer({ src, compact = false }: { src: string; compact?: boolean 
   return (
     <Canvas
       style={{ position: "absolute", inset: 0, zIndex: 2 }}
-      gl={{ alpha: true, antialias: true }}
+      gl={{ alpha: true, antialias: false, powerPreference: "low-power" }}
+      dpr={1}
       camera={{ position: [0, compact ? 0.9 : 1.0, compact ? 3.0 : 2.85], fov: compact ? 38 : 38 }}
     >
       <ambientLight intensity={0.55} />
       <directionalLight position={[2, 4, 3]}  intensity={1.5} color="#7dd3fc" />
       <directionalLight position={[-2, 2, -2]} intensity={0.5} color="#c084fc" />
       <pointLight position={[0, -1, 2]} intensity={0.3} color="#4cc2ff" />
+      <GLDisposer />
       <Suspense fallback={null}>
         <ClassModel src={src} scale={compact ? 0.54 : 0.72} />
       </Suspense>

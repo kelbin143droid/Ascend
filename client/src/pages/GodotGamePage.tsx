@@ -340,10 +340,21 @@ export default function GodotGamePage() {
   const [activeDungeon] = useState<ActiveDungeonConfig | null>(() => readActiveDungeonConfig());
   const [showGateLoading, setShowGateLoading] = useState(() => !!readActiveDungeonConfig());
   const loadingStartedAtRef = useRef(Date.now());
+  const [gameSrc, setGameSrc] = useState("about:blank");
 
   useEffect(() => {
     if (!player) return;
     persistPlayerClassBridge(buildPlayerClass(player));
+  }, [player]);
+
+  // Delay iframe src by 400ms so any previous WebGL context (Three.js on
+  // HunterProfilePage) has time to fully dispose before Godot creates its own.
+  useEffect(() => {
+    if (!player) return;
+    const cls = buildPlayerClass(player);
+    const src = `/game/index.html?class=${cls.archetype}&classId=${cls.id}&classIndex=${cls.index}`;
+    const t = setTimeout(() => setGameSrc(src), 800);
+    return () => clearTimeout(t);
   }, [player]);
 
   // ── Fullscreen + orientation lock ─────────────────────────────────────────
@@ -528,9 +539,6 @@ export default function GodotGamePage() {
     );
   }
 
-  const iframeClass = buildPlayerClass(player);
-  const iframeSrc = `/game/index.html?class=${iframeClass.archetype}&classId=${iframeClass.id}&classIndex=${iframeClass.index}`;
-
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 10 }}>
       <style>{`
@@ -691,7 +699,7 @@ export default function GodotGamePage() {
       <iframe
         id="game-frame"
         ref={iframeRef}
-        src={iframeSrc}
+        src={gameSrc}
         style={{ width: "100%", height: "100%", border: "none", display: "block" }}
         allow="pointer-lock; fullscreen; autoplay"
         allowFullScreen
