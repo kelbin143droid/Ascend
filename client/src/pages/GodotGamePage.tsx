@@ -102,6 +102,12 @@ const CLASS_BY_JOB: Record<string, GameClassPayload> = {
 };
 
 function buildPlayerClass(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameClassPayload {
+  // DB job is the source of truth — always use it when set
+  const job = String(player.job || "").toUpperCase();
+  if (job && job !== "NONE" && CLASS_BY_JOB[job]) {
+    return CLASS_BY_JOB[job];
+  }
+  // Fallback: localStorage cache (only when job is unset/NONE)
   try {
     const raw = localStorage.getItem(SELECTED_GAME_CLASS_KEY);
     if (raw !== null) {
@@ -111,8 +117,7 @@ function buildPlayerClass(player: NonNullable<ReturnType<typeof useGame>["player
   } catch {
     /* noop */
   }
-  const job = String(player.job || "").toUpperCase();
-  return CLASS_BY_JOB[job] ?? CLASS_BY_INDEX[0];
+  return CLASS_BY_INDEX[0];
 }
 
 function persistPlayerClassBridge(playerClass: GameClassPayload) {
