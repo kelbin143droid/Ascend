@@ -6,6 +6,7 @@ import { useLanguage } from "@/context/LanguageStageContext";
 import { SystemLayout } from "@/components/game/SystemLayout";
 import { GuidedActivityEngine } from "@/components/game/GuidedActivityEngine";
 import { DailyFlowEngine } from "@/components/game/DailyFlowEngine";
+import { PhysicalCircuitSetupModal } from "@/components/game/PhysicalCircuitSetupModal";
 import { type ActivityDefinition, type CategoryTiers } from "@/lib/activityEngine";
 import { buildDailyFlowActivities } from "@/lib/dailyFlowBuilder";
 import {
@@ -56,8 +57,7 @@ import {
 import {
   initializePhysicalCircuitProfile,
   isPhysicalCircuitProfileInitialized,
-  PUSH_VARIATION_COPY,
-  type PushVariation,
+  type PhysicalCircuitStartingChoices,
 } from "@/lib/physicalCircuitProgressStore";
 import {
   Dumbbell, Wind, Brain, Heart, Play, CheckCircle2, TrendingUp, Shield,
@@ -306,89 +306,6 @@ function WorkoutFeedbackModal({
         >
           Skip feedback
         </button>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function PushSetupModal({
-  colors,
-  onChoose,
-  onClose,
-}: {
-  colors: ReturnType<typeof useTheme>["backgroundTheme"]["colors"];
-  onChoose: (variation: PushVariation) => void;
-  onClose: () => void;
-}) {
-  const options: Array<{ value: PushVariation; detail: string }> = [
-    { value: "wall", detail: "Best for rebuilding or joint-friendly starts." },
-    { value: "knee", detail: "Moderate start with less bodyweight." },
-    { value: "standard", detail: "Full pushups with clean form." },
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.78)", backdropFilter: "blur(6px)" }}
-    >
-      <motion.div
-        initial={{ y: 60, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 60, opacity: 0 }}
-        transition={{ type: "spring", damping: 22, stiffness: 300 }}
-        className="w-full max-w-md rounded-t-3xl p-6 pb-10"
-        style={{ backgroundColor: colors.surface, border: `1px solid ${colors.surfaceBorder}` }}
-        data-testid="push-setup-modal"
-      >
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] font-bold mb-2" style={{ color: colors.primary }}>
-              Physical Circuit
-            </div>
-            <div className="text-lg font-bold" style={{ color: colors.text }}>
-              Choose your push level
-            </div>
-            <div className="text-xs mt-1 leading-relaxed" style={{ color: colors.textMuted }}>
-              Pick the version you can do with good form today.
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-xl grid place-items-center"
-            style={{ backgroundColor: `${colors.textMuted}15`, color: colors.textMuted }}
-            aria-label="Close"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="space-y-2.5">
-          {options.map((opt) => {
-            const copy = PUSH_VARIATION_COPY[opt.value];
-            return (
-              <button
-                key={opt.value}
-                data-testid={`button-push-setup-${opt.value}`}
-                onClick={() => onChoose(opt.value)}
-                className="w-full rounded-xl p-4 text-left transition-all active:scale-[0.98]"
-                style={{
-                  backgroundColor: `${colors.primary}10`,
-                  border: `1.5px solid ${colors.primary}25`,
-                }}
-              >
-                <div className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                  {copy.label}
-                </div>
-                <div className="text-xs" style={{ color: colors.textMuted }}>
-                  {opt.detail}
-                </div>
-              </button>
-            );
-          })}
-        </div>
       </motion.div>
     </motion.div>
   );
@@ -946,8 +863,8 @@ export default function TrainPage() {
     setFlowActive(true);
   }, [activities, homeData?.isOnboardingComplete]);
 
-  const handlePushSetupChoice = useCallback((variation: PushVariation) => {
-    initializePhysicalCircuitProfile(variation);
+  const handlePushSetupChoice = useCallback((choices: PhysicalCircuitStartingChoices) => {
+    initializePhysicalCircuitProfile(choices);
     setPhysicalProfileRevision((v) => v + 1);
     setShowPushSetup(false);
     clearFlow();
@@ -1020,10 +937,10 @@ export default function TrainPage() {
           )}
 
           {showPushSetup && (
-            <PushSetupModal
+            <PhysicalCircuitSetupModal
               key="push-setup"
               colors={colors}
-              onChoose={handlePushSetupChoice}
+              onComplete={handlePushSetupChoice}
               onClose={() => setShowPushSetup(false)}
             />
           )}

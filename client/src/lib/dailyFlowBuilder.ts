@@ -36,8 +36,12 @@ import {
 } from "./activityEngine";
 import { type WorkoutLevel } from "./workoutPlans";
 import {
+  CORE_VARIATION_COPY,
   getPhysicalCircuitProfile,
+  isPhysicalCircuitProfileInitialized,
+  PLANK_VARIATION_COPY,
   PUSH_VARIATION_COPY,
+  SQUAT_VARIATION_COPY,
 } from "./physicalCircuitProgressStore";
 import {
   AGILITY_STAGE_LABELS,
@@ -301,6 +305,9 @@ function buildAdaptiveStarterStrengthActivity(tier: number): ActivityDefinition 
   const profile = getPhysicalCircuitProfile();
   const xpMultiplier = TIER_XP_MULTIPLIERS[tier] ?? 1.0;
   const push = PUSH_VARIATION_COPY[profile.pushVariation];
+  const squat = SQUAT_VARIATION_COPY[profile.squatVariation];
+  const core = CORE_VARIATION_COPY[profile.coreVariation];
+  const plank = PLANK_VARIATION_COPY[profile.plankVariation];
 
   const tierBonus = Math.min(tier - 1, 4) * 2;
   const pushReps = Math.max(4, 6 + tierBonus + profile.repsBonus);
@@ -333,9 +340,9 @@ function buildAdaptiveStarterStrengthActivity(tier: number): ActivityDefinition 
       type: "instruction",
       label: "Get Ready — Physical Circuit",
       instruction:
-        `${push.label} → Squats → Sit-ups → Plank. The system will adjust after your feedback.`,
+        `${push.label} → ${squat.label} → ${core.label} → ${plank.label}. The system will adjust after your feedback.`,
       voiceText:
-        `Get ready. ${push.label}, squats, sit-ups, then a plank hold.`,
+        `Get ready. ${push.label}, ${squat.label}, ${core.label}, then ${plank.label}.`,
     },
   ];
 
@@ -373,12 +380,12 @@ function buildAdaptiveStarterStrengthActivity(tier: number): ActivityDefinition 
     {
       id: "adaptive_squats",
       type: "rep",
-      label: "Squats",
-      instruction: `${squatReps} squats. Chest up, knees tracking over toes.`,
+      label: squat.label,
+      instruction: `${squatReps} ${squat.instructionNoun}. ${squat.formCue}`,
       repCount: squatReps,
       repLabel: "reps",
-      voiceText: `Squats. ${squatReps} reps.`,
-      videoSrc: "/videos/squats_loop.mp4",
+      voiceText: `${squat.label}. ${squatReps} reps.`,
+      videoSrc: squat.videoSrc,
     },
     {
       id: "adaptive_rest_2",
@@ -391,12 +398,12 @@ function buildAdaptiveStarterStrengthActivity(tier: number): ActivityDefinition 
     {
       id: "adaptive_situps",
       type: "rep",
-      label: "Sit-ups",
-      instruction: `${situpReps} sit-ups. Controlled on the way down.`,
+      label: core.label,
+      instruction: `${situpReps} ${core.instructionNoun}. ${core.formCue}`,
       repCount: situpReps,
       repLabel: "reps",
-      voiceText: `Sit-ups. ${situpReps} reps.`,
-      videoSrc: "/videos/abs_crunch_loop.mp4",
+      voiceText: `${core.label}. ${situpReps} reps.`,
+      videoSrc: core.videoSrc,
     },
     {
       id: "adaptive_rest_3",
@@ -409,11 +416,11 @@ function buildAdaptiveStarterStrengthActivity(tier: number): ActivityDefinition 
     {
       id: "adaptive_plank",
       type: "timer",
-      label: "Plank Hold",
-      instruction: `Hold a plank for ${plankSeconds} seconds. Knees down is fine. Breathe steadily.`,
+      label: plank.label,
+      instruction: `Hold a ${plank.instructionNoun} for ${plankSeconds} seconds. ${plank.formCue}`,
       durationSeconds: plankSeconds,
-      voiceText: `Plank hold. ${plankSeconds} seconds.`,
-      videoSrc: "/videos/plank_hold_loop.mp4",
+      voiceText: `${plank.label}. ${plankSeconds} seconds.`,
+      videoSrc: plank.videoSrc,
       loop: false,
     },
     {
@@ -624,7 +631,7 @@ export function buildDailyFlowActivities(
     const base = buildPhase1Activities(options.dayNumber, options.tiers);
     return applyAdaptiveAgility(base.map((a): ActivityDefinition =>
       a.id === "phase1_strength"
-        ? options.isOnboardingComplete
+        ? options.isOnboardingComplete || isPhysicalCircuitProfileInitialized()
           ? buildAdaptiveStarterStrengthActivity(strengthTier)
           : buildStarterStrengthActivity(strengthTier)
         : a

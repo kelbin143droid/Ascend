@@ -17,6 +17,7 @@ import {
 import { useLocation } from "wouter";
 import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
+import { PhysicalCircuitSetupModal } from "./PhysicalCircuitSetupModal";
 import { SystemLayout } from "./SystemLayout";
 import { type CategoryTiers } from "@/lib/activityEngine";
 import { getWorkoutLevel } from "@/lib/workoutProgressStore";
@@ -30,6 +31,11 @@ import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 import { useSessionProgress } from "@/hooks/useSessionProgress";
 import { PHASE1_DAILY_TARGET_XP, PHASE1_XP } from "@shared/gameProgression";
 import { addXP, completeTask } from "@/lib/workoutProgressStore";
+import {
+  initializePhysicalCircuitProfile,
+  isPhysicalCircuitProfileInitialized,
+  type PhysicalCircuitStartingChoices,
+} from "@/lib/physicalCircuitProgressStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -254,6 +260,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [avatarIcon,    setAvatarState]   = useState(() => getAvatarIcon());
   const [flowActive,       setFlowActive]       = useState(false);
   const [singleActivityId, setSingleActivityId] = useState<string | null>(null);
+  const [showPhysicalSetup, setShowPhysicalSetup] = useState(false);
+  const [physicalProfileRevision, setPhysicalProfileRevision] = useState(0);
   const [showIntelligence, setShowIntelligence] = useState(false);
   const [intelReadMode, setIntelReadMode] = useState<IntelReadMode>("recommended");
   const [customIntelTopic, setCustomIntelTopic] = useState("");
@@ -286,7 +294,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const pathCfg    = getPathFlowConfig(wlevel);
   const pathRec    = getPathAwareRecommendation(wlevel);
   const recommendedIntelRead = useMemo(() => dailyIntelRead(), []);
-  const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers });
+  const activities = useMemo(
+    () => buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers }),
+    [
+      wlevel,
+      homeData.onboardingDay,
+      tiers.strength,
+      tiers.agility,
+      tiers.meditation,
+      tiers.vitality,
+      physicalProfileRevision,
+    ],
+  );
   const totalMins  = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
   // XP
@@ -389,8 +408,13 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     setAutoStartPending(false);
     const strengthAvailableToday = activities.some((activity) => activity.id === "phase1_strength");
     if (strengthAvailableToday && !isActivityDone("phase1_strength")) {
-      setSingleActivityId("phase1_strength");
-      setFlowActive(true);
+      if (!isPhysicalCircuitProfileInitialized()) {
+        setSingleActivityId("phase1_strength");
+        setShowPhysicalSetup(true);
+      } else {
+        setSingleActivityId("phase1_strength");
+        setFlowActive(true);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartPending, activities.length]);
@@ -549,9 +573,22 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (sessionRoute) {
       navigate(sessionRoute);
     } else {
+      if (aid === "phase1_strength" && !isPhysicalCircuitProfileInitialized()) {
+        setSingleActivityId(aid);
+        setShowPhysicalSetup(true);
+        return;
+      }
       setSingleActivityId(aid);
       setFlowActive(true);
     }
+  };
+
+  const handlePhysicalSetupComplete = (choices: PhysicalCircuitStartingChoices) => {
+    initializePhysicalCircuitProfile(choices);
+    setPhysicalProfileRevision((revision) => revision + 1);
+    setShowPhysicalSetup(false);
+    setSingleActivityId("phase1_strength");
+    setFlowActive(true);
   };
 
   const handleFeaturedTap = () => {
@@ -603,7 +640,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (dc.activityId === "phase1_strength") {
       const pendingStrength = todayIds.has("phase1_strength") && !isActivityDone("phase1_strength");
       return pendingStrength
-        ? () => { setSingleActivityId("phase1_strength"); setFlowActive(true); }
+        ? () => startActivity("phase1_strength")
         : () => navigate("/train");
     }
     return () => navigate(dc.fallbackRoute);
@@ -617,6 +654,16 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     <SystemLayout>
       <CustomizePanel open={showCustomize} onClose={() => setShowCustomize(false)} />
       <AnimatePresence>
+        {showPhysicalSetup && (
+          <PhysicalCircuitSetupModal
+            colors={colors}
+            onComplete={handlePhysicalSetupComplete}
+            onClose={() => {
+              setShowPhysicalSetup(false);
+              setSingleActivityId(null);
+            }}
+          />
+        )}
         {flowActive && (
           <DailyFlowEngine activities={flowActivities} playerId={player.id}
             onComplete={handleFlowDone} onCancel={() => setFlowActive(false)}
