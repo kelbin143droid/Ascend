@@ -9,6 +9,14 @@ export function getBreathingProfile(): BreathingProfile {
     if (!raw) return { ...DEFAULT_PROFILE };
     const parsed = JSON.parse(raw) as BreathingProfile;
     if (!parsed.phaseUnlockedAt) parsed.phaseUnlockedAt = { 1: parsed.lastSessionDate ?? "" };
+    if (
+      parsed.phase === 1 &&
+      parsed.pattern?.inhaleSeconds === 4 &&
+      parsed.pattern?.holdSeconds === 2 &&
+      parsed.pattern?.exhaleSeconds === 4
+    ) {
+      parsed.pattern = { ...DEFAULT_PROFILE.pattern };
+    }
     if (parsed.phase === 1 && parsed.sessionsCompleted === 0 && parsed.durationSeconds > DEFAULT_PROFILE.durationSeconds) {
       parsed.durationSeconds = DEFAULT_PROFILE.durationSeconds;
     }

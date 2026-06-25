@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, SkipForward, Wind, X } from "lucide-react";
 import { CalmBreathingEngine } from "./CalmBreathingEngine";
+import type { BreathPattern } from "@/lib/breathingProgressionSystem";
 
 const INHALE_URL = "/audio/inhale.mp3";
 const HOLD_URL = "/audio/hold.mp3";
@@ -14,6 +15,7 @@ export function CalmBreathingSessionScreen({
   backgroundColor = "#020810",
   zIndexClass = "z-40",
   showSkip = true,
+  timing,
   onComplete,
   onCancel,
 }: {
@@ -24,6 +26,7 @@ export function CalmBreathingSessionScreen({
   backgroundColor?: string;
   zIndexClass?: string;
   showSkip?: boolean;
+  timing?: BreathPattern;
   onComplete: () => void;
   onCancel: () => void;
 }) {
@@ -303,6 +306,7 @@ export function CalmBreathingSessionScreen({
             silentCompletionSeconds={Math.max(0, targetSeconds - guidanceSeconds)}
             onDone={onComplete}
             paused={paused}
+            timing={timing}
           />
         )}
       </div>
