@@ -215,6 +215,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        <NativeBootstrap />
         <GameProvider>
           <LanguageStageProvider>
               <IntroWrapper>
@@ -224,7 +225,6 @@ function App() {
                 <PhaseUnlockOverlay />
                 <LevelUpOverlay />
                 <Toaster />
-                <NativeBootstrap />
                 <VoiceAlertEngine />
                 <SystemMessageEngine />
               </IntroWrapper>

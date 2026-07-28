@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { apiUrl } from "@/lib/apiBase";
 import type { Player, Stats, PendingPhaseUnlock, PhaseHistoryEntry } from "@shared/schema";
 
 interface DerivedStats {
@@ -88,7 +89,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/player", playerId],
     queryFn: async () => {
       if (!playerId) throw new Error("No player ID");
-      const res = await fetch(`/api/player/${playerId}`);
+      const res = await fetch(apiUrl(`/api/player/${playerId}`));
       if (!res.ok) {
         const error = new Error("Failed to fetch player") as Error & { status?: number };
         error.status = res.status;
@@ -141,7 +142,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [playerId]);
 
   useEffect(() => {
-    if (playerId && (playerError as Error & { status?: number } | null)?.status === 404) {
+    if (playerId && playerError) {
       localStorage.removeItem(PLAYER_STORAGE_KEY);
       setPlayerId(null);
       queryClient.removeQueries({ queryKey: ["/api/player", playerId] });
