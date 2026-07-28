@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { Home, User, Target, Brain } from "lucide-react";
+import { BookOpen, Castle, Dumbbell, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
@@ -17,10 +17,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { icon: Home, label: "HOME", path: "/" },
-  { icon: User, label: "PROFILE", path: "/profile" },
-  { icon: Target, label: "HABITS", path: "/habits" },
-  { icon: Brain, label: "SYSTEM", path: "/coach" },
+  { icon: BookOpen, label: "QUEST", path: "/" },
+  { icon: User, label: "HERO", path: "/hunter-profile" },
+  { icon: Castle, label: "GATE", path: "/game" },
+  { icon: Dumbbell, label: "TRAIN", path: "/train" },
 ];
 
 export function SystemLayout({ children }: { children: React.ReactNode }) {
@@ -202,7 +202,7 @@ export function SystemLayout({ children }: { children: React.ReactNode }) {
 
       <SidebarMenu />
 
-      <main className="relative z-20 container mx-auto px-4 py-6 pt-14 pb-24 max-w-md md:max-w-2xl min-h-screen flex flex-col">
+      <main className="relative z-20 container mx-auto px-3 py-4 pt-10 pb-24 max-w-md md:max-w-2xl min-h-screen flex flex-col">
         {children}
       </main>
 
