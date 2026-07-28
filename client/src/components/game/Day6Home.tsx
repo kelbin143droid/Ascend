@@ -1170,11 +1170,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.32, ease: "easeOut" }}
-          className="relative overflow-hidden rounded-[28px] px-4 pb-4 pt-3"
+          className="relative overflow-hidden rounded-[28px] px-4 pb-3 pt-3"
           style={{
-            background: "linear-gradient(180deg, rgba(7,12,26,0.94) 0%, rgba(3,7,18,0.96) 48%, rgba(2,5,13,0.98) 100%)",
-            border: "1px solid rgba(246,199,111,0.24)",
-            boxShadow: "0 22px 70px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.08)",
+            background: "linear-gradient(180deg, rgba(6,10,24,0.97) 0%, rgba(3,6,16,0.98) 50%, rgba(2,4,12,0.99) 100%)",
+            border: "1.5px solid rgba(192,148,55,0.72)",
+            boxShadow: "0 0 0 1px rgba(192,148,55,0.12), 0 2px 40px rgba(0,0,0,0.72), 0 0 60px rgba(192,148,55,0.08), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.50)",
             color: "#f8ead0",
           }}
           data-testid="mission-command-home"
@@ -1244,12 +1244,19 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
 
           {/* ── 4-Quadrant Command Wheel ── */}
-          <div className="relative z-10 mx-auto mt-3 w-full max-w-[288px]" style={{ aspectRatio: "1" }}>
+          <div className="relative z-10 mx-auto mt-2 w-full max-w-[234px]" style={{ aspectRatio: "1" }}>
+            {/* Outer glow halo */}
+            <div className="absolute rounded-full pointer-events-none"
+              style={{
+                inset: "-6px",
+                background: "radial-gradient(circle, transparent 60%, rgba(192,148,55,0.10) 100%)",
+                filter: "blur(6px)",
+              }} />
             {/* Outer decorative ring */}
             <div className="absolute inset-0 rounded-full pointer-events-none"
               style={{
-                border: "3px solid rgba(174,124,44,0.62)",
-                boxShadow: "0 0 30px rgba(174,124,44,0.14), 0 0 70px rgba(0,0,0,0.60)",
+                border: "3.5px solid rgba(192,148,55,0.80)",
+                boxShadow: "0 0 18px rgba(192,148,55,0.30), 0 0 50px rgba(0,0,0,0.70), inset 0 0 12px rgba(192,148,55,0.08)",
               }} />
 
             {/* Quadrant fills — overflow:hidden clips them to the circle */}
@@ -1290,25 +1297,25 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                 >
                   <div className="flex items-center justify-center rounded-full"
                     style={{
-                      width: 50, height: 50,
+                      width: 46, height: 46,
                       background: isDone
-                        ? "rgba(34,197,94,0.14)"
+                        ? "rgba(34,197,94,0.16)"
                         : isActive
-                          ? `radial-gradient(circle at 40% 35%, ${color}26, rgba(4,8,20,0.82))`
-                          : "rgba(255,255,255,0.04)",
-                      border: `2px solid ${isDone ? "rgba(34,197,94,0.50)" : isActive ? color : "rgba(255,255,255,0.10)"}`,
-                      boxShadow: isActive
-                        ? `0 0 24px ${color}52, 0 0 48px ${color}1a`
-                        : isDone
-                          ? "0 0 14px rgba(34,197,94,0.30)"
-                          : "none",
+                          ? `radial-gradient(circle at 38% 32%, ${color}38, rgba(4,8,20,0.88))`
+                          : `radial-gradient(circle at 38% 32%, ${color}1c, rgba(4,8,20,0.82))`,
+                      border: `2px solid ${isDone ? "rgba(34,197,94,0.60)" : isActive ? color : `${color}52`}`,
+                      boxShadow: isDone
+                        ? "0 0 16px rgba(34,197,94,0.35)"
+                        : isActive
+                          ? `0 0 28px ${color}60, 0 0 56px ${color}22`
+                          : `0 0 14px ${color}28`,
                     }}>
                     {isDone
-                      ? <CheckCircle2 size={22} style={{ color: "#22c55e" }} />
-                      : <Icon size={22} style={{ color: isActive ? color : "rgba(255,255,255,0.42)", filter: isActive ? `drop-shadow(0 0 7px ${color})` : "none" }} />}
+                      ? <CheckCircle2 size={20} style={{ color: "#22c55e" }} />
+                      : <Icon size={20} style={{ color: isActive ? color : `${color}cc`, filter: `drop-shadow(0 0 ${isActive ? "8px" : "4px"} ${color}${isActive ? "cc" : "66"})` }} />}
                   </div>
                   <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: isDone ? "#4ade80" : isActive ? "#ffffff" : "rgba(248,234,208,0.62)", textShadow: isActive ? `0 0 10px ${color}` : "none" }}>
+                    style={{ color: isDone ? "#4ade80" : isActive ? "#ffffff" : `${color}cc`, textShadow: `0 0 8px ${color}${isActive ? "88" : "44"}` }}>
                     {label}
                   </span>
                 </motion.button>
@@ -1328,8 +1335,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
 
           {/* ── Next Best Action ── */}
-          <div className="relative z-10 mt-3 rounded-2xl p-3"
-            style={{ background: "rgba(2,6,18,0.65)", border: "1px solid rgba(246,199,111,0.20)" }}>
+          <div className="relative z-10 mt-2 rounded-2xl p-2.5"
+            style={{ background: "rgba(2,6,18,0.72)", border: "1px solid rgba(192,148,55,0.32)" }}>
             <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.26em]"
               style={{ color: "rgba(248,234,208,0.58)" }}>
               Next Best Action
@@ -1362,7 +1369,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             type="button"
             onClick={allDone ? undefined : handleFeaturedTap}
             whileTap={!allDone ? { scale: 0.984 } : undefined}
-            className="relative z-10 mt-3 flex min-h-[58px] w-full items-center justify-center overflow-hidden rounded-2xl font-display text-[22px] font-bold uppercase tracking-[0.18em]"
+            className="relative z-10 mt-2 flex min-h-[52px] w-full items-center justify-center overflow-hidden rounded-2xl font-display text-[20px] font-bold uppercase tracking-[0.18em]"
             style={{
               background: allDone
                 ? "linear-gradient(90deg, rgba(34,197,94,0.58), rgba(88,227,155,0.70))"
