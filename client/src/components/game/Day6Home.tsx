@@ -647,56 +647,62 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   };
 
   const calmCard = DASH_CARDS.find(d => d.id === "calm")!;
+  const agilityCard = DASH_CARDS.find(d => d.id === "agility")!;
   const strengthCard = DASH_CARDS.find(d => d.id === "strength")!;
-  const restoreCard = vitalityCard;
-  const activeCommandId = featuredCard?.id === "intelligence" ? "focus"
-    : featuredCard?.id === "strength" || featuredCard?.id === "agility" ? "train"
-    : featuredCard?.id === "vitality" ? "restore"
-    : featuredCard?.id === "calm" ? "calm"
-    : "focus";
+  const activeCommandId = featuredCard?.id ?? "calm";
   const commandItems = [
     {
-      id: "focus",
-      label: "Focus",
-      subtitle: "Mind",
-      icon: BookOpen,
-      color: "#38bdf8",
-      position: "top" as const,
-      action: () => setShowIntelligence(true),
-    },
-    {
-      id: "train",
-      label: "Train",
-      subtitle: "Body",
-      icon: Shield,
-      color: "#f9735b",
-      position: "right" as const,
-      action: resolveAction(strengthCard),
-    },
-    {
       id: "calm",
-      label: "Calm",
+      label: "Calm Mind",
       subtitle: "Breath",
       icon: Brain,
       color: "#58e39b",
-      position: "bottom" as const,
+      position: "top" as const,
       action: resolveAction(calmCard),
     },
     {
-      id: "restore",
-      label: "Restore",
+      id: "agility",
+      label: "Agility",
+      subtitle: "Movement",
+      icon: Zap,
+      color: "#34d399",
+      position: "upperRight" as const,
+      action: resolveAction(agilityCard),
+    },
+    {
+      id: "strength",
+      label: "Physical",
+      subtitle: "Circuit",
+      icon: Shield,
+      color: "#f9735b",
+      position: "lowerRight" as const,
+      action: resolveAction(strengthCard),
+    },
+    {
+      id: "intelligence",
+      label: "Intel",
+      subtitle: "Study",
+      icon: BookOpen,
+      color: "#38bdf8",
+      position: "lowerLeft" as const,
+      action: () => setShowIntelligence(true),
+    },
+    {
+      id: "vitality",
+      label: "Vitality",
       subtitle: "Recovery",
       icon: Heart,
-      color: "#22d3ee",
-      position: "left" as const,
-      action: resolveAction(restoreCard),
+      color: "#f59e0b",
+      position: "upperLeft" as const,
+      action: resolveAction(vitalityCard),
     },
   ];
   const positionClass: Record<(typeof commandItems)[number]["position"], string> = {
-    top: "left-1/2 top-2 -translate-x-1/2",
-    right: "right-2 top-1/2 -translate-y-1/2",
-    bottom: "bottom-2 left-1/2 -translate-x-1/2",
-    left: "left-2 top-1/2 -translate-y-1/2",
+    top: "left-1/2 top-1 -translate-x-1/2",
+    upperRight: "right-1 top-[28%] -translate-y-1/2",
+    lowerRight: "right-[10%] bottom-7",
+    lowerLeft: "bottom-7 left-[10%]",
+    upperLeft: "left-1 top-[28%] -translate-y-1/2",
   };
   const nextActionTitle = allDone ? "Daily ritual complete" : featuredCard?.label ?? "Focus";
   const nextActionSubtitle = allDone
@@ -1279,7 +1285,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   type="button"
                   onClick={item.action}
                   whileTap={{ scale: 0.95 }}
-                  className={`absolute ${positionClass[item.position]} flex h-[96px] w-[96px] flex-col items-center justify-center gap-1 rounded-full`}
+                  className={`absolute ${positionClass[item.position]} flex h-[84px] w-[84px] flex-col items-center justify-center gap-0.5 rounded-full px-1 text-center`}
                   style={{
                     background: active
                       ? `radial-gradient(circle at 50% 35%, ${item.color}32, rgba(4,8,18,0.94))`
@@ -1290,9 +1296,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   }}
                   data-testid={`command-${item.id}`}
                 >
-                  <Icon size={22} style={{ color: item.color, filter: active ? `drop-shadow(0 0 8px ${item.color})` : "none" }} />
-                  <span className="font-display text-[13px] font-bold uppercase tracking-[0.10em]">{item.label}</span>
-                  <span className="text-[8px] font-bold uppercase tracking-[0.14em]" style={{ color: "rgba(248,234,208,0.50)" }}>{item.subtitle}</span>
+                  <Icon size={20} style={{ color: item.color, filter: active ? `drop-shadow(0 0 8px ${item.color})` : "none" }} />
+                  <span className="font-display text-[10px] font-bold uppercase leading-tight tracking-[0.08em]">{item.label}</span>
+                  <span className="text-[7px] font-bold uppercase leading-none tracking-[0.12em]" style={{ color: "rgba(248,234,208,0.50)" }}>{item.subtitle}</span>
                 </motion.button>
               );
             })}
