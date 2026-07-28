@@ -771,7 +771,7 @@ function WelcomeScreen({
 }
 
 export function IntroWrapper({ children }: IntroWrapperProps) {
-  const { player, isLoading, updatePlayer, gainExp } = useGame();
+  const { player, isLoading, startupError, resetPlayerSession, updatePlayer, gainExp } = useGame();
   const { setBackgroundTheme, setClockTheme } = useTheme();
   const [step, setStep] = useState<IntroStep>("loading");
   const [playerName, setPlayerName] = useState("");
@@ -830,6 +830,33 @@ export function IntroWrapper({ children }: IntroWrapperProps) {
     const name = playerName || player?.name || "";
     return name.split(" ")[0] || name;
   };
+
+  if (startupError) {
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center px-6"
+        style={{
+          background: "linear-gradient(180deg, #020810 0%, #030d1c 100%)",
+        }}
+      >
+        <div className="flex max-w-sm flex-col items-center gap-5 text-center">
+          <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-cyan-200">
+            STARTUP INTERRUPTED
+          </p>
+          <p className="text-sm leading-6 text-slate-300">
+            Ascend could not finish creating your hunter profile.
+          </p>
+          <button
+            type="button"
+            onClick={resetPlayerSession}
+            className="rounded border border-cyan-300/60 bg-cyan-300/10 px-5 py-3 font-mono text-xs uppercase tracking-[0.25em] text-cyan-100"
+          >
+            Retry Start
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (step === "loading" || isLoading) {
     return (
