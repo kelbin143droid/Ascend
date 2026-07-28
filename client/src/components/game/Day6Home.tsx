@@ -646,6 +646,64 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     return () => navigate(dc.fallbackRoute);
   };
 
+  const calmCard = DASH_CARDS.find(d => d.id === "calm")!;
+  const strengthCard = DASH_CARDS.find(d => d.id === "strength")!;
+  const restoreCard = vitalityCard;
+  const activeCommandId = featuredCard?.id === "intelligence" ? "focus"
+    : featuredCard?.id === "strength" || featuredCard?.id === "agility" ? "train"
+    : featuredCard?.id === "vitality" ? "restore"
+    : featuredCard?.id === "calm" ? "calm"
+    : "focus";
+  const commandItems = [
+    {
+      id: "focus",
+      label: "Focus",
+      subtitle: "Mind",
+      icon: BookOpen,
+      color: "#38bdf8",
+      position: "top" as const,
+      action: () => setShowIntelligence(true),
+    },
+    {
+      id: "train",
+      label: "Train",
+      subtitle: "Body",
+      icon: Shield,
+      color: "#f9735b",
+      position: "right" as const,
+      action: resolveAction(strengthCard),
+    },
+    {
+      id: "calm",
+      label: "Calm",
+      subtitle: "Breath",
+      icon: Brain,
+      color: "#58e39b",
+      position: "bottom" as const,
+      action: resolveAction(calmCard),
+    },
+    {
+      id: "restore",
+      label: "Restore",
+      subtitle: "Recovery",
+      icon: Heart,
+      color: "#22d3ee",
+      position: "left" as const,
+      action: resolveAction(restoreCard),
+    },
+  ];
+  const positionClass: Record<(typeof commandItems)[number]["position"], string> = {
+    top: "left-1/2 top-2 -translate-x-1/2",
+    right: "right-2 top-1/2 -translate-y-1/2",
+    bottom: "bottom-2 left-1/2 -translate-x-1/2",
+    left: "left-2 top-1/2 -translate-y-1/2",
+  };
+  const nextActionTitle = allDone ? "Daily ritual complete" : featuredCard?.label ?? "Focus";
+  const nextActionSubtitle = allDone
+    ? "You cleared today's command cycle."
+    : featuredCard?.sub ?? "You have the most to gain.";
+  const nextActionColor = allDone ? "#58e39b" : featuredCard?.color ?? "#38bdf8";
+  const startLabel = allDone ? "Complete" : "Start";
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -1102,6 +1160,202 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       <div className="flex flex-col gap-3 px-4 py-3 max-w-md mx-auto w-full relative" data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, ease: "easeOut" }}
+          className="relative overflow-hidden rounded-[28px] px-4 pb-5 pt-4"
+          style={{
+            minHeight: "calc(100dvh - 146px)",
+            background: "linear-gradient(180deg, rgba(7,12,26,0.94) 0%, rgba(3,7,18,0.96) 48%, rgba(2,5,13,0.98) 100%)",
+            border: "1px solid rgba(246,199,111,0.24)",
+            boxShadow: "0 22px 70px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.08)",
+            color: "#f8ead0",
+          }}
+          data-testid="mission-command-home"
+        >
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: "radial-gradient(circle at 50% 30%, rgba(56,189,248,0.14), transparent 34%), radial-gradient(circle at 80% 80%, rgba(88,227,155,0.10), transparent 35%)",
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-x-8 top-0 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(246,199,111,0.58), transparent)" }}
+          />
+
+          <div className="relative z-10 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowCustomize(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-full"
+              style={{ border: "1px solid rgba(246,199,111,0.26)", background: "rgba(255,255,255,0.04)", color: "#f6c76f" }}
+              aria-label="Customize"
+            >
+              <Palette size={16} />
+            </button>
+            <div className="text-center">
+              <p className="font-display text-[19px] font-bold uppercase tracking-[0.12em]" style={{ color: "#f8d99b" }}>
+                Mission Command
+              </p>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.28em]" style={{ color: "rgba(248,234,208,0.54)" }}>
+                Quest Cycle
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAvatar(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-base"
+              style={{ border: "1px solid rgba(246,199,111,0.26)", background: "rgba(255,255,255,0.04)" }}
+              aria-label="Hero"
+            >
+              {avatarIcon}
+            </button>
+          </div>
+
+          <div className="relative z-10 mt-5">
+            <div className="mb-2 flex items-center justify-center gap-2">
+              <span className="h-px w-10" style={{ background: "linear-gradient(90deg, transparent, rgba(246,199,111,0.42))" }} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: "rgba(248,234,208,0.72)" }}>
+                Daily Progress
+              </span>
+              <span className="h-px w-10" style={{ background: "linear-gradient(90deg, rgba(246,199,111,0.42), transparent)" }} />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="grid flex-1 grid-cols-5 gap-1 rounded-full p-1" style={{ background: "rgba(0,0,0,0.34)", border: "1px solid rgba(246,199,111,0.22)" }}>
+                {Array.from({ length: totalMissionCount }).slice(0, 5).map((_, i) => {
+                  const filled = i < Math.min(completedMissionCount, 5);
+                  const current = i === Math.min(completedMissionCount, 4) && !allDone;
+                  return (
+                    <div
+                      key={i}
+                      className="h-3 rounded-full"
+                      style={{
+                        background: filled
+                          ? "linear-gradient(90deg, #38bdf8, #7dd3fc)"
+                          : current ? "rgba(246,199,111,0.34)" : "rgba(255,255,255,0.08)",
+                        boxShadow: filled ? "0 0 12px rgba(56,189,248,0.36)" : "none",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              <div className="flex h-9 w-10 items-center justify-center rounded-xl text-[15px] font-black" style={{ color: "#f8d99b", border: "1px solid rgba(246,199,111,0.28)", background: "rgba(246,199,111,0.08)" }}>
+                {allDone ? <CheckCircle2 size={17} /> : missionStepLabel}
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 mx-auto mt-7 flex aspect-square w-full max-w-[315px] items-center justify-center">
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: "conic-gradient(from 225deg, rgba(88,227,155,0.18), rgba(56,189,248,0.16), rgba(249,115,91,0.18), rgba(34,211,238,0.16), rgba(88,227,155,0.18))",
+                border: "1px solid rgba(246,199,111,0.34)",
+                boxShadow: "0 0 34px rgba(246,199,111,0.12), inset 0 0 34px rgba(0,0,0,0.62)",
+              }}
+            />
+            <div className="absolute inset-[17%] rounded-full" style={{ border: "1px solid rgba(246,199,111,0.18)" }} />
+            <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2" style={{ background: "linear-gradient(180deg, transparent, rgba(246,199,111,0.28), transparent)" }} />
+            <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2" style={{ background: "linear-gradient(90deg, transparent, rgba(246,199,111,0.28), transparent)" }} />
+
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 34, repeat: Infinity, ease: "linear" }}
+              className="absolute h-[112px] w-[112px] rounded-full"
+              style={{ border: "1px solid rgba(246,199,111,0.26)", boxShadow: "0 0 22px rgba(56,189,248,0.12)" }}
+            />
+            <div className="absolute flex h-[70px] w-[70px] items-center justify-center rounded-full" style={{ background: "radial-gradient(circle, rgba(246,199,111,0.20), rgba(4,8,18,0.92))", border: "1px solid rgba(246,199,111,0.48)" }}>
+              <Sparkles size={24} style={{ color: "#f8d99b", filter: "drop-shadow(0 0 8px rgba(246,199,111,0.44))" }} />
+            </div>
+
+            {commandItems.map((item) => {
+              const active = activeCommandId === item.id;
+              const Icon = item.icon;
+              return (
+                <motion.button
+                  key={item.id}
+                  type="button"
+                  onClick={item.action}
+                  whileTap={{ scale: 0.95 }}
+                  className={`absolute ${positionClass[item.position]} flex h-[96px] w-[96px] flex-col items-center justify-center gap-1 rounded-full`}
+                  style={{
+                    background: active
+                      ? `radial-gradient(circle at 50% 35%, ${item.color}32, rgba(4,8,18,0.94))`
+                      : "radial-gradient(circle at 50% 35%, rgba(255,255,255,0.07), rgba(4,8,18,0.92))",
+                    border: `1px solid ${active ? item.color : "rgba(246,199,111,0.30)"}`,
+                    boxShadow: active ? `0 0 28px ${item.color}38, inset 0 1px 0 rgba(255,255,255,0.10)` : "inset 0 1px 0 rgba(255,255,255,0.07)",
+                    color: active ? "#ffffff" : "#f8ead0",
+                  }}
+                  data-testid={`command-${item.id}`}
+                >
+                  <Icon size={22} style={{ color: item.color, filter: active ? `drop-shadow(0 0 8px ${item.color})` : "none" }} />
+                  <span className="font-display text-[13px] font-bold uppercase tracking-[0.10em]">{item.label}</span>
+                  <span className="text-[8px] font-bold uppercase tracking-[0.14em]" style={{ color: "rgba(248,234,208,0.50)" }}>{item.subtitle}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+
+          <div className="relative z-10 mt-5 rounded-2xl p-3" style={{ background: "rgba(2,6,18,0.64)", border: "1px solid rgba(246,199,111,0.20)" }}>
+            <p className="text-center text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: "rgba(248,234,208,0.64)" }}>
+              Next Best Action
+            </p>
+            <button
+              type="button"
+              onClick={allDone ? undefined : handleFeaturedTap}
+              className="mt-3 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left"
+              style={{ background: "rgba(255,255,255,0.045)", border: `1px solid ${nextActionColor}40` }}
+              data-testid="next-best-action"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: `${nextActionColor}18`, color: nextActionColor, border: `1px solid ${nextActionColor}40` }}>
+                {allDone ? <CheckCircle2 size={21} /> : featuredCard ? <featuredCard.icon size={21} /> : <BookOpen size={21} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[18px] font-bold" style={{ color: "#fff8e8" }}>{nextActionTitle}</p>
+                <p className="mt-0.5 truncate text-[11px]" style={{ color: "rgba(248,234,208,0.58)" }}>{nextActionSubtitle}</p>
+              </div>
+              {!allDone && <ArrowRight size={18} style={{ color: "#f6c76f" }} />}
+            </button>
+          </div>
+
+          <motion.button
+            type="button"
+            onClick={allDone ? undefined : handleFeaturedTap}
+            whileTap={!allDone ? { scale: 0.985 } : undefined}
+            className="relative z-10 mt-4 flex min-h-[58px] w-full items-center justify-center overflow-hidden rounded-2xl font-display text-[22px] font-bold uppercase tracking-[0.16em]"
+            style={{
+              background: allDone
+                ? "linear-gradient(90deg, rgba(34,197,94,0.58), rgba(88,227,155,0.70))"
+                : "linear-gradient(90deg, rgba(20,72,150,0.96), rgba(23,110,190,0.98), rgba(10,64,145,0.96))",
+              border: "1px solid rgba(246,199,111,0.42)",
+              color: "#fff8e8",
+              boxShadow: "0 12px 34px rgba(56,189,248,0.20), inset 0 1px 0 rgba(255,255,255,0.18)",
+              textShadow: "0 2px 8px rgba(0,0,0,0.46)",
+            }}
+            data-testid="button-start-command"
+          >
+            <span className="pointer-events-none absolute inset-x-8 top-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)" }} />
+            {startLabel}
+          </motion.button>
+
+          <div className="relative z-10 mt-4 grid grid-cols-3 gap-2">
+            {[
+              ["LV", lvl],
+              ["XP", `${xp.exp}/${xp.maxExp}`],
+              ["STREAK", streak],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl px-2 py-2 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(246,199,111,0.14)" }}>
+                <p className="text-[8px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(248,234,208,0.44)" }}>{label}</p>
+                <p className="mt-1 truncate text-[13px] font-black tabular-nums" style={{ color: "#f8d99b" }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        <div className="hidden" aria-hidden="true">
+
         {/* ── PROFILE HUD ───────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
@@ -1548,6 +1802,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           );
         })()}
 
+        </div>
       </div>
     </SystemLayout>
   );
