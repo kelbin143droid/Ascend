@@ -1163,106 +1163,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         }
       `}</style>
 
-      <div className="flex flex-col gap-3 px-4 py-3 max-w-md mx-auto w-full relative" data-testid="day6-home">
+      <div className="flex flex-col gap-2 px-4 py-2 max-w-md mx-auto w-full relative" data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
-
-        {/* ── PROFILE HUD ─────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.30, delay: 0.04 }}
-          className="rounded-2xl relative overflow-hidden"
-          style={{
-            background: panelBg,
-            border: `1px solid ${panelBorder}`,
-            backdropFilter: "blur(22px) saturate(1.18)",
-            boxShadow: panelShadow,
-            padding: "14px 16px",
-          }}
-          data-testid="daily-status-section"
-        >
-          <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
-            style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.055) 42%, transparent 100%)", opacity: glossOpacity }} />
-          <div className="absolute -top-12 -left-28 h-28 w-72 pointer-events-none"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)", filter: "blur(10px)", animation: "cardGlossDrift 9s ease-in-out infinite" }} />
-          <div className="relative z-10 flex items-center gap-3">
-            {/* Avatar */}
-            <button
-              onClick={() => (homeData.isOnboardingComplete || allDone) && setShowAvatar(true)}
-              disabled={!homeData.isOnboardingComplete && !allDone}
-              data-testid="button-avatar"
-              className="relative shrink-0 transition-transform duration-150 active:scale-90 disabled:active:scale-100">
-              {hasStreak && (
-                <div className="absolute inset-[-5px] rounded-full pointer-events-none"
-                  style={{ border: `1.5px solid ${primary}`, boxShadow: `0 0 12px ${primary}50`, animation: "streakRingPulse 2.4s ease-in-out infinite" }} />
-              )}
-              <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl relative z-10"
-                style={{ background: `linear-gradient(135deg,${primary}28,${primary}0c)`, border: `1.5px solid ${primary}40`, boxShadow: hasStreak ? `0 0 20px ${primary}45` : `0 0 8px ${primary}22` }}>
-                {avatarIcon}
-              </div>
-              <div className="absolute -bottom-[2px] -right-[2px] w-[18px] h-[18px] rounded-full flex items-center justify-center text-[7px] font-bold leading-none z-20"
-                style={{ backgroundColor: primary, color: isNeonEmp ? fae.ink : "#000", boxShadow: `0 0 8px ${primary}60` }}
-                data-testid="text-player-level">
-                {lvl}
-              </div>
-            </button>
-            {/* Level + XP */}
-            <div className="flex-1 min-w-0" data-testid="xp-progress-section">
-              <div className="flex items-baseline justify-between mb-[7px]">
-                <div className="flex items-baseline gap-[5px]">
-                  <span className="text-[9px] font-bold tracking-[0.22em] uppercase leading-none" style={{ color: cardMutedCol, opacity: 0.78 }}>LEVEL</span>
-                  <span className="text-[22px] font-bold leading-none tabular-nums" style={{ color: primary, lineHeight: 1, textShadow: `0 0 12px ${primary}60` }} data-testid="stat-level">{lvl}</span>
-                  {hasStreak && (
-                    <span className="flex items-center gap-[3px] text-[8px] font-bold px-[5px] py-[2px] rounded-full ml-1"
-                      style={{ background: `${primary}16`, color: primary, border: `1px solid ${primary}24` }} data-testid="stat-streak">
-                      <Flame size={7} /> {streak}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[11px] font-mono tabular-nums leading-none font-semibold">
-                  <span style={{ color: primary, textShadow: `0 0 8px ${primary}60` }}>XP {xp.exp}</span>
-                  <span style={{ color: "rgba(205,216,238,0.70)" }}> / {xp.maxExp}</span>
-                </span>
-              </div>
-              <div className="relative">
-                {hasStreak && <div className="absolute inset-0 rounded-full pointer-events-none" style={{ boxShadow: `0 0 10px ${primary}30`, animation: "streakBarGlow 2.4s ease-in-out infinite" }} />}
-                {isIronSov ? (
-                  <SegBar fromPct={xpFrom} pct={xp.percent} fill={hudCyan} glow={hudCyanG} />
-                ) : isNeonEmp ? (
-                  <PastelBar pct={xp.percent} />
-                ) : (
-                  <motion.div className="w-full h-[7px] rounded-full overflow-hidden relative"
-                    animate={{ boxShadow: [`0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`, `0 0 18px ${colors.primaryGlow}90, 0 0 32px ${colors.primaryGlow}30, inset 0 1px 2px rgba(0,0,0,0.40)`, `0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`] }}
-                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                    style={{ backgroundColor: "rgba(255,255,255,0.07)" }} data-testid="xp-bar-track">
-                    <motion.div className="h-full rounded-full"
-                      initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
-                      transition={{ duration: 1.0, ease: [0.22, 0.61, 0.36, 1] }}
-                      style={{ background: `linear-gradient(90deg, ${colors.primary}dd, ${colors.primary}, ${colors.primary}cc)`, boxShadow: `0 0 12px ${colors.primaryGlow}, 0 0 4px ${colors.primaryGlow}` }}
-                      data-testid="xp-bar-fill" />
-                    <div className="absolute inset-0 rounded-full pointer-events-none"
-                      style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)", backgroundSize: "200% 100%", animation: "xpShimmer 3s linear infinite" }} />
-                  </motion.div>
-                )}
-              </div>
-              <div className="flex items-center justify-between mt-[6px]">
-                <span className="text-[9px] tracking-[0.10em] leading-none flex items-center gap-1" style={{ color: primary, opacity: 0.80 }}>
-                  <span style={{ fontSize: "7px" }}>◆</span> {pathCfg.displayLabel}
-                </span>
-                <button onClick={() => setShowCustomize(true)} data-testid="button-customize"
-                  className="flex items-center justify-center w-[22px] h-[22px] rounded-lg transition-all duration-150 active:scale-90"
-                  style={{ color: mutedCol, backgroundColor: `${primary}10`, border: `1px solid ${primary}16` }}>
-                  <Palette size={10} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
 
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.32, ease: "easeOut" }}
-          className="relative overflow-hidden rounded-[28px] px-4 pb-5 pt-4"
+          className="relative overflow-hidden rounded-[28px] px-4 pb-4 pt-3"
           style={{
             background: "linear-gradient(180deg, rgba(7,12,26,0.94) 0%, rgba(3,7,18,0.96) 48%, rgba(2,5,13,0.98) 100%)",
             border: "1px solid rgba(246,199,111,0.24)",
@@ -1308,7 +1216,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
 
           {/* ── Daily Progress ── */}
-          <div className="relative z-10 mt-5">
+          <div className="relative z-10 mt-3">
             <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.28em]" style={{ color: "rgba(248,234,208,0.60)" }}>
               Daily Progress
             </p>
@@ -1336,7 +1244,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
 
           {/* ── 4-Quadrant Command Wheel ── */}
-          <div className="relative z-10 mx-auto mt-5 w-full max-w-[300px]" style={{ aspectRatio: "1" }}>
+          <div className="relative z-10 mx-auto mt-3 w-full max-w-[288px]" style={{ aspectRatio: "1" }}>
             {/* Outer decorative ring */}
             <div className="absolute inset-0 rounded-full pointer-events-none"
               style={{
@@ -1420,7 +1328,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
 
           {/* ── Next Best Action ── */}
-          <div className="relative z-10 mt-4 rounded-2xl p-3"
+          <div className="relative z-10 mt-3 rounded-2xl p-3"
             style={{ background: "rgba(2,6,18,0.65)", border: "1px solid rgba(246,199,111,0.20)" }}>
             <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.26em]"
               style={{ color: "rgba(248,234,208,0.58)" }}>
