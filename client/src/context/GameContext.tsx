@@ -84,12 +84,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     messageTimeoutRef.current = setTimeout(() => setSystemMessage(null), 4000);
   }, []);
 
-  const { data: player, isLoading } = useQuery<PlayerWithDerived>({
+  const { data: player, isLoading, error: playerError } = useQuery<PlayerWithDerived>({
     queryKey: ["/api/player", playerId],
     queryFn: async () => {
       if (!playerId) throw new Error("No player ID");
       const res = await fetch(`/api/player/${playerId}`);
-      if (!res.ok) throw new Error("Failed to fetch player");
+      if (!res.ok) {
+        const error = new Error("Failed to fetch player") as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
       return res.json();
     },
     enabled: !!playerId,
@@ -135,6 +139,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       createPlayerMutation.mutate();
     }
   }, [playerId]);
+
+  useEffect(() => {
+    if (playerId && (playerError as Error & { status?: number } | null)?.status === 404) {
+      localStorage.removeItem(PLAYER_STORAGE_KEY);
+      setPlayerId(null);
+      queryClient.removeQueries({ queryKey: ["/api/player", playerId] });
+    }
+  }, [playerError, playerId, queryClient]);
 
   const gainExpMutation = useMutation({
     mutationFn: async (amount: number) => {
