@@ -5,7 +5,7 @@ import {
   Brain, CheckCircle2, Sparkles, X, Palette,
   ArrowRight, BookOpen, Zap, Shield, Flame,
   ChevronLeft, ChevronRight,
-  Heart, Moon,
+  Heart, Moon, Swords, Compass,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -1166,13 +1166,104 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       <div className="flex flex-col gap-3 px-4 py-3 max-w-md mx-auto w-full relative" data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
+        {/* ── PROFILE HUD ─────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.30, delay: 0.04 }}
+          className="rounded-2xl relative overflow-hidden"
+          style={{
+            background: panelBg,
+            border: `1px solid ${panelBorder}`,
+            backdropFilter: "blur(22px) saturate(1.18)",
+            boxShadow: panelShadow,
+            padding: "14px 16px",
+          }}
+          data-testid="daily-status-section"
+        >
+          <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
+            style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.055) 42%, transparent 100%)", opacity: glossOpacity }} />
+          <div className="absolute -top-12 -left-28 h-28 w-72 pointer-events-none"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)", filter: "blur(10px)", animation: "cardGlossDrift 9s ease-in-out infinite" }} />
+          <div className="relative z-10 flex items-center gap-3">
+            {/* Avatar */}
+            <button
+              onClick={() => (homeData.isOnboardingComplete || allDone) && setShowAvatar(true)}
+              disabled={!homeData.isOnboardingComplete && !allDone}
+              data-testid="button-avatar"
+              className="relative shrink-0 transition-transform duration-150 active:scale-90 disabled:active:scale-100">
+              {hasStreak && (
+                <div className="absolute inset-[-5px] rounded-full pointer-events-none"
+                  style={{ border: `1.5px solid ${primary}`, boxShadow: `0 0 12px ${primary}50`, animation: "streakRingPulse 2.4s ease-in-out infinite" }} />
+              )}
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl relative z-10"
+                style={{ background: `linear-gradient(135deg,${primary}28,${primary}0c)`, border: `1.5px solid ${primary}40`, boxShadow: hasStreak ? `0 0 20px ${primary}45` : `0 0 8px ${primary}22` }}>
+                {avatarIcon}
+              </div>
+              <div className="absolute -bottom-[2px] -right-[2px] w-[18px] h-[18px] rounded-full flex items-center justify-center text-[7px] font-bold leading-none z-20"
+                style={{ backgroundColor: primary, color: isNeonEmp ? fae.ink : "#000", boxShadow: `0 0 8px ${primary}60` }}
+                data-testid="text-player-level">
+                {lvl}
+              </div>
+            </button>
+            {/* Level + XP */}
+            <div className="flex-1 min-w-0" data-testid="xp-progress-section">
+              <div className="flex items-baseline justify-between mb-[7px]">
+                <div className="flex items-baseline gap-[5px]">
+                  <span className="text-[9px] font-bold tracking-[0.22em] uppercase leading-none" style={{ color: cardMutedCol, opacity: 0.78 }}>LEVEL</span>
+                  <span className="text-[22px] font-bold leading-none tabular-nums" style={{ color: primary, lineHeight: 1, textShadow: `0 0 12px ${primary}60` }} data-testid="stat-level">{lvl}</span>
+                  {hasStreak && (
+                    <span className="flex items-center gap-[3px] text-[8px] font-bold px-[5px] py-[2px] rounded-full ml-1"
+                      style={{ background: `${primary}16`, color: primary, border: `1px solid ${primary}24` }} data-testid="stat-streak">
+                      <Flame size={7} /> {streak}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] font-mono tabular-nums leading-none font-semibold">
+                  <span style={{ color: primary, textShadow: `0 0 8px ${primary}60` }}>XP {xp.exp}</span>
+                  <span style={{ color: "rgba(205,216,238,0.70)" }}> / {xp.maxExp}</span>
+                </span>
+              </div>
+              <div className="relative">
+                {hasStreak && <div className="absolute inset-0 rounded-full pointer-events-none" style={{ boxShadow: `0 0 10px ${primary}30`, animation: "streakBarGlow 2.4s ease-in-out infinite" }} />}
+                {isIronSov ? (
+                  <SegBar fromPct={xpFrom} pct={xp.percent} fill={hudCyan} glow={hudCyanG} />
+                ) : isNeonEmp ? (
+                  <PastelBar pct={xp.percent} />
+                ) : (
+                  <motion.div className="w-full h-[7px] rounded-full overflow-hidden relative"
+                    animate={{ boxShadow: [`0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`, `0 0 18px ${colors.primaryGlow}90, 0 0 32px ${colors.primaryGlow}30, inset 0 1px 2px rgba(0,0,0,0.40)`, `0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`] }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ backgroundColor: "rgba(255,255,255,0.07)" }} data-testid="xp-bar-track">
+                    <motion.div className="h-full rounded-full"
+                      initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
+                      transition={{ duration: 1.0, ease: [0.22, 0.61, 0.36, 1] }}
+                      style={{ background: `linear-gradient(90deg, ${colors.primary}dd, ${colors.primary}, ${colors.primary}cc)`, boxShadow: `0 0 12px ${colors.primaryGlow}, 0 0 4px ${colors.primaryGlow}` }}
+                      data-testid="xp-bar-fill" />
+                    <div className="absolute inset-0 rounded-full pointer-events-none"
+                      style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)", backgroundSize: "200% 100%", animation: "xpShimmer 3s linear infinite" }} />
+                  </motion.div>
+                )}
+              </div>
+              <div className="flex items-center justify-between mt-[6px]">
+                <span className="text-[9px] tracking-[0.10em] leading-none flex items-center gap-1" style={{ color: primary, opacity: 0.80 }}>
+                  <span style={{ fontSize: "7px" }}>◆</span> {pathCfg.displayLabel}
+                </span>
+                <button onClick={() => setShowCustomize(true)} data-testid="button-customize"
+                  className="flex items-center justify-center w-[22px] h-[22px] rounded-lg transition-all duration-150 active:scale-90"
+                  style={{ color: mutedCol, backgroundColor: `${primary}10`, border: `1px solid ${primary}16` }}>
+                  <Palette size={10} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.32, ease: "easeOut" }}
           className="relative overflow-hidden rounded-[28px] px-4 pb-5 pt-4"
           style={{
-            minHeight: "calc(100dvh - 146px)",
             background: "linear-gradient(180deg, rgba(7,12,26,0.94) 0%, rgba(3,7,18,0.96) 48%, rgba(2,5,13,0.98) 100%)",
             border: "1px solid rgba(246,199,111,0.24)",
             boxShadow: "0 22px 70px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.08)",
@@ -1191,6 +1282,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             style={{ background: "linear-gradient(90deg, transparent, rgba(246,199,111,0.58), transparent)" }}
           />
 
+          {/* ── Header ── */}
           <div className="relative z-10 flex items-center justify-between">
             <button
               type="button"
@@ -1201,14 +1293,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             >
               <Palette size={16} />
             </button>
-            <div className="text-center">
-              <p className="font-display text-[19px] font-bold uppercase tracking-[0.12em]" style={{ color: "#f8d99b" }}>
-                Mission Command
-              </p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.28em]" style={{ color: "rgba(248,234,208,0.54)" }}>
-                Quest Cycle
-              </p>
-            </div>
+            <p className="font-display text-[18px] font-bold uppercase tracking-[0.14em]" style={{ color: "#f8d99b" }}>
+              Mission Command
+            </p>
             <button
               type="button"
               onClick={() => setShowAvatar(true)}
@@ -1220,290 +1307,176 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </button>
           </div>
 
+          {/* ── Daily Progress ── */}
           <div className="relative z-10 mt-5">
-            <div className="mb-2 flex items-center justify-center gap-2">
-              <span className="h-px w-10" style={{ background: "linear-gradient(90deg, transparent, rgba(246,199,111,0.42))" }} />
-              <span className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: "rgba(248,234,208,0.72)" }}>
-                Daily Progress
-              </span>
-              <span className="h-px w-10" style={{ background: "linear-gradient(90deg, rgba(246,199,111,0.42), transparent)" }} />
-            </div>
+            <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.28em]" style={{ color: "rgba(248,234,208,0.60)" }}>
+              Daily Progress
+            </p>
             <div className="flex items-center gap-2">
-              <div className="grid flex-1 grid-cols-5 gap-1 rounded-full p-1" style={{ background: "rgba(0,0,0,0.34)", border: "1px solid rgba(246,199,111,0.22)" }}>
-                {Array.from({ length: totalMissionCount }).slice(0, 5).map((_, i) => {
+              <div className="flex flex-1 gap-1.5 rounded-full px-1.5 py-1" style={{ background: "rgba(0,0,0,0.34)", border: "1px solid rgba(246,199,111,0.22)" }}>
+                {Array.from({ length: Math.max(totalMissionCount, 1) }).slice(0, 5).map((_, i) => {
                   const filled = i < Math.min(completedMissionCount, 5);
                   const current = i === Math.min(completedMissionCount, 4) && !allDone;
                   return (
-                    <div
-                      key={i}
-                      className="h-3 rounded-full"
+                    <div key={i} className="flex-1 h-2.5 rounded-full"
                       style={{
                         background: filled
                           ? "linear-gradient(90deg, #38bdf8, #7dd3fc)"
-                          : current ? "rgba(246,199,111,0.34)" : "rgba(255,255,255,0.08)",
-                        boxShadow: filled ? "0 0 12px rgba(56,189,248,0.36)" : "none",
-                      }}
-                    />
+                          : current ? "rgba(246,199,111,0.32)" : "rgba(255,255,255,0.07)",
+                        boxShadow: filled ? "0 0 10px rgba(56,189,248,0.46)" : "none",
+                      }} />
                   );
                 })}
               </div>
-              <div className="flex h-9 w-10 items-center justify-center rounded-xl text-[15px] font-black" style={{ color: "#f8d99b", border: "1px solid rgba(246,199,111,0.28)", background: "rgba(246,199,111,0.08)" }}>
-                {allDone ? <CheckCircle2 size={17} /> : missionStepLabel}
+              <div className="flex h-9 w-10 items-center justify-center rounded-xl text-[14px]"
+                style={{ color: "#f8d99b", border: "1px solid rgba(246,199,111,0.28)", background: "rgba(246,199,111,0.08)" }}>
+                {allDone ? <CheckCircle2 size={16} style={{ color: "#22c55e" }} /> : "🏆"}
               </div>
             </div>
           </div>
 
-          <div className="relative z-10 mx-auto mt-7 flex aspect-square w-full max-w-[315px] items-center justify-center">
-            <div
-              className="absolute inset-0 rounded-full"
+          {/* ── 4-Quadrant Command Wheel ── */}
+          <div className="relative z-10 mx-auto mt-5 w-full max-w-[300px]" style={{ aspectRatio: "1" }}>
+            {/* Outer decorative ring */}
+            <div className="absolute inset-0 rounded-full pointer-events-none"
               style={{
-                background: "conic-gradient(from 225deg, rgba(88,227,155,0.18), rgba(56,189,248,0.16), rgba(249,115,91,0.18), rgba(34,211,238,0.16), rgba(88,227,155,0.18))",
-                border: "1px solid rgba(246,199,111,0.34)",
-                boxShadow: "0 0 34px rgba(246,199,111,0.12), inset 0 0 34px rgba(0,0,0,0.62)",
-              }}
-            />
-            <div className="absolute inset-[17%] rounded-full" style={{ border: "1px solid rgba(246,199,111,0.18)" }} />
-            <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2" style={{ background: "linear-gradient(180deg, transparent, rgba(246,199,111,0.28), transparent)" }} />
-            <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2" style={{ background: "linear-gradient(90deg, transparent, rgba(246,199,111,0.28), transparent)" }} />
+                border: "3px solid rgba(174,124,44,0.62)",
+                boxShadow: "0 0 30px rgba(174,124,44,0.14), 0 0 70px rgba(0,0,0,0.60)",
+              }} />
 
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 34, repeat: Infinity, ease: "linear" }}
-              className="absolute h-[112px] w-[112px] rounded-full"
-              style={{ border: "1px solid rgba(246,199,111,0.26)", boxShadow: "0 0 22px rgba(56,189,248,0.12)" }}
-            />
-            <div className="absolute flex h-[70px] w-[70px] items-center justify-center rounded-full" style={{ background: "radial-gradient(circle, rgba(246,199,111,0.20), rgba(4,8,18,0.92))", border: "1px solid rgba(246,199,111,0.48)" }}>
-              <Sparkles size={24} style={{ color: "#f8d99b", filter: "drop-shadow(0 0 8px rgba(246,199,111,0.44))" }} />
+            {/* Quadrant fills — overflow:hidden clips them to the circle */}
+            <div className="absolute inset-0 rounded-full overflow-hidden">
+              {/* Top-left: Calm — deep indigo */}
+              <div className="absolute" style={{ width: "50%", height: "50%", top: 0, left: 0, background: "radial-gradient(circle at 85% 85%, rgba(28,28,130,0.92) 0%, rgba(5,7,38,0.98) 70%)" }} />
+              {/* Top-right: Train — deep crimson */}
+              <div className="absolute" style={{ width: "50%", height: "50%", top: 0, right: 0, background: "radial-gradient(circle at 15% 85%, rgba(95,10,10,0.92) 0%, rgba(30,4,4,0.98) 70%)" }} />
+              {/* Bottom-left: Move — deep forest */}
+              <div className="absolute" style={{ width: "50%", height: "50%", bottom: 0, left: 0, background: "radial-gradient(circle at 85% 15%, rgba(6,58,22,0.92) 0%, rgba(2,18,7,0.98) 70%)" }} />
+              {/* Bottom-right: Restore — deep teal */}
+              <div className="absolute" style={{ width: "50%", height: "50%", bottom: 0, right: 0, background: "radial-gradient(circle at 15% 15%, rgba(6,58,62,0.92) 0%, rgba(2,18,20,0.98) 70%)" }} />
             </div>
 
-            {commandItems.map((item) => {
-              const active = activeCommandId === item.id;
-              const Icon = item.icon;
+            {/* Gold cross dividers */}
+            <div className="absolute left-1/2 top-[4%] bottom-[4%] w-px -translate-x-1/2 pointer-events-none"
+              style={{ background: "linear-gradient(180deg, transparent, rgba(192,148,55,0.72) 18%, rgba(215,168,68,0.92) 50%, rgba(192,148,55,0.72) 82%, transparent)" }} />
+            <div className="absolute top-1/2 left-[4%] right-[4%] h-px -translate-y-1/2 pointer-events-none"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(192,148,55,0.72) 18%, rgba(215,168,68,0.92) 50%, rgba(192,148,55,0.72) 82%, transparent)" }} />
+
+            {/* The 4 quadrant action buttons */}
+            {([
+              { id: "calm",     actId: "phase1_meditation",  label: "CALM",    sub: "Breath",   Icon: Brain,  color: "#818cf8", card: calmCard,     isDone: isActivityDone("phase1_meditation"), pos: { top: "25%", left: "25%" } },
+              { id: "strength", actId: "phase1_strength",    label: "TRAIN",   sub: "Circuit",  Icon: Swords, color: "#f87171", card: strengthCard, isDone: isActivityDone("phase1_strength"),   pos: { top: "25%", left: "75%" } },
+              { id: "agility",  actId: "phase1_agility",     label: "MOVE",    sub: "Agility",  Icon: Zap,    color: "#34d399", card: agilityCard,  isDone: isActivityDone("phase1_agility"),    pos: { top: "75%", left: "25%" } },
+              { id: "vitality", actId: VITALITY_ACTIVITY_ID, label: "RESTORE", sub: "Recovery", Icon: Heart,  color: "#22d3ee", card: vitalityCard, isDone: vitalityDone,                        pos: { top: "75%", left: "75%" } },
+            ] as const).map(({ id, label, Icon, color, card, isDone, pos }) => {
+              const isActive = !allDone && activeCommandId === id;
               return (
                 <motion.button
-                  key={item.id}
+                  key={id}
                   type="button"
-                  onClick={item.action}
-                  whileTap={{ scale: 0.95 }}
-                  className={`absolute ${positionClass[item.position]} flex h-[84px] w-[84px] flex-col items-center justify-center gap-0.5 rounded-full px-1 text-center`}
-                  style={{
-                    background: active
-                      ? `radial-gradient(circle at 50% 35%, ${item.color}32, rgba(4,8,18,0.94))`
-                      : "radial-gradient(circle at 50% 35%, rgba(255,255,255,0.07), rgba(4,8,18,0.92))",
-                    border: `1px solid ${active ? item.color : "rgba(246,199,111,0.30)"}`,
-                    boxShadow: active ? `0 0 28px ${item.color}38, inset 0 1px 0 rgba(255,255,255,0.10)` : "inset 0 1px 0 rgba(255,255,255,0.07)",
-                    color: active ? "#ffffff" : "#f8ead0",
-                  }}
-                  data-testid={`command-${item.id}`}
+                  onClick={resolveAction(card)}
+                  whileTap={{ scale: 0.91 }}
+                  className="absolute flex flex-col items-center gap-1.5"
+                  style={{ top: pos.top, left: pos.left, transform: "translate(-50%, -50%)" }}
+                  data-testid={`command-${id}`}
                 >
-                  <Icon size={20} style={{ color: item.color, filter: active ? `drop-shadow(0 0 8px ${item.color})` : "none" }} />
-                  <span className="font-display text-[10px] font-bold uppercase leading-tight tracking-[0.08em]">{item.label}</span>
-                  <span className="text-[7px] font-bold uppercase leading-none tracking-[0.12em]" style={{ color: "rgba(248,234,208,0.50)" }}>{item.subtitle}</span>
+                  <div className="flex items-center justify-center rounded-full"
+                    style={{
+                      width: 50, height: 50,
+                      background: isDone
+                        ? "rgba(34,197,94,0.14)"
+                        : isActive
+                          ? `radial-gradient(circle at 40% 35%, ${color}26, rgba(4,8,20,0.82))`
+                          : "rgba(255,255,255,0.04)",
+                      border: `2px solid ${isDone ? "rgba(34,197,94,0.50)" : isActive ? color : "rgba(255,255,255,0.10)"}`,
+                      boxShadow: isActive
+                        ? `0 0 24px ${color}52, 0 0 48px ${color}1a`
+                        : isDone
+                          ? "0 0 14px rgba(34,197,94,0.30)"
+                          : "none",
+                    }}>
+                    {isDone
+                      ? <CheckCircle2 size={22} style={{ color: "#22c55e" }} />
+                      : <Icon size={22} style={{ color: isActive ? color : "rgba(255,255,255,0.42)", filter: isActive ? `drop-shadow(0 0 7px ${color})` : "none" }} />}
+                  </div>
+                  <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em]"
+                    style={{ color: isDone ? "#4ade80" : isActive ? "#ffffff" : "rgba(248,234,208,0.62)", textShadow: isActive ? `0 0 10px ${color}` : "none" }}>
+                    {label}
+                  </span>
                 </motion.button>
               );
             })}
+
+            {/* Center compass rose */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full"
+              style={{
+                width: 64, height: 64,
+                background: "radial-gradient(circle at 40% 35%, rgba(192,148,55,0.24), rgba(3,6,16,0.96))",
+                border: "2px solid rgba(192,148,55,0.70)",
+                boxShadow: "0 0 24px rgba(192,148,55,0.20), inset 0 1px 0 rgba(255,255,255,0.14)",
+              }}>
+              <Compass size={28} style={{ color: "#f8d99b", filter: "drop-shadow(0 0 6px rgba(248,217,155,0.44))" }} />
+            </div>
           </div>
 
-          <div className="relative z-10 mt-5 rounded-2xl p-3" style={{ background: "rgba(2,6,18,0.64)", border: "1px solid rgba(246,199,111,0.20)" }}>
-            <p className="text-center text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: "rgba(248,234,208,0.64)" }}>
+          {/* ── Next Best Action ── */}
+          <div className="relative z-10 mt-4 rounded-2xl p-3"
+            style={{ background: "rgba(2,6,18,0.65)", border: "1px solid rgba(246,199,111,0.20)" }}>
+            <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.26em]"
+              style={{ color: "rgba(248,234,208,0.58)" }}>
               Next Best Action
             </p>
             <button
               type="button"
               onClick={allDone ? undefined : handleFeaturedTap}
-              className="mt-3 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left"
-              style={{ background: "rgba(255,255,255,0.045)", border: `1px solid ${nextActionColor}40` }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left"
+              style={{ background: "rgba(255,255,255,0.042)", border: `1px solid ${nextActionColor}38` }}
               data-testid="next-best-action"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: `${nextActionColor}18`, color: nextActionColor, border: `1px solid ${nextActionColor}40` }}>
-                {allDone ? <CheckCircle2 size={21} /> : featuredCard ? <featuredCard.icon size={21} /> : <BookOpen size={21} />}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{ background: `${nextActionColor}18`, border: `1px solid ${nextActionColor}3a` }}>
+                {allDone
+                  ? <CheckCircle2 size={20} style={{ color: "#22c55e" }} />
+                  : featuredCard
+                    ? <featuredCard.icon size={20} style={{ color: nextActionColor }} />
+                    : <BookOpen size={20} style={{ color: nextActionColor }} />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[18px] font-bold" style={{ color: "#fff8e8" }}>{nextActionTitle}</p>
-                <p className="mt-0.5 truncate text-[11px]" style={{ color: "rgba(248,234,208,0.58)" }}>{nextActionSubtitle}</p>
+                <p className="truncate text-[17px] font-bold" style={{ color: "#fff8e8" }}>{nextActionTitle}</p>
+                <p className="mt-0.5 truncate text-[11px]" style={{ color: "rgba(248,234,208,0.52)" }}>{nextActionSubtitle}</p>
               </div>
-              {!allDone && <ArrowRight size={18} style={{ color: "#f6c76f" }} />}
+              {!allDone && <ChevronRight size={18} style={{ color: "#f6c76f" }} />}
             </button>
           </div>
 
+          {/* ── START button ── */}
           <motion.button
             type="button"
             onClick={allDone ? undefined : handleFeaturedTap}
-            whileTap={!allDone ? { scale: 0.985 } : undefined}
-            className="relative z-10 mt-4 flex min-h-[58px] w-full items-center justify-center overflow-hidden rounded-2xl font-display text-[22px] font-bold uppercase tracking-[0.16em]"
+            whileTap={!allDone ? { scale: 0.984 } : undefined}
+            className="relative z-10 mt-3 flex min-h-[58px] w-full items-center justify-center overflow-hidden rounded-2xl font-display text-[22px] font-bold uppercase tracking-[0.18em]"
             style={{
               background: allDone
                 ? "linear-gradient(90deg, rgba(34,197,94,0.58), rgba(88,227,155,0.70))"
-                : "linear-gradient(90deg, rgba(20,72,150,0.96), rgba(23,110,190,0.98), rgba(10,64,145,0.96))",
-              border: "1px solid rgba(246,199,111,0.42)",
+                : "linear-gradient(90deg, rgba(8,38,120,0.97), rgba(18,86,174,0.99), rgba(6,48,140,0.97))",
+              border: "1px solid rgba(192,148,55,0.52)",
               color: "#fff8e8",
-              boxShadow: "0 12px 34px rgba(56,189,248,0.20), inset 0 1px 0 rgba(255,255,255,0.18)",
-              textShadow: "0 2px 8px rgba(0,0,0,0.46)",
+              boxShadow: "0 10px 36px rgba(10,60,200,0.26), inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.35)",
+              textShadow: "0 2px 10px rgba(0,0,0,0.50)",
             }}
             data-testid="button-start-command"
           >
-            <span className="pointer-events-none absolute inset-x-8 top-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent)" }} />
+            <span className="pointer-events-none absolute inset-x-6 top-0 h-px"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.62), transparent)" }} />
+            <span className="pointer-events-none absolute inset-0"
+              style={{ background: "linear-gradient(90deg, transparent 20%, rgba(255,255,255,0.18) 50%, transparent 80%)", animation: "buttonSweep 6s ease-in-out 1s infinite" }} />
+            <span className="absolute left-4 text-[11px]" style={{ color: "#c8942c" }}>✦</span>
+            <span className="absolute right-4 text-[11px]" style={{ color: "#c8942c" }}>✦</span>
             {startLabel}
           </motion.button>
-
-          <div className="relative z-10 mt-4 grid grid-cols-3 gap-2">
-            {[
-              ["LV", lvl],
-              ["XP", `${xp.exp}/${xp.maxExp}`],
-              ["STREAK", streak],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl px-2 py-2 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(246,199,111,0.14)" }}>
-                <p className="text-[8px] font-bold uppercase tracking-[0.18em]" style={{ color: "rgba(248,234,208,0.44)" }}>{label}</p>
-                <p className="mt-1 truncate text-[13px] font-black tabular-nums" style={{ color: "#f8d99b" }}>{value}</p>
-              </div>
-            ))}
-          </div>
         </motion.section>
 
         <div className="hidden" aria-hidden="true">
-
-        {/* ── PROFILE HUD ───────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.30, delay: 0.04 }}
-          className="rounded-2xl relative overflow-hidden"
-          style={{
-            background: panelBg,
-            border: `1px solid ${panelBorder}`,
-            backdropFilter: "blur(22px) saturate(1.18)",
-            boxShadow: panelShadow,
-            padding: "14px 16px",
-          }}
-          data-testid="daily-status-section"
-        >
-          <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
-            style={{
-              background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.055) 42%, transparent 100%)",
-              opacity: glossOpacity,
-            }} />
-          <div className="absolute -top-12 -left-28 h-28 w-72 pointer-events-none"
-            style={{
-              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)",
-              filter: "blur(10px)",
-              animation: "cardGlossDrift 9s ease-in-out infinite",
-            }} />
-          <div className="relative z-10 flex items-center gap-3">
-            {/* Avatar */}
-            <button
-              onClick={() => (homeData.isOnboardingComplete || allDone) && setShowAvatar(true)}
-              disabled={!homeData.isOnboardingComplete && !allDone}
-              data-testid="button-avatar"
-              className="relative shrink-0 transition-transform duration-150 active:scale-90 disabled:active:scale-100">
-              {hasStreak && (
-                <div className="absolute inset-[-5px] rounded-full pointer-events-none"
-                  style={{
-                    border: `1.5px solid ${primary}`,
-                    boxShadow: `0 0 12px ${primary}50`,
-                    animation: "streakRingPulse 2.4s ease-in-out infinite",
-                  }} />
-              )}
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-xl relative z-10"
-                style={{
-                  background: `linear-gradient(135deg,${primary}28,${primary}0c)`,
-                  border: `1.5px solid ${primary}40`,
-                  boxShadow: hasStreak ? `0 0 20px ${primary}45` : `0 0 8px ${primary}22`,
-                }}
-              >
-                {avatarIcon}
-              </div>
-              <div
-                className="absolute -bottom-[2px] -right-[2px] w-[18px] h-[18px] rounded-full flex items-center justify-center text-[7px] font-bold leading-none z-20"
-                style={{ backgroundColor: primary, color: isNeonEmp ? fae.ink : "#000",
-                  boxShadow: `0 0 8px ${primary}60` }}
-                data-testid="text-player-level"
-              >
-                {lvl}
-              </div>
-            </button>
-
-            {/* Level + XP section */}
-            <div className="flex-1 min-w-0" data-testid="xp-progress-section">
-              {/* Row 1: LEVEL label + number + XP counter */}
-              <div className="flex items-baseline justify-between mb-[7px]">
-                <div className="flex items-baseline gap-[5px]">
-                  <span className="text-[9px] font-bold tracking-[0.22em] uppercase leading-none"
-                    style={{ color: cardMutedCol, opacity: 0.78 }}>LEVEL</span>
-                  <span className="text-[22px] font-bold leading-none tabular-nums"
-                    style={{ color: primary, lineHeight: 1, textShadow: `0 0 12px ${primary}60` }}
-                    data-testid="stat-level">
-                    {lvl}
-                  </span>
-                  {hasStreak && (
-                    <span
-                      className="flex items-center gap-[3px] text-[8px] font-bold px-[5px] py-[2px] rounded-full ml-1"
-                      style={{ background: `${primary}16`, color: primary, border: `1px solid ${primary}24` }}
-                      data-testid="stat-streak"
-                    >
-                      <Flame size={7} /> {streak}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[11px] font-mono tabular-nums leading-none font-semibold">
-                  <span style={{ color: primary, textShadow: `0 0 8px ${primary}60` }}>XP {xp.exp}</span>
-                  <span style={{ color: "rgba(205,216,238,0.70)" }}> / {xp.maxExp}</span>
-                </span>
-              </div>
-
-              {/* Row 2: XP bar */}
-              <div className="relative">
-                {hasStreak && (
-                  <div className="absolute inset-0 rounded-full pointer-events-none"
-                    style={{ boxShadow: `0 0 10px ${primary}30`, animation: "streakBarGlow 2.4s ease-in-out infinite" }} />
-                )}
-                {isIronSov ? (
-                  <SegBar fromPct={xpFrom} pct={xp.percent} fill={hudCyan} glow={hudCyanG} />
-                ) : isNeonEmp ? (
-                  <PastelBar pct={xp.percent} />
-                ) : (
-                  <motion.div className="w-full h-[7px] rounded-full overflow-hidden relative"
-                    animate={{
-                      boxShadow: [
-                        `0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`,
-                        `0 0 18px ${colors.primaryGlow}90, 0 0 32px ${colors.primaryGlow}30, inset 0 1px 2px rgba(0,0,0,0.40)`,
-                        `0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`,
-                      ],
-                    }}
-                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                    style={{ backgroundColor: "rgba(255,255,255,0.07)" }}
-                    data-testid="xp-bar-track">
-                    <motion.div className="h-full rounded-full"
-                      initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
-                      transition={{ duration: 1.0, ease: [0.22, 0.61, 0.36, 1] }}
-                      style={{
-                        background: `linear-gradient(90deg, ${colors.primary}dd, ${colors.primary}, ${colors.primary}cc)`,
-                        boxShadow: `0 0 12px ${colors.primaryGlow}, 0 0 4px ${colors.primaryGlow}`,
-                      }}
-                      data-testid="xp-bar-fill" />
-                    <div className="absolute inset-0 rounded-full pointer-events-none" style={{
-                      background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
-                      backgroundSize: "200% 100%",
-                      animation: "xpShimmer 3s linear infinite",
-                    }} />
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Row 3: path label + theme button */}
-              <div className="flex items-center justify-between mt-[6px]">
-                <span className="text-[9px] tracking-[0.10em] leading-none flex items-center gap-1"
-                  style={{ color: primary, opacity: 0.80 }}>
-                  <span style={{ fontSize: "7px" }}>◆</span> {pathCfg.displayLabel}
-                </span>
-                <button onClick={() => setShowCustomize(true)} data-testid="button-customize"
-                  className="flex items-center justify-center w-[22px] h-[22px] rounded-lg transition-all duration-150 active:scale-90"
-                  style={{ color: mutedCol, backgroundColor: `${primary}10`, border: `1px solid ${primary}16` }}>
-                  <Palette size={10} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
 
         {/* ── SYSTEM CARD ───────────────────────────────────────────────── */}
         <motion.div
