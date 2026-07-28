@@ -5,7 +5,7 @@ import {
   Brain, CheckCircle2, Sparkles, X, Palette,
   ArrowRight, BookOpen, Zap, Shield, Flame,
   ChevronLeft, ChevronRight,
-  Heart, Moon, Swords, Compass,
+  Heart, Moon, Swords, Compass, Crosshair,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -1163,14 +1163,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         }
       `}</style>
 
-      <div className="flex flex-col gap-2 px-4 py-2 max-w-md mx-auto w-full relative" data-testid="day6-home">
+      <div className="flex flex-col px-2 max-w-md mx-auto w-full relative" style={{ height: "calc(100dvh - 9rem)" }} data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.32, ease: "easeOut" }}
-          className="relative overflow-hidden rounded-[28px] px-4 pb-3 pt-3"
+          className="relative flex flex-col flex-1 overflow-hidden rounded-[28px] px-4 pb-3 pt-3 min-h-0"
           style={{
             background: "linear-gradient(180deg, rgba(6,10,24,0.97) 0%, rgba(3,6,16,0.98) 50%, rgba(2,4,12,0.99) 100%)",
             border: "1.5px solid rgba(192,148,55,0.72)",
@@ -1216,7 +1216,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
 
           {/* ── Daily Progress ── */}
-          <div className="relative z-10 mt-3">
+          <div className="relative z-10 mt-2">
             <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.28em]" style={{ color: "rgba(248,234,208,0.60)" }}>
               Daily Progress
             </p>
@@ -1244,7 +1244,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           </div>
 
           {/* ── 4-Quadrant Command Wheel ── */}
-          <div className="relative z-10 mx-auto mt-2 w-full max-w-[234px]" style={{ aspectRatio: "1" }}>
+          <div className="relative z-10 flex-1 flex items-center justify-center min-h-0 mt-1">
+          <div className="relative w-full max-w-[min(46vw,270px)]" style={{ aspectRatio: "1" }}>
             {/* Outer glow halo */}
             <div className="absolute rounded-full pointer-events-none"
               style={{
@@ -1261,12 +1262,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
             {/* Quadrant fills — overflow:hidden clips them to the circle */}
             <div className="absolute inset-0 rounded-full overflow-hidden">
-              {/* Top-left: Calm — deep indigo */}
-              <div className="absolute" style={{ width: "50%", height: "50%", top: 0, left: 0, background: "radial-gradient(circle at 85% 85%, rgba(28,28,130,0.92) 0%, rgba(5,7,38,0.98) 70%)" }} />
+              {/* Top-left: Focus/Intel — deep navy blue */}
+              <div className="absolute" style={{ width: "50%", height: "50%", top: 0, left: 0, background: "radial-gradient(circle at 85% 85%, rgba(10,22,110,0.94) 0%, rgba(4,8,40,0.98) 70%)" }} />
               {/* Top-right: Train — deep crimson */}
               <div className="absolute" style={{ width: "50%", height: "50%", top: 0, right: 0, background: "radial-gradient(circle at 15% 85%, rgba(95,10,10,0.92) 0%, rgba(30,4,4,0.98) 70%)" }} />
-              {/* Bottom-left: Move — deep forest */}
-              <div className="absolute" style={{ width: "50%", height: "50%", bottom: 0, left: 0, background: "radial-gradient(circle at 85% 15%, rgba(6,58,22,0.92) 0%, rgba(2,18,7,0.98) 70%)" }} />
+              {/* Bottom-left: Calm — deep indigo/purple */}
+              <div className="absolute" style={{ width: "50%", height: "50%", bottom: 0, left: 0, background: "radial-gradient(circle at 85% 15%, rgba(28,16,100,0.92) 0%, rgba(8,5,36,0.98) 70%)" }} />
               {/* Bottom-right: Restore — deep teal */}
               <div className="absolute" style={{ width: "50%", height: "50%", bottom: 0, right: 0, background: "radial-gradient(circle at 15% 15%, rgba(6,58,62,0.92) 0%, rgba(2,18,20,0.98) 70%)" }} />
             </div>
@@ -1279,25 +1280,26 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
             {/* The 4 quadrant action buttons */}
             {([
-              { id: "calm",     actId: "phase1_meditation",  label: "CALM",    sub: "Breath",   Icon: Brain,  color: "#818cf8", card: calmCard,     isDone: isActivityDone("phase1_meditation"), pos: { top: "25%", left: "25%" } },
-              { id: "strength", actId: "phase1_strength",    label: "TRAIN",   sub: "Circuit",  Icon: Swords, color: "#f87171", card: strengthCard, isDone: isActivityDone("phase1_strength"),   pos: { top: "25%", left: "75%" } },
-              { id: "agility",  actId: "phase1_agility",     label: "MOVE",    sub: "Agility",  Icon: Zap,    color: "#34d399", card: agilityCard,  isDone: isActivityDone("phase1_agility"),    pos: { top: "75%", left: "25%" } },
-              { id: "vitality", actId: VITALITY_ACTIVITY_ID, label: "RESTORE", sub: "Recovery", Icon: Heart,  color: "#22d3ee", card: vitalityCard, isDone: vitalityDone,                        pos: { top: "75%", left: "75%" } },
+              { id: "intelligence", actId: INTELLIGENCE_ACTIVITY_ID, label: "FOCUS",   sub: "Intel",    Icon: Crosshair, color: "#60a5fa", card: intelligenceCard, isDone: intelligenceDone, pos: { top: "25%", left: "25%" } },
+              { id: "strength",     actId: "phase1_strength",         label: "TRAIN",   sub: "Circuit",  Icon: Swords,    color: "#f87171", card: strengthCard,    isDone: isActivityDone("phase1_strength"), pos: { top: "25%", left: "75%" } },
+              { id: "calm",         actId: "phase1_meditation",        label: "CALM",    sub: "Breath",   Icon: Brain,     color: "#a78bfa", card: calmCard,        isDone: isActivityDone("phase1_meditation"), pos: { top: "75%", left: "25%" } },
+              { id: "vitality",     actId: VITALITY_ACTIVITY_ID,       label: "RESTORE", sub: "Recovery", Icon: Heart,     color: "#22d3ee", card: vitalityCard,    isDone: vitalityDone, pos: { top: "75%", left: "75%" } },
             ] as const).map(({ id, label, Icon, color, card, isDone, pos }) => {
-              const isActive = !allDone && activeCommandId === id;
+              const isActive = !allDone && (activeCommandId === id || (id === "intelligence" && activeCommandId === "intelligence"));
+              const onTap = id === "intelligence" ? () => setShowIntelligence(true) : resolveAction(card);
               return (
                 <motion.button
                   key={id}
                   type="button"
-                  onClick={resolveAction(card)}
+                  onClick={onTap}
                   whileTap={{ scale: 0.91 }}
-                  className="absolute flex flex-col items-center gap-1.5"
+                  className="absolute flex flex-col items-center gap-1"
                   style={{ top: pos.top, left: pos.left, transform: "translate(-50%, -50%)" }}
                   data-testid={`command-${id}`}
                 >
                   <div className="flex items-center justify-center rounded-full"
                     style={{
-                      width: 46, height: 46,
+                      width: 44, height: 44,
                       background: isDone
                         ? "rgba(34,197,94,0.16)"
                         : isActive
@@ -1311,10 +1313,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                           : `0 0 14px ${color}28`,
                     }}>
                     {isDone
-                      ? <CheckCircle2 size={20} style={{ color: "#22c55e" }} />
-                      : <Icon size={20} style={{ color: isActive ? color : `${color}cc`, filter: `drop-shadow(0 0 ${isActive ? "8px" : "4px"} ${color}${isActive ? "cc" : "66"})` }} />}
+                      ? <CheckCircle2 size={19} style={{ color: "#22c55e" }} />
+                      : <Icon size={19} style={{ color: isActive ? color : `${color}cc`, filter: `drop-shadow(0 0 ${isActive ? "8px" : "4px"} ${color}${isActive ? "cc" : "66"})` }} />}
                   </div>
-                  <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em]"
+                  <span className="font-display text-[9px] font-bold uppercase tracking-[0.12em]"
                     style={{ color: isDone ? "#4ade80" : isActive ? "#ffffff" : `${color}cc`, textShadow: `0 0 8px ${color}${isActive ? "88" : "44"}` }}>
                     {label}
                   </span>
@@ -1325,42 +1327,43 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             {/* Center compass rose */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full"
               style={{
-                width: 64, height: 64,
+                width: 56, height: 56,
                 background: "radial-gradient(circle at 40% 35%, rgba(192,148,55,0.24), rgba(3,6,16,0.96))",
                 border: "2px solid rgba(192,148,55,0.70)",
                 boxShadow: "0 0 24px rgba(192,148,55,0.20), inset 0 1px 0 rgba(255,255,255,0.14)",
               }}>
-              <Compass size={28} style={{ color: "#f8d99b", filter: "drop-shadow(0 0 6px rgba(248,217,155,0.44))" }} />
+              <Compass size={24} style={{ color: "#f8d99b", filter: "drop-shadow(0 0 6px rgba(248,217,155,0.44))" }} />
             </div>
           </div>
+          </div>{/* end flex-1 wheel wrapper */}
 
           {/* ── Next Best Action ── */}
-          <div className="relative z-10 mt-2 rounded-2xl p-2.5"
+          <div className="relative z-10 mt-1 rounded-2xl p-2"
             style={{ background: "rgba(2,6,18,0.72)", border: "1px solid rgba(192,148,55,0.32)" }}>
-            <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.26em]"
+            <p className="mb-1.5 text-center text-[9px] font-bold uppercase tracking-[0.26em]"
               style={{ color: "rgba(248,234,208,0.58)" }}>
               Next Best Action
             </p>
             <button
               type="button"
               onClick={allDone ? undefined : handleFeaturedTap}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left"
               style={{ background: "rgba(255,255,255,0.042)", border: `1px solid ${nextActionColor}38` }}
               data-testid="next-best-action"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                 style={{ background: `${nextActionColor}18`, border: `1px solid ${nextActionColor}3a` }}>
                 {allDone
-                  ? <CheckCircle2 size={20} style={{ color: "#22c55e" }} />
+                  ? <CheckCircle2 size={18} style={{ color: "#22c55e" }} />
                   : featuredCard
-                    ? <featuredCard.icon size={20} style={{ color: nextActionColor }} />
-                    : <BookOpen size={20} style={{ color: nextActionColor }} />}
+                    ? <featuredCard.icon size={18} style={{ color: nextActionColor }} />
+                    : <BookOpen size={18} style={{ color: nextActionColor }} />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[17px] font-bold" style={{ color: "#fff8e8" }}>{nextActionTitle}</p>
-                <p className="mt-0.5 truncate text-[11px]" style={{ color: "rgba(248,234,208,0.52)" }}>{nextActionSubtitle}</p>
+                <p className="truncate text-[15px] font-bold leading-snug" style={{ color: "#fff8e8" }}>{nextActionTitle}</p>
+                <p className="truncate text-[11px] leading-none mt-0.5" style={{ color: "rgba(248,234,208,0.52)" }}>{nextActionSubtitle}</p>
               </div>
-              {!allDone && <ChevronRight size={18} style={{ color: "#f6c76f" }} />}
+              {!allDone && <ChevronRight size={16} style={{ color: "#f6c76f" }} />}
             </button>
           </div>
 
@@ -1369,7 +1372,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             type="button"
             onClick={allDone ? undefined : handleFeaturedTap}
             whileTap={!allDone ? { scale: 0.984 } : undefined}
-            className="relative z-10 mt-2 flex min-h-[52px] w-full items-center justify-center overflow-hidden rounded-2xl font-display text-[20px] font-bold uppercase tracking-[0.18em]"
+            className="relative z-10 mt-1.5 flex min-h-[48px] w-full items-center justify-center overflow-hidden rounded-2xl font-display text-[19px] font-bold uppercase tracking-[0.18em]"
             style={{
               background: allDone
                 ? "linear-gradient(90deg, rgba(34,197,94,0.58), rgba(88,227,155,0.70))"
