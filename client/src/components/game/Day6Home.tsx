@@ -5,7 +5,7 @@ import {
   Brain, CheckCircle2, Sparkles, X, Palette,
   ArrowRight, BookOpen, Zap, Shield, Flame,
   ChevronLeft, ChevronRight,
-  Heart, Moon, Swords, Compass, Crosshair,
+  Heart, Moon, Swords, Compass, Crosshair, Leaf, FlaskConical,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -1163,241 +1163,240 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         }
       `}</style>
 
-      <div className="flex flex-col px-2 max-w-md mx-auto w-full relative" style={{ height: "calc(100dvh - 9rem)" }} data-testid="day6-home">
+      {/* ── Mission Command ── fixed height = viewport minus top-bar + bottom-nav */}
+      <div className="flex flex-col px-2 max-w-md mx-auto w-full" style={{ height: "calc(100dvh - 9rem)" }} data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
         <motion.section
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.32, ease: "easeOut" }}
-          className="relative flex flex-col flex-1 overflow-hidden rounded-[28px] px-4 pb-3 pt-3 min-h-0"
+          transition={{ duration: 0.28, ease: "easeOut" }}
+          className="relative flex flex-col flex-1 min-h-0 overflow-hidden"
           style={{
-            background: "linear-gradient(180deg, rgba(6,10,24,0.97) 0%, rgba(3,6,16,0.98) 50%, rgba(2,4,12,0.99) 100%)",
-            border: "1.5px solid rgba(192,148,55,0.72)",
-            boxShadow: "0 0 0 1px rgba(192,148,55,0.12), 0 2px 40px rgba(0,0,0,0.72), 0 0 60px rgba(192,148,55,0.08), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.50)",
-            color: "#f8ead0",
+            borderRadius: "22px",
+            background: "radial-gradient(ellipse at 50% 0%, rgba(12,20,58,0.99) 0%, rgba(4,6,18,1) 55%, rgba(2,3,10,1) 100%)",
+            border: "1.5px solid rgba(185,142,48,0.70)",
+            boxShadow: "0 0 0 1px rgba(185,142,48,0.12), 0 6px 60px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.07)",
+            color: "#f0e8d8",
           }}
           data-testid="mission-command-home"
         >
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: "radial-gradient(circle at 50% 30%, rgba(56,189,248,0.14), transparent 34%), radial-gradient(circle at 80% 80%, rgba(88,227,155,0.10), transparent 35%)",
-            }}
-          />
-          <div
-            className="pointer-events-none absolute inset-x-8 top-0 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(246,199,111,0.58), transparent)" }}
-          />
+          {/* Ambient top-center blue radiance */}
+          <div className="pointer-events-none absolute inset-0"
+            style={{ background: "radial-gradient(ellipse at 50% -5%, rgba(40,80,220,0.10) 0%, transparent 55%)" }} />
+          {/* Gold top edge line */}
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(220,175,65,0.50), transparent)" }} />
 
-          {/* ── Header ── */}
-          <div className="relative z-10 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setShowCustomize(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full"
-              style={{ border: "1px solid rgba(246,199,111,0.26)", background: "rgba(255,255,255,0.04)", color: "#f6c76f" }}
-              aria-label="Customize"
-            >
-              <Palette size={16} />
+          {/* ── HEADER ── */}
+          <div className="relative z-10 flex items-center justify-between px-4 pt-3">
+            <button type="button" onClick={() => setShowCustomize(true)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full active:scale-90 transition-transform"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(185,142,48,0.35)", color: "#c4a245" }}
+              aria-label="Customize">
+              <ChevronLeft size={17} />
             </button>
-            <p className="font-display text-[14px] font-bold uppercase tracking-[0.10em] whitespace-nowrap" style={{ color: "#f8d99b" }}>
+            <p className="font-display text-[13px] font-black uppercase tracking-[0.22em] whitespace-nowrap"
+              style={{ color: "#e8c860", textShadow: "0 0 24px rgba(232,200,96,0.45), 0 1px 0 rgba(0,0,0,0.60)" }}>
               Mission Command
             </p>
-            <button
-              type="button"
-              onClick={() => setShowAvatar(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-base"
-              style={{ border: "1px solid rgba(246,199,111,0.26)", background: "rgba(255,255,255,0.04)" }}
-              aria-label="Hero"
-            >
-              {avatarIcon}
+            <button type="button" onClick={() => setShowAvatar(true)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full active:scale-90 transition-transform"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(185,142,48,0.35)", color: "#c4a245" }}
+              aria-label="Hero">
+              <span className="text-sm leading-none select-none">{avatarIcon}</span>
             </button>
           </div>
 
-          {/* ── Daily Progress ── */}
-          <div className="relative z-10 mt-2">
-            <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.28em]" style={{ color: "rgba(248,234,208,0.60)" }}>
-              Daily Progress
-            </p>
+          {/* ── DAILY PROGRESS ── */}
+          <div className="relative z-10 px-4 pt-2">
+            <p className="mb-1.5 text-center text-[9px] font-bold uppercase tracking-[0.32em]"
+              style={{ color: "rgba(220,175,65,0.52)" }}>Daily Progress</p>
             <div className="flex items-center gap-2">
-              <div className="flex flex-1 gap-1.5 rounded-full px-1.5 py-1" style={{ background: "rgba(0,0,0,0.34)", border: "1px solid rgba(246,199,111,0.22)" }}>
-                {Array.from({ length: Math.max(totalMissionCount, 1) }).slice(0, 5).map((_, i) => {
-                  const filled = i < Math.min(completedMissionCount, 5);
-                  const current = i === Math.min(completedMissionCount, 4) && !allDone;
+              {/* Segment track */}
+              <div className="flex flex-1 items-center gap-[3px] rounded-[6px] px-1 py-1"
+                style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(185,142,48,0.20)" }}>
+                {Array.from({ length: Math.max(totalMissionCount, 4) }).slice(0, 4).map((_, i) => {
+                  const filled = i < Math.min(completedMissionCount, 4);
+                  const current = i === Math.min(completedMissionCount, 3) && !allDone;
                   return (
-                    <div key={i} className="flex-1 h-2.5 rounded-full"
+                    <div key={i} className="flex-1 h-[10px] rounded-[3px]"
                       style={{
                         background: filled
-                          ? "linear-gradient(90deg, #38bdf8, #7dd3fc)"
-                          : current ? "rgba(246,199,111,0.32)" : "rgba(255,255,255,0.07)",
-                        boxShadow: filled ? "0 0 10px rgba(56,189,248,0.46)" : "none",
+                          ? "linear-gradient(90deg, #1a5ef5 0%, #5aaeff 100%)"
+                          : current ? "rgba(185,142,48,0.28)" : "rgba(255,255,255,0.06)",
+                        boxShadow: filled ? "0 0 8px rgba(26,100,245,0.65), 0 0 2px rgba(90,174,255,0.90)" : "none",
                       }} />
                   );
                 })}
               </div>
-              <div className="flex h-9 w-10 items-center justify-center rounded-xl text-[14px]"
-                style={{ color: "#f8d99b", border: "1px solid rgba(246,199,111,0.28)", background: "rgba(246,199,111,0.08)" }}>
-                {allDone ? <CheckCircle2 size={16} style={{ color: "#22c55e" }} /> : "🏆"}
+              {/* Chest */}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{ background: "rgba(185,142,48,0.10)", border: "1px solid rgba(185,142,48,0.35)" }}>
+                {allDone
+                  ? <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
+                  : <span className="text-[15px] leading-none">🏆</span>}
               </div>
             </div>
           </div>
 
-          {/* ── 5-Slice Command Wheel ── */}
-          <div className="relative z-10 flex-1 flex items-center justify-center min-h-0 mt-1">
-          <div className="relative max-w-[300px] w-full" style={{ aspectRatio: "1" }}>
-            {/* Outer glow halo */}
-            <div className="absolute rounded-full pointer-events-none"
-              style={{
-                inset: "-8px",
-                background: "radial-gradient(circle, transparent 55%, rgba(192,148,55,0.14) 100%)",
-                filter: "blur(8px)",
+          {/* ── 4-QUADRANT COMMAND WHEEL ── */}
+          <div className="relative z-10 flex-1 min-h-0 flex items-center justify-center px-3 py-2">
+            {/* Square wheel — capped by both card width and available height */}
+            <div className="relative"
+              style={{ width: "min(100%, 320px, calc(100dvh - 23rem))", height: "min(100%, 320px, calc(100dvh - 23rem))" }}>
+
+              {/* Outer ambient glow ring */}
+              <div className="absolute pointer-events-none rounded-full"
+                style={{ inset: "-10px", background: "radial-gradient(circle, transparent 48%, rgba(185,142,48,0.15) 100%)", filter: "blur(10px)" }} />
+
+              {/* Bronze metallic border */}
+              <div className="absolute inset-0 rounded-full pointer-events-none"
+                style={{
+                  border: "3.5px solid rgba(195,152,52,0.92)",
+                  boxShadow: "0 0 0 1px rgba(195,152,52,0.18), 0 0 28px rgba(195,152,52,0.38), 0 0 56px rgba(0,0,0,0.75), inset 0 0 22px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.13), inset 0 -1px 0 rgba(0,0,0,0.50)",
+                }} />
+
+              {/* 5-slice conic fills — clipped to circle. from -36deg puts FOCUS centered at top */}
+              <div className="absolute inset-0 rounded-full overflow-hidden" style={{
+                background: `conic-gradient(
+                  from -36deg,
+                  rgba(10,20,110,0.95)  0deg   72deg,
+                  rgba(100,8,8,0.95)    72deg  144deg,
+                  rgba(4,60,66,0.95)    144deg 216deg,
+                  rgba(20,10,90,0.95)   216deg 288deg,
+                  rgba(6,58,18,0.95)    288deg 360deg
+                )`,
               }} />
-            {/* Outer decorative ring */}
-            <div className="absolute inset-0 rounded-full pointer-events-none"
-              style={{
-                border: "4px solid rgba(192,148,55,0.85)",
-                boxShadow: "0 0 22px rgba(192,148,55,0.40), 0 0 60px rgba(0,0,0,0.80), inset 0 0 16px rgba(192,148,55,0.10)",
-              }} />
 
-            {/* 5-slice conic fills clipped to circle */}
-            {/* Slices (from -36deg = FOCUS centered at top, then CW): FOCUS/TRAIN/RESTORE/CALM/MOVE */}
-            <div className="absolute inset-0 rounded-full overflow-hidden" style={{
-              background: `conic-gradient(
-                from -36deg,
-                rgba(8,18,100,0.93)   0deg  72deg,
-                rgba(88,8,8,0.93)     72deg 144deg,
-                rgba(4,52,58,0.93)    144deg 216deg,
-                rgba(22,10,88,0.93)   216deg 288deg,
-                rgba(4,50,16,0.93)    288deg 360deg
-              )`,
-            }} />
+              {/* 5-spoke SVG gold dividers — lines from center(50,50) to rim at each 72° boundary */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
+                <line x1="50" y1="50" x2="79.4" y2="9.5"  stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
+                <line x1="50" y1="50" x2="97.6" y2="65.5" stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
+                <line x1="50" y1="50" x2="50"   y2="100"  stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
+                <line x1="50" y1="50" x2="2.4"  y2="65.5" stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
+                <line x1="50" y1="50" x2="20.6" y2="9.5"  stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
+              </svg>
 
-            {/* 5-spoke SVG dividers */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" overflow="visible">
-              {/* Lines from center(50,50) to rim at each slice boundary, angles from top */}
-              {/* 36°  */ }<line x1="50" y1="50" x2="79.4" y2="9.5"  stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
-              {/* 108° */ }<line x1="50" y1="50" x2="97.6" y2="65.5" stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
-              {/* 180° */ }<line x1="50" y1="50" x2="50"   y2="100"  stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
-              {/* 252° */ }<line x1="50" y1="50" x2="2.4"  y2="65.5" stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
-              {/* 324° */ }<line x1="50" y1="50" x2="20.6" y2="9.5"  stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
-            </svg>
+              {/* 5 slice buttons — placed at midpoint of each arc at r=32% from center */}
+              {([
+                { id: "intelligence", label: "FOCUS",   Icon: Crosshair,  color: "#5aadff", card: intelligenceCard, isDone: intelligenceDone,                   pos: { top: "18%",   left: "50%"   } },
+                { id: "strength",     label: "TRAIN",   Icon: Swords,      color: "#f47070", card: strengthCard,    isDone: isActivityDone("phase1_strength"),   pos: { top: "40.1%", left: "80.4%" } },
+                { id: "vitality",     label: "RESTORE", Icon: FlaskConical,color: "#26d4e8", card: vitalityCard,    isDone: vitalityDone,                        pos: { top: "75.9%", left: "69.4%" } },
+                { id: "calm",         label: "CALM",    Icon: Leaf,         color: "#4ad880", card: calmCard,        isDone: isActivityDone("phase1_meditation"), pos: { top: "75.9%", left: "30.6%" } },
+                { id: "agility",      label: "MOVE",    Icon: Zap,          color: "#a78bfa", card: agilityCard,     isDone: isActivityDone("phase1_agility"),    pos: { top: "40.1%", left: "19.6%" } },
+              ] as const).map(({ id, label, Icon, color, card, isDone, pos }) => {
+                const isActive = !allDone && (activeCommandId === id || (id === "intelligence" && activeCommandId === "intelligence"));
+                const onTap = id === "intelligence" ? () => setShowIntelligence(true) : resolveAction(card);
+                return (
+                  <motion.button key={id} type="button" onClick={onTap}
+                    whileTap={{ scale: 0.86 }}
+                    className="absolute flex flex-col items-center gap-1 active:opacity-90"
+                    style={{ top: pos.top, left: pos.left, transform: "translate(-50%, -50%)" }}
+                    data-testid={`command-${id}`}>
+                    {/* Icon circle */}
+                    <div className="flex items-center justify-center rounded-full"
+                      style={{
+                        width: 50, height: 50,
+                        background: isDone
+                          ? "rgba(34,197,94,0.18)"
+                          : `radial-gradient(circle at 34% 28%, ${color}22 0%, rgba(2,4,16,0.92) 68%)`,
+                        border: `1.5px solid ${isDone ? "rgba(34,197,94,0.75)" : color + (isActive ? "bb" : "55")}`,
+                        boxShadow: isDone
+                          ? "0 0 16px rgba(34,197,94,0.40)"
+                          : isActive
+                            ? `0 0 22px ${color}65, 0 0 44px ${color}20, inset 0 0 10px rgba(0,0,0,0.42)`
+                            : `0 0 12px ${color}22, inset 0 0 10px rgba(0,0,0,0.42)`,
+                      }}>
+                      {isDone
+                        ? <CheckCircle2 size={22} style={{ color: "#22c55e" }} />
+                        : <Icon size={22} style={{
+                            color: color,
+                            filter: `drop-shadow(0 0 ${isActive ? "9px" : "5px"} ${color}${isActive ? "ee" : "88"})`,
+                          }} />}
+                    </div>
+                    {/* Label */}
+                    <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] select-none"
+                      style={{
+                        color: isDone ? "#4ade80" : color,
+                        textShadow: `0 0 10px ${color}${isActive ? "aa" : "55"}`,
+                      }}>
+                      {label}
+                    </span>
+                  </motion.button>
+                );
+              })}
 
-            {/* 5 slice buttons — positions are centers of each arc at r≈32% from circle center */}
-            {([
-              { id: "intelligence", label: "FOCUS",   Icon: Crosshair, color: "#60a5fa", card: intelligenceCard, isDone: intelligenceDone,                     pos: { top: "18%",   left: "50%" } },
-              { id: "strength",     label: "TRAIN",   Icon: Swords,    color: "#f87171", card: strengthCard,    isDone: isActivityDone("phase1_strength"),     pos: { top: "40.1%", left: "80.4%" } },
-              { id: "vitality",     label: "RESTORE", Icon: Heart,     color: "#22d3ee", card: vitalityCard,    isDone: vitalityDone,                          pos: { top: "75.9%", left: "69.4%" } },
-              { id: "calm",         label: "CALM",    Icon: Brain,     color: "#a78bfa", card: calmCard,        isDone: isActivityDone("phase1_meditation"),   pos: { top: "75.9%", left: "30.6%" } },
-              { id: "agility",      label: "MOVE",    Icon: Zap,       color: "#34d399", card: agilityCard,     isDone: isActivityDone("phase1_agility"),      pos: { top: "40.1%", left: "19.6%" } },
-            ] as const).map(({ id, label, Icon, color, card, isDone, pos }) => {
-              const isActive = !allDone && (activeCommandId === id || (id === "intelligence" && activeCommandId === "intelligence"));
-              const onTap = id === "intelligence" ? () => setShowIntelligence(true) : resolveAction(card);
-              return (
-                <motion.button
-                  key={id}
-                  type="button"
-                  onClick={onTap}
-                  whileTap={{ scale: 0.91 }}
-                  className="absolute flex flex-col items-center gap-0.5"
-                  style={{ top: pos.top, left: pos.left, transform: "translate(-50%, -50%)" }}
-                  data-testid={`command-${id}`}
-                >
-                  <div className="flex items-center justify-center rounded-full"
-                    style={{
-                      width: 40, height: 40,
-                      background: isDone
-                        ? "rgba(34,197,94,0.16)"
-                        : isActive
-                          ? `radial-gradient(circle at 38% 32%, ${color}38, rgba(4,8,20,0.88))`
-                          : `radial-gradient(circle at 38% 32%, ${color}20, rgba(4,8,20,0.82))`,
-                      border: `2px solid ${isDone ? "rgba(34,197,94,0.60)" : isActive ? color : `${color}55`}`,
-                      boxShadow: isDone
-                        ? "0 0 14px rgba(34,197,94,0.35)"
-                        : isActive
-                          ? `0 0 24px ${color}60, 0 0 48px ${color}22`
-                          : `0 0 12px ${color}30`,
-                    }}>
-                    {isDone
-                      ? <CheckCircle2 size={17} style={{ color: "#22c55e" }} />
-                      : <Icon size={17} style={{ color: isActive ? color : `${color}cc`, filter: `drop-shadow(0 0 ${isActive ? "7px" : "4px"} ${color}${isActive ? "cc" : "66"})` }} />}
-                  </div>
-                  <span className="font-display text-[8px] font-bold uppercase tracking-[0.10em]"
-                    style={{ color: isDone ? "#4ade80" : isActive ? "#ffffff" : `${color}cc`, textShadow: `0 0 7px ${color}${isActive ? "88" : "44"}` }}>
-                    {label}
-                  </span>
-                </motion.button>
-              );
-            })}
-
-            {/* Center compass rose */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full"
-              style={{
-                width: 52, height: 52,
-                background: "radial-gradient(circle at 40% 35%, rgba(192,148,55,0.28), rgba(3,6,16,0.96))",
-                border: "2px solid rgba(192,148,55,0.75)",
-                boxShadow: "0 0 28px rgba(192,148,55,0.25), inset 0 1px 0 rgba(255,255,255,0.16)",
-              }}>
-              <Compass size={22} style={{ color: "#f8d99b", filter: "drop-shadow(0 0 6px rgba(248,217,155,0.50))" }} />
+              {/* Center compass medallion */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center rounded-full"
+                style={{
+                  width: 60, height: 60,
+                  background: "radial-gradient(circle at 38% 32%, rgba(205,162,55,0.32) 0%, rgba(4,6,22,0.97) 65%)",
+                  border: "2px solid rgba(195,152,52,0.90)",
+                  boxShadow: "0 0 0 1px rgba(195,152,52,0.18), 0 0 22px rgba(195,152,52,0.28), inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -1px 0 rgba(0,0,0,0.50)",
+                }}>
+                <Compass size={28} style={{ color: "#e8c860", filter: "drop-shadow(0 0 8px rgba(232,200,96,0.60))" }} />
+              </div>
             </div>
           </div>
-          </div>{/* end flex-1 wheel wrapper */}
 
-          {/* ── Next Best Action ── */}
-          <div className="relative z-10 mt-1 rounded-2xl p-2"
-            style={{ background: "rgba(2,6,18,0.72)", border: "1px solid rgba(192,148,55,0.32)" }}>
-            <p className="mb-1.5 text-center text-[9px] font-bold uppercase tracking-[0.26em]"
-              style={{ color: "rgba(248,234,208,0.58)" }}>
-              Next Best Action
-            </p>
-            <button
-              type="button"
+          {/* ── NEXT BEST ACTION ── */}
+          <div className="relative z-10 mx-3 rounded-2xl overflow-hidden"
+            style={{ background: "rgba(4,8,26,0.82)", border: "1px solid rgba(185,142,48,0.30)" }}>
+            <p className="pt-2 pb-0 text-center text-[9px] font-bold uppercase tracking-[0.32em]"
+              style={{ color: "rgba(220,175,65,0.52)" }}>Next Best Action</p>
+            <button type="button"
               onClick={allDone ? undefined : handleFeaturedTap}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left"
-              style={{ background: "rgba(255,255,255,0.042)", border: `1px solid ${nextActionColor}38` }}
-              data-testid="next-best-action"
-            >
+              className="flex w-full items-center gap-3 px-3 py-2 text-left"
+              data-testid="next-best-action">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                style={{ background: `${nextActionColor}18`, border: `1px solid ${nextActionColor}3a` }}>
+                style={{ background: `${nextActionColor}12`, border: `1.5px solid ${nextActionColor}48` }}>
                 {allDone
                   ? <CheckCircle2 size={18} style={{ color: "#22c55e" }} />
                   : featuredCard
                     ? <featuredCard.icon size={18} style={{ color: nextActionColor }} />
-                    : <BookOpen size={18} style={{ color: nextActionColor }} />}
+                    : <Crosshair size={18} style={{ color: nextActionColor }} />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-bold leading-snug" style={{ color: "#fff8e8" }}>{nextActionTitle}</p>
-                <p className="truncate text-[11px] leading-none mt-0.5" style={{ color: "rgba(248,234,208,0.52)" }}>{nextActionSubtitle}</p>
+                <p className="truncate text-[15px] font-bold leading-snug" style={{ color: "#ede5d8" }}>{nextActionTitle}</p>
+                <p className="truncate text-[11px] mt-0.5" style={{ color: "rgba(237,229,216,0.46)" }}>{nextActionSubtitle}</p>
               </div>
-              {!allDone && <ChevronRight size={16} style={{ color: "#f6c76f" }} />}
+              {!allDone && <ChevronRight size={16} style={{ color: "#c4a245" }} />}
             </button>
           </div>
 
-          {/* ── START button ── */}
-          <motion.button
-            type="button"
+          {/* ── START BUTTON ── */}
+          <motion.button type="button"
             onClick={allDone ? undefined : handleFeaturedTap}
-            whileTap={!allDone ? { scale: 0.984 } : undefined}
-            className="relative z-10 mt-1.5 flex min-h-[48px] w-full items-center justify-center overflow-hidden rounded-2xl font-display text-[19px] font-bold uppercase tracking-[0.18em]"
+            whileTap={!allDone ? { scale: 0.980 } : undefined}
+            className="relative z-10 mx-3 mt-2 mb-3 flex items-center justify-center overflow-hidden font-display font-black uppercase tracking-[0.26em]"
             style={{
+              minHeight: "50px",
+              borderRadius: "14px",
               background: allDone
-                ? "linear-gradient(90deg, rgba(34,197,94,0.58), rgba(88,227,155,0.70))"
-                : "linear-gradient(90deg, rgba(8,38,120,0.97), rgba(18,86,174,0.99), rgba(6,48,140,0.97))",
-              border: "1px solid rgba(192,148,55,0.52)",
-              color: "#fff8e8",
-              boxShadow: "0 10px 36px rgba(10,60,200,0.26), inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.35)",
-              textShadow: "0 2px 10px rgba(0,0,0,0.50)",
+                ? "linear-gradient(135deg, rgba(22,130,60,0.82) 0%, rgba(48,190,100,0.88) 100%)"
+                : "linear-gradient(135deg, rgba(10,38,140,1) 0%, rgba(18,88,210,1) 50%, rgba(8,34,128,1) 100%)",
+              border: "1px solid rgba(185,142,48,0.58)",
+              color: "#ede5d8",
+              fontSize: "18px",
+              boxShadow: allDone
+                ? "0 6px 24px rgba(22,130,60,0.30)"
+                : "0 6px 30px rgba(12,56,200,0.40), inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.40)",
+              textShadow: "0 1px 6px rgba(0,0,0,0.65)",
             }}
             data-testid="button-start-command"
           >
-            <span className="pointer-events-none absolute inset-x-6 top-0 h-px"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.62), transparent)" }} />
+            {/* Top shimmer line */}
+            <span className="pointer-events-none absolute inset-x-8 top-0 h-px"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.50), transparent)" }} />
+            {/* Sweep animation */}
             <span className="pointer-events-none absolute inset-0"
-              style={{ background: "linear-gradient(90deg, transparent 20%, rgba(255,255,255,0.18) 50%, transparent 80%)", animation: "buttonSweep 6s ease-in-out 1s infinite" }} />
-            <span className="absolute left-4 text-[11px]" style={{ color: "#c8942c" }}>✦</span>
-            <span className="absolute right-4 text-[11px]" style={{ color: "#c8942c" }}>✦</span>
+              style={{ background: "linear-gradient(90deg, transparent 18%, rgba(255,255,255,0.10) 50%, transparent 82%)", animation: "buttonSweep 6s ease-in-out 1s infinite" }} />
+            <span className="absolute left-3.5 text-[11px]" style={{ color: "rgba(185,142,48,0.72)" }}>✦</span>
+            <span className="absolute right-3.5 text-[11px]" style={{ color: "rgba(185,142,48,0.72)" }}>✦</span>
             {startLabel}
           </motion.button>
+
         </motion.section>
 
         <div className="hidden" aria-hidden="true">
