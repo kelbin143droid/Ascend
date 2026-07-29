@@ -1257,34 +1257,53 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   boxShadow: "0 0 0 1px rgba(195,152,52,0.18), 0 0 28px rgba(195,152,52,0.38), 0 0 56px rgba(0,0,0,0.75), inset 0 0 22px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.13), inset 0 -1px 0 rgba(0,0,0,0.50)",
                 }} />
 
-              {/* 5-slice conic fills — clipped to circle. from -36deg puts FOCUS centered at top */}
-              <div className="absolute inset-0 rounded-full overflow-hidden" style={{
-                background: `conic-gradient(
-                  from -36deg,
-                  rgba(10,20,110,0.95)  0deg   72deg,
-                  rgba(100,8,8,0.95)    72deg  144deg,
-                  rgba(4,60,66,0.95)    144deg 216deg,
-                  rgba(20,10,90,0.95)   216deg 288deg,
-                  rgba(6,58,18,0.95)    288deg 360deg
-                )`,
-              }} />
-
-              {/* 5-spoke SVG gold dividers — lines from center(50,50) to rim at each 72° boundary */}
+              {/* SVG wheel — 5 mathematically exact 72° wedge arcs + gold dividers
+                  Boundary points at r=50, center=(50,50), from-top clockwise:
+                    B0 (-36° / 324°): (20.61, 9.55)
+                    B1 (  36°)      : (79.39, 9.55)
+                    B2 ( 108°)      : (97.55, 65.45)
+                    B3 ( 180°)      : (50,    100  )
+                    B4 ( 252°)      : ( 2.45, 65.45)
+              */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
-                <line x1="50" y1="50" x2="79.4" y2="9.5"  stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
-                <line x1="50" y1="50" x2="97.6" y2="65.5" stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
-                <line x1="50" y1="50" x2="50"   y2="100"  stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
-                <line x1="50" y1="50" x2="2.4"  y2="65.5" stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
-                <line x1="50" y1="50" x2="20.6" y2="9.5"  stroke="rgba(215,170,60,0.88)" strokeWidth="0.8" />
+                <defs>
+                  {/* Per-slice radial gradients — origin at icon position so colour fades toward center */}
+                  <radialGradient id="wg-focus"   cx="50%" cy="5%"  r="75%"><stop offset="0%" stopColor="#0d2ea0"/><stop offset="100%" stopColor="#030820"/></radialGradient>
+                  <radialGradient id="wg-train"   cx="88%" cy="32%" r="75%"><stop offset="0%" stopColor="#8a0c0c"/><stop offset="100%" stopColor="#180202"/></radialGradient>
+                  <radialGradient id="wg-restore" cx="75%" cy="88%" r="75%"><stop offset="0%" stopColor="#0a4e58"/><stop offset="100%" stopColor="#020e12"/></radialGradient>
+                  <radialGradient id="wg-calm"    cx="25%" cy="88%" r="75%"><stop offset="0%" stopColor="#0c1260"/><stop offset="100%" stopColor="#02020e"/></radialGradient>
+                  <radialGradient id="wg-move"    cx="12%" cy="32%" r="75%"><stop offset="0%" stopColor="#2e0a70"/><stop offset="100%" stopColor="#06020e"/></radialGradient>
+                  <clipPath id="wg-circle"><circle cx="50" cy="50" r="50"/></clipPath>
+                </defs>
+
+                {/* Wedge fills — clipped to perfect circle */}
+                <g clipPath="url(#wg-circle)">
+                  {/* FOCUS  — top        (-36° → 36°)  */}
+                  <path d="M 50,50 L 20.61,9.55 A 50,50 0 0,1 79.39,9.55 Z"  fill="url(#wg-focus)"   />
+                  {/* TRAIN  — top-right  (36° → 108°)  */}
+                  <path d="M 50,50 L 79.39,9.55 A 50,50 0 0,1 97.55,65.45 Z" fill="url(#wg-train)"   />
+                  {/* RESTORE— bot-right  (108° → 180°) */}
+                  <path d="M 50,50 L 97.55,65.45 A 50,50 0 0,1 50,100 Z"     fill="url(#wg-restore)" />
+                  {/* CALM   — bot-left   (180° → 252°) */}
+                  <path d="M 50,50 L 50,100 A 50,50 0 0,1 2.45,65.45 Z"      fill="url(#wg-calm)"    />
+                  {/* MOVE   — top-left   (252° → 324°) */}
+                  <path d="M 50,50 L 2.45,65.45 A 50,50 0 0,1 20.61,9.55 Z"  fill="url(#wg-move)"    />
+                </g>
+
+                {/* Gold divider spokes — one per boundary */}
+                {(["20.61,9.55","79.39,9.55","97.55,65.45","50,100","2.45,65.45"] as const).map((pt, i) => (
+                  <line key={i} x1="50" y1="50" x2={pt.split(",")[0]} y2={pt.split(",")[1]}
+                    stroke="rgba(218,172,62,0.90)" strokeWidth="0.55" />
+                ))}
               </svg>
 
-              {/* 5 slice buttons — placed at midpoint of each arc at r=32% from center */}
+              {/* 5 slice buttons — midpoint of each arc at r=32, angles: 0°,72°,144°,216°,288° */}
               {([
                 { id: "intelligence", label: "FOCUS",   Icon: Target,     color: "#5aadff", card: intelligenceCard, isDone: intelligenceDone,                   pos: { top: "18%",   left: "50%"   } },
-                { id: "strength",     label: "TRAIN",   Icon: Swords,      color: "#f47070", card: strengthCard,    isDone: isActivityDone("phase1_strength"),   pos: { top: "40.1%", left: "80.4%" } },
-                { id: "vitality",     label: "RESTORE", Icon: FlaskConical,color: "#26d4e8", card: vitalityCard,    isDone: vitalityDone,                        pos: { top: "75.9%", left: "69.4%" } },
-                { id: "calm",         label: "CALM",    Icon: Leaf,         color: "#4ad880", card: calmCard,        isDone: isActivityDone("phase1_meditation"), pos: { top: "75.9%", left: "30.6%" } },
-                { id: "agility",      label: "MOVE",    Icon: Zap,          color: "#a78bfa", card: agilityCard,     isDone: isActivityDone("phase1_agility"),    pos: { top: "40.1%", left: "19.6%" } },
+                { id: "strength",     label: "TRAIN",   Icon: Swords,      color: "#ff5555", card: strengthCard,    isDone: isActivityDone("phase1_strength"),   pos: { top: "40.1%", left: "80.4%" } },
+                { id: "vitality",     label: "RESTORE", Icon: FlaskConical,color: "#22d4e8", card: vitalityCard,    isDone: vitalityDone,                        pos: { top: "75.9%", left: "68.8%" } },
+                { id: "calm",         label: "CALM",    Icon: Leaf,         color: "#4ad880", card: calmCard,        isDone: isActivityDone("phase1_meditation"), pos: { top: "75.9%", left: "31.2%" } },
+                { id: "agility",      label: "MOVE",    Icon: Zap,          color: "#b06fff", card: agilityCard,     isDone: isActivityDone("phase1_agility"),    pos: { top: "40.1%", left: "19.6%" } },
               ] as const).map(({ id, label, Icon, color, card, isDone, pos }) => {
                 const isActive = !allDone && (activeCommandId === id || (id === "intelligence" && activeCommandId === "intelligence"));
                 const onTap = id === "intelligence" ? () => setShowIntelligence(true) : resolveAction(card);
