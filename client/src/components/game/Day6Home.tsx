@@ -5,7 +5,7 @@ import {
   Brain, CheckCircle2, Sparkles, X, Palette,
   ArrowRight, BookOpen, Zap, Shield, Flame,
   ChevronLeft, ChevronRight,
-  Heart, Moon, Swords, Compass, Crosshair, Leaf, FlaskConical,
+  Heart, Moon, Swords, Compass, Crosshair, Leaf, FlaskConical, Target, Trophy,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -1202,9 +1202,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </p>
             <button type="button" onClick={() => setShowAvatar(true)}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full active:scale-90 transition-transform"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(185,142,48,0.35)", color: "#c4a245" }}
+              style={{ background: "rgba(185,142,48,0.10)", border: "1px solid rgba(185,142,48,0.45)", color: "#e8c860" }}
               aria-label="Hero">
-              <span className="text-sm leading-none select-none">{avatarIcon}</span>
+              <Zap size={15} style={{ filter: "drop-shadow(0 0 5px rgba(232,200,96,0.70))" }} />
             </button>
           </div>
 
@@ -1230,12 +1230,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   );
                 })}
               </div>
-              {/* Chest */}
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                style={{ background: "rgba(185,142,48,0.10)", border: "1px solid rgba(185,142,48,0.35)" }}>
+              {/* Trophy */}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px]"
+                style={{ background: "rgba(185,142,48,0.12)", border: "1.5px solid rgba(185,142,48,0.55)", boxShadow: "0 0 8px rgba(185,142,48,0.18)" }}>
                 {allDone
                   ? <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
-                  : <span className="text-[15px] leading-none">🏆</span>}
+                  : <Trophy size={15} style={{ color: "#e8c860", filter: "drop-shadow(0 0 4px rgba(232,200,96,0.60))" }} />}
               </div>
             </div>
           </div>
@@ -1280,7 +1280,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
               {/* 5 slice buttons — placed at midpoint of each arc at r=32% from center */}
               {([
-                { id: "intelligence", label: "FOCUS",   Icon: Crosshair,  color: "#5aadff", card: intelligenceCard, isDone: intelligenceDone,                   pos: { top: "18%",   left: "50%"   } },
+                { id: "intelligence", label: "FOCUS",   Icon: Target,     color: "#5aadff", card: intelligenceCard, isDone: intelligenceDone,                   pos: { top: "18%",   left: "50%"   } },
                 { id: "strength",     label: "TRAIN",   Icon: Swords,      color: "#f47070", card: strengthCard,    isDone: isActivityDone("phase1_strength"),   pos: { top: "40.1%", left: "80.4%" } },
                 { id: "vitality",     label: "RESTORE", Icon: FlaskConical,color: "#26d4e8", card: vitalityCard,    isDone: vitalityDone,                        pos: { top: "75.9%", left: "69.4%" } },
                 { id: "calm",         label: "CALM",    Icon: Leaf,         color: "#4ad880", card: calmCard,        isDone: isActivityDone("phase1_meditation"), pos: { top: "75.9%", left: "30.6%" } },
@@ -1350,16 +1350,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               className="flex w-full items-center gap-3 px-3 py-2 text-left"
               data-testid="next-best-action">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                style={{ background: `${nextActionColor}12`, border: `1.5px solid ${nextActionColor}48` }}>
+                style={{ background: `${nextActionColor}14`, border: `1.5px solid ${nextActionColor}55`, boxShadow: `0 0 10px ${nextActionColor}22` }}>
                 {allDone
                   ? <CheckCircle2 size={18} style={{ color: "#22c55e" }} />
-                  : featuredCard
-                    ? <featuredCard.icon size={18} style={{ color: nextActionColor }} />
-                    : <Crosshair size={18} style={{ color: nextActionColor }} />}
+                  : <Brain size={18} style={{ color: nextActionColor, filter: `drop-shadow(0 0 5px ${nextActionColor}99)` }} />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-bold leading-snug" style={{ color: "#ede5d8" }}>{nextActionTitle}</p>
-                <p className="truncate text-[11px] mt-0.5" style={{ color: "rgba(237,229,216,0.46)" }}>{nextActionSubtitle}</p>
+                <p className="truncate text-[15px] font-bold leading-snug" style={{ color: "#ede5d8" }}>
+                  {allDone ? nextActionTitle : (featuredCard?.label ?? "Calm Mind")}
+                </p>
+                <p className="truncate text-[11px] mt-0.5" style={{ color: "rgba(237,229,216,0.48)" }}>
+                  {allDone ? nextActionSubtitle : (featuredCard?.sub ?? "Breathing Reset")}
+                </p>
               </div>
               {!allDone && <ChevronRight size={16} style={{ color: "#c4a245" }} />}
             </button>
@@ -1369,31 +1371,36 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           <motion.button type="button"
             onClick={allDone ? undefined : handleFeaturedTap}
             whileTap={!allDone ? { scale: 0.980 } : undefined}
-            className="relative z-10 mx-3 mt-2 mb-3 flex items-center justify-center overflow-hidden font-display font-black uppercase tracking-[0.26em]"
+            className="relative z-10 mx-3 mt-2 mb-3 flex items-center justify-center overflow-hidden uppercase"
             style={{
-              minHeight: "50px",
+              minHeight: "52px",
               borderRadius: "14px",
               background: allDone
                 ? "linear-gradient(135deg, rgba(22,130,60,0.82) 0%, rgba(48,190,100,0.88) 100%)"
                 : "linear-gradient(135deg, rgba(10,38,140,1) 0%, rgba(18,88,210,1) 50%, rgba(8,34,128,1) 100%)",
               border: "1px solid rgba(185,142,48,0.58)",
               color: "#ede5d8",
-              fontSize: "18px",
+              /* Wide geometric futuristic font stack */
+              fontFamily: "'Rajdhani', 'Orbitron', 'Bank Gothic', 'Bebas Neue', 'Impact', ui-sans-serif, system-ui",
+              fontSize: "22px",
+              fontWeight: 900,
+              letterSpacing: "0.32em",
               boxShadow: allDone
                 ? "0 6px 24px rgba(22,130,60,0.30)"
                 : "0 6px 30px rgba(12,56,200,0.40), inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.40)",
-              textShadow: "0 1px 6px rgba(0,0,0,0.65)",
+              textShadow: "0 0 20px rgba(140,180,255,0.60), 0 1px 6px rgba(0,0,0,0.80)",
             }}
             data-testid="button-start-command"
           >
             {/* Top shimmer line */}
             <span className="pointer-events-none absolute inset-x-8 top-0 h-px"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.50), transparent)" }} />
+              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)" }} />
             {/* Sweep animation */}
             <span className="pointer-events-none absolute inset-0"
               style={{ background: "linear-gradient(90deg, transparent 18%, rgba(255,255,255,0.10) 50%, transparent 82%)", animation: "buttonSweep 6s ease-in-out 1s infinite" }} />
-            <span className="absolute left-3.5 text-[11px]" style={{ color: "rgba(185,142,48,0.72)" }}>✦</span>
-            <span className="absolute right-3.5 text-[11px]" style={{ color: "rgba(185,142,48,0.72)" }}>✦</span>
+            {/* 4-point gold stars */}
+            <span className="pointer-events-none absolute left-4 flex items-center justify-center" style={{ color: "#e8c860", fontSize: "16px", filter: "drop-shadow(0 0 5px rgba(232,200,96,0.80))", lineHeight: 1 }}>✦</span>
+            <span className="pointer-events-none absolute right-4 flex items-center justify-center" style={{ color: "#e8c860", fontSize: "16px", filter: "drop-shadow(0 0 5px rgba(232,200,96,0.80))", lineHeight: 1 }}>✦</span>
             {startLabel}
           </motion.button>
 
