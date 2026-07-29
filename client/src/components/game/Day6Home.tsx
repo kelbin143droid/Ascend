@@ -1201,7 +1201,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             >
               <Palette size={16} />
             </button>
-            <p className="font-display text-[18px] font-bold uppercase tracking-[0.14em]" style={{ color: "#f8d99b" }}>
+            <p className="font-display text-[14px] font-bold uppercase tracking-[0.10em] whitespace-nowrap" style={{ color: "#f8d99b" }}>
               Mission Command
             </p>
             <button
@@ -1243,47 +1243,53 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </div>
           </div>
 
-          {/* ── 4-Quadrant Command Wheel ── */}
+          {/* ── 5-Slice Command Wheel ── */}
           <div className="relative z-10 flex-1 flex items-center justify-center min-h-0 mt-1">
-          <div className="relative w-full max-w-[min(46vw,270px)]" style={{ aspectRatio: "1" }}>
+          <div className="relative max-w-[300px] w-full" style={{ aspectRatio: "1" }}>
             {/* Outer glow halo */}
             <div className="absolute rounded-full pointer-events-none"
               style={{
-                inset: "-6px",
-                background: "radial-gradient(circle, transparent 60%, rgba(192,148,55,0.10) 100%)",
-                filter: "blur(6px)",
+                inset: "-8px",
+                background: "radial-gradient(circle, transparent 55%, rgba(192,148,55,0.14) 100%)",
+                filter: "blur(8px)",
               }} />
             {/* Outer decorative ring */}
             <div className="absolute inset-0 rounded-full pointer-events-none"
               style={{
-                border: "3.5px solid rgba(192,148,55,0.80)",
-                boxShadow: "0 0 18px rgba(192,148,55,0.30), 0 0 50px rgba(0,0,0,0.70), inset 0 0 12px rgba(192,148,55,0.08)",
+                border: "4px solid rgba(192,148,55,0.85)",
+                boxShadow: "0 0 22px rgba(192,148,55,0.40), 0 0 60px rgba(0,0,0,0.80), inset 0 0 16px rgba(192,148,55,0.10)",
               }} />
 
-            {/* Quadrant fills — overflow:hidden clips them to the circle */}
-            <div className="absolute inset-0 rounded-full overflow-hidden">
-              {/* Top-left: Focus/Intel — deep navy blue */}
-              <div className="absolute" style={{ width: "50%", height: "50%", top: 0, left: 0, background: "radial-gradient(circle at 85% 85%, rgba(10,22,110,0.94) 0%, rgba(4,8,40,0.98) 70%)" }} />
-              {/* Top-right: Train — deep crimson */}
-              <div className="absolute" style={{ width: "50%", height: "50%", top: 0, right: 0, background: "radial-gradient(circle at 15% 85%, rgba(95,10,10,0.92) 0%, rgba(30,4,4,0.98) 70%)" }} />
-              {/* Bottom-left: Calm — deep indigo/purple */}
-              <div className="absolute" style={{ width: "50%", height: "50%", bottom: 0, left: 0, background: "radial-gradient(circle at 85% 15%, rgba(28,16,100,0.92) 0%, rgba(8,5,36,0.98) 70%)" }} />
-              {/* Bottom-right: Restore — deep teal */}
-              <div className="absolute" style={{ width: "50%", height: "50%", bottom: 0, right: 0, background: "radial-gradient(circle at 15% 15%, rgba(6,58,62,0.92) 0%, rgba(2,18,20,0.98) 70%)" }} />
-            </div>
+            {/* 5-slice conic fills clipped to circle */}
+            {/* Slices (from -36deg = FOCUS centered at top, then CW): FOCUS/TRAIN/RESTORE/CALM/MOVE */}
+            <div className="absolute inset-0 rounded-full overflow-hidden" style={{
+              background: `conic-gradient(
+                from -36deg,
+                rgba(8,18,100,0.93)   0deg  72deg,
+                rgba(88,8,8,0.93)     72deg 144deg,
+                rgba(4,52,58,0.93)    144deg 216deg,
+                rgba(22,10,88,0.93)   216deg 288deg,
+                rgba(4,50,16,0.93)    288deg 360deg
+              )`,
+            }} />
 
-            {/* Gold cross dividers */}
-            <div className="absolute left-1/2 top-[4%] bottom-[4%] w-px -translate-x-1/2 pointer-events-none"
-              style={{ background: "linear-gradient(180deg, transparent, rgba(192,148,55,0.72) 18%, rgba(215,168,68,0.92) 50%, rgba(192,148,55,0.72) 82%, transparent)" }} />
-            <div className="absolute top-1/2 left-[4%] right-[4%] h-px -translate-y-1/2 pointer-events-none"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(192,148,55,0.72) 18%, rgba(215,168,68,0.92) 50%, rgba(192,148,55,0.72) 82%, transparent)" }} />
+            {/* 5-spoke SVG dividers */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" overflow="visible">
+              {/* Lines from center(50,50) to rim at each slice boundary, angles from top */}
+              {/* 36°  */ }<line x1="50" y1="50" x2="79.4" y2="9.5"  stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
+              {/* 108° */ }<line x1="50" y1="50" x2="97.6" y2="65.5" stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
+              {/* 180° */ }<line x1="50" y1="50" x2="50"   y2="100"  stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
+              {/* 252° */ }<line x1="50" y1="50" x2="2.4"  y2="65.5" stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
+              {/* 324° */ }<line x1="50" y1="50" x2="20.6" y2="9.5"  stroke="rgba(215,168,68,0.80)" strokeWidth="0.7" />
+            </svg>
 
-            {/* The 4 quadrant action buttons */}
+            {/* 5 slice buttons — positions are centers of each arc at r≈32% from circle center */}
             {([
-              { id: "intelligence", actId: INTELLIGENCE_ACTIVITY_ID, label: "FOCUS",   sub: "Intel",    Icon: Crosshair, color: "#60a5fa", card: intelligenceCard, isDone: intelligenceDone, pos: { top: "25%", left: "25%" } },
-              { id: "strength",     actId: "phase1_strength",         label: "TRAIN",   sub: "Circuit",  Icon: Swords,    color: "#f87171", card: strengthCard,    isDone: isActivityDone("phase1_strength"), pos: { top: "25%", left: "75%" } },
-              { id: "calm",         actId: "phase1_meditation",        label: "CALM",    sub: "Breath",   Icon: Brain,     color: "#a78bfa", card: calmCard,        isDone: isActivityDone("phase1_meditation"), pos: { top: "75%", left: "25%" } },
-              { id: "vitality",     actId: VITALITY_ACTIVITY_ID,       label: "RESTORE", sub: "Recovery", Icon: Heart,     color: "#22d3ee", card: vitalityCard,    isDone: vitalityDone, pos: { top: "75%", left: "75%" } },
+              { id: "intelligence", label: "FOCUS",   Icon: Crosshair, color: "#60a5fa", card: intelligenceCard, isDone: intelligenceDone,                     pos: { top: "18%",   left: "50%" } },
+              { id: "strength",     label: "TRAIN",   Icon: Swords,    color: "#f87171", card: strengthCard,    isDone: isActivityDone("phase1_strength"),     pos: { top: "40.1%", left: "80.4%" } },
+              { id: "vitality",     label: "RESTORE", Icon: Heart,     color: "#22d3ee", card: vitalityCard,    isDone: vitalityDone,                          pos: { top: "75.9%", left: "69.4%" } },
+              { id: "calm",         label: "CALM",    Icon: Brain,     color: "#a78bfa", card: calmCard,        isDone: isActivityDone("phase1_meditation"),   pos: { top: "75.9%", left: "30.6%" } },
+              { id: "agility",      label: "MOVE",    Icon: Zap,       color: "#34d399", card: agilityCard,     isDone: isActivityDone("phase1_agility"),      pos: { top: "40.1%", left: "19.6%" } },
             ] as const).map(({ id, label, Icon, color, card, isDone, pos }) => {
               const isActive = !allDone && (activeCommandId === id || (id === "intelligence" && activeCommandId === "intelligence"));
               const onTap = id === "intelligence" ? () => setShowIntelligence(true) : resolveAction(card);
@@ -1293,31 +1299,31 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
                   type="button"
                   onClick={onTap}
                   whileTap={{ scale: 0.91 }}
-                  className="absolute flex flex-col items-center gap-1"
+                  className="absolute flex flex-col items-center gap-0.5"
                   style={{ top: pos.top, left: pos.left, transform: "translate(-50%, -50%)" }}
                   data-testid={`command-${id}`}
                 >
                   <div className="flex items-center justify-center rounded-full"
                     style={{
-                      width: 44, height: 44,
+                      width: 40, height: 40,
                       background: isDone
                         ? "rgba(34,197,94,0.16)"
                         : isActive
                           ? `radial-gradient(circle at 38% 32%, ${color}38, rgba(4,8,20,0.88))`
-                          : `radial-gradient(circle at 38% 32%, ${color}1c, rgba(4,8,20,0.82))`,
-                      border: `2px solid ${isDone ? "rgba(34,197,94,0.60)" : isActive ? color : `${color}52`}`,
+                          : `radial-gradient(circle at 38% 32%, ${color}20, rgba(4,8,20,0.82))`,
+                      border: `2px solid ${isDone ? "rgba(34,197,94,0.60)" : isActive ? color : `${color}55`}`,
                       boxShadow: isDone
-                        ? "0 0 16px rgba(34,197,94,0.35)"
+                        ? "0 0 14px rgba(34,197,94,0.35)"
                         : isActive
-                          ? `0 0 28px ${color}60, 0 0 56px ${color}22`
-                          : `0 0 14px ${color}28`,
+                          ? `0 0 24px ${color}60, 0 0 48px ${color}22`
+                          : `0 0 12px ${color}30`,
                     }}>
                     {isDone
-                      ? <CheckCircle2 size={19} style={{ color: "#22c55e" }} />
-                      : <Icon size={19} style={{ color: isActive ? color : `${color}cc`, filter: `drop-shadow(0 0 ${isActive ? "8px" : "4px"} ${color}${isActive ? "cc" : "66"})` }} />}
+                      ? <CheckCircle2 size={17} style={{ color: "#22c55e" }} />
+                      : <Icon size={17} style={{ color: isActive ? color : `${color}cc`, filter: `drop-shadow(0 0 ${isActive ? "7px" : "4px"} ${color}${isActive ? "cc" : "66"})` }} />}
                   </div>
-                  <span className="font-display text-[9px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: isDone ? "#4ade80" : isActive ? "#ffffff" : `${color}cc`, textShadow: `0 0 8px ${color}${isActive ? "88" : "44"}` }}>
+                  <span className="font-display text-[8px] font-bold uppercase tracking-[0.10em]"
+                    style={{ color: isDone ? "#4ade80" : isActive ? "#ffffff" : `${color}cc`, textShadow: `0 0 7px ${color}${isActive ? "88" : "44"}` }}>
                     {label}
                   </span>
                 </motion.button>
@@ -1327,12 +1333,12 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             {/* Center compass rose */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center rounded-full"
               style={{
-                width: 56, height: 56,
-                background: "radial-gradient(circle at 40% 35%, rgba(192,148,55,0.24), rgba(3,6,16,0.96))",
-                border: "2px solid rgba(192,148,55,0.70)",
-                boxShadow: "0 0 24px rgba(192,148,55,0.20), inset 0 1px 0 rgba(255,255,255,0.14)",
+                width: 52, height: 52,
+                background: "radial-gradient(circle at 40% 35%, rgba(192,148,55,0.28), rgba(3,6,16,0.96))",
+                border: "2px solid rgba(192,148,55,0.75)",
+                boxShadow: "0 0 28px rgba(192,148,55,0.25), inset 0 1px 0 rgba(255,255,255,0.16)",
               }}>
-              <Compass size={24} style={{ color: "#f8d99b", filter: "drop-shadow(0 0 6px rgba(248,217,155,0.44))" }} />
+              <Compass size={22} style={{ color: "#f8d99b", filter: "drop-shadow(0 0 6px rgba(248,217,155,0.50))" }} />
             </div>
           </div>
           </div>{/* end flex-1 wheel wrapper */}
