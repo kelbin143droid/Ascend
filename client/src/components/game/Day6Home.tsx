@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight,
   Heart, Moon, Swords, Compass, Crosshair, Leaf, FlaskConical, Target, Trophy,
 } from "lucide-react";
+import { SkillTreeWheel, CANVAS_H } from "./SkillTreeWheel";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
 import {
@@ -275,6 +276,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [sleepQuality, setSleepQuality] = useState<SleepQuality>("ok");
   const [vitalitySubmitting, setVitalitySubmitting] = useState(false);
   const [showMissionGuide, setShowMissionGuide] = useState(false);
+  // Skill-tree: which leaf the player has tapped (overrides featuredCard for the NBA panel)
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   // Auto-start strength when navigated from agility completion (?autostart=strength)
   const [autoStartPending, setAutoStartPending] = useState(() =>
     typeof window !== "undefined" && window.location.search.includes("autostart=strength")
@@ -604,6 +607,19 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (!aid) return;
     startActivity(aid);
   };
+  // Skill-tree helpers
+  const cardIsDone = (cardId: string): boolean => {
+    if (cardId === "intelligence") return intelligenceDone;
+    if (cardId === "vitality") return vitalityDone;
+    const dc = DASH_CARDS.find(d => d.id === cardId);
+    if (!dc) return false;
+    return isActivityDone(dc.activityId);
+  };
+
+  const handleLeafSelect = (cardId: string | null) => {
+    setSelectedCardId(cardId);
+  };
+
   const handleAvatarPick = (icon: string) => { saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false); };
 
   const dismissMissionGuide = () => {
@@ -619,6 +635,18 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     : vitalityPending
       ? vitalityCard
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
+  // previewCard: whichever leaf the user last tapped in the tree, else the system-recommended card
+  const previewCard = selectedCardId
+    ? (DASH_CARDS.find(d => d.id === selectedCardId) ?? featuredCard)
+    : featuredCard;
+
+  const handleStartTap = () => {
+    if (!previewCard) return;
+    if (previewCard.id === "intelligence") { setShowIntelligence(true); return; }
+    if (previewCard.id === "vitality") { navigate("/sectograph?vitality=1"); return; }
+    startActivity(previewCard.activityId);
+  };
+
   const intelReadCopy = buildIntelReadCopy(intelReadMode, recommendedIntelRead, customIntelTopic);
   const intelReadPages = useMemo(() => {
     const pages: string[][] = [];
@@ -1164,14 +1192,14 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       `}</style>
 
       {/* ── Mission Command ── fixed height = viewport minus top-bar + bottom-nav */}
-      <div className="flex flex-col px-2 max-w-md mx-auto w-full" style={{ height: "calc(100dvh - 9rem)" }} data-testid="day6-home">
+      <div className="flex flex-col px-2 max-w-md mx-auto w-full" style={{ minHeight: "calc(100dvh - 9rem)", overflowY: "auto" }} data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
         <motion.section
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: "easeOut" }}
-          className="relative flex flex-col flex-1 min-h-0 overflow-hidden"
+          className="relative flex flex-col flex-1 min-h-0"
           style={{
             borderRadius: "22px",
             background: "radial-gradient(ellipse at 50% 0%, rgba(12,20,58,0.99) 0%, rgba(4,6,18,1) 55%, rgba(2,3,10,1) 100%)",
@@ -1208,155 +1236,46 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </button>
           </div>
 
-          {/* ── DAILY PROGRESS ── */}
+          {/* ── RESOURCE BAR ── VITALITY · FOCUS · GLORY ── */}
           <div className="relative z-10 px-4 pt-2">
-            <p className="mb-1.5 text-center text-[9px] font-bold uppercase tracking-[0.32em]"
-              style={{ color: "rgba(220,175,65,0.52)" }}>Daily Progress</p>
-            <div className="flex items-center gap-2">
-              {/* Segment track */}
-              <div className="flex flex-1 items-center gap-[3px] rounded-[6px] px-1 py-1"
-                style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(185,142,48,0.20)" }}>
-                {Array.from({ length: Math.max(totalMissionCount, 4) }).slice(0, 4).map((_, i) => {
-                  const filled = i < Math.min(completedMissionCount, 4);
-                  const current = i === Math.min(completedMissionCount, 3) && !allDone;
-                  return (
-                    <div key={i} className="flex-1 h-[10px] rounded-[3px]"
-                      style={{
-                        background: filled
-                          ? "linear-gradient(90deg, #1a5ef5 0%, #5aaeff 100%)"
-                          : current ? "rgba(185,142,48,0.28)" : "rgba(255,255,255,0.06)",
-                        boxShadow: filled ? "0 0 8px rgba(26,100,245,0.65), 0 0 2px rgba(90,174,255,0.90)" : "none",
-                      }} />
-                  );
-                })}
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+              style={{ background: "rgba(0,0,0,0.48)", border: "1px solid rgba(185,142,48,0.20)" }}>
+              {/* VITALITY (HP) */}
+              <div className="flex flex-1 flex-col items-center gap-0.5">
+                <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: "#f87171" }}>Vitality</span>
+                <span className="text-[13px] font-black tabular-nums leading-none" style={{ color: "#fca5a5" }}>
+                  {playerData?.hp ?? "—"}
+                </span>
               </div>
-              {/* Trophy */}
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px]"
-                style={{ background: "rgba(185,142,48,0.12)", border: "1.5px solid rgba(185,142,48,0.55)", boxShadow: "0 0 8px rgba(185,142,48,0.18)" }}>
-                {allDone
-                  ? <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
-                  : <Trophy size={15} style={{ color: "#e8c860", filter: "drop-shadow(0 0 4px rgba(232,200,96,0.60))" }} />}
+              <div className="h-6 w-px" style={{ background: "rgba(185,142,48,0.25)" }} />
+              {/* FOCUS (MP) */}
+              <div className="flex flex-1 flex-col items-center gap-0.5">
+                <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: "#818cf8" }}>Focus</span>
+                <span className="text-[13px] font-black tabular-nums leading-none" style={{ color: "#a5b4fc" }}>
+                  {playerData?.mp ?? "—"}
+                </span>
+              </div>
+              <div className="h-6 w-px" style={{ background: "rgba(185,142,48,0.25)" }} />
+              {/* GLORY (Total XP) */}
+              <div className="flex flex-1 flex-col items-center gap-0.5">
+                <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: "#fbbf24" }}>Glory</span>
+                <span className="text-[13px] font-black tabular-nums leading-none" style={{ color: "#fde68a" }}>
+                  {playerData?.totalExp ?? 0}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* ── 4-QUADRANT COMMAND WHEEL ── */}
-          <div className="relative z-10 flex-1 min-h-0 flex items-center justify-center px-3 py-2">
-            {/* Square wheel — capped by both card width and available height */}
-            <div className="relative"
-              style={{ width: "min(100%, 320px, calc(100dvh - 23rem))", height: "min(100%, 320px, calc(100dvh - 23rem))" }}>
-
-              {/* Outer ambient glow ring */}
-              <div className="absolute pointer-events-none rounded-full"
-                style={{ inset: "-10px", background: "radial-gradient(circle, transparent 48%, rgba(185,142,48,0.15) 100%)", filter: "blur(10px)" }} />
-
-              {/* Bronze metallic border */}
-              <div className="absolute inset-0 rounded-full pointer-events-none"
-                style={{
-                  border: "3.5px solid rgba(195,152,52,0.92)",
-                  boxShadow: "0 0 0 1px rgba(195,152,52,0.18), 0 0 28px rgba(195,152,52,0.38), 0 0 56px rgba(0,0,0,0.75), inset 0 0 22px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.13), inset 0 -1px 0 rgba(0,0,0,0.50)",
-                }} />
-
-              {/* SVG wheel — 5 mathematically exact 72° wedge arcs + gold dividers
-                  Boundary points at r=50, center=(50,50), from-top clockwise:
-                    B0 (-36° / 324°): (20.61, 9.55)
-                    B1 (  36°)      : (79.39, 9.55)
-                    B2 ( 108°)      : (97.55, 65.45)
-                    B3 ( 180°)      : (50,    100  )
-                    B4 ( 252°)      : ( 2.45, 65.45)
-              */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
-                <defs>
-                  {/* Per-slice radial gradients — origin at icon position so colour fades toward center */}
-                  <radialGradient id="wg-focus"   cx="50%" cy="5%"  r="75%"><stop offset="0%" stopColor="#0d2ea0"/><stop offset="100%" stopColor="#030820"/></radialGradient>
-                  <radialGradient id="wg-train"   cx="88%" cy="32%" r="75%"><stop offset="0%" stopColor="#8a0c0c"/><stop offset="100%" stopColor="#180202"/></radialGradient>
-                  <radialGradient id="wg-restore" cx="75%" cy="88%" r="75%"><stop offset="0%" stopColor="#0a4e58"/><stop offset="100%" stopColor="#020e12"/></radialGradient>
-                  <radialGradient id="wg-calm"    cx="25%" cy="88%" r="75%"><stop offset="0%" stopColor="#0c1260"/><stop offset="100%" stopColor="#02020e"/></radialGradient>
-                  <radialGradient id="wg-move"    cx="12%" cy="32%" r="75%"><stop offset="0%" stopColor="#2e0a70"/><stop offset="100%" stopColor="#06020e"/></radialGradient>
-                  <clipPath id="wg-circle"><circle cx="50" cy="50" r="50"/></clipPath>
-                </defs>
-
-                {/* Wedge fills — clipped to perfect circle */}
-                <g clipPath="url(#wg-circle)">
-                  {/* FOCUS  — top        (-36° → 36°)  */}
-                  <path d="M 50,50 L 20.61,9.55 A 50,50 0 0,1 79.39,9.55 Z"  fill="url(#wg-focus)"   />
-                  {/* TRAIN  — top-right  (36° → 108°)  */}
-                  <path d="M 50,50 L 79.39,9.55 A 50,50 0 0,1 97.55,65.45 Z" fill="url(#wg-train)"   />
-                  {/* RESTORE— bot-right  (108° → 180°) */}
-                  <path d="M 50,50 L 97.55,65.45 A 50,50 0 0,1 50,100 Z"     fill="url(#wg-restore)" />
-                  {/* CALM   — bot-left   (180° → 252°) */}
-                  <path d="M 50,50 L 50,100 A 50,50 0 0,1 2.45,65.45 Z"      fill="url(#wg-calm)"    />
-                  {/* MOVE   — top-left   (252° → 324°) */}
-                  <path d="M 50,50 L 2.45,65.45 A 50,50 0 0,1 20.61,9.55 Z"  fill="url(#wg-move)"    />
-                </g>
-
-                {/* Gold divider spokes — one per boundary */}
-                {(["20.61,9.55","79.39,9.55","97.55,65.45","50,100","2.45,65.45"] as const).map((pt, i) => (
-                  <line key={i} x1="50" y1="50" x2={pt.split(",")[0]} y2={pt.split(",")[1]}
-                    stroke="rgba(218,172,62,0.90)" strokeWidth="0.55" />
-                ))}
-              </svg>
-
-              {/* 5 slice buttons — midpoint of each arc at r=32, angles: 0°,72°,144°,216°,288° */}
-              {([
-                { id: "intelligence", label: "FOCUS",   Icon: Target,     color: "#5aadff", card: intelligenceCard, isDone: intelligenceDone,                   pos: { top: "18%",   left: "50%"   } },
-                { id: "strength",     label: "TRAIN",   Icon: Swords,      color: "#ff5555", card: strengthCard,    isDone: isActivityDone("phase1_strength"),   pos: { top: "40.1%", left: "80.4%" } },
-                { id: "vitality",     label: "RESTORE", Icon: FlaskConical,color: "#22d4e8", card: vitalityCard,    isDone: vitalityDone,                        pos: { top: "75.9%", left: "68.8%" } },
-                { id: "calm",         label: "CALM",    Icon: Leaf,         color: "#4ad880", card: calmCard,        isDone: isActivityDone("phase1_meditation"), pos: { top: "75.9%", left: "31.2%" } },
-                { id: "agility",      label: "MOVE",    Icon: Zap,          color: "#b06fff", card: agilityCard,     isDone: isActivityDone("phase1_agility"),    pos: { top: "40.1%", left: "19.6%" } },
-              ] as const).map(({ id, label, Icon, color, card, isDone, pos }) => {
-                const isActive = !allDone && (activeCommandId === id || (id === "intelligence" && activeCommandId === "intelligence"));
-                const onTap = id === "intelligence" ? () => setShowIntelligence(true) : resolveAction(card);
-                return (
-                  <motion.button key={id} type="button" onClick={onTap}
-                    whileTap={{ scale: 0.86 }}
-                    className="absolute flex flex-col items-center gap-1 active:opacity-90"
-                    style={{ top: pos.top, left: pos.left, transform: "translate(-50%, -50%)" }}
-                    data-testid={`command-${id}`}>
-                    {/* Icon circle */}
-                    <div className="flex items-center justify-center rounded-full"
-                      style={{
-                        width: 50, height: 50,
-                        background: isDone
-                          ? "rgba(34,197,94,0.18)"
-                          : `radial-gradient(circle at 34% 28%, ${color}22 0%, rgba(2,4,16,0.92) 68%)`,
-                        border: `1.5px solid ${isDone ? "rgba(34,197,94,0.75)" : color + (isActive ? "bb" : "55")}`,
-                        boxShadow: isDone
-                          ? "0 0 16px rgba(34,197,94,0.40)"
-                          : isActive
-                            ? `0 0 22px ${color}65, 0 0 44px ${color}20, inset 0 0 10px rgba(0,0,0,0.42)`
-                            : `0 0 12px ${color}22, inset 0 0 10px rgba(0,0,0,0.42)`,
-                      }}>
-                      {isDone
-                        ? <CheckCircle2 size={22} style={{ color: "#22c55e" }} />
-                        : <Icon size={22} style={{
-                            color: color,
-                            filter: `drop-shadow(0 0 ${isActive ? "9px" : "5px"} ${color}${isActive ? "ee" : "88"})`,
-                          }} />}
-                    </div>
-                    {/* Label */}
-                    <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] select-none"
-                      style={{
-                        color: isDone ? "#4ade80" : color,
-                        textShadow: `0 0 10px ${color}${isActive ? "aa" : "55"}`,
-                      }}>
-                      {label}
-                    </span>
-                  </motion.button>
-                );
-              })}
-
-              {/* Center compass medallion */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center rounded-full"
-                style={{
-                  width: 60, height: 60,
-                  background: "radial-gradient(circle at 38% 32%, rgba(205,162,55,0.32) 0%, rgba(4,6,22,0.97) 65%)",
-                  border: "2px solid rgba(195,152,52,0.90)",
-                  boxShadow: "0 0 0 1px rgba(195,152,52,0.18), 0 0 22px rgba(195,152,52,0.28), inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -1px 0 rgba(0,0,0,0.50)",
-                }}>
-                <Compass size={28} style={{ color: "#e8c860", filter: "drop-shadow(0 0 8px rgba(232,200,96,0.60))" }} />
-              </div>
-            </div>
+          {/* ── SKILL TREE WHEEL ── */}
+          <div className="relative z-10 flex-1 min-h-0 px-1" style={{ height: CANVAS_H }}>
+            <SkillTreeWheel
+              cardIsDone={cardIsDone}
+              featuredCardId={featuredCard?.id ?? null}
+              allDone={allDone}
+              onLeafSelect={handleLeafSelect}
+              playerName={playerData?.name ?? ""}
+              playerLevel={lvl}
+            />
           </div>
 
           {/* ── NEXT BEST ACTION ── */}
@@ -1365,7 +1284,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             <p className="pt-2 pb-0 text-center text-[9px] font-bold uppercase tracking-[0.32em]"
               style={{ color: "rgba(220,175,65,0.52)" }}>Next Best Action</p>
             <button type="button"
-              onClick={allDone ? undefined : handleFeaturedTap}
+              onClick={allDone ? undefined : handleStartTap}
               className="flex w-full items-center gap-3 px-3 py-2 text-left"
               data-testid="next-best-action">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
@@ -1376,10 +1295,10 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-bold leading-snug" style={{ color: "#ede5d8" }}>
-                  {allDone ? nextActionTitle : (featuredCard?.label ?? "Calm Mind")}
+                  {allDone ? nextActionTitle : (previewCard?.label ?? "Calm Mind")}
                 </p>
                 <p className="truncate text-[11px] mt-0.5" style={{ color: "rgba(237,229,216,0.48)" }}>
-                  {allDone ? nextActionSubtitle : (featuredCard?.sub ?? "Breathing Reset")}
+                  {allDone ? nextActionSubtitle : (previewCard?.sub ?? "Breathing Reset")}
                 </p>
               </div>
               {!allDone && <ChevronRight size={16} style={{ color: "#c4a245" }} />}
@@ -1388,7 +1307,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
 
           {/* ── START BUTTON ── */}
           <motion.button type="button"
-            onClick={allDone ? undefined : handleFeaturedTap}
+            onClick={allDone ? undefined : handleStartTap}
             whileTap={!allDone ? { scale: 0.980 } : undefined}
             className="relative z-10 mx-3 mt-2 mb-3 flex items-center justify-center overflow-hidden uppercase"
             style={{
