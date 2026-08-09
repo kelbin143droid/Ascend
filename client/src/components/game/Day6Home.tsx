@@ -5,9 +5,9 @@ import {
   Brain, CheckCircle2, Sparkles, X, Palette,
   ArrowRight, BookOpen, Zap, Shield, Flame,
   ChevronLeft, ChevronRight,
-  Heart, Moon, Swords, Compass, Crosshair, Leaf, FlaskConical, Target, Trophy,
+  Heart, Moon,
+  Gem, Coins, Castle, Crosshair,
 } from "lucide-react";
-import { SkillTreeWheel, CANVAS_H } from "./SkillTreeWheel";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
 import {
@@ -226,6 +226,11 @@ function wasFirstResetCompletedToday(): boolean {
 
 const CARD_BASE = "rounded-2xl p-4 flex flex-col gap-3 w-full text-left";
 
+const ASCEND_GOLD = "#f6c76f";
+const ASCEND_CYAN = "#38d5ff";
+const ASCEND_EMERALD = "#58e39b";
+const ASCEND_RED = "#f9735b";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -276,8 +281,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [sleepQuality, setSleepQuality] = useState<SleepQuality>("ok");
   const [vitalitySubmitting, setVitalitySubmitting] = useState(false);
   const [showMissionGuide, setShowMissionGuide] = useState(false);
-  // Skill-tree: which leaf the player has tapped (overrides featuredCard for the NBA panel)
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   // Auto-start strength when navigated from agility completion (?autostart=strength)
   const [autoStartPending, setAutoStartPending] = useState(() =>
     typeof window !== "undefined" && window.location.search.includes("autostart=strength")
@@ -607,19 +610,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (!aid) return;
     startActivity(aid);
   };
-  // Skill-tree helpers
-  const cardIsDone = (cardId: string): boolean => {
-    if (cardId === "intelligence") return intelligenceDone;
-    if (cardId === "vitality") return vitalityDone;
-    const dc = DASH_CARDS.find(d => d.id === cardId);
-    if (!dc) return false;
-    return isActivityDone(dc.activityId);
-  };
-
-  const handleLeafSelect = (cardId: string | null) => {
-    setSelectedCardId(cardId);
-  };
-
   const handleAvatarPick = (icon: string) => { saveAvatarIcon(icon); setAvatarState(icon); setShowAvatar(false); };
 
   const dismissMissionGuide = () => {
@@ -635,18 +625,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     : vitalityPending
       ? vitalityCard
     : DASH_CARDS.find(d => d.activityId === currentAid) ?? null;
-  // previewCard: whichever leaf the user last tapped in the tree, else the system-recommended card
-  const previewCard = selectedCardId
-    ? (DASH_CARDS.find(d => d.id === selectedCardId) ?? featuredCard)
-    : featuredCard;
-
-  const handleStartTap = () => {
-    if (!previewCard) return;
-    if (previewCard.id === "intelligence") { setShowIntelligence(true); return; }
-    if (previewCard.id === "vitality") { navigate("/sectograph?vitality=1"); return; }
-    startActivity(previewCard.activityId);
-  };
-
   const intelReadCopy = buildIntelReadCopy(intelReadMode, recommendedIntelRead, customIntelTopic);
   const intelReadPages = useMemo(() => {
     const pages: string[][] = [];
@@ -674,70 +652,57 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     return () => navigate(dc.fallbackRoute);
   };
 
-  const calmCard = DASH_CARDS.find(d => d.id === "calm")!;
-  const agilityCard = DASH_CARDS.find(d => d.id === "agility")!;
-  const strengthCard = DASH_CARDS.find(d => d.id === "strength")!;
-  const activeCommandId = featuredCard?.id ?? "calm";
-  const commandItems = [
+  const heroPower = Math.max(
+    1200,
+    Math.round(
+      (playerData?.totalExp ?? 0) +
+      lvl * 275 +
+      (playerData?.hp ?? 0) * 3 +
+      (playerData?.mp ?? 0) * 6,
+    ),
+  );
+  const gateRequirement = 10000;
+  const gateReady = heroPower >= gateRequirement;
+  const gatePowerPct = Math.min(100, Math.round((heroPower / gateRequirement) * 100));
+  const questCards = [
     {
-      id: "calm",
-      label: "Calm Mind",
-      subtitle: "Breath",
-      icon: Brain,
-      color: "#58e39b",
-      position: "top" as const,
-      action: resolveAction(calmCard),
-    },
-    {
-      id: "agility",
-      label: "Agility",
-      subtitle: "Movement",
-      icon: Zap,
-      color: "#34d399",
-      position: "upperRight" as const,
-      action: resolveAction(agilityCard),
-    },
-    {
-      id: "strength",
-      label: "Physical",
-      subtitle: "Circuit",
-      icon: Shield,
-      color: "#f9735b",
-      position: "lowerRight" as const,
-      action: resolveAction(strengthCard),
-    },
-    {
-      id: "intelligence",
-      label: "Intel",
-      subtitle: "Study",
-      icon: BookOpen,
-      color: "#38bdf8",
-      position: "lowerLeft" as const,
+      label: "Focus",
+      detail: "Deep work",
+      icon: Crosshair,
+      color: ASCEND_CYAN,
+      progress: intelligenceDone ? 100 : currentAid === "phase1_meditation" ? Math.max(25, questProgressPct) : 45,
+      reward: PHASE1_XP.intelligence,
       action: () => setShowIntelligence(true),
     },
     {
-      id: "vitality",
-      label: "Vitality",
-      subtitle: "Recovery",
-      icon: Heart,
-      color: "#f59e0b",
-      position: "upperLeft" as const,
-      action: resolveAction(vitalityCard),
+      label: "Train",
+      detail: "Body circuit",
+      icon: Shield,
+      color: ASCEND_RED,
+      progress: isActivityDone("phase1_strength") ? 100 : currentAid === "phase1_strength" ? Math.max(30, questProgressPct) : 35,
+      reward: PHASE1_XP.strength,
+      action: () => startActivity("phase1_strength"),
+    },
+    {
+      label: "Calm",
+      detail: "Breathing reset",
+      icon: Brain,
+      color: ASCEND_EMERALD,
+      progress: isActivityDone("phase1_meditation") ? 100 : currentAid === "phase1_meditation" ? Math.max(42, questProgressPct) : 20,
+      reward: PHASE1_XP.sense,
+      action: () => navigate("/guided-session/calm-breathing"),
+    },
+    {
+      label: "Gate",
+      detail: gateReady ? "Ready to enter" : "Power required",
+      icon: Castle,
+      color: ASCEND_GOLD,
+      progress: gatePowerPct,
+      reward: 1,
+      action: () => navigate("/game"),
     },
   ];
-  const positionClass: Record<(typeof commandItems)[number]["position"], string> = {
-    top: "left-1/2 top-1 -translate-x-1/2",
-    upperRight: "right-1 top-[28%] -translate-y-1/2",
-    lowerRight: "right-[10%] bottom-7",
-    lowerLeft: "bottom-7 left-[10%]",
-    upperLeft: "left-1 top-[28%] -translate-y-1/2",
-  };
-  const nextActionTitle = allDone ? "Daily ritual complete" : featuredCard?.label ?? "Focus";
-  const nextActionSubtitle = allDone
-    ? "You cleared today's command cycle."
-    : featuredCard?.sub ?? "You have the most to gain.";
-  const nextActionColor = allDone ? "#58e39b" : featuredCard?.color ?? "#38bdf8";
-  const startLabel = allDone ? "Complete" : "Start";
+
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -1191,160 +1156,255 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
         }
       `}</style>
 
-      {/* ── Mission Command ── fixed height = viewport minus top-bar + bottom-nav */}
-      <div className="flex flex-col px-2 max-w-md mx-auto w-full" style={{ minHeight: "calc(100dvh - 9rem)", overflowY: "auto" }} data-testid="day6-home">
+      <div className="flex flex-col gap-3 px-4 py-3 max-w-md mx-auto w-full relative" data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
+        {/* ── ASCEND HERO QUEST HUB ─────────────────────────────────────── */}
         <motion.section
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.28, ease: "easeOut" }}
-          className="relative flex flex-col flex-1 min-h-0"
+          transition={{ duration: 0.36 }}
+          className="relative overflow-hidden rounded-[28px]"
           style={{
-            borderRadius: "22px",
-            background: "radial-gradient(ellipse at 50% 0%, rgba(12,20,58,0.99) 0%, rgba(4,6,18,1) 55%, rgba(2,3,10,1) 100%)",
-            border: "1.5px solid rgba(185,142,48,0.70)",
-            boxShadow: "0 0 0 1px rgba(185,142,48,0.12), 0 6px 60px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.07)",
-            color: "#f0e8d8",
+            background:
+              "linear-gradient(150deg, rgba(7,10,22,0.98) 0%, rgba(10,18,32,0.94) 48%, rgba(12,25,30,0.94) 100%)",
+            border: "1px solid rgba(246,199,111,0.32)",
+            boxShadow:
+              "0 24px 70px rgba(0,0,0,0.50), 0 0 42px rgba(56,213,255,0.13), inset 0 1px 0 rgba(255,255,255,0.14)",
           }}
-          data-testid="mission-command-home"
+          data-testid="ascend-quest-hub"
         >
-          {/* Ambient top-center blue radiance */}
-          <div className="pointer-events-none absolute inset-0"
-            style={{ background: "radial-gradient(ellipse at 50% -5%, rgba(40,80,220,0.10) 0%, transparent 55%)" }} />
-          {/* Gold top edge line */}
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(220,175,65,0.50), transparent)" }} />
-
-          {/* ── HEADER ── */}
-          <div className="relative z-10 flex items-center justify-between px-4 pt-3">
-            <button type="button" onClick={() => setShowCustomize(true)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full active:scale-90 transition-transform"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(185,142,48,0.35)", color: "#c4a245" }}
-              aria-label="Customize">
-              <ChevronLeft size={17} />
-            </button>
-            <p className="font-display text-[13px] font-black uppercase tracking-[0.22em] whitespace-nowrap"
-              style={{ color: "#e8c860", textShadow: "0 0 24px rgba(232,200,96,0.45), 0 1px 0 rgba(0,0,0,0.60)" }}>
-              Mission Command
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle at 78% 16%, rgba(246,199,111,0.22), transparent 26%), radial-gradient(circle at 20% 86%, rgba(56,213,255,0.20), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.10), transparent 42%)",
+            }}
+          />
+          <div
+            className="absolute right-4 top-5 h-28 w-28 rounded-full pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 42%, rgba(56,213,255,0.18), transparent 55%), linear-gradient(160deg, rgba(246,199,111,0.20), rgba(56,213,255,0.08))",
+              border: "1px solid rgba(246,199,111,0.28)",
+              boxShadow: "0 0 46px rgba(56,213,255,0.12), inset 0 0 26px rgba(246,199,111,0.10)",
+            }}
+          />
+          <div
+            className="absolute right-12 top-11 h-20 w-14 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 0 18%, rgba(236,244,255,0.80) 18% 29%, transparent 29% 71%, rgba(236,244,255,0.80) 71% 82%, transparent 82%), linear-gradient(180deg, rgba(246,199,111,0.88), rgba(38,49,68,0.92))",
+              clipPath:
+                "polygon(46% 0, 54% 0, 64% 18%, 74% 36%, 63% 100%, 37% 100%, 26% 36%, 36% 18%)",
+              filter: "drop-shadow(0 0 12px rgba(246,199,111,0.34))",
+              opacity: 0.86,
+            }}
+          />
+          <div className="relative z-10 p-5 pr-32">
+            <div className="flex items-center gap-2">
+              <span
+                className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]"
+                style={{
+                  color: ASCEND_GOLD,
+                  background: "rgba(246,199,111,0.10)",
+                  border: "1px solid rgba(246,199,111,0.24)",
+                }}
+              >
+                Ascend Hero
+              </span>
+              <span
+                className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+                style={{
+                  color: gateReady ? ASCEND_EMERALD : ASCEND_CYAN,
+                  background: gateReady ? "rgba(88,227,155,0.10)" : "rgba(56,213,255,0.10)",
+                  border: `1px solid ${gateReady ? "rgba(88,227,155,0.24)" : "rgba(56,213,255,0.24)"}`,
+                }}
+              >
+                E Rank
+              </span>
+            </div>
+            <h1
+              className="mt-4 text-[29px] font-black leading-none tracking-[0.02em] normal-case"
+              style={{
+                color: "rgba(250,247,238,0.98)",
+                textShadow: "0 2px 18px rgba(246,199,111,0.18)",
+              }}
+            >
+              Real effort powers your hero.
+            </h1>
+            <p className="mt-2 max-w-[230px] text-[13px] font-semibold leading-snug" style={{ color: "rgba(220,229,242,0.72)" }}>
+              Complete today&apos;s quests, strengthen your build, then push the next gate.
             </p>
-            <button type="button" onClick={() => setShowAvatar(true)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full active:scale-90 transition-transform"
-              style={{ background: "rgba(185,142,48,0.10)", border: "1px solid rgba(185,142,48,0.45)", color: "#e8c860" }}
-              aria-label="Hero">
-              <Zap size={15} style={{ filter: "drop-shadow(0 0 5px rgba(232,200,96,0.70))" }} />
-            </button>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {[
+                { icon: Coins, value: "24.5K", label: "Gold", color: ASCEND_GOLD },
+                { icon: Gem, value: "1.25K", label: "Crystals", color: ASCEND_CYAN },
+                { icon: Sparkles, value: `${completedMissionCount}/${totalMissionCount}`, label: "Quests", color: ASCEND_EMERALD },
+              ].map((metric) => (
+                <div
+                  key={metric.label}
+                  className="rounded-2xl px-2.5 py-2"
+                  style={{
+                    background: "rgba(255,255,255,0.055)",
+                    border: "1px solid rgba(255,255,255,0.09)",
+                  }}
+                >
+                  <metric.icon size={14} style={{ color: metric.color }} />
+                  <p className="mt-1 text-[14px] font-black leading-none" style={{ color: "rgba(248,250,252,0.96)" }}>
+                    {metric.value}
+                  </p>
+                  <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: "rgba(203,213,225,0.58)" }}>
+                    {metric.label}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
+        </motion.section>
 
-          {/* ── RESOURCE BAR ── VITALITY · FOCUS · GLORY ── */}
-          <div className="relative z-10 px-4 pt-2">
-            <div className="flex items-center gap-2 rounded-xl px-3 py-2"
-              style={{ background: "rgba(0,0,0,0.48)", border: "1px solid rgba(185,142,48,0.20)" }}>
-              {/* VITALITY (HP) */}
-              <div className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: "#f87171" }}>Vitality</span>
-                <span className="text-[13px] font-black tabular-nums leading-none" style={{ color: "#fca5a5" }}>
-                  {playerData?.hp ?? "—"}
+        {/* ── PROFILE HUD ───────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.30, delay: 0.04 }}
+          className="rounded-2xl relative overflow-hidden"
+          style={{
+            background: panelBg,
+            border: `1px solid ${panelBorder}`,
+            backdropFilter: "blur(22px) saturate(1.18)",
+            boxShadow: panelShadow,
+            padding: "14px 16px",
+          }}
+          data-testid="daily-status-section"
+        >
+          <div className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
+            style={{
+              background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.055) 42%, transparent 100%)",
+              opacity: glossOpacity,
+            }} />
+          <div className="absolute -top-12 -left-28 h-28 w-72 pointer-events-none"
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent)",
+              filter: "blur(10px)",
+              animation: "cardGlossDrift 9s ease-in-out infinite",
+            }} />
+          <div className="relative z-10 flex items-center gap-3">
+            {/* Avatar */}
+            <button
+              onClick={() => (homeData.isOnboardingComplete || allDone) && setShowAvatar(true)}
+              disabled={!homeData.isOnboardingComplete && !allDone}
+              data-testid="button-avatar"
+              className="relative shrink-0 transition-transform duration-150 active:scale-90 disabled:active:scale-100">
+              {hasStreak && (
+                <div className="absolute inset-[-5px] rounded-full pointer-events-none"
+                  style={{
+                    border: `1.5px solid ${primary}`,
+                    boxShadow: `0 0 12px ${primary}50`,
+                    animation: "streakRingPulse 2.4s ease-in-out infinite",
+                  }} />
+              )}
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center text-xl relative z-10"
+                style={{
+                  background: `linear-gradient(135deg,${primary}28,${primary}0c)`,
+                  border: `1.5px solid ${primary}40`,
+                  boxShadow: hasStreak ? `0 0 20px ${primary}45` : `0 0 8px ${primary}22`,
+                }}
+              >
+                {avatarIcon}
+              </div>
+              <div
+                className="absolute -bottom-[2px] -right-[2px] w-[18px] h-[18px] rounded-full flex items-center justify-center text-[7px] font-bold leading-none z-20"
+                style={{ backgroundColor: primary, color: isNeonEmp ? fae.ink : "#000",
+                  boxShadow: `0 0 8px ${primary}60` }}
+                data-testid="text-player-level"
+              >
+                {lvl}
+              </div>
+            </button>
+
+            {/* Level + XP section */}
+            <div className="flex-1 min-w-0" data-testid="xp-progress-section">
+              {/* Row 1: LEVEL label + number + XP counter */}
+              <div className="flex items-baseline justify-between mb-[7px]">
+                <div className="flex items-baseline gap-[5px]">
+                  <span className="text-[9px] font-bold tracking-[0.22em] uppercase leading-none"
+                    style={{ color: cardMutedCol, opacity: 0.78 }}>LEVEL</span>
+                  <span className="text-[22px] font-bold leading-none tabular-nums"
+                    style={{ color: primary, lineHeight: 1, textShadow: `0 0 12px ${primary}60` }}
+                    data-testid="stat-level">
+                    {lvl}
+                  </span>
+                  {hasStreak && (
+                    <span
+                      className="flex items-center gap-[3px] text-[8px] font-bold px-[5px] py-[2px] rounded-full ml-1"
+                      style={{ background: `${primary}16`, color: primary, border: `1px solid ${primary}24` }}
+                      data-testid="stat-streak"
+                    >
+                      <Flame size={7} /> {streak}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] font-mono tabular-nums leading-none font-semibold">
+                  <span style={{ color: primary, textShadow: `0 0 8px ${primary}60` }}>XP {xp.exp}</span>
+                  <span style={{ color: "rgba(205,216,238,0.70)" }}> / {xp.maxExp}</span>
                 </span>
               </div>
-              <div className="h-6 w-px" style={{ background: "rgba(185,142,48,0.25)" }} />
-              {/* FOCUS (MP) */}
-              <div className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: "#818cf8" }}>Focus</span>
-                <span className="text-[13px] font-black tabular-nums leading-none" style={{ color: "#a5b4fc" }}>
-                  {playerData?.mp ?? "—"}
-                </span>
+
+              {/* Row 2: XP bar */}
+              <div className="relative">
+                {hasStreak && (
+                  <div className="absolute inset-0 rounded-full pointer-events-none"
+                    style={{ boxShadow: `0 0 10px ${primary}30`, animation: "streakBarGlow 2.4s ease-in-out infinite" }} />
+                )}
+                {isIronSov ? (
+                  <SegBar fromPct={xpFrom} pct={xp.percent} fill={hudCyan} glow={hudCyanG} />
+                ) : isNeonEmp ? (
+                  <PastelBar pct={xp.percent} />
+                ) : (
+                  <motion.div className="w-full h-[7px] rounded-full overflow-hidden relative"
+                    animate={{
+                      boxShadow: [
+                        `0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`,
+                        `0 0 18px ${colors.primaryGlow}90, 0 0 32px ${colors.primaryGlow}30, inset 0 1px 2px rgba(0,0,0,0.40)`,
+                        `0 0 6px ${colors.primaryGlow}40, inset 0 1px 2px rgba(0,0,0,0.40)`,
+                      ],
+                    }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ backgroundColor: "rgba(255,255,255,0.07)" }}
+                    data-testid="xp-bar-track">
+                    <motion.div className="h-full rounded-full"
+                      initial={{ width: `${xpFrom}%` }} animate={{ width: `${xp.percent}%` }}
+                      transition={{ duration: 1.0, ease: [0.22, 0.61, 0.36, 1] }}
+                      style={{
+                        background: `linear-gradient(90deg, ${colors.primary}dd, ${colors.primary}, ${colors.primary}cc)`,
+                        boxShadow: `0 0 12px ${colors.primaryGlow}, 0 0 4px ${colors.primaryGlow}`,
+                      }}
+                      data-testid="xp-bar-fill" />
+                    <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                      background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
+                      backgroundSize: "200% 100%",
+                      animation: "xpShimmer 3s linear infinite",
+                    }} />
+                  </motion.div>
+                )}
               </div>
-              <div className="h-6 w-px" style={{ background: "rgba(185,142,48,0.25)" }} />
-              {/* GLORY (Total XP) */}
-              <div className="flex flex-1 flex-col items-center gap-0.5">
-                <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: "#fbbf24" }}>Glory</span>
-                <span className="text-[13px] font-black tabular-nums leading-none" style={{ color: "#fde68a" }}>
-                  {playerData?.totalExp ?? 0}
+
+              {/* Row 3: path label + theme button */}
+              <div className="flex items-center justify-between mt-[6px]">
+                <span className="text-[9px] tracking-[0.10em] leading-none flex items-center gap-1"
+                  style={{ color: primary, opacity: 0.80 }}>
+                  <span style={{ fontSize: "7px" }}>◆</span> {pathCfg.displayLabel}
                 </span>
+                <button onClick={() => setShowCustomize(true)} data-testid="button-customize"
+                  className="flex items-center justify-center w-[22px] h-[22px] rounded-lg transition-all duration-150 active:scale-90"
+                  style={{ color: mutedCol, backgroundColor: `${primary}10`, border: `1px solid ${primary}16` }}>
+                  <Palette size={10} />
+                </button>
               </div>
             </div>
           </div>
-
-          {/* ── SKILL TREE WHEEL ── */}
-          <div className="relative z-10 flex-1 min-h-0 px-1" style={{ height: CANVAS_H }}>
-            <SkillTreeWheel
-              cardIsDone={cardIsDone}
-              featuredCardId={featuredCard?.id ?? null}
-              allDone={allDone}
-              onLeafSelect={handleLeafSelect}
-              playerName={playerData?.name ?? ""}
-              playerLevel={lvl}
-            />
-          </div>
-
-          {/* ── NEXT BEST ACTION ── */}
-          <div className="relative z-10 mx-3 rounded-2xl overflow-hidden"
-            style={{ background: "rgba(4,8,26,0.82)", border: "1px solid rgba(185,142,48,0.30)" }}>
-            <p className="pt-2 pb-0 text-center text-[9px] font-bold uppercase tracking-[0.32em]"
-              style={{ color: "rgba(220,175,65,0.52)" }}>Next Best Action</p>
-            <button type="button"
-              onClick={allDone ? undefined : handleStartTap}
-              className="flex w-full items-center gap-3 px-3 py-2 text-left"
-              data-testid="next-best-action">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                style={{ background: `${nextActionColor}14`, border: `1.5px solid ${nextActionColor}55`, boxShadow: `0 0 10px ${nextActionColor}22` }}>
-                {allDone
-                  ? <CheckCircle2 size={18} style={{ color: "#22c55e" }} />
-                  : <Brain size={18} style={{ color: nextActionColor, filter: `drop-shadow(0 0 5px ${nextActionColor}99)` }} />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-bold leading-snug" style={{ color: "#ede5d8" }}>
-                  {allDone ? nextActionTitle : (previewCard?.label ?? "Calm Mind")}
-                </p>
-                <p className="truncate text-[11px] mt-0.5" style={{ color: "rgba(237,229,216,0.48)" }}>
-                  {allDone ? nextActionSubtitle : (previewCard?.sub ?? "Breathing Reset")}
-                </p>
-              </div>
-              {!allDone && <ChevronRight size={16} style={{ color: "#c4a245" }} />}
-            </button>
-          </div>
-
-          {/* ── START BUTTON ── */}
-          <motion.button type="button"
-            onClick={allDone ? undefined : handleStartTap}
-            whileTap={!allDone ? { scale: 0.980 } : undefined}
-            className="relative z-10 mx-3 mt-2 mb-3 flex items-center justify-center overflow-hidden uppercase"
-            style={{
-              minHeight: "52px",
-              borderRadius: "14px",
-              background: allDone
-                ? "linear-gradient(135deg, rgba(22,130,60,0.82) 0%, rgba(48,190,100,0.88) 100%)"
-                : "linear-gradient(135deg, rgba(10,38,140,1) 0%, rgba(18,88,210,1) 50%, rgba(8,34,128,1) 100%)",
-              border: "1px solid rgba(185,142,48,0.58)",
-              color: "#ede5d8",
-              /* Wide geometric futuristic font stack */
-              fontFamily: "'Rajdhani', 'Orbitron', 'Bank Gothic', 'Bebas Neue', 'Impact', ui-sans-serif, system-ui",
-              fontSize: "22px",
-              fontWeight: 900,
-              letterSpacing: "0.32em",
-              boxShadow: allDone
-                ? "0 6px 24px rgba(22,130,60,0.30)"
-                : "0 6px 30px rgba(12,56,200,0.40), inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.40)",
-              textShadow: "0 0 20px rgba(140,180,255,0.60), 0 1px 6px rgba(0,0,0,0.80)",
-            }}
-            data-testid="button-start-command"
-          >
-            {/* Top shimmer line */}
-            <span className="pointer-events-none absolute inset-x-8 top-0 h-px"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)" }} />
-            {/* Sweep animation */}
-            <span className="pointer-events-none absolute inset-0"
-              style={{ background: "linear-gradient(90deg, transparent 18%, rgba(255,255,255,0.10) 50%, transparent 82%)", animation: "buttonSweep 6s ease-in-out 1s infinite" }} />
-            {/* 4-point gold stars */}
-            <span className="pointer-events-none absolute left-4 flex items-center justify-center" style={{ color: "#e8c860", fontSize: "16px", filter: "drop-shadow(0 0 5px rgba(232,200,96,0.80))", lineHeight: 1 }}>✦</span>
-            <span className="pointer-events-none absolute right-4 flex items-center justify-center" style={{ color: "#e8c860", fontSize: "16px", filter: "drop-shadow(0 0 5px rgba(232,200,96,0.80))", lineHeight: 1 }}>✦</span>
-            {startLabel}
-          </motion.button>
-
-        </motion.section>
-
-        <div className="hidden" aria-hidden="true">
+        </motion.div>
 
         {/* ── SYSTEM CARD ───────────────────────────────────────────────── */}
         <motion.div
@@ -1405,6 +1465,106 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             {systemMission}
           </p>
         </motion.div>
+
+        {/* ── DAILY QUEST LIST ──────────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, delay: 0.08 }}
+          className="relative overflow-hidden rounded-[24px] p-3"
+          style={{
+            background: "linear-gradient(145deg, rgba(7,11,24,0.94), rgba(5,10,20,0.92))",
+            border: "1px solid rgba(246,199,111,0.18)",
+            boxShadow: "0 16px 48px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10)",
+            backdropFilter: "blur(22px)",
+          }}
+          data-testid="daily-quest-list"
+        >
+          <div className="mb-3 flex items-center justify-between px-1">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: ASCEND_GOLD }}>
+                Daily Quests
+              </p>
+              <p className="mt-0.5 text-[12px] font-semibold" style={{ color: "rgba(203,213,225,0.66)" }}>
+                Build stats before entering the gate
+              </p>
+            </div>
+            <div
+              className="rounded-full px-3 py-1.5 text-[11px] font-black"
+              style={{
+                color: "rgba(10,14,24,0.96)",
+                background: `linear-gradient(90deg, ${ASCEND_GOLD}, #f8e6ae)`,
+                boxShadow: "0 0 18px rgba(246,199,111,0.22)",
+              }}
+            >
+              {Math.round(questProgressPct)}%
+            </div>
+          </div>
+          <div className="grid gap-2">
+            {questCards.map((quest) => (
+              <button
+                key={quest.label}
+                type="button"
+                onClick={quest.action}
+                className="group grid min-h-[72px] grid-cols-[42px_1fr_auto] items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-transform active:scale-[0.985]"
+                style={{
+                  background: `linear-gradient(120deg, ${quest.color}14, rgba(255,255,255,0.045))`,
+                  border: `1px solid ${quest.color}26`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08)`,
+                }}
+                data-testid={`quest-card-${quest.label.toLowerCase()}`}
+              >
+                <div
+                  className="flex h-[42px] w-[42px] items-center justify-center rounded-2xl"
+                  style={{
+                    background: `${quest.color}14`,
+                    border: `1px solid ${quest.color}38`,
+                    boxShadow: `0 0 18px ${quest.color}18`,
+                  }}
+                >
+                  <quest.icon size={20} style={{ color: quest.color }} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="truncate text-[17px] font-black leading-none" style={{ color: "rgba(248,250,252,0.96)" }}>
+                      {quest.label}
+                    </p>
+                    <span className="text-[10px] font-bold tabular-nums" style={{ color: "rgba(203,213,225,0.62)" }}>
+                      {Math.round(quest.progress)}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] font-semibold leading-none" style={{ color: "rgba(203,213,225,0.62)" }}>
+                    {quest.detail}
+                  </p>
+                  <div className="mt-2 h-[5px] overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${quest.progress}%`,
+                        background: quest.color,
+                        boxShadow: `0 0 10px ${quest.color}55`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div
+                  className="rounded-xl px-2.5 py-2 text-center"
+                  style={{
+                    background: "rgba(0,0,0,0.22)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <p className="text-[12px] font-black leading-none" style={{ color: quest.color }}>
+                    {quest.label === "Gate" ? "Token" : `+${quest.reward}`}
+                  </p>
+                  <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.12em]" style={{ color: "rgba(203,213,225,0.56)" }}>
+                    {quest.label === "Gate" ? "Elig." : "XP"}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </motion.section>
 
         {/* ── RITUAL QUEUE STRIP ───────────────────────────────────────── */}
         {activities.length > 0 && (() => {
@@ -1649,7 +1809,115 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
           );
         })()}
 
-        </div>
+        {/* ── GATE / REWARD LOOP ───────────────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.34, delay: 0.16 }}
+          className="relative overflow-hidden rounded-[24px] p-4"
+          style={{
+            background:
+              "linear-gradient(150deg, rgba(10,12,20,0.96), rgba(8,18,24,0.94) 54%, rgba(14,12,20,0.96))",
+            border: "1px solid rgba(246,199,111,0.24)",
+            boxShadow:
+              "0 20px 60px rgba(0,0,0,0.42), 0 0 34px rgba(246,199,111,0.10), inset 0 1px 0 rgba(255,255,255,0.10)",
+          }}
+          data-testid="gate-reward-panel"
+        >
+          <div
+            className="absolute inset-x-0 top-0 h-28 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 0%, rgba(88,227,155,0.20), transparent 56%), linear-gradient(180deg, rgba(255,255,255,0.10), transparent)",
+            }}
+          />
+          <div className="relative z-10 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: ASCEND_GOLD }}>
+                Gate Preparation
+              </p>
+              <h2 className="mt-1 text-[24px] font-black leading-none tracking-[0.02em]" style={{ color: "rgba(250,247,238,0.98)" }}>
+                E Rank Gate
+              </h2>
+              <p className="mt-1.5 text-[12px] font-semibold leading-snug" style={{ color: "rgba(203,213,225,0.66)" }}>
+                Higher power opens harder gates and better earned rewards.
+              </p>
+            </div>
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
+              style={{
+                color: gateReady ? ASCEND_EMERALD : ASCEND_GOLD,
+                background: gateReady ? "rgba(88,227,155,0.12)" : "rgba(246,199,111,0.12)",
+                border: `1px solid ${gateReady ? "rgba(88,227,155,0.34)" : "rgba(246,199,111,0.34)"}`,
+                boxShadow: `0 0 24px ${gateReady ? "rgba(88,227,155,0.16)" : "rgba(246,199,111,0.16)"}`,
+              }}
+            >
+              <Castle size={27} />
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-4 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] font-bold uppercase tracking-[0.13em]" style={{ color: "rgba(203,213,225,0.70)" }}>
+                Hero Power
+              </span>
+              <span className="font-mono text-[13px] font-black tabular-nums" style={{ color: gateReady ? ASCEND_EMERALD : ASCEND_GOLD }}>
+                {heroPower.toLocaleString()} / {gateRequirement.toLocaleString()}
+              </span>
+            </div>
+            <div className="mt-2 h-[7px] overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${gatePowerPct}%`,
+                  background: gateReady
+                    ? `linear-gradient(90deg, ${ASCEND_EMERALD}, ${ASCEND_GOLD})`
+                    : `linear-gradient(90deg, ${ASCEND_CYAN}, ${ASCEND_GOLD})`,
+                  boxShadow: `0 0 12px ${gateReady ? "rgba(88,227,155,0.48)" : "rgba(56,213,255,0.42)"}`,
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-3 grid grid-cols-3 gap-2">
+            {[
+              { label: "XP", value: "800", color: ASCEND_CYAN },
+              { label: "Gold", value: "2.4K", color: ASCEND_GOLD },
+              { label: "Crypto", value: "Eligible", color: ASCEND_EMERALD },
+            ].map((reward) => (
+              <div
+                key={reward.label}
+                className="rounded-2xl px-2 py-2.5 text-center"
+                style={{ background: `${reward.color}0f`, border: `1px solid ${reward.color}24` }}
+              >
+                <p className="text-[13px] font-black leading-none" style={{ color: reward.color }}>
+                  {reward.value}
+                </p>
+                <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.12em]" style={{ color: "rgba(203,213,225,0.60)" }}>
+                  {reward.label}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/game")}
+            className="relative z-10 mt-4 flex min-h-[50px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl text-[15px] font-black uppercase tracking-[0.12em] active:scale-[0.985]"
+            style={{
+              background: gateReady
+                ? `linear-gradient(90deg, #166534, ${ASCEND_EMERALD}, #d9a441)`
+                : `linear-gradient(90deg, #1d4ed8, ${ASCEND_CYAN}, #d9a441)`,
+              color: "rgba(5,8,14,0.96)",
+              boxShadow: "0 12px 34px rgba(56,213,255,0.16), inset 0 1px 0 rgba(255,255,255,0.26)",
+            }}
+            data-testid="button-enter-gate"
+          >
+            {gateReady ? "Enter Gate" : "Build Power"}
+            <ArrowRight size={18} />
+          </button>
+        </motion.section>
+
       </div>
     </SystemLayout>
   );

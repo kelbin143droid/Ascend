@@ -503,33 +503,7 @@ async function cancelWakeUpNotification(): Promise<void> {
 }
 
 /** Default cycle count when the user has set a wake time but no preference. */
-export const DEFAULT_CYCLES: CycleCount = 5;
-
-// ─── Injectable dependency types (for unit tests) ────────────────────────────
-
-export interface WindDownDeps {
-  scheduleWindDown: (opts: { wake: WakeHM; cycles: CycleCount; leadMinutes: number }) => Promise<ScheduleResult>;
-  cancelWindDown: () => Promise<void>;
-  getRecommendedCycles: (wake: WakeHM) => number;
-}
-
-export interface WakeUpDeps {
-  scheduleWakeUp: (opts: { wake: WakeHM; completedCycles?: number }) => Promise<ScheduleResult>;
-  cancelWakeUp: () => Promise<void>;
-  getLastNightCycles: () => number | undefined;
-}
-
-const defaultWindDownDeps: WindDownDeps = {
-  scheduleWindDown: scheduleWindDownNotification,
-  cancelWindDown: cancelWindDownNotification,
-  getRecommendedCycles: recommendedCycles,
-};
-
-const defaultWakeUpDeps: WakeUpDeps = {
-  scheduleWakeUp: scheduleWakeUpNotification,
-  cancelWakeUp: cancelWakeUpNotification,
-  getLastNightCycles: lastNightCompletedCycles,
-};
+const DEFAULT_CYCLES: CycleCount = 5;
 
 /**
  * Apply current sleep settings to the OS wind-down notification.
@@ -545,23 +519,22 @@ const defaultWakeUpDeps: WakeUpDeps = {
  *     Sleep Settings (this function re-runs on every settings change).
  *
  * Call after settings change and once per app boot. Idempotent.
- * Pass `deps` only in tests to inject stubs.
  */
-export async function syncWindDownNotification(deps: WindDownDeps = defaultWindDownDeps): Promise<void> {
+export async function syncWindDownNotification(): Promise<void> {
   const state = read();
   const plan = getNightPlan();
   if (!plan.windDownReminder || !state.wakeTime) {
-    await deps.cancelWindDown();
+    await cancelWindDownNotification();
     return;
   }
   const wake = state.wakeTime;
   // Resolve cycles: explicit pick > best fit > sane default.
   let cycles: CycleCount = state.cycles ?? DEFAULT_CYCLES;
   if (!state.cycles) {
-    const best = deps.getRecommendedCycles(wake);
+    const best = recommendedCycles(wake);
     if (best === 4 || best === 5 || best === 6) cycles = best;
   }
-  await deps.scheduleWindDown({
+  await scheduleWindDownNotification({
     wake,
     cycles,
     leadMinutes: plan.windDownOffsetMin,
@@ -579,19 +552,18 @@ export async function syncWindDownNotification(deps: WindDownDeps = defaultWindD
  *     never re-opens the app. Re-syncs replace the prior schedule.
  *
  * Call after settings change and once per app boot. Idempotent.
- * Pass `deps` only in tests to inject stubs.
  */
-export async function syncWakeUpNotification(deps: WakeUpDeps = defaultWakeUpDeps): Promise<void> {
+export async function syncWakeUpNotification(): Promise<void> {
   const state = read();
   if (!state.wakeUpReminderEnabled || !state.wakeTime) {
-    await deps.cancelWakeUp();
+    await cancelWakeUpNotification();
     return;
   }
   // Personalize the body with the cycle count from the night that just
   // ended. When no recent bed/wake data exists, the scheduler falls back
   // to generic copy (per task #6 acceptance criteria).
-  const completedCycles = deps.getLastNightCycles();
-  await deps.scheduleWakeUp({
+  const completedCycles = lastNightCompletedCycles();
+  await scheduleWakeUpNotification({
     wake: state.wakeTime,
     completedCycles,
   });

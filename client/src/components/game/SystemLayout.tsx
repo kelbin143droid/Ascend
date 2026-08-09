@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { BookOpen, Castle, Target, User, type LucideIcon } from "lucide-react";
+import { BookOpen, Castle, Dumbbell, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
@@ -11,7 +11,7 @@ import { StreakCelebrationOverlay } from "./StreakCelebration";
 const onboardingTestBg = "/videos/onboarding-test-bg.mp4";
 
 interface NavItem {
-  icon: LucideIcon;
+  icon: typeof Home;
   label: string;
   path: string;
 }
@@ -19,8 +19,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { icon: BookOpen, label: "QUEST", path: "/" },
   { icon: User, label: "HERO", path: "/hunter-profile" },
-  { icon: Castle, label: "GATES", path: "/world-map" },
-  { icon: Target, label: "RITUALS", path: "/habits" },
+  { icon: Castle, label: "GATE", path: "/game" },
+  { icon: Dumbbell, label: "TRAIN", path: "/train" },
 ];
 
 export function SystemLayout({ children }: { children: React.ReactNode }) {
