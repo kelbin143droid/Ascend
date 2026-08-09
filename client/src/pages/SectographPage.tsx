@@ -333,10 +333,6 @@ export default function SectographPage() {
     () => new URLSearchParams(window.location.search).get("vitality") === "1",
     []
   );
-  const isBaseTutorialMode = useMemo(
-    () => new URLSearchParams(window.location.search).get("tutorial") === "1",
-    []
-  );
   const [day5SleepDone, setDay5SleepDone] = useState(() => isDayFiveSleepScheduled());
   const [day5FlowDone, setDay5FlowDone] = useState(() => isDayFiveFlowScheduled());
   const [vitalitySleepDone, setVitalitySleepDone] = useState(() => isVitalitySleepScheduledToday());
@@ -497,10 +493,9 @@ export default function SectographPage() {
   };
 
   useEffect(() => {
-    if (!isBaseTutorialMode) return;
     const seen = localStorage.getItem("ascend_sectograph_intro_seen");
     if (!seen) setShowIntroOverlay(true);
-  }, [isBaseTutorialMode]);
+  }, []);
 
   // If the user came from the Nutrition page after tapping "Schedule" on a
   // saved meal, pre-open the Add Block dialog with type=meal pre-filled.
@@ -508,7 +503,7 @@ export default function SectographPage() {
   // hijack the tutorial / day-5 prescribed steps.
   useEffect(() => {
     if (isDay5Mode) return;
-    if (isBaseTutorialMode && !tutorialDone) return;
+    if (!tutorialDone) return;
     if (showIntroOverlay) return;
     import("@/lib/savedMealsStore").then(({ consumePendingMealSchedule }) => {
       const pending = consumePendingMealSchedule();
@@ -533,7 +528,7 @@ export default function SectographPage() {
       });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBaseTutorialMode, isDay5Mode, tutorialDone, showIntroOverlay]);
+  }, [isDay5Mode, tutorialDone, showIntroOverlay]);
 
   const dismissIntro = useCallback(() => {
     localStorage.setItem("ascend_sectograph_intro_seen", "1");
@@ -901,7 +896,7 @@ export default function SectographPage() {
     }
 
     // Tutorial progression: Sleep (step 1) → Daily Flow (step 2) → Done
-    if (isBaseTutorialMode && !tutorialDone) {
+    if (!tutorialDone) {
       if (isSleepBlock && tutorialStep <= 1) {
         setSectographTutorialStep(2);
         setTutorialStep(2);
@@ -1107,9 +1102,9 @@ export default function SectographPage() {
     { id: "plan", label: "Plan" },
   ];
   const baseTutorialTarget =
-    isBaseTutorialMode && !isDay5Mode && !isVitalityMode && !tutorialDone && activeTab === "sectograph" && tutorialStep === 1
+    !isDay5Mode && !isVitalityMode && !tutorialDone && activeTab === "sectograph" && tutorialStep === 1
       ? "sleep"
-      : isBaseTutorialMode && !isDay5Mode && !isVitalityMode && !tutorialDone && activeTab === "sectograph" && tutorialStep === 2
+      : !isDay5Mode && !isVitalityMode && !tutorialDone && activeTab === "sectograph" && tutorialStep === 2
       ? "daily-flow"
       : null;
   const day5TutorialTarget =
@@ -1351,7 +1346,7 @@ export default function SectographPage() {
         )}
 
         {/* ── COACH TUTORIAL — step 0 fullscreen intro ─────────────── */}
-        {isBaseTutorialMode && !isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 0 && (
+        {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 0 && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center px-4"
             style={{ backgroundColor: "rgba(0,0,0,0.90)" }}
@@ -1403,7 +1398,7 @@ export default function SectographPage() {
 
         {activeTab === "sectograph" && <>
         {/* ── COACH CARD — step 1 (add Sleep block) ────────────────── */}
-        {isBaseTutorialMode && !isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 1 && (
+        {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 1 && (
           <div
             className="relative z-[80] w-full rounded-2xl px-4 py-3.5 flex items-center gap-3"
             style={{
@@ -1427,7 +1422,7 @@ export default function SectographPage() {
         )}
 
         {/* ── COACH CARD — step 2 (add Daily Quest block) ──────────── */}
-        {isBaseTutorialMode && !isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 2 && (
+        {!isDay5Mode && !isVitalityMode && !tutorialDone && tutorialStep === 2 && (
           <div
             className="relative z-[80] w-full rounded-2xl px-4 py-3.5 flex items-center gap-3"
             style={{
@@ -1451,7 +1446,7 @@ export default function SectographPage() {
         )}
 
         {/* ── TUTORIAL COMPLETE banner ─────────────────────────────── */}
-        {isBaseTutorialMode && !isDay5Mode && justCompletedTutorial && (
+        {!isDay5Mode && justCompletedTutorial && (
           <div
             className="w-full rounded-xl px-4 py-3 flex items-center gap-3"
             style={{ backgroundColor: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}
@@ -1555,7 +1550,7 @@ export default function SectographPage() {
                 tutorialFocusCenter={Boolean(guidedPresetTarget)}
                 currentBlockId={currentBlock?.id ?? null}
                 onCenterClick={() => {
-                  if (isBaseTutorialMode && !isDay5Mode && !tutorialDone && tutorialStep === 0) {
+                  if (!isDay5Mode && !tutorialDone && tutorialStep === 0) {
                     setSectographTutorialStep(1);
                     setTutorialStep(1);
                   }

@@ -12,11 +12,9 @@ import { CalmBreathingEngine } from "@/components/game/CalmBreathingEngine";
 import { LightMovementEngine } from "@/components/game/LightMovementEngine";
 import { CardioSessionEngine } from "@/components/game/CardioSessionEngine";
 import { BreathingFeedbackModal } from "@/components/game/BreathingFeedbackModal";
-import { CalmBreathingSessionScreen } from "@/components/game/CalmBreathingSessionScreen";
 import { getWorkoutLevel } from "@/lib/workoutProgressStore";
 import { getPathFlowConfig } from "@/lib/pathFlowConfig";
 import { PHASE1_XP } from "@shared/gameProgression";
-import { getBreathingProfile } from "@/lib/breathingStore";
 
 type SessionId = "calm-breathing" | "light-movement" | "hydration-check" | "quick-reflection" | "focus-block" | "plan-tomorrow";
 
@@ -721,23 +719,6 @@ export default function GuidedSessionPage() {
   }
 
   const accentColor = STAT_COLORS[session.stat] || "#3b82f6";
-
-  if (sessionId === "calm-breathing" && (state === "countdown" || state === "active")) {
-    const breathingProfile = getBreathingProfile();
-    return (
-      <CalmBreathingSessionScreen
-        accentColor={accentColor}
-        backgroundColor={backgroundTheme.colors.background}
-        targetSeconds={breathingProfile.durationSeconds}
-        guidanceSeconds={Math.max(1, breathingProfile.durationSeconds - 2)}
-        timing={breathingProfile.pattern}
-        showSkip={homeData?.isOnboardingComplete === true}
-        onComplete={handleComplete}
-        onCancel={() => setLocation("/")}
-      />
-    );
-  }
-
   const progress = session.durationSeconds > 0 ? Math.min(elapsed / session.durationSeconds, 1) : 0;
   const remainingSeconds = session.durationSeconds > 0 ? Math.max(0, session.durationSeconds - elapsed) : 0;
   const Icon = session.icon;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -32,15 +32,29 @@ interface BreathingFeedbackModalProps {
 type Screen = "questions" | "results";
 
 const DIFFICULTY_OPTIONS = [
-  { value: "easy" as const, label: "Too easy", emoji: "↑", desc: "I am ready for a little more." },
-  { value: "normal" as const, label: "Just right", emoji: "=", desc: "Keep the next reset at this pace." },
-  { value: "difficult" as const, label: "Too difficult", emoji: "↓", desc: "Make the next reset gentler." },
+  { value: "easy" as const,     label: "Easy",      emoji: "😌", desc: "Felt comfortable throughout" },
+  { value: "normal" as const,   label: "Normal",    emoji: "👌", desc: "Manageable but attentive" },
+  { value: "difficult" as const, label: "Difficult", emoji: "💪", desc: "Challenging to keep up" },
+];
+
+const RHYTHM_OPTIONS = [
+  { value: "yes" as const,    label: "Yes",    emoji: "🎯", desc: "Stayed in sync the whole time" },
+  { value: "mostly" as const, label: "Mostly", emoji: "〰️", desc: "Minor lapses, recovered quickly" },
+  { value: "no" as const,     label: "No",     emoji: "🌀", desc: "Hard to follow the pattern" },
+];
+
+const WANDER_OPTIONS = [
+  { value: "rarely" as const,    label: "Rarely",    emoji: "🧘", desc: "Stayed fully present" },
+  { value: "sometimes" as const, label: "Sometimes", emoji: "💭", desc: "Brief drifts, came back" },
+  { value: "often" as const,     label: "Often",     emoji: "🌊", desc: "Mind wandered a lot" },
 ];
 
 export function BreathingFeedbackModal({ playerId, colors, onComplete, nextActivityLabel, onReturnHome }: BreathingFeedbackModalProps) {
   const queryClient = useQueryClient();
   const [screen, setScreen] = useState<Screen>("questions");
   const [difficulty, setDifficulty] = useState<BreathingSessionFeedback["difficulty"] | null>(null);
+  const [rhythm, setRhythm] = useState<BreathingSessionFeedback["maintainedRhythm"] | null>(null);
+  const [wander, setWander] = useState<BreathingSessionFeedback["mindWandered"] | null>(null);
   const [result, setResult] = useState<{
     score: number;
     isPerfect: boolean;
@@ -75,11 +89,15 @@ export function BreathingFeedbackModal({ playerId, colors, onComplete, nextActiv
     },
   });
 
-  const canSubmit = difficulty !== null;
+  const canSubmit = difficulty !== null && rhythm !== null && wander !== null;
 
   function handleSubmit() {
-    if (!difficulty) return;
-    const feedback: BreathingSessionFeedback = { difficulty };
+    if (!difficulty || !rhythm || !wander) return;
+    const feedback: BreathingSessionFeedback = {
+      difficulty,
+      maintainedRhythm: rhythm,
+      mindWandered: wander,
+    };
 
     const profile = getBreathingProfile();
     const sessionResult = recordBreathingSession(profile, feedback);
@@ -139,16 +157,36 @@ export function BreathingFeedbackModal({ playerId, colors, onComplete, nextActiv
               Breathing Check-In
             </div>
             <div className="text-xs" style={{ color: colors.textMuted }}>
-              One answer tunes your next reset
+              3 quick questions to track your progress
             </div>
           </div>
 
           <Question
             number={1}
-            label="How did the breathing pace feel?"
+            label="How did the breathing feel?"
             options={DIFFICULTY_OPTIONS}
             value={difficulty}
             onSelect={setDifficulty}
+            colors={colors}
+            primary={primary}
+          />
+
+          <Question
+            number={2}
+            label="Did you maintain the rhythm?"
+            options={RHYTHM_OPTIONS}
+            value={rhythm}
+            onSelect={setRhythm}
+            colors={colors}
+            primary={primary}
+          />
+
+          <Question
+            number={3}
+            label="Did your mind wander?"
+            options={WANDER_OPTIONS}
+            value={wander}
+            onSelect={setWander}
             colors={colors}
             primary={primary}
           />
@@ -164,7 +202,7 @@ export function BreathingFeedbackModal({ playerId, colors, onComplete, nextActiv
               cursor: canSubmit ? "pointer" : "not-allowed",
             }}
           >
-            Continue
+            See Results
             <ChevronRight size={16} />
           </button>
         </div>

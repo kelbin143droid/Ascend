@@ -82,7 +82,7 @@ export default function LibraryPage() {
         localStorage.removeItem("ascend_sectograph_tutorial_done");
         localStorage.removeItem("ascend_sectograph_tutorial_step");
         localStorage.removeItem("ascend_sectograph_intro_seen");
-        navigate("/sectograph?tutorial=1");
+        navigate("/sectograph");
       },
     },
     {

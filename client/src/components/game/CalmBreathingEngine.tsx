@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import type { BreathPattern } from "@/lib/breathingProgressionSystem";
 
 const INHALE_URL = "/audio/inhale.mp3";
 const HOLD_URL = "/audio/hold.mp3";
@@ -7,6 +6,12 @@ const EXHALE_URL = "/audio/exhale.mp3";
 
 type BreathPhase = "Inhale" | "Hold" | "Exhale";
 type DisplayPhase = BreathPhase | "Quiet";
+
+const VOICE_DURATIONS: Record<BreathPhase, number> = {
+  Inhale: 4000,
+  Hold: 4000,
+  Exhale: 6000,
+};
 
 const VOICE_NEXT: Record<BreathPhase, BreathPhase> = {
   Inhale: "Hold",
@@ -176,17 +181,15 @@ export function CalmBreathingEngine({
   onDone,
   paused = false,
   silentCompletionSeconds = 0,
-  timing = { inhaleSeconds: 4, holdSeconds: 4, exhaleSeconds: 6 },
 }: {
   accentColor: string;
   targetSeconds: number;
   onDone: () => void;
   paused?: boolean;
   silentCompletionSeconds?: number;
-  timing?: BreathPattern;
 }) {
   const [phase, setPhase] = useState<DisplayPhase>("Inhale");
-  const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(timing.inhaleSeconds);
+  const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(VOICE_DURATIONS.Inhale / 1000);
   const onDoneRef = useRef(onDone);
   const pausedRef = useRef(paused);
 
@@ -203,11 +206,6 @@ export function CalmBreathingEngine({
 
   useEffect(() => {
     let alive = true;
-    const phaseDurations: Record<BreathPhase, number> = {
-      Inhale: Math.max(1, timing.inhaleSeconds) * 1000,
-      Hold: Math.max(1, timing.holdSeconds) * 1000,
-      Exhale: Math.max(1, timing.exhaleSeconds) * 1000,
-    };
     const audioMap: Record<BreathPhase, string> = {
       Inhale: INHALE_URL,
       Hold: HOLD_URL,
@@ -236,7 +234,7 @@ export function CalmBreathingEngine({
     let inSilentCompletion = false;
     let lastTick = performance.now();
     setPhase("Inhale");
-    setPhaseSecondsLeft(phaseDurations.Inhale / 1000);
+    setPhaseSecondsLeft(VOICE_DURATIONS.Inhale / 1000);
     speakPhase("Inhale");
 
     const tickId = setInterval(() => {
@@ -263,9 +261,9 @@ export function CalmBreathingEngine({
 
       phaseElapsedMs += delta;
       sessionElapsedMs += delta;
-      setPhaseSecondsLeft(Math.max(1, Math.ceil((phaseDurations[curPhase] - phaseElapsedMs) / 1000)));
+      setPhaseSecondsLeft(Math.max(1, Math.ceil((VOICE_DURATIONS[curPhase] - phaseElapsedMs) / 1000)));
 
-      if (phaseElapsedMs >= phaseDurations[curPhase]) {
+      if (phaseElapsedMs >= VOICE_DURATIONS[curPhase]) {
         const elapsedSec = sessionElapsedMs / 1000;
         if (curPhase === "Exhale" && elapsedSec >= targetSeconds) {
           if (activeAudio) {
@@ -287,7 +285,7 @@ export function CalmBreathingEngine({
         curPhase = VOICE_NEXT[curPhase];
         phaseElapsedMs = 0;
         setPhase(curPhase);
-        setPhaseSecondsLeft(phaseDurations[curPhase] / 1000);
+        setPhaseSecondsLeft(VOICE_DURATIONS[curPhase] / 1000);
         speakPhase(curPhase);
       }
     }, 100);
@@ -300,13 +298,13 @@ export function CalmBreathingEngine({
         activeAudio = null;
       }
     };
-  }, [targetSeconds, silentCompletionSeconds, timing.inhaleSeconds, timing.holdSeconds, timing.exhaleSeconds]);
+  }, [targetSeconds, silentCompletionSeconds]);
 
   const scale = phase === "Inhale" ? 1.08 : phase === "Hold" ? 1.08 : 0.72;
   const transitionDuration =
-    phase === "Inhale" ? `${timing.inhaleSeconds}s`
+    phase === "Inhale" ? `${VOICE_DURATIONS.Inhale / 1000}s`
     : phase === "Hold" ? "0.2s"
-    : `${timing.exhaleSeconds}s`;
+    : `${VOICE_DURATIONS.Exhale / 1000}s`;
   const phaseHint = phase === "Quiet" ? "" : `${phaseSecondsLeft}s`;
 
   return (

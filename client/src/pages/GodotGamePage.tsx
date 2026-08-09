@@ -102,12 +102,6 @@ const CLASS_BY_JOB: Record<string, GameClassPayload> = {
 };
 
 function buildPlayerClass(player: NonNullable<ReturnType<typeof useGame>["player"]>): GameClassPayload {
-  // DB job is the source of truth — always use it when set
-  const job = String(player.job || "").toUpperCase();
-  if (job && job !== "NONE" && CLASS_BY_JOB[job]) {
-    return CLASS_BY_JOB[job];
-  }
-  // Fallback: localStorage cache (only when job is unset/NONE)
   try {
     const raw = localStorage.getItem(SELECTED_GAME_CLASS_KEY);
     if (raw !== null) {
@@ -117,7 +111,8 @@ function buildPlayerClass(player: NonNullable<ReturnType<typeof useGame>["player
   } catch {
     /* noop */
   }
-  return CLASS_BY_INDEX[0];
+  const job = String(player.job || "").toUpperCase();
+  return CLASS_BY_JOB[job] ?? CLASS_BY_INDEX[0];
 }
 
 function persistPlayerClassBridge(playerClass: GameClassPayload) {
@@ -345,21 +340,10 @@ export default function GodotGamePage() {
   const [activeDungeon] = useState<ActiveDungeonConfig | null>(() => readActiveDungeonConfig());
   const [showGateLoading, setShowGateLoading] = useState(() => !!readActiveDungeonConfig());
   const loadingStartedAtRef = useRef(Date.now());
-  const [gameSrc, setGameSrc] = useState("about:blank");
 
   useEffect(() => {
     if (!player) return;
     persistPlayerClassBridge(buildPlayerClass(player));
-  }, [player]);
-
-  // Delay iframe src by 400ms so any previous WebGL context (Three.js on
-  // HunterProfilePage) has time to fully dispose before Godot creates its own.
-  useEffect(() => {
-    if (!player) return;
-    const cls = buildPlayerClass(player);
-    const src = `/game/index.html?class=${cls.archetype}&classId=${cls.id}&classIndex=${cls.index}`;
-    const t = setTimeout(() => setGameSrc(src), 800);
-    return () => clearTimeout(t);
   }, [player]);
 
   // ── Fullscreen + orientation lock ─────────────────────────────────────────
@@ -468,22 +452,21 @@ export default function GodotGamePage() {
       if (data?.type === "GODOT_READY") {
         readyRef.current = true;
         const iframe = iframeRef.current;
-        // Focus the iframe so browser doesn't throttle it
-        iframe?.focus();
         if (player && iframe?.contentWindow) {
-          const playerClass = buildPlayerClass(player);
-          const statsPayload = buildStatsPayload(player);
-          const equipment    = buildLoadoutEquipment(player);
           // 1. Power layer + consumables
-          iframe.contentWindow.postMessage({ type: "SET_STATS", stats: statsPayload }, "*");
+          iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
           // 2. Class + visual/loadout layer
+          const playerClass = buildPlayerClass(player);
           postPlayerClassToGame(iframe.contentWindow, playerClass);
-          iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment }, "*");
-          // 3. Dungeon config — if launched from the world map (no duplicate sends)
+          iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
+          // 3. Dungeon config — if launched from the world map
           const raw = localStorage.getItem(ACTIVE_DUNGEON_KEY);
           if (raw) {
             try {
               const config = JSON.parse(raw) as ActiveDungeonConfig;
+              iframe.contentWindow.postMessage({ type: "SET_STATS", stats: buildStatsPayload(player) }, "*");
+              postPlayerClassToGame(iframe.contentWindow, playerClass);
+              iframe.contentWindow.postMessage({ type: "SET_EQUIPMENT", equipment: buildLoadoutEquipment(player) }, "*");
               iframe.contentWindow.postMessage(
                 { type: "START_DUNGEON", config: buildDungeonConfig(config, player) },
                 "*",
@@ -543,6 +526,9 @@ export default function GodotGamePage() {
       </div>
     );
   }
+
+  const iframeClass = buildPlayerClass(player);
+  const iframeSrc = `/game/index.html?class=${iframeClass.archetype}&classId=${iframeClass.id}&classIndex=${iframeClass.index}`;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 10 }}>
@@ -704,7 +690,7 @@ export default function GodotGamePage() {
       <iframe
         id="game-frame"
         ref={iframeRef}
-        src={gameSrc}
+        src={iframeSrc}
         style={{ width: "100%", height: "100%", border: "none", display: "block" }}
         allow="pointer-lock; fullscreen; autoplay"
         allowFullScreen

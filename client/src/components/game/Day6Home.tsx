@@ -6,7 +6,6 @@ import {
   ArrowRight, BookOpen, Zap, Shield, Flame,
   ChevronLeft, ChevronRight,
   Heart, Moon,
-  Gem, Coins, Castle, Crosshair,
 } from "lucide-react";
 import { CustomizePanel } from "./CustomizePanel";
 import { AvatarPickerSheet, getAvatarIcon, saveAvatarIcon } from "./AvatarPickerSheet";
@@ -18,7 +17,6 @@ import {
 import { useLocation } from "wouter";
 import { useTheme } from "@/context/ThemeContext";
 import { DailyFlowEngine } from "./DailyFlowEngine";
-import { PhysicalCircuitSetupModal } from "./PhysicalCircuitSetupModal";
 import { SystemLayout } from "./SystemLayout";
 import { type CategoryTiers } from "@/lib/activityEngine";
 import { getWorkoutLevel } from "@/lib/workoutProgressStore";
@@ -32,11 +30,6 @@ import { clearFlow, clearSession } from "@/lib/sessionPersistenceStore";
 import { useSessionProgress } from "@/hooks/useSessionProgress";
 import { PHASE1_DAILY_TARGET_XP, PHASE1_XP } from "@shared/gameProgression";
 import { addXP, completeTask } from "@/lib/workoutProgressStore";
-import {
-  initializePhysicalCircuitProfile,
-  isPhysicalCircuitProfileInitialized,
-  type PhysicalCircuitStartingChoices,
-} from "@/lib/physicalCircuitProgressStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -226,11 +219,6 @@ function wasFirstResetCompletedToday(): boolean {
 
 const CARD_BASE = "rounded-2xl p-4 flex flex-col gap-3 w-full text-left";
 
-const ASCEND_GOLD = "#f6c76f";
-const ASCEND_CYAN = "#38d5ff";
-const ASCEND_EMERALD = "#58e39b";
-const ASCEND_RED = "#f9735b";
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -266,8 +254,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const [avatarIcon,    setAvatarState]   = useState(() => getAvatarIcon());
   const [flowActive,       setFlowActive]       = useState(false);
   const [singleActivityId, setSingleActivityId] = useState<string | null>(null);
-  const [showPhysicalSetup, setShowPhysicalSetup] = useState(false);
-  const [physicalProfileRevision, setPhysicalProfileRevision] = useState(0);
   const [showIntelligence, setShowIntelligence] = useState(false);
   const [intelReadMode, setIntelReadMode] = useState<IntelReadMode>("recommended");
   const [customIntelTopic, setCustomIntelTopic] = useState("");
@@ -300,18 +286,7 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
   const pathCfg    = getPathFlowConfig(wlevel);
   const pathRec    = getPathAwareRecommendation(wlevel);
   const recommendedIntelRead = useMemo(() => dailyIntelRead(), []);
-  const activities = useMemo(
-    () => buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers }),
-    [
-      wlevel,
-      homeData.onboardingDay,
-      tiers.strength,
-      tiers.agility,
-      tiers.meditation,
-      tiers.vitality,
-      physicalProfileRevision,
-    ],
-  );
+  const activities = buildDailyFlowActivities(wlevel, { dayNumber: homeData.onboardingDay, tiers });
   const totalMins  = Math.ceil(activities.reduce((s, a) => s + a.duration, 0) / 60);
 
   // XP
@@ -414,13 +389,8 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     setAutoStartPending(false);
     const strengthAvailableToday = activities.some((activity) => activity.id === "phase1_strength");
     if (strengthAvailableToday && !isActivityDone("phase1_strength")) {
-      if (!isPhysicalCircuitProfileInitialized()) {
-        setSingleActivityId("phase1_strength");
-        setShowPhysicalSetup(true);
-      } else {
-        setSingleActivityId("phase1_strength");
-        setFlowActive(true);
-      }
+      setSingleActivityId("phase1_strength");
+      setFlowActive(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartPending, activities.length]);
@@ -579,22 +549,9 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (sessionRoute) {
       navigate(sessionRoute);
     } else {
-      if (aid === "phase1_strength" && !isPhysicalCircuitProfileInitialized()) {
-        setSingleActivityId(aid);
-        setShowPhysicalSetup(true);
-        return;
-      }
       setSingleActivityId(aid);
       setFlowActive(true);
     }
-  };
-
-  const handlePhysicalSetupComplete = (choices: PhysicalCircuitStartingChoices) => {
-    initializePhysicalCircuitProfile(choices);
-    setPhysicalProfileRevision((revision) => revision + 1);
-    setShowPhysicalSetup(false);
-    setSingleActivityId("phase1_strength");
-    setFlowActive(true);
   };
 
   const handleFeaturedTap = () => {
@@ -646,62 +603,11 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     if (dc.activityId === "phase1_strength") {
       const pendingStrength = todayIds.has("phase1_strength") && !isActivityDone("phase1_strength");
       return pendingStrength
-        ? () => startActivity("phase1_strength")
+        ? () => { setSingleActivityId("phase1_strength"); setFlowActive(true); }
         : () => navigate("/train");
     }
     return () => navigate(dc.fallbackRoute);
   };
-
-  const heroPower = Math.max(
-    1200,
-    Math.round(
-      (playerData?.totalExp ?? 0) +
-      lvl * 275 +
-      (playerData?.hp ?? 0) * 3 +
-      (playerData?.mp ?? 0) * 6,
-    ),
-  );
-  const gateRequirement = 10000;
-  const gateReady = heroPower >= gateRequirement;
-  const gatePowerPct = Math.min(100, Math.round((heroPower / gateRequirement) * 100));
-  const questCards = [
-    {
-      label: "Focus",
-      detail: "Deep work",
-      icon: Crosshair,
-      color: ASCEND_CYAN,
-      progress: intelligenceDone ? 100 : currentAid === "phase1_meditation" ? Math.max(25, questProgressPct) : 45,
-      reward: PHASE1_XP.intelligence,
-      action: () => setShowIntelligence(true),
-    },
-    {
-      label: "Train",
-      detail: "Body circuit",
-      icon: Shield,
-      color: ASCEND_RED,
-      progress: isActivityDone("phase1_strength") ? 100 : currentAid === "phase1_strength" ? Math.max(30, questProgressPct) : 35,
-      reward: PHASE1_XP.strength,
-      action: () => startActivity("phase1_strength"),
-    },
-    {
-      label: "Calm",
-      detail: "Breathing reset",
-      icon: Brain,
-      color: ASCEND_EMERALD,
-      progress: isActivityDone("phase1_meditation") ? 100 : currentAid === "phase1_meditation" ? Math.max(42, questProgressPct) : 20,
-      reward: PHASE1_XP.sense,
-      action: () => navigate("/guided-session/calm-breathing"),
-    },
-    {
-      label: "Gate",
-      detail: gateReady ? "Ready to enter" : "Power required",
-      icon: Castle,
-      color: ASCEND_GOLD,
-      progress: gatePowerPct,
-      reward: 1,
-      action: () => navigate("/game"),
-    },
-  ];
 
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -711,16 +617,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
     <SystemLayout>
       <CustomizePanel open={showCustomize} onClose={() => setShowCustomize(false)} />
       <AnimatePresence>
-        {showPhysicalSetup && (
-          <PhysicalCircuitSetupModal
-            colors={colors}
-            onComplete={handlePhysicalSetupComplete}
-            onClose={() => {
-              setShowPhysicalSetup(false);
-              setSingleActivityId(null);
-            }}
-          />
-        )}
         {flowActive && (
           <DailyFlowEngine activities={flowActivities} playerId={player.id}
             onComplete={handleFlowDone} onCancel={() => setFlowActive(false)}
@@ -1159,110 +1055,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
       <div className="flex flex-col gap-3 px-4 py-3 max-w-md mx-auto w-full relative" data-testid="day6-home">
         <AutoSwitchBanner navigate={navigate} colors={colors} primary={primary} />
 
-        {/* ── ASCEND HERO QUEST HUB ─────────────────────────────────────── */}
-        <motion.section
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36 }}
-          className="relative overflow-hidden rounded-[28px]"
-          style={{
-            background:
-              "linear-gradient(150deg, rgba(7,10,22,0.98) 0%, rgba(10,18,32,0.94) 48%, rgba(12,25,30,0.94) 100%)",
-            border: "1px solid rgba(246,199,111,0.32)",
-            boxShadow:
-              "0 24px 70px rgba(0,0,0,0.50), 0 0 42px rgba(56,213,255,0.13), inset 0 1px 0 rgba(255,255,255,0.14)",
-          }}
-          data-testid="ascend-quest-hub"
-        >
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(circle at 78% 16%, rgba(246,199,111,0.22), transparent 26%), radial-gradient(circle at 20% 86%, rgba(56,213,255,0.20), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.10), transparent 42%)",
-            }}
-          />
-          <div
-            className="absolute right-4 top-5 h-28 w-28 rounded-full pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(circle at 50% 42%, rgba(56,213,255,0.18), transparent 55%), linear-gradient(160deg, rgba(246,199,111,0.20), rgba(56,213,255,0.08))",
-              border: "1px solid rgba(246,199,111,0.28)",
-              boxShadow: "0 0 46px rgba(56,213,255,0.12), inset 0 0 26px rgba(246,199,111,0.10)",
-            }}
-          />
-          <div
-            className="absolute right-12 top-11 h-20 w-14 pointer-events-none"
-            style={{
-              background:
-                "linear-gradient(90deg, transparent 0 18%, rgba(236,244,255,0.80) 18% 29%, transparent 29% 71%, rgba(236,244,255,0.80) 71% 82%, transparent 82%), linear-gradient(180deg, rgba(246,199,111,0.88), rgba(38,49,68,0.92))",
-              clipPath:
-                "polygon(46% 0, 54% 0, 64% 18%, 74% 36%, 63% 100%, 37% 100%, 26% 36%, 36% 18%)",
-              filter: "drop-shadow(0 0 12px rgba(246,199,111,0.34))",
-              opacity: 0.86,
-            }}
-          />
-          <div className="relative z-10 p-5 pr-32">
-            <div className="flex items-center gap-2">
-              <span
-                className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]"
-                style={{
-                  color: ASCEND_GOLD,
-                  background: "rgba(246,199,111,0.10)",
-                  border: "1px solid rgba(246,199,111,0.24)",
-                }}
-              >
-                Ascend Hero
-              </span>
-              <span
-                className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
-                style={{
-                  color: gateReady ? ASCEND_EMERALD : ASCEND_CYAN,
-                  background: gateReady ? "rgba(88,227,155,0.10)" : "rgba(56,213,255,0.10)",
-                  border: `1px solid ${gateReady ? "rgba(88,227,155,0.24)" : "rgba(56,213,255,0.24)"}`,
-                }}
-              >
-                E Rank
-              </span>
-            </div>
-            <h1
-              className="mt-4 text-[29px] font-black leading-none tracking-[0.02em] normal-case"
-              style={{
-                color: "rgba(250,247,238,0.98)",
-                textShadow: "0 2px 18px rgba(246,199,111,0.18)",
-              }}
-            >
-              Real effort powers your hero.
-            </h1>
-            <p className="mt-2 max-w-[230px] text-[13px] font-semibold leading-snug" style={{ color: "rgba(220,229,242,0.72)" }}>
-              Complete today&apos;s quests, strengthen your build, then push the next gate.
-            </p>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {[
-                { icon: Coins, value: "24.5K", label: "Gold", color: ASCEND_GOLD },
-                { icon: Gem, value: "1.25K", label: "Crystals", color: ASCEND_CYAN },
-                { icon: Sparkles, value: `${completedMissionCount}/${totalMissionCount}`, label: "Quests", color: ASCEND_EMERALD },
-              ].map((metric) => (
-                <div
-                  key={metric.label}
-                  className="rounded-2xl px-2.5 py-2"
-                  style={{
-                    background: "rgba(255,255,255,0.055)",
-                    border: "1px solid rgba(255,255,255,0.09)",
-                  }}
-                >
-                  <metric.icon size={14} style={{ color: metric.color }} />
-                  <p className="mt-1 text-[14px] font-black leading-none" style={{ color: "rgba(248,250,252,0.96)" }}>
-                    {metric.value}
-                  </p>
-                  <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: "rgba(203,213,225,0.58)" }}>
-                    {metric.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.section>
-
         {/* ── PROFILE HUD ───────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
@@ -1465,106 +1257,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             {systemMission}
           </p>
         </motion.div>
-
-        {/* ── DAILY QUEST LIST ──────────────────────────────────────────── */}
-        <motion.section
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.32, delay: 0.08 }}
-          className="relative overflow-hidden rounded-[24px] p-3"
-          style={{
-            background: "linear-gradient(145deg, rgba(7,11,24,0.94), rgba(5,10,20,0.92))",
-            border: "1px solid rgba(246,199,111,0.18)",
-            boxShadow: "0 16px 48px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10)",
-            backdropFilter: "blur(22px)",
-          }}
-          data-testid="daily-quest-list"
-        >
-          <div className="mb-3 flex items-center justify-between px-1">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: ASCEND_GOLD }}>
-                Daily Quests
-              </p>
-              <p className="mt-0.5 text-[12px] font-semibold" style={{ color: "rgba(203,213,225,0.66)" }}>
-                Build stats before entering the gate
-              </p>
-            </div>
-            <div
-              className="rounded-full px-3 py-1.5 text-[11px] font-black"
-              style={{
-                color: "rgba(10,14,24,0.96)",
-                background: `linear-gradient(90deg, ${ASCEND_GOLD}, #f8e6ae)`,
-                boxShadow: "0 0 18px rgba(246,199,111,0.22)",
-              }}
-            >
-              {Math.round(questProgressPct)}%
-            </div>
-          </div>
-          <div className="grid gap-2">
-            {questCards.map((quest) => (
-              <button
-                key={quest.label}
-                type="button"
-                onClick={quest.action}
-                className="group grid min-h-[72px] grid-cols-[42px_1fr_auto] items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-transform active:scale-[0.985]"
-                style={{
-                  background: `linear-gradient(120deg, ${quest.color}14, rgba(255,255,255,0.045))`,
-                  border: `1px solid ${quest.color}26`,
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08)`,
-                }}
-                data-testid={`quest-card-${quest.label.toLowerCase()}`}
-              >
-                <div
-                  className="flex h-[42px] w-[42px] items-center justify-center rounded-2xl"
-                  style={{
-                    background: `${quest.color}14`,
-                    border: `1px solid ${quest.color}38`,
-                    boxShadow: `0 0 18px ${quest.color}18`,
-                  }}
-                >
-                  <quest.icon size={20} style={{ color: quest.color }} />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="truncate text-[17px] font-black leading-none" style={{ color: "rgba(248,250,252,0.96)" }}>
-                      {quest.label}
-                    </p>
-                    <span className="text-[10px] font-bold tabular-nums" style={{ color: "rgba(203,213,225,0.62)" }}>
-                      {Math.round(quest.progress)}%
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] font-semibold leading-none" style={{ color: "rgba(203,213,225,0.62)" }}>
-                    {quest.detail}
-                  </p>
-                  <div className="mt-2 h-[5px] overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${quest.progress}%`,
-                        background: quest.color,
-                        boxShadow: `0 0 10px ${quest.color}55`,
-                      }}
-                    />
-                  </div>
-                </div>
-                <div
-                  className="rounded-xl px-2.5 py-2 text-center"
-                  style={{
-                    background: "rgba(0,0,0,0.22)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <p className="text-[12px] font-black leading-none" style={{ color: quest.color }}>
-                    {quest.label === "Gate" ? "Token" : `+${quest.reward}`}
-                  </p>
-                  <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.12em]" style={{ color: "rgba(203,213,225,0.56)" }}>
-                    {quest.label === "Gate" ? "Elig." : "XP"}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </motion.section>
 
         {/* ── RITUAL QUEUE STRIP ───────────────────────────────────────── */}
         {activities.length > 0 && (() => {
@@ -1808,115 +1500,6 @@ export function Day6Home({ homeData, playerData, player, scalingData }: Props) {
             </motion.div>
           );
         })()}
-
-        {/* ── GATE / REWARD LOOP ───────────────────────────────────────── */}
-        <motion.section
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.34, delay: 0.16 }}
-          className="relative overflow-hidden rounded-[24px] p-4"
-          style={{
-            background:
-              "linear-gradient(150deg, rgba(10,12,20,0.96), rgba(8,18,24,0.94) 54%, rgba(14,12,20,0.96))",
-            border: "1px solid rgba(246,199,111,0.24)",
-            boxShadow:
-              "0 20px 60px rgba(0,0,0,0.42), 0 0 34px rgba(246,199,111,0.10), inset 0 1px 0 rgba(255,255,255,0.10)",
-          }}
-          data-testid="gate-reward-panel"
-        >
-          <div
-            className="absolute inset-x-0 top-0 h-28 pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse at 50% 0%, rgba(88,227,155,0.20), transparent 56%), linear-gradient(180deg, rgba(255,255,255,0.10), transparent)",
-            }}
-          />
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: ASCEND_GOLD }}>
-                Gate Preparation
-              </p>
-              <h2 className="mt-1 text-[24px] font-black leading-none tracking-[0.02em]" style={{ color: "rgba(250,247,238,0.98)" }}>
-                E Rank Gate
-              </h2>
-              <p className="mt-1.5 text-[12px] font-semibold leading-snug" style={{ color: "rgba(203,213,225,0.66)" }}>
-                Higher power opens harder gates and better earned rewards.
-              </p>
-            </div>
-            <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
-              style={{
-                color: gateReady ? ASCEND_EMERALD : ASCEND_GOLD,
-                background: gateReady ? "rgba(88,227,155,0.12)" : "rgba(246,199,111,0.12)",
-                border: `1px solid ${gateReady ? "rgba(88,227,155,0.34)" : "rgba(246,199,111,0.34)"}`,
-                boxShadow: `0 0 24px ${gateReady ? "rgba(88,227,155,0.16)" : "rgba(246,199,111,0.16)"}`,
-              }}
-            >
-              <Castle size={27} />
-            </div>
-          </div>
-
-          <div className="relative z-10 mt-4 rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[11px] font-bold uppercase tracking-[0.13em]" style={{ color: "rgba(203,213,225,0.70)" }}>
-                Hero Power
-              </span>
-              <span className="font-mono text-[13px] font-black tabular-nums" style={{ color: gateReady ? ASCEND_EMERALD : ASCEND_GOLD }}>
-                {heroPower.toLocaleString()} / {gateRequirement.toLocaleString()}
-              </span>
-            </div>
-            <div className="mt-2 h-[7px] overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${gatePowerPct}%`,
-                  background: gateReady
-                    ? `linear-gradient(90deg, ${ASCEND_EMERALD}, ${ASCEND_GOLD})`
-                    : `linear-gradient(90deg, ${ASCEND_CYAN}, ${ASCEND_GOLD})`,
-                  boxShadow: `0 0 12px ${gateReady ? "rgba(88,227,155,0.48)" : "rgba(56,213,255,0.42)"}`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="relative z-10 mt-3 grid grid-cols-3 gap-2">
-            {[
-              { label: "XP", value: "800", color: ASCEND_CYAN },
-              { label: "Gold", value: "2.4K", color: ASCEND_GOLD },
-              { label: "Crypto", value: "Eligible", color: ASCEND_EMERALD },
-            ].map((reward) => (
-              <div
-                key={reward.label}
-                className="rounded-2xl px-2 py-2.5 text-center"
-                style={{ background: `${reward.color}0f`, border: `1px solid ${reward.color}24` }}
-              >
-                <p className="text-[13px] font-black leading-none" style={{ color: reward.color }}>
-                  {reward.value}
-                </p>
-                <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.12em]" style={{ color: "rgba(203,213,225,0.60)" }}>
-                  {reward.label}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => navigate("/game")}
-            className="relative z-10 mt-4 flex min-h-[50px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl text-[15px] font-black uppercase tracking-[0.12em] active:scale-[0.985]"
-            style={{
-              background: gateReady
-                ? `linear-gradient(90deg, #166534, ${ASCEND_EMERALD}, #d9a441)`
-                : `linear-gradient(90deg, #1d4ed8, ${ASCEND_CYAN}, #d9a441)`,
-              color: "rgba(5,8,14,0.96)",
-              boxShadow: "0 12px 34px rgba(56,213,255,0.16), inset 0 1px 0 rgba(255,255,255,0.26)",
-            }}
-            data-testid="button-enter-gate"
-          >
-            {gateReady ? "Enter Gate" : "Build Power"}
-            <ArrowRight size={18} />
-          </button>
-        </motion.section>
 
       </div>
     </SystemLayout>

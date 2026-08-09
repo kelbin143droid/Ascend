@@ -8,6 +8,8 @@ export interface BreathPattern {
 
 export interface BreathingSessionFeedback {
   difficulty: "easy" | "normal" | "difficult";
+  maintainedRhythm: "yes" | "mostly" | "no";
+  mindWandered: "rarely" | "sometimes" | "often";
 }
 
 export interface BreathSessionRecord {
@@ -48,10 +50,10 @@ export interface BreathPhaseDefinition {
 export const BREATHING_PHASES: Record<BreathPhase, BreathPhaseDefinition> = {
   1: {
     label: "Beginner",
-    defaultPattern: { inhaleSeconds: 4, holdSeconds: 4, exhaleSeconds: 6 },
+    defaultPattern: { inhaleSeconds: 4, holdSeconds: 2, exhaleSeconds: 4 },
     baseDuration: 30,
     maxDuration: 90,
-    description: "4-4-6 rhythm. Building consistency.",
+    description: "4-2-4 rhythm. Building consistency.",
     focus: "Consistency",
     unlockCondition: { minSessions: 5, minPositivePercent: 80 },
   },
@@ -96,13 +98,25 @@ export const DEFAULT_PROFILE: BreathingProfile = {
 };
 
 export function calculateSessionScore(feedback: BreathingSessionFeedback): number {
-  if (feedback.difficulty === "easy") return 90;
-  if (feedback.difficulty === "normal") return 70;
-  return 30;
+  let score = 0;
+  if (feedback.difficulty === "easy") score += 40;
+  else if (feedback.difficulty === "normal") score += 25;
+  else score += 8;
+  if (feedback.maintainedRhythm === "yes") score += 35;
+  else if (feedback.maintainedRhythm === "mostly") score += 20;
+  else score += 5;
+  if (feedback.mindWandered === "rarely") score += 25;
+  else if (feedback.mindWandered === "sometimes") score += 15;
+  else score += 5;
+  return score;
 }
 
-export function isPerfectSession(_feedback: BreathingSessionFeedback): boolean {
-  return false;
+export function isPerfectSession(feedback: BreathingSessionFeedback): boolean {
+  return (
+    feedback.difficulty === "easy" &&
+    feedback.maintainedRhythm === "yes" &&
+    feedback.mindWandered === "rarely"
+  );
 }
 
 export function getXpForSession(

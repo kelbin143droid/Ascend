@@ -1,20 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Cross-origin isolation for the threaded Godot Web build (SharedArrayBuffer)
-         is provided by the server's COOP/COEP headers (see server/index.ts). The
-         earlier COI service worker was redundant and interfered with the app, so
-         unregister any stale copy still installed in a returning visitor's browser. -->
-    <script>
-      if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
-        navigator.serviceWorker.getRegistrations().then(function (regs) {
-          regs.forEach(function (r) {
-            var sw = r.active || r.waiting || r.installing;
-            if (sw && sw.scriptURL && sw.scriptURL.indexOf('coi-serviceworker') !== -1) r.unregister();
-          });
-        }).catch(function () {});
-      }
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Ascend OS — Gamify Your Daily Rituals</title>
@@ -34,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Importing Orbitron (Display), Rajdhani (UI), and JetBrains Mono (Stats) -->
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>

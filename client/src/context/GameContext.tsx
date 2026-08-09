@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { apiUrl } from "@/lib/apiBase";
 import type { Player, Stats, PendingPhaseUnlock, PhaseHistoryEntry } from "@shared/schema";
 
 interface DerivedStats {
@@ -43,8 +42,6 @@ export interface ActiveSession {
 interface GameContextType {
   player: PlayerWithDerived | null;
   isLoading: boolean;
-  startupError: boolean;
-  resetPlayerSession: () => void;
   systemMessage: string | null;
   activeSession: ActiveSession | null;
   lastXpGain: { amount: number; stat: string } | null;
@@ -87,16 +84,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     messageTimeoutRef.current = setTimeout(() => setSystemMessage(null), 4000);
   }, []);
 
-  const { data: player, isLoading, error: playerError } = useQuery<PlayerWithDerived>({
+  const { data: player, isLoading } = useQuery<PlayerWithDerived>({
     queryKey: ["/api/player", playerId],
     queryFn: async () => {
       if (!playerId) throw new Error("No player ID");
-      const res = await fetch(apiUrl(`/api/player/${playerId}`));
-      if (!res.ok) {
-        const error = new Error("Failed to fetch player") as Error & { status?: number };
-        error.status = res.status;
-        throw error;
-      }
+      const res = await fetch(`/api/player/${playerId}`);
+      if (!res.ok) throw new Error("Failed to fetch player");
       return res.json();
     },
     enabled: !!playerId,
@@ -121,11 +114,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         exp: 0,
         maxExp: 100,
         inventory: [],
-        skills: [],
+        skills: [
+          { id: "basic_attack", name: "Basic Attack", description: "A simple attack that deals minor damage", mpCost: 0, cooldown: 0, level: 1, unlocked: true },
+          { id: "dodge", name: "Dodge", description: "Evade incoming attacks", mpCost: 5, cooldown: 5, level: 1, unlocked: false },
+          { id: "focus", name: "Focus", description: "Increase accuracy for the next attack", mpCost: 10, cooldown: 10, level: 1, unlocked: false },
+          { id: "survival_instinct", name: "Survival Instinct", description: "Temporarily boost all stats when HP is low", mpCost: 20, cooldown: 60, level: 1, unlocked: false },
+        ],
       });
       return res.json();
     },
-    retry: 2,
     onSuccess: (newPlayer) => {
       localStorage.setItem(PLAYER_STORAGE_KEY, newPlayer.id);
       setPlayerId(newPlayer.id);
@@ -134,25 +131,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (!playerId && !createPlayerMutation.isPending && !createPlayerMutation.isError) {
+    if (!playerId && !createPlayerMutation.isPending) {
       createPlayerMutation.mutate();
     }
-  }, [createPlayerMutation, createPlayerMutation.isError, createPlayerMutation.isPending, playerId]);
-
-  useEffect(() => {
-    if (playerId && playerError) {
-      localStorage.removeItem(PLAYER_STORAGE_KEY);
-      setPlayerId(null);
-      queryClient.removeQueries({ queryKey: ["/api/player", playerId] });
-    }
-  }, [playerError, playerId, queryClient]);
-
-  const resetPlayerSession = useCallback(() => {
-    localStorage.removeItem(PLAYER_STORAGE_KEY);
-    setPlayerId(null);
-    createPlayerMutation.reset();
-    queryClient.removeQueries({ queryKey: ["/api/player"] });
-  }, [createPlayerMutation, queryClient]);
+  }, [playerId]);
 
   const gainExpMutation = useMutation({
     mutationFn: async (amount: number) => {
@@ -319,8 +301,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     <GameContext.Provider value={{ 
       player: player || null, 
       isLoading: isLoading || createPlayerMutation.isPending,
-      startupError: !player && !isLoading && createPlayerMutation.isError,
-      resetPlayerSession,
       systemMessage,
       activeSession,
       lastXpGain,
