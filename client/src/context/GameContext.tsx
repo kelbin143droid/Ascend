@@ -84,7 +84,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     messageTimeoutRef.current = setTimeout(() => setSystemMessage(null), 4000);
   }, []);
 
-  const { data: player, isLoading } = useQuery<PlayerWithDerived>({
+  const { data: player, isLoading, isError } = useQuery<PlayerWithDerived>({
     queryKey: ["/api/player", playerId],
     queryFn: async () => {
       if (!playerId) throw new Error("No player ID");
@@ -94,7 +94,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     },
     enabled: !!playerId,
     staleTime: 1000,
+    retry: false,
   });
+
+  // If the stored player ID no longer exists in the DB, clear it so a new player gets created
+  useEffect(() => {
+    if (isError && playerId) {
+      localStorage.removeItem(PLAYER_STORAGE_KEY);
+      setPlayerId(null);
+    }
+  }, [isError, playerId]);
 
   const createPlayerMutation = useMutation({
     mutationFn: async () => {
