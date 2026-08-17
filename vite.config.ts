@@ -40,7 +40,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   optimizeDeps: {
-    include: ["leaflet"],
+    include: ["leaflet", "@rive-app/react-canvas"],
   },
   server: {
     host: "0.0.0.0",
