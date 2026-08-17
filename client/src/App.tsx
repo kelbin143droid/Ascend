@@ -47,6 +47,7 @@ const NotificationSettingsPage = React.lazy(() => import("@/pages/NotificationSe
 const HunterProfilePage = React.lazy(() => import("@/pages/HunterProfilePage"));
 const GodotGamePage = React.lazy(() => import("@/pages/GodotGamePage"));
 const WorldMapPage  = React.lazy(() => import("@/pages/WorldMapPage"));
+const MissionCommandPage = React.lazy(() => import("@/pages/MissionCommandPage"));
 import { VoiceAlertEngine } from "@/components/game/VoiceAlertEngine";
 import { SystemMessageEngine } from "@/components/game/SystemMessageEngine";
 const NotFound = React.lazy(() => import("@/pages/not-found"));
@@ -89,6 +90,7 @@ function Router() {
       <Route path="/schedule">
         <PlanningRoute><StatusPage /></PlanningRoute>
       </Route>
+      <Route path="/command" component={MissionCommandPage} />
       <Route path="/train" component={TrainPage} />
       <Route path="/coach" component={CoachPage} />
       <Route path="/arena" component={DungeonPage} />

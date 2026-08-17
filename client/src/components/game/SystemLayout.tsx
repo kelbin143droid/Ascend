@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { Home, User, Target, Brain } from "lucide-react";
+import { Home, User, Target, Brain, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageStageContext";
@@ -19,6 +19,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: "HOME", path: "/" },
   { icon: User, label: "PROFILE", path: "/profile" },
+  { icon: Compass, label: "COMMAND", path: "/command" },
   { icon: Target, label: "HABITS", path: "/habits" },
   { icon: Brain, label: "SYSTEM", path: "/coach" },
 ];
